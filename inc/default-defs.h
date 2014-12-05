@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #if !defined(DEBUG) && defined(_DEBUG)
@@ -62,8 +54,10 @@
 
 #ifdef _MSC_VER
 #	define UCFG_MSC_VERSION _MSC_VER
+#	define UCFG_MSC_FULL_VERSION _MSC_FULL_VER
 #else
 #	define UCFG_MSC_VERSION 0
+#	define UCFG_MSC_FULL_VERSION 0
 #endif
 
 #if !defined(_MAC) && (defined(_M_M68K) || defined(_M_MPPC))
@@ -111,6 +105,13 @@
 #	endif
 #endif
 
+#ifndef __STDC_VERSION__
+#	if UCFG_MSC_VERSION >= 1700
+#		define __STDC_VERSION__ 199901L
+#	else
+#		define __STDC_VERSION__ 1
+#	endif
+#endif
 
 #ifdef _WIN32_WCE
 #	ifndef WINCEOSVER
@@ -127,7 +128,13 @@
 #endif
 
 #if !defined(_WIN32_WINNT) && !UCFG_WCE
-#	define _WIN32_WINNT 0x601
+#	define _WIN32_WINNT 0x602
+#endif
+
+#define _CORECRT_WIN32_WINNT  _WIN32_WINNT_WINXP	//!!!?
+
+#ifndef _VCRT_WIN32_WINNT
+#	define _VCRT_WIN32_WINNT _WIN32_WINNT		//!!!?
 #endif
 
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
@@ -217,7 +224,7 @@
 #endif
 
 #ifndef UCFG_CPP17
-#	if defined(__cplusplus) && __cplusplus >= 201700 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 411)	//!!!?
+#	if defined(__cplusplus) && __cplusplus >= 201700 || (UCFG_MSC_VERSION >= 2000) || (UCFG_GNUC_VERSION >= 411)	//!!!?
 #		define UCFG_CPP17 1
 #	else
 #		define UCFG_CPP17 0
@@ -225,7 +232,7 @@
 #endif
 
 #ifndef UCFG_CPP14
-#	if defined(__cplusplus) && __cplusplus >= 201400 || (UCFG_MSC_VERSION >= 1800) || (UCFG_GNUC_VERSION >= 410)	//!!!?
+#	if defined(__cplusplus) && __cplusplus >= 201400 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 410)	//!!!?
 #		define UCFG_CPP14 1
 #	else
 #		define UCFG_CPP14 UCFG_CPP17
@@ -288,6 +295,18 @@
 #	define UCFG_CPP11_OVERRIDE (UCFG_GNUC_VERSION >= 407 || UCFG_MSC_VERSION >= 1600 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11))
 #endif
 
+#ifndef UCFG_CPP14_NOEXCEPT
+#	define UCFG_CPP14_NOEXCEPT (UCFG_GNUC_VERSION >= 406 || UCFG_MSC_FULL_VERSION >= 180021114 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11))
+#endif
+
+#ifndef EXT_NOEXCEPT
+#	define EXT_NOEXCEPT noexcept
+#endif
+
+#ifndef UCFG_C99_FUNC
+#	define UCFG_C99_FUNC (!UCFG_MSC_VERSION || UCFG_MSC_VERSION >= 180021114)
+#endif
+
 #ifndef UCFG_CPP11_THREAD_LOCAL
 #	if (defined(_MSC_VER) && _MSC_VER<=1800) || (defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ <= 6)
 #		define UCFG_CPP11_THREAD_LOCAL 0
@@ -309,15 +328,11 @@
 #endif
 
 #ifndef UCFG_STD_DYNAMIC_BITSET
-#	define UCFG_STD_DYNAMIC_BITSET UCFG_CPP14
+#	define UCFG_STD_DYNAMIC_BITSET UCFG_CPP14 && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1800)
 #endif
 
 #ifndef UCFG_CPP11_HAVE_REGEX
-#	if defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ <= 8
-#		define UCFG_CPP11_HAVE_REGEX 0
-#	else
-#		define UCFG_CPP11_HAVE_REGEX 1
-#	endif
+#	define UCFG_CPP11_HAVE_REGEX (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1600)
 #endif
 
 #ifndef UCFG_CPP11_HAVE_THREAD
@@ -328,8 +343,12 @@
 #	endif
 #endif
 
-#ifndef UCFG_CPP11_HAVE_DECIMAL
-#	define UCFG_CPP11_HAVE_DECIMAL (UCFG_GNUC_VERSION >= 409 || UCFG_MSC_VERSION >= 1900)
+#ifndef UCFG_STD_DECIMAL
+#	define UCFG_STD_DECIMAL (UCFG_GNUC_VERSION >= 409 || UCFG_MSC_VERSION >= 2000)
+#endif
+
+#ifndef UCFG_CPP11_HAVE_CODECVT
+#	define UCFG_CPP11_HAVE_CODECVT (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1800)
 #endif
 
 #ifndef UCFG_CPP11_BEGIN
@@ -337,8 +356,17 @@
 #endif
 
 #ifndef UCFG_STD_EXCHANGE
-#	define UCFG_STD_EXCHANGE ((UCFG_MSC_VERSION && UCFG_MSC_VERSION > 1800) || (!UCFG_MSC_VERSION && UCFG_CPP14))
+#	define UCFG_STD_EXCHANGE UCFG_CPP14
 #endif
+
+#ifndef UCFG_STD_FILESYSTEM
+#	define UCFG_STD_FILESYSTEM UCFG_CPP14
+#endif
+
+#ifndef UCFG_STD_IDENTITY
+#	define UCFG_STD_IDENTITY (UCFG_MSC_VERSION >= 1500)
+#endif
+
 
 #define WIN9X_COMPAT_SPINLOCK
 
@@ -347,6 +375,8 @@
 #else
 #	define _HAS_EXCEPTIONS 0
 #endif
+
+#define _HAS_NAMESPACE 1
 
 #define _ATL_NO_AUTOMATIC_NAMESPACE
 
@@ -374,13 +404,9 @@
 #	define _STRALIGN_USE_SECURE_CRT 0
 #endif
 
-#define UCFG_ALLOCATOR_STD_MALLOC 1
-#define UCFG_ALLOCATOR_TC_MALLOC 2
-
 #ifndef UCFG_POOL_THREADS
 #	define UCFG_POOL_THREADS 25
 #endif
-
 
 #ifndef UCFG_EH_OS_UNWIND
 #	define UCFG_EH_OS_UNWIND (defined _M_X64)
@@ -428,4 +454,19 @@
 #	define HAVE_BERKELEY_DB 1
 #	define HAVE_JANSSON 1
 #endif	// _MSC_VER
+
+#ifndef UCFG_DEFINE_NOMINMAX
+#	define UCFG_DEFINE_NOMINMAX 1
+#endif
+
+#if	UCFG_DEFINE_NOMINMAX
+#	define NOMINMAX					// used in windows.h
+#endif
+
+#ifndef UCFG_DEFINE_OLD_NAMES
+#	define UCFG_DEFINE_OLD_NAMES 0
+#endif
+
+
+
 

@@ -1,15 +1,10 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_JSON == UCFG_JSON_JANSSON
 #	include <jansson.h>
+#	ifndef json_boolean																	//BC backward compatibility for jansson < 2.x
+#		define json_boolean(val)      ((val) ? json_true() : json_false())
+#	endif
 #elif UCFG_JSON == UCFG_JSON_JSONCPP
 #	include <json/reader.h>
 #endif
@@ -24,7 +19,7 @@ static void *MallocWrap(size_t size) {
 }
 
 static void FreeWrap(void *p) {
-	return Free(p);
+	return free(p);
 }
 
 static int s_initJanssonMalloc = (::json_set_alloc_funcs(&MallocWrap, &FreeWrap), 1);			// Mandatory, because we are using Ext::Free() for Jansson created objects
@@ -98,8 +93,9 @@ public:
 	}
 
 	String ToString() const override {
-		const char *s = ::json_string_value(m_json);
-		return Encoding::UTF8.GetChars(ConstBuf(s, strlen(s)));
+		if (const char *s = ::json_string_value(m_json))
+			return Encoding::UTF8.GetChars(ConstBuf(s, strlen(s)));
+		Throw(E_EXT_InvalidCast);
 	}
 
 	Int64 ToInt64() const override {
@@ -141,6 +137,15 @@ public:
 		for (void *it=::json_object_iter((json_t*)m_json.get()); it; it=::json_object_iter_next((json_t*)m_json.get(), it))
 			r.push_back(::json_object_iter_key(it));
 		return r;
+	}
+
+	void Print(ostream& os) const override {
+		size_t flags = JSON_ENCODE_ANY | ((os.flags() & ios::adjustfield) == ios::left ? JSON_COMPACT : JSON_INDENT(2));
+		if (char *s = json_dumps(m_json, flags)) {
+			os << s;
+			FreeWrap(s);
+		} else
+			os << "null";		
 	}
 private:
 	JsonHandle m_json;
@@ -189,11 +194,64 @@ protected:
 		return ParseJson(full);
 	}
 
+	struct CallbackData {
+		Stream *m_pStm;
+		Blob LastChunk;
+		int LastChunkPos;
+		bool Eof;
+
+		CallbackData()
+			:	Eof(false)
+		{}
+	};
+
+	static size_t LoadCallback(void *buffer, size_t buflen, void *data) {
+		CallbackData& cbd = *(CallbackData*)data;
+		size_t r;
+		if (cbd.LastChunkPos < 0) {
+			int off = int(ssize_t(cbd.LastChunk.Size) + cbd.LastChunkPos);
+			memcpy(buffer, cbd.LastChunk.constData()+off, r = std::min(buflen, size_t(cbd.LastChunk.Size) - off));
+			cbd.LastChunkPos += int(r);
+		} else {
+			cbd.LastChunkPos += cbd.LastChunk.Size;
+			r = cbd.m_pStm->Read(buffer, buflen);
+			cbd.Eof |= true;
+			cbd.LastChunk = Blob(buffer, r);
+		}
+		return r;
+	}
+
+	pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf) override {
+#if JANSSON_VERSION_HEX >= 0x020400
+		CallbackData cbd;
+		cbd.LastChunk = preBuf;
+		cbd.m_pStm = &stm;
+		cbd.LastChunkPos = int(-(ssize_t)preBuf.Size);
+		
+		json_error_t err;
+		if (json_t *json = json_load_callback(&LoadCallback, &cbd, JSON_DISABLE_EOF_CHECK, &err)) {
+			int off = err.position - std::max(cbd.LastChunkPos, 0);
+			return make_pair(JsonVarValueObj::FromJsonT(json), Blob(cbd.LastChunk.constData() + off, cbd.LastChunk.Size - off));
+		} else {
+			if (!cbd.Eof)
+				JanssonCheck(json, err);
+			return make_pair(VarValue(), Blob(nullptr));
+		}
+#else
+		Throw(E_NOTIMPL);
+#endif
+	}
+
 	void Print(ostream& os, const VarValue& v) override {
 		JsonHandle jh(CopyToJsonT(v));
-		char *s = json_dumps(jh, 0);
-		os << s;
-		FreeWrap(s);
+		size_t flags = (Indent ? JSON_INDENT(Indent) : 0) | (Compact ? JSON_COMPACT : 0);
+		if ((os.flags() & ios::adjustfield) == ios::left)
+			flags |= JSON_COMPACT;
+		if (char *s = json_dumps(jh, flags)) {
+			os << s;
+			FreeWrap(s);
+		} else
+			os << "null";
 	}
 };
 

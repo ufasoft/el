@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 
@@ -80,7 +72,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 	size_t copyLen = min(size, size_t(m_size));
 	if (m_dwRef == 1) {
 		if (m_pChar)
-			Free(exchange(m_pChar, nullptr));
+			free(exchange(m_pChar, nullptr));
 #if UCFG_HAS_REALLOC
 		d = (CStringBlobBuf*)Realloc(this, size+sizeof(CStringBlobBuf)+sizeof(String::Char));
 #else
@@ -181,7 +173,7 @@ inline bool mem2equal(const void *x, const void *y, size_t siz) {
 #endif
 
 
-bool Blob::operator==(const Blob& blob) const {
+bool Blob::operator==(const Blob& blob) const noexcept {
 	if (m_pData == blob.m_pData)
 		return true;
 	if (m_pData) {
@@ -200,7 +192,7 @@ bool Blob::operator==(const Blob& blob) const {
 #undef memcmp
 #pragma intrinsic(memcmp)	//!!!
 
-bool Blob::operator<(const Blob& blob) const {
+bool Blob::operator<(const Blob& blob) const noexcept {
 	if (!m_pData)
 		return blob.m_pData;
 	if (!blob.m_pData)
@@ -223,7 +215,7 @@ Blob Blob::FromHexString(RCString s) {
 	int len = s.Length/2;
 	Blob blob(0, len);
 	for (int i=0; i<len; ++i)
-		blob.data()[i] = Convert::ToByte(s.Substring(i*2, 2), 16);
+		blob.data()[i] = Convert::ToByte(s.substr(i*2, 2), 16);
 	return blob;
 }
 
@@ -249,13 +241,15 @@ void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
 }
 
 ostream& __stdcall operator<<(ostream& os, const ConstBuf& cbuf) {
-	ios::fmtflags flags = os.flags();
 	if (const byte *p = cbuf.P) {
-		for (size_t i=0, size=cbuf.Size; i<size; ++i)
-			os << hex << setw(2) << setfill('0') << int(p[i]);
+		const char *fmt = os.flags() & ios::uppercase ? "%02X" : "%02x";
+		for (size_t i=0, size=cbuf.Size; i<size; ++i) {
+			char buf[5];
+			sprintf(buf, fmt, int(p[i]));
+			os << buf;
+		}
 	} else
 		os << "NULL";
-	os.flags(flags);
 	return os;
 }
 
