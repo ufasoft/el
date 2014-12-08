@@ -429,7 +429,7 @@ static void *SqliteMallocFun(int size) {
 }
 
 static void SqliteFree(void *p) {
-	Free(p);
+	free(p);
 }
 
 static void *SqliteRealloc(void *p, int size) {
