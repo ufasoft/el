@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <el/libext/win32/ext-win.h>
@@ -1103,7 +1095,7 @@ DWORD COleSafeArray::GetElemSize() {
 }
 
 void CSafeArray::Redim(int elems, int lbound) {
-	SAFEARRAYBOUND sab = {elems, lbound};
+	SAFEARRAYBOUND sab = { (ULONG)elems, lbound };
 	OleCheck(::SafeArrayRedim(m_sa, &sab));
 }
 
@@ -1205,7 +1197,6 @@ COleSafeArray AFXAPI AsVariant(const CStringVector& ar) {
 	return sa;
 }
 
-
 COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 	COleVariant result;
 	switch (vt) {
@@ -1276,8 +1267,10 @@ COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 					LONG dim1, dim2, dim3, dim4;
 					_self >> dim1 >> dim2 >> dim3 >> dim4;
 					COleSafeArray sa;
-					SAFEARRAYBOUND sab[2] = {{dim2-dim1+1, dim1},
-					{dim4-dim3+1, dim3}};
+					SAFEARRAYBOUND sab[2] ={
+							{ ULONG(dim2-dim1+1), dim1 },
+							{ ULONG(dim4-dim3+1), dim3 }
+					};
 					sa.Create(elType, 2, sab);
 					for (long i=dim1; i<=dim2; i++) {
 						for (long j=dim3; j<=dim4; j++) {
@@ -1763,7 +1756,7 @@ HRESULT AFXAPI CComObjectRootBase::_Chain(void* pv, REFIID iid, void** ppvObject
 
 
 
-#if defined(_DEBUG) && defined(_WIN64) && UCFG_WIN32
+#if defined(_DEBUG) && defined(_WIN64) && UCFG_WIN32 && _VC_CRT_MAJOR_VERSION<14
 #	pragma comment(lib, "runtmchk")
 
 

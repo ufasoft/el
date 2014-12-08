@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include <el/libext/win32/ext-com.h>
@@ -301,27 +293,25 @@ public:
 	static void destroy(T** p) {if (*p) (*p)->Release();}
 };
 
-template <class I, class T, class C = _Copy<T> > class IComEnumImpl : public CComEnumImpl, public I
-{
+template <class I, class T, class C = _Copy<T> > class IComEnumImpl : public CComEnumImpl, public I {
 public:
-	int m_i;
+	size_t m_i;
 	CEnumArray<T> *m_ar;
 
 	IComEnumImpl(const IComEnumImpl& impl)
-		:m_i(impl.m_i),
-		m_ar(impl.m_ar)     
+		:	m_i(impl.m_i)
+		,	m_ar(impl.m_ar)     
 	{
 	}
 
 	IComEnumImpl(CEnumArray<T> *ar)
-		:m_i(0),
-		m_ar(ar)
+		:	m_i(0)
+		,	m_ar(ar)
 	{
 		m_ar->AddRef();
 	}
 
-	~IComEnumImpl()
-	{
+	~IComEnumImpl() {
 		m_ar->Release();
 	}
 
@@ -334,34 +324,33 @@ public:
 		STDMETHOD(Next)(ULONG celt, T* rgelt, ULONG* pceltFetched)
 		METHOD_BEGIN {
 		size_t nRem = m_ar->m_ar.size()-m_i;
-	HRESULT hr = nRem<celt ? S_FALSE : S_OK;
-	ULONG nMin = min((size_t)celt, nRem);
-	if (pceltFetched)
-		*pceltFetched = nMin;
-	while (nMin--)
-	{
-		C::copy(rgelt, &m_ar->m_ar[m_i]);
-		rgelt++;
-		m_i++;
-	}
-	return hr;
+		HRESULT hr = nRem<celt ? S_FALSE : S_OK;
+		ULONG nMin = min((size_t)celt, nRem);
+		if (pceltFetched)
+			*pceltFetched = nMin;
+		while (nMin--) {
+			C::copy(rgelt, &m_ar->m_ar[m_i]);
+			rgelt++;
+			m_i++;
+		}
+		return hr;
 	} METHOD_END
 
-		STDMETHOD(Skip)(ULONG celt)
-		METHOD_BEGIN {
+	STDMETHOD(Skip)(ULONG celt)
+	METHOD_BEGIN {
 		m_i += celt;
-	if (m_i > m_ar->m_ar.size())
-		return S_FALSE;
+		if (m_i > m_ar->m_ar.size())
+			return S_FALSE;
 	} METHOD_END
 
-		STDMETHOD(Reset)()
-		METHOD_BEGIN {
-		} METHOD_END
+	STDMETHOD(Reset)()
+	METHOD_BEGIN {
+	} METHOD_END
 
-		STDMETHOD(Clone)(I** ppEnum)
-		METHOD_BEGIN {
+	STDMETHOD(Clone)(I** ppEnum)
+	METHOD_BEGIN {
 		IComEnumImpl *p = new IComEnumImpl(_self);
-	return p->InternalQueryInterface(__uuidof(I), (void**)ppEnum);
+		return p->InternalQueryInterface(__uuidof(I), (void**)ppEnum);
 	} METHOD_END
 };
 

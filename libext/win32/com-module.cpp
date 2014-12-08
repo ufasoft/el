@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <el/libext/win32/ext-win.h>
@@ -37,7 +29,7 @@ HRESULT CComModule::ProcessError(HRESULT hr, RCString desc) {
 	CComPtr<ICreateErrorInfo> iCEI;
 	OleCheck(::CreateErrorInfo(&iCEI));
 	String s = desc;
-	if (s.IsEmpty())
+	if (s.empty())
 		s = AfxProcessError(hr);
 	OleCheck(iCEI->SetDescription(Bstr(s)));
 	CComPtr<IErrorInfo> iEI = iCEI;
@@ -74,7 +66,7 @@ void AFX_MAINTAIN_STATE_COM::SetFromExc(RCExc ex) {
 }
 
 void CComTypeLibHolder::Load() {
-	OleCheck(m_libid == GUID_NULL ? ::LoadTypeLib(AfxGetModuleState()->FileName, &m_iTypeLib)
+	OleCheck(m_libid == GUID_NULL ? ::LoadTypeLib(AfxGetModuleState()->FileName.c_str(), &m_iTypeLib)
 									: ::LoadRegTypeLib(m_libid, m_verMajor, m_verMinor, m_lcid, &m_iTypeLib));
 }
 
@@ -320,7 +312,7 @@ METHOD_BEGIN {
 HRESULT CComClassFactoryImpl::GetLicInfo(LPLICINFO li)
 METHOD_BEGIN {
 	li->fLicVerified = IsLicenseValid();
-	li->fRuntimeKeyAvail = !GetLicenseKey().IsEmpty();
+	li->fRuntimeKeyAvail = !GetLicenseKey().empty();
 } METHOD_END
 
 HRESULT CComClassFactoryImpl::RequestLicKey(DWORD dw, BSTR* key)
@@ -497,11 +489,11 @@ CComGeneralClass::~CComGeneralClass() {
 
 void CComGeneralClass::Register() {
 #if UCFG_EXTENDED
-	String moduleName = AfxGetModuleState()->FileName;
+	String moduleName = AfxGetModuleState()->FileName.c_str();
 	String sClsid = StringFromCLSID(m_clsid);
 	String sDesc;
 	sDesc.Load(m_descID);
-	if (!m_progID.IsEmpty()) {
+	if (!m_progID.empty()) {
 		RegistryKey key(HKEY_CLASSES_ROOT, m_progID);
 		key.SetValue("", sDesc);
 		RegistryKey ck(key, "CLSID");
@@ -529,7 +521,7 @@ void CComGeneralClass::Register() {
 			tm = "both";
 		else if (m_flags & THREADFLAGS_APARTMENT)
 			tm = "Apartment";
-		if (!tm.IsEmpty())
+		if (!tm.empty())
 			isk.SetValue("ThreadingModel", tm);
 	}
 #endif
@@ -537,12 +529,12 @@ void CComGeneralClass::Register() {
 
 void CComGeneralClass::Unregister() {
 	try {
-		if (!m_progID.IsEmpty())
+		if (!m_progID.empty())
 			Registry::ClassesRoot.DeleteSubKeyTree(m_progID);
 	} catch (RCExc) {
 	}
 	try {
-		if (!m_progID.IsEmpty())
+		if (!m_progID.empty())
 			Registry::ClassesRoot.DeleteSubKeyTree(m_indProgID);
 	} catch (RCExc) {
 	}
@@ -626,7 +618,7 @@ void CComModule::UnregisterTypeLib() {
 	AFX_MODULE_STATE *pMS = AfxGetModuleState();
 	CComPtr<ITypeLib> iTL;
 	if (pMS->m_typeLib.m_libid == GUID_NULL) {
-		OleCheck(::LoadTypeLib(pMS->FileName, &iTL));
+		OleCheck(::LoadTypeLib(pMS->FileName.c_str(), &iTL));
 		CTLibAttr tla(iTL);
 		try  {//!!! if already unregistered
 			OleCheck(::UnRegisterTypeLib(tla.m_ptla->guid, tla.m_ptla->wMajorVerNum, tla.m_ptla->wMinorVerNum,
@@ -674,9 +666,10 @@ void CComModule::RegisterTypeLib() {
 	AFX_MODULE_STATE *pMS = AfxGetModuleState();
 	CComPtr<ITypeLib> iTL;
 	if (pMS->m_typeLib.m_libid == GUID_NULL) {
-		String dirName = Path::GetDirectoryName(pMS->FileName);
-		OleCheck(LoadTypeLib(pMS->FileName, &iTL));
-		const OLECHAR *pFilename = pMS->FileName,
+		String dirName = pMS->FileName.parent_path().c_str();
+		OleCheck(LoadTypeLib(pMS->FileName.c_str(), &iTL));
+		String fn = pMS->FileName.c_str();
+		const OLECHAR *pFilename = fn,
 					*pDirName = dirName;
 		OleCheck(::RegisterTypeLib(iTL, (OLECHAR*)pFilename, (OLECHAR*)pDirName));
 	}

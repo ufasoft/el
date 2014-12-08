@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 
@@ -45,7 +37,12 @@
 #	define WM_NCDESTROY            (WM_APP - 1)
 #endif
 
+typedef int (__cdecl * _PNH)( size_t );
+
 namespace Ext {
+
+class CComObjectRootBase;
+class CComClass;
 
 #ifdef GetNextWindow
 #	undef GetNextWindow
@@ -365,18 +362,6 @@ namespace Ext {
 #endif
 
 
-class CWinFileFind {
-public:
-	CWinFileFind(LPCTSTR filespec);
-	~CWinFileFind();
-	void First(LPCTSTR filespec = 0);
-	bool Next(WIN32_FIND_DATA& findData);
-private:
-	HANDLE m_h;
-	CBool m_b;
-	WIN32_FIND_DATA m_findData;
-};
-
 class COvlEvent : public OVERLAPPED, public Object {
 public:
 	CEvent m_ev;
@@ -431,7 +416,7 @@ public:
 
 
 enum COsVersion {
-	OSVER_FLAG_NT      = 0x10,
+	OSVER_FLAG_NT      = 0x200,
 	OSVER_FLAG_UNICODE = 0x20,
 	OSVER_FLAG_CE      = 0x40 | OSVER_FLAG_UNICODE,
 	OSVER_FLAG_SERVER   = 0x80,
@@ -454,7 +439,9 @@ enum COsVersion {
 	OSVER_7 = 13 | OSVER_FLAG_2K_BRANCH,
 	OSVER_2008_R2 = 13 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER,
 	OSVER_8 = 14 | OSVER_FLAG_2K_BRANCH,
-	OSVER_FUTURE = 15 | OSVER_FLAG_2K_BRANCH
+	OSVER_8_1 = 15 | OSVER_FLAG_2K_BRANCH,
+	OSVER_10 = 16 | OSVER_FLAG_2K_BRANCH,
+	OSVER_FUTURE = 17 | OSVER_FLAG_2K_BRANCH
 };
 
 AFX_API COsVersion AFXAPI GetOsVersion();
@@ -700,7 +687,7 @@ struct AFX_EXTENSION_MODULE {
 
 #endif
 
-typedef int (__cdecl * _PNH)( size_t );
+
 
 class CThreadHandleMaps {
 public:
@@ -718,7 +705,7 @@ public:
 #endif
 };
 
-class AFX_MODULE_THREAD_STATE : public CNoTrackObject {
+class AFX_MODULE_THREAD_STATE {
 public:
 	_PNH m_pfnNewHandler;
 	//!!!  COwnerArray<CComTypeLibHolder> m_tlList;
@@ -745,9 +732,9 @@ AFX_API AFX_MODULE_THREAD_STATE * AFXAPI AfxGetModuleThreadState();
 class CWinApp;
 class CAppBase;
 
-class EXTAPI AFX_MODULE_STATE : public CNoTrackObject {
+class EXTAPI AFX_MODULE_STATE : noncopyable {
 public:
-	CThreadLocal<AFX_MODULE_THREAD_STATE> m_thread;
+	thread_specific_ptr<AFX_MODULE_THREAD_STATE> m_thread;
 	CWinApp *m_pCurrentWinApp;
 #if UCFG_COMPLEX_WINAPP
 	CAppBase *m_pCurrentCApp;
@@ -789,8 +776,8 @@ public:
 
 	~AFX_MODULE_STATE();
 
-	String get_FileName();
-	DEFPROP_GET(String, FileName);
+	std::path get_FileName();
+	DEFPROP_GET(std::path, FileName);
 };
 
 
@@ -919,7 +906,7 @@ String AFXAPI VersionToStr(const VS_FIXEDFILEINFO& fi, int n = 4);
 
 AFX_API String AFXAPI TryGetVersionString(const FileVersionInfo& vi, RCString name, RCString val = "");
 
-AFX_API String AFXAPI GetAppDataManufacturerFolder();
+AFX_API path AFXAPI GetAppDataManufacturerFolder();
 
 class CodepageCvt : public std::codecvt<wchar_t, char, mbstate_t> {
 	typedef std::codecvt<wchar_t, char, mbstate_t> base;
@@ -938,6 +925,21 @@ void AFXAPI AfxInitRichEdit();
 
 AFX_API int AFXAPI AfxMessageBox(RCString text, UINT nType = MB_OK, UINT nIDHelp = 0);
 AFX_API int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType = MB_OK, UINT nIDHelp = (UINT)-1);
+
+//!!!O
+class AFX_CLASS CSingleLock {
+public:
+	CSingleLock(CSyncObject *pObject, bool bInitialLock = false);
+	~CSingleLock();
+	void Lock(DWORD dwTimeOut = INFINITE);
+	void Unlock();
+	bool IsLocked();
+protected:
+	CSyncObject *m_pObject;
+	CBool m_bAcquired;
+};
+
+
 
 
 } // Ext::

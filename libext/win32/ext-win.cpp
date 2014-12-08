@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <windows.h>
@@ -71,12 +63,14 @@ int AFXAPI Win32Check(LRESULT i) {
 	DWORD dw = ::GetLastError();
 	if (dw & 0xFFFF0000)
 		Throw(dw);
+	error_code ec;
 	if (dw)
-		Throw(HRESULT_FROM_WIN32(dw));
-	else if (HRESULT hr = GetLastHResult())
-		Throw(hr);
-	else
-		Throw(E_EXT_UnknownWin32Error);
+		ec = error_code(dw, system_category());
+	else {
+		HRESULT hr = GetLastHResult();
+		ec = error_code(hr ? hr : E_EXT_UnknownWin32Error, hresult_category());
+	}
+	Throw(ec);
 }
 
 bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
@@ -150,7 +144,7 @@ static String ToDosPath(RCString lpath) {
 		if (v.size()) {
 			String lp = v[0];
 			if (lp.Length < lpath.Length && !lp.CompareNoCase(lpath.Left(lp.Length))) {
-				return ((ld.Right(1) == "\\" && lpath[0] == '\\') ? dd : ld) + lpath.Mid(lp.Length);
+				return ((ld.Right(1) == "\\" && lpath[0] == '\\') ? dd : ld) + lpath.substr(lp.Length);
 			}
 		}
 	}
@@ -165,8 +159,8 @@ static CDynamicLibrary s_dllPsapi("psapi.dll");
 String ProcessObj::get_MainModuleFileName() {
 	TCHAR buf[MAX_PATH];
 	try {
-		DBG_LOCAL_IGNORE_NAME(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY), ignERROR_PARTIAL_COPY);	
-		DBG_LOCAL_IGNORE_NAME(HRESULT_FROM_WIN32(ERROR_INVALID_HANDLE), ignERROR_INVALID_HANDLE);
+		DBG_LOCAL_IGNORE_WIN32(ERROR_PARTIAL_COPY);
+		DBG_LOCAL_IGNORE_WIN32(ERROR_INVALID_HANDLE);
 
 		Win32Check(::GetModuleFileNameEx(Handle(_self), 0, buf, _countof(buf)));
 		return buf;
@@ -201,38 +195,6 @@ ProcessObj::ProcessObj(pid_t pid, DWORD dwAccess, bool bInherit)
 void COperatingSystem::MessageBeep(UINT uType) {
 	Win32Check(::MessageBeep(uType));
 }
-
-CWinFileFind::CWinFileFind(LPCTSTR filespec) {
-	First(filespec);
-}
-
-CWinFileFind::~CWinFileFind() {
-	if (INVALID_HANDLE_VALUE != m_h)
-		Win32Check(::FindClose(m_h));
-}
-
-void CWinFileFind::First(LPCTSTR filespec) {
-	m_h = ::FindFirstFile(filespec, &m_findData);
-	if (!(m_b = (INVALID_HANDLE_VALUE != m_h)))
-		switch (::GetLastError())
-		{
-		case ERROR_FILE_NOT_FOUND:
-		case ERROR_NO_MORE_FILES:
-			break;
-		default:
-			Win32Check(false);
-		}
-}
-
-bool CWinFileFind::Next(WIN32_FIND_DATA& findData) {
-	findData = m_findData;
-	bool r = m_b;
-	if (m_h != INVALID_HANDLE_VALUE)
-		m_b = Win32Check(::FindNextFile(m_h, &m_findData), ERROR_NO_MORE_FILES);
-	return r;
-}
-
-
 
 
 //!!!#if !UCFG_WCE && UCFG_EXTENDED
@@ -283,8 +245,12 @@ CThreadHandleMaps& AFX_MODULE_THREAD_STATE::GetHandleMaps() {
 	return *m_handleMaps.get();
 }
 
-AFX_MODULE_THREAD_STATE * AFXAPI AfxGetModuleThreadState() {
-	return AfxGetModuleState()->m_thread.GetData();
+AFX_MODULE_THREAD_STATE* AFXAPI AfxGetModuleThreadState() {
+	AFX_MODULE_STATE *ms = AfxGetModuleState();
+	AFX_MODULE_THREAD_STATE *r = ms->m_thread;
+	if (!r)
+		ms->m_thread.reset(r = new AFX_MODULE_THREAD_STATE);
+	return r;
 }
 
 void AFX_MODULE_STATE::SetHInstance(HMODULE hModule) {
@@ -313,7 +279,7 @@ AFX_MODULE_STATE::AFX_MODULE_STATE(bool bDLL)
 AFX_MODULE_STATE::~AFX_MODULE_STATE() {
 }
 
-String AFX_MODULE_STATE::get_FileName() {
+path AFX_MODULE_STATE::get_FileName() {
 	TCHAR szModule[_MAX_PATH];
 	Win32Check(::GetModuleFileName(m_hCurrentInstanceHandle, szModule, _MAX_PATH));
 	return szModule;
@@ -557,11 +523,13 @@ HRESULT CDllServer::OnUnregister() {
 #endif
 }
 
+#if UCFG_COMPLEX_WINAPP	
 CWinThread * AFXAPI AfxGetThread() {
 	ThreadBase *t = Thread::TryGetCurrentThread();
 	CWinThread *pThread = t ? t->AsWinThread() : 0;
 	return pThread ? pThread : AfxGetApp();
 }
+#endif
 
 
 int AFXAPI AfxMessageBox(RCString text, UINT nType, UINT nIDHelp) {
@@ -584,8 +552,7 @@ int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType, UINT nIDHelp) {
 }
 
 
-void AfxWinTerm()
-{
+void AfxWinTerm() {
 	//!!!  ::CoFreeUnusedLibraries();
 	_AFX_THREAD_STATE *pTS = AfxGetThreadState();
 	if (!AfxGetModuleState()->m_bDLL) {
@@ -618,13 +585,17 @@ static int AfxWinMainEx(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString l
 		nReturnCode = pThread->ExitInstance();
 #endif
 	} catch (RCExc ex) {
-		AfxMessageBox(ex.what(), MB_ICONSTOP | MB_OK);
+		nReturnCode = HResultInCatch(ex);
+		if (!GetSilentUI())
+			AfxMessageBox(ex.what(), MB_ICONSTOP | MB_OK);
 	}
 	return nReturnCode;
 }
 
 static int AbortFilter() {
+#if UCFG_COMPLEX_WINAPP			//!!!?
 	AfxGetApp()->OnAbort();
+#endif
 	return EXCEPTION_CONTINUE_SEARCH ;
 }
 
@@ -639,10 +610,10 @@ int AFXAPI AfxWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lpC
 }
 
 
-static EXT_THREAD_PTR(AFX_MODULE_STATE, t_pModuleState);
-static EXT_THREAD_PTR(AFX_MODULE_STATE, t_pPrevModuleState);
+static EXT_THREAD_PTR(AFX_MODULE_STATE) t_pModuleState;
+static EXT_THREAD_PTR(AFX_MODULE_STATE) t_pPrevModuleState;
 
-AFX_MODULE_STATE * AFXAPI AfxGetModuleState() {
+AFX_MODULE_STATE* AFXAPI AfxGetModuleState() {
 	AFX_MODULE_STATE *r;
 	if (!(r = t_pModuleState))
 		r = &_afxBaseModuleState;
@@ -669,6 +640,113 @@ AFX_MAINTAIN_STATE2::~AFX_MAINTAIN_STATE2() {
 	t_pModuleState = m_pPrevModuleState;
 }
 
+struct Win32CodeErrc {
+	UInt16 Code;
+	errc Errc;
+};
+
+static const Win32CodeErrc s_win32code2errc[] ={
+	ERROR_FILE_NOT_FOUND,		errc::no_such_file_or_directory,
+	ERROR_PATH_NOT_FOUND,		errc::no_such_file_or_directory,
+	ERROR_ACCESS_DENIED,		errc::permission_denied,
+	ERROR_INVALID_HANDLE,		errc::bad_file_descriptor,
+	ERROR_NOT_ENOUGH_MEMORY,	errc::not_enough_memory,
+	ERROR_NOT_SUPPORTED,		errc::not_supported,
+	ERROR_INVALID_PARAMETER,	errc::invalid_argument,
+	ERROR_BROKEN_PIPE,			errc::broken_pipe,
+	ERROR_ALREADY_EXISTS,		errc::file_exists,
+	ERROR_FILENAME_EXCED_RANGE, errc::filename_too_long,
+	ERROR_FILE_TOO_LARGE,		errc::file_too_large,
+	ERROR_CANCELLED,			errc::operation_canceled,
+	ERROR_WAIT_NO_CHILDREN,		errc::no_child_process,
+	ERROR_ARITHMETIC_OVERFLOW,	errc::result_out_of_range,
+	ERROR_BUSY,					errc::device_or_resource_busy,
+	ERROR_DEVICE_IN_USE,		errc::device_or_resource_busy,
+	ERROR_BAD_FORMAT,			errc::executable_format_error,
+	ERROR_DIR_NOT_EMPTY,		errc::directory_not_empty,
+	ERROR_DISK_FULL,			errc::no_space_on_device,
+	ERROR_TIMEOUT,				errc::timed_out,
+	ERROR_IO_PENDING,			errc::resource_unavailable_try_again,
+	ERROR_NOT_SAME_DEVICE,		errc::cross_device_link,
+	ERROR_WRITE_PROTECT,		errc::read_only_file_system,
+	ERROR_POSSIBLE_DEADLOCK,	errc::resource_deadlock_would_occur,
+	WSAENOBUFS, 				errc::no_buffer_space,
+	WSAEINTR,					errc::interrupted,
+	WSAEBADF,					errc::bad_file_descriptor,
+	WSAEACCES,					errc::permission_denied,
+	WSAEFAULT,					errc::bad_address,
+	WSAEINVAL,					errc::invalid_argument,
+	WSAEMFILE,					errc::too_many_files_open,
+	WSAEWOULDBLOCK,				errc::operation_would_block,
+	WSAEINPROGRESS,				errc::operation_in_progress,
+	WSAEALREADY,				errc::connection_already_in_progress,
+	WSAENOTSOCK,				errc::not_a_socket,
+	WSAEDESTADDRREQ,			errc::destination_address_required,
+	WSAEMSGSIZE,				errc::message_size,
+	WSAEPROTOTYPE,				errc::wrong_protocol_type,
+	WSAENOPROTOOPT,				errc::no_protocol_option,
+	WSAEPROTONOSUPPORT,			errc::protocol_not_supported,
+	WSAEOPNOTSUPP,				errc::protocol_not_supported,
+	WSAEAFNOSUPPORT,			errc::address_family_not_supported,
+	WSAEADDRINUSE,				errc::address_in_use,
+	WSAEADDRNOTAVAIL,			errc::address_not_available,
+	WSAENETDOWN,				errc::network_down,
+	WSAENETUNREACH,				errc::network_unreachable,
+	WSAENETRESET,				errc::network_reset,
+	WSAECONNABORTED,			errc::connection_aborted,
+	WSAEISCONN,					errc::already_connected,
+	WSAENOTCONN,				errc::not_connected,
+	WSAETIMEDOUT,				errc::timed_out,
+	WSAECONNREFUSED,			errc::connection_refused,
+	WSAELOOP,					errc::too_many_symbolic_link_levels,
+	WSAENAMETOOLONG,			errc::filename_too_long,
+	WSAEHOSTUNREACH,			errc::host_unreachable,
+	WSAENOTEMPTY,				errc::directory_not_empty,
+	WSAECANCELLED,				errc::operation_canceled,
+	0
+};
+
+static class Win32Category : public error_category {			// outside function to eliminate thread-safe static machinery
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "Win32"; }
+
+	string message(int eval) const override {
+#if UCFG_WDM
+		return "Error";		//!!!
+#else
+		return explicit_cast<string>(AfxProcessError(eval));
+#endif
+	}
+
+	error_condition default_error_condition(int errval) const noexcept override {
+		int code;
+		for (const Win32CodeErrc *p=s_win32code2errc; (code=p->Code); ++p)
+			if (code == errval)
+				return p->Errc;
+		return error_condition(errval, *this);
+	}
+
+	bool equivalent(int errval, const error_condition& c) const noexcept override {			//!!!TODO
+		switch (errval) {
+		case ERROR_TOO_MANY_OPEN_FILES:	return c==errc::too_many_files_open || c==errc::too_many_files_open_in_system;
+		default:
+			return base::equivalent(errval, c);
+		}
+	}
+
+	bool equivalent(const error_code& ec, int errval) const noexcept override {
+		if (ec.category()==hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
+			return errval == (ec.value() & 0xFFFF);
+		else
+			return base::equivalent(ec, errval);
+	}
+
+} s_win32Category;
+
+const error_category& win32_category() {
+	return s_win32Category;
+}
 
 
 } // Ext::
