@@ -1091,7 +1091,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 	algo.HashBlock(hash, buf, counter);
 	for (int j=0; j<8; ++j)
 		hash[j] = htobe(hash[j]);
-	return hashval((const byte*)hash, sizeof hash);
+	return hashval((const byte*)hash, algo.HashSize);
 }
 
 hashval HashAlgorithm::ComputeHash(Stream& stm) {

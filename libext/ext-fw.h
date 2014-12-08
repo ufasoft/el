@@ -1064,7 +1064,7 @@ public:
 	virtual hashval ComputeHash(Stream& stm);
 	virtual hashval ComputeHash(const ConstBuf& mb);
 
-	virtual void InitHash(void *dst) {}
+	virtual void InitHash(void *dst) noexcept {}
 	virtual void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {}
 protected:
 	CBool Is64Bit;
