@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\foreign\jansson\dump.c">
+    <ClCompile Include="..\..\..\foreign\jansson\dump.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -29,7 +29,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\error.c">
+    <ClCompile Include="..\..\..\foreign\jansson\error.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -39,7 +39,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\hashtable.c">
+    <ClCompile Include="..\..\..\foreign\jansson\hashtable.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -49,7 +49,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\load.c">
+    <ClCompile Include="..\..\..\foreign\jansson\load.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -59,7 +59,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\memory.c">
+    <ClCompile Include="..\..\..\foreign\jansson\memory.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -69,7 +69,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\strbuffer.c">
+    <ClCompile Include="..\..\..\foreign\jansson\strbuffer.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -79,7 +79,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\strconv.c">
+    <ClCompile Include="..\..\..\foreign\jansson\strconv.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -89,7 +89,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\utf.c">
+    <ClCompile Include="..\..\..\foreign\jansson\utf.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -99,7 +99,7 @@
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">std_config.h</ForcedIncludeFiles>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">std_config.h</ForcedIncludeFiles>
     </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\value.c">
+    <ClCompile Include="..\..\..\foreign\jansson\value.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">NotUsing</PrecompiledHeader>
@@ -119,6 +119,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">el/ext.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\crt\time.cpp" />
+    <ClCompile Include="..\elwin\static-main.cpp" />
     <ClCompile Include="..\stl\decimal.cpp" />
     <ClCompile Include="..\stl\dynamic_bitset.cpp" />
     <ClCompile Include="..\stl\filesystem.cpp" />
@@ -144,6 +146,7 @@
     <ClCompile Include="ext-json.cpp" />
     <ClCompile Include="ext-net.cpp" />
     <ClCompile Include="ext-os.cpp" />
+    <ClCompile Include="ext-protocols.cpp" />
     <ClCompile Include="ext-stream.cpp" />
     <ClCompile Include="ext-string.cpp" />
     <ClCompile Include="http.cpp" />
@@ -183,20 +186,17 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -204,7 +204,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v120</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Static</UseOfMfc>
@@ -237,7 +236,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>el/ext.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.;../..;../../foreign</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../..;../../..;../../../foreign</AdditionalIncludeDirectories>
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
@@ -257,7 +256,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>el/ext.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.;../..;../../foreign</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../..;../../..;../../../foreign</AdditionalIncludeDirectories>
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
@@ -278,7 +277,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>el/ext.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.;../..;../../foreign</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../..;../../..;../../../foreign</AdditionalIncludeDirectories>
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
@@ -301,7 +300,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>el/ext.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>.;../..;../../foreign</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;../..;../../..;../../../foreign</AdditionalIncludeDirectories>
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>

@@ -24,6 +24,9 @@
     <Filter Include="stl">
       <UniqueIdentifier>{7fdfb2db-6b42-4a06-8590-e5518cac6bfe}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\elwin">
+      <UniqueIdentifier>{7ba84aa0-afef-4462-b08d-85a520c4dd7c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ext-base.cpp">
@@ -116,39 +119,6 @@
     <ClCompile Include="internet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win32\com-module.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="win32\excom.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\dump.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\memory.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\load.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\strbuffer.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\strconv.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\error.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\utf.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\value.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\foreign\jansson\hashtable.c">
-      <Filter>Source Files\jansson</Filter>
-    </ClCompile>
     <ClCompile Include="..\stl\filesystem.cpp">
       <Filter>stl</Filter>
     </ClCompile>
@@ -160,6 +130,48 @@
     </ClCompile>
     <ClCompile Include="..\stl\dynamic_bitset.cpp">
       <Filter>stl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\crt\time.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\dump.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\error.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\hashtable.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\load.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\memory.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\strbuffer.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\strconv.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\utf.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\jansson\value.c">
+      <Filter>Source Files\jansson</Filter>
+    </ClCompile>
+    <ClCompile Include="win32\com-module.cpp">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="win32\excom.cpp">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\elwin\static-main.cpp">
+      <Filter>Source Files\elwin</Filter>
+    </ClCompile>
+    <ClCompile Include="ext-protocols.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
