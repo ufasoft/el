@@ -659,3 +659,5 @@ size_t AFXAPI hash_value(const Ext::Pimpl<T>& v) { return hash_value(v.m_pimpl);
 } // stdext::
 
 
+
+
