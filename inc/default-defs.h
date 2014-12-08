@@ -39,6 +39,8 @@
 #		define _M_IX86 300
 #	elif defined(__arm__)
 #		define _M_ARM
+#	elif defined(__mips__)
+#		define _M_MIPS
 #	endif	
 
 #	ifdef __SSE2__
@@ -50,6 +52,12 @@
 #	define UCFG_GNUC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
 #else
 #	define UCFG_GNUC_VERSION 0
+#endif
+
+#ifdef __clang__
+#	define UCFG_CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
+#else
+#	define UCFG_CLANG_VERSION 0
 #endif
 
 #ifdef _MSC_VER
@@ -224,7 +232,7 @@
 #endif
 
 #ifndef UCFG_CPP17
-#	if defined(__cplusplus) && __cplusplus >= 201700 || (UCFG_MSC_VERSION >= 2000) || (UCFG_GNUC_VERSION >= 411)	//!!!?
+#	if defined(__cplusplus) && __cplusplus >= 201700 || (UCFG_MSC_VERSION >= 2000) || (UCFG_GNUC_VERSION >= 411) || (UCFG_CLANG_VERSION >= 400)		//!!!?
 #		define UCFG_CPP17 1
 #	else
 #		define UCFG_CPP17 0
@@ -232,7 +240,7 @@
 #endif
 
 #ifndef UCFG_CPP14
-#	if defined(__cplusplus) && __cplusplus >= 201400 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 410)	//!!!?
+#	if defined(__cplusplus) && __cplusplus >= 201400 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 410) || (UCFG_CLANG_VERSION >= 310)	//!!!?
 #		define UCFG_CPP14 1
 #	else
 #		define UCFG_CPP14 UCFG_CPP17
@@ -296,7 +304,7 @@
 #endif
 
 #ifndef UCFG_CPP14_NOEXCEPT
-#	define UCFG_CPP14_NOEXCEPT (UCFG_GNUC_VERSION >= 406 || UCFG_MSC_FULL_VERSION >= 180021114 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11))
+#	define UCFG_CPP14_NOEXCEPT (UCFG_GNUC_VERSION >= 406 || UCFG_MSC_VERSION >= 1900 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11))
 #endif
 
 #ifndef EXT_NOEXCEPT
@@ -304,7 +312,7 @@
 #endif
 
 #ifndef UCFG_C99_FUNC
-#	define UCFG_C99_FUNC (!UCFG_MSC_VERSION || UCFG_MSC_VERSION >= 180021114)
+#	define UCFG_C99_FUNC (!UCFG_MSC_VERSION || UCFG_MSC_VERSION >= 1900)
 #endif
 
 #ifndef UCFG_CPP11_THREAD_LOCAL
@@ -328,11 +336,15 @@
 #endif
 
 #ifndef UCFG_STD_DYNAMIC_BITSET
-#	define UCFG_STD_DYNAMIC_BITSET UCFG_CPP14 && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1800)
+#	define UCFG_STD_DYNAMIC_BITSET UCFG_CPP14 && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1800) && !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305)
 #endif
 
 #ifndef UCFG_CPP11_HAVE_REGEX
 #	define UCFG_CPP11_HAVE_REGEX (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1600)
+#endif
+
+#ifndef UCFG_HAVE_STATIC_ASSERT
+#	define UCFG_HAVE_STATIC_ASSERT UCFG_CPP11
 #endif
 
 #ifndef UCFG_CPP11_HAVE_THREAD
@@ -344,15 +356,19 @@
 #endif
 
 #ifndef UCFG_STD_DECIMAL
-#	define UCFG_STD_DECIMAL (UCFG_GNUC_VERSION >= 409 || UCFG_MSC_VERSION >= 2000)
+#	define UCFG_STD_DECIMAL (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 2000)
 #endif
 
 #ifndef UCFG_CPP11_HAVE_CODECVT
 #	define UCFG_CPP11_HAVE_CODECVT (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1800)
 #endif
 
+#ifndef UCFG_STD_SYSTEM_ERROR
+#	define UCFG_STD_SYSTEM_ERROR UCFG_CPP11
+#endif
+
 #ifndef UCFG_CPP11_BEGIN
-#	define UCFG_CPP11_BEGIN (UCFG_GNUC_VERSION >= 406 || UCFG_MSC_VERSION >= 1600)
+#	define UCFG_CPP11_BEGIN (UCFG_CPP14 || UCFG_GNUC_VERSION >= 406 || UCFG_MSC_VERSION >= 1600)
 #endif
 
 #ifndef UCFG_STD_EXCHANGE
@@ -360,7 +376,7 @@
 #endif
 
 #ifndef UCFG_STD_FILESYSTEM
-#	define UCFG_STD_FILESYSTEM UCFG_CPP14
+#	define UCFG_STD_FILESYSTEM UCFG_CPP14 && !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305)
 #endif
 
 #ifndef UCFG_STD_IDENTITY
@@ -467,6 +483,55 @@
 #	define UCFG_DEFINE_OLD_NAMES 0
 #endif
 
+
+#if UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
+#	if defined(_M_X64) || defined(_M_ARM) || defined(_M_MIPS)
+#		define __cdecl
+#		define _cdecl
+#		define __stdcall
+#		define _stdcall
+#		define __fastcall
+#		define _fastcall
+#		define __thiscall
+#		define _thiscall
+#	else
+#		ifndef __cdecl
+#			define __cdecl  __attribute((__cdecl__))
+#		endif
+
+#		ifndef _cdecl
+#			define _cdecl __attribute((__cdecl__))
+#		endif
+
+#		ifndef __stdcall
+#			define __stdcall  __attribute((__stdcall__))
+#		endif
+
+#		ifndef _stdcall
+#			define _stdcall __attribute((__stdcall__))
+#		endif
+
+#		ifndef __fastcall
+#			define __fastcall  __attribute((__fastcall__))
+#		endif
+
+#		ifndef _fastcall
+#			define _fastcall __attribute((__fastcall__))
+#		endif
+
+#		ifndef __thiscall
+#			define __thiscall  __attribute((__thiscall__))
+#		endif
+
+#		ifndef _thiscall
+#			define _thiscall __attribute((__thiscall__))
+#		endif
+#	endif // defined(_M_X64) || defined(_M_ARM) || defined(_M_MIPS)
+
+#	ifndef PASCAL
+#		define PASCAL
+#	endif
+#endif  // UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
 
 
 

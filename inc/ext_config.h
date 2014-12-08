@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 
@@ -52,30 +44,36 @@
 #	define UCFG_USE_STDEXCEPT (UCFG_FRAMEWORK && !UCFG_WDM)
 #endif
 
-#ifndef _M_IX86
-#	define UCFG_OS_IMPTLS 0
-#endif
-
 #ifndef UCFG_OS_IMPTLS
-#	define UCFG_OS_IMPTLS (!UCFG_STDSTL && UCFG_EXTENDED)
+#	define UCFG_OS_IMPTLS ((UCFG_PLATFORM_IX86 || UCFG_PLATFORM_X64) && !UCFG_STDSTL && UCFG_EXTENDED)
 #endif
 
 #ifndef UCFG_USE_DECLSPEC_THREAD
 #	define UCFG_USE_DECLSPEC_THREAD UCFG_OS_IMPTLS
 #endif
 
-#if !defined(__STDC_WANT_SECURE_LIB__) && !UCFG_STDSTL
-#	define __STDC_WANT_SECURE_LIB__ 0
+#ifndef UCFG_CRT
+#	if UCFG_STDSTL || (UCFG_MSC_VERSION < 1400) || UCFG_MINISTL || UCFG_WCE
+#		define UCFG_CRT 'S'
+#	elif UCFG_MSC_VERSION >= 1800
+#		define UCFG_CRT 'U'
+#	else
+#		define UCFG_CRT 'O'
+#	endif
 #endif
 
-
-
-#ifndef UCFG_USE_OLD_MSVCRTDLL
-#	if !UCFG_STDSTL && defined(WIN32) && defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(_WIN64) && !UCFG_MINISTL && !UCFG_WCE
-#		define UCFG_USE_OLD_MSVCRTDLL 1
-#	else
-#		define UCFG_USE_OLD_MSVCRTDLL 0
+#ifndef __STDC_WANT_SECURE_LIB__
+#	if UCFG_CRT=='U'
+#		define __STDC_WANT_SECURE_LIB__ 1
+#	elif !UCFG_STDSTL
+#		define __STDC_WANT_SECURE_LIB__ 0
 #	endif
+#endif
+
+#define UCFG_USE_OLD_MSVCRTDLL (UCFG_CRT=='O')
+
+#ifndef UCFG_UTF8_PATH
+#	define UCFG_UTF8_PATH (UCFG_CRT=='U')
 #endif
 
 #ifndef UCFG_USE_DRIVER_WORKS
@@ -90,7 +88,9 @@
 #if !UCFG_STDSTL
 #	define _CRT_NOFORCE_MANIFEST
 #	define _STL_NOFORCE_MANIFEST
-#	define _CRTIMP2_PURE
+#	ifndef _CRTIMP2_PURE
+#		define _CRTIMP2_PURE
+#	endif
 #endif
 
 
@@ -142,11 +142,7 @@
 
 
 #ifndef UCFG_TRC
-#	ifdef _DEBUG
-#		define UCFG_TRC 1
-#	else
-#		define UCFG_TRC 0
-#	endif	
+#	define UCFG_TRC UCFG_DEBUG
 #endif	
 
 
@@ -173,7 +169,7 @@
 #endif
 
 #ifndef UCFG_GUI
-#	define UCFG_GUI (!UCFG_USE_POSIX)
+#	define UCFG_GUI (!UCFG_USE_POSIX && UCFG_EXTENDED)
 #endif
 
 #ifndef UCFG_UPGRADE
@@ -234,16 +230,36 @@
 #	endif
 #endif
 
+#ifndef UCFG_GMP_IMP
+#	ifdef _MSC_VER
+#		define UCFG_GMP_IMP 'M'
+#	else
+#		define UCFG_GMP_IMP 'G'
+#	endif
+#endif
+
+#if UCFG_GMP_IMP=='G'
+#	define EXT_GMP_HEADER <gmp.h>
+#	define EXT_GMP_LIB "gmp"
+#else
+#	define EXT_GMP_HEADER <mpir.h>
+#	define EXT_GMP_LIB "mpir"
+#endif
+
 #ifndef UCFG_ADDITIONAL_HEAPS
 #	define UCFG_ADDITIONAL_HEAPS 0
 #endif
 
 #ifndef UCFG_EXTENDED
-#	ifdef WDM_DRIVER
+#	if defined(WDM_DRIVER) || !defined(_AFXDLL)
 #		define UCFG_EXTENDED 0
 #	else
 #		define UCFG_EXTENDED (!UCFG_USE_POSIX)
 #	endif
+#endif
+
+#ifndef UCFG_USE_ATL
+#	define UCFG_USE_ATL UCFG_EXTENDED && !UCFG_MINISTL
 #endif
 
 #ifndef UCFG_WIN_MSG
@@ -356,11 +372,7 @@
 #endif
 
 #ifndef UCFG_EH_SUPPORT_IGNORE
-#	if defined(_WIN32) && UCFG_DEBUG && !UCFG_WDM && !defined(_WIN64)
-#		define UCFG_EH_SUPPORT_IGNORE 1
-#	else
-#		define UCFG_EH_SUPPORT_IGNORE 0
-#	endif
+#	define UCFG_EH_SUPPORT_IGNORE (UCFG_MSC_VERSION && UCFG_DEBUG && !UCFG_WDM)
 #endif
 
 #ifndef UCFG_FORCE_LINK
@@ -388,15 +400,11 @@
 #	define NDEBUG
 #endif
 
-#ifndef _AFXDLL
-#	define UCFG_ALLOCATOR UCFG_ALLOCATOR_STD_MALLOC
-#endif
-
 #ifndef UCFG_ALLOCATOR
-#	if UCFG_STDSTL || defined(_WIN64) || UCFG_WCE
-#		define UCFG_ALLOCATOR UCFG_ALLOCATOR_STD_MALLOC
+#	if !defined(_AFXDLL) || UCFG_STDSTL || UCFG_WCE
+#		define UCFG_ALLOCATOR 'S'
 #	else
-#		define UCFG_ALLOCATOR UCFG_ALLOCATOR_TC_MALLOC
+#		define UCFG_ALLOCATOR 'T'
 #	endif
 #endif
 
@@ -474,10 +482,8 @@
 #	define UCFG_HEAP_CHECK 0
 #endif
 
-#if UCFG_WDM
-#	define	UCFG_HAS_REALLOC 0
-#else
-#	define	UCFG_HAS_REALLOC 1
+#ifndef UCFG_HAS_REALLOC
+#	define UCFG_HAS_REALLOC (!UCFG_WDM)
 #endif
 
 #ifndef UCFG_THREAD_STACK_SIZE
@@ -499,4 +505,7 @@
 #	define UCFG_SPECIAL_CRT 0
 #endif
 
+#ifndef UCFG_DEFINE_INTRIN
+#	define UCFG_DEFINE_INTRIN 1
+#endif
 
