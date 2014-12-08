@@ -776,7 +776,7 @@ public:
 
 	~AFX_MODULE_STATE();
 
-	std::path get_FileName();
+	path get_FileName();
 	DEFPROP_GET(std::path, FileName);
 };
 
