@@ -1,23 +1,13 @@
-;########## Copyright (c) 1997-2013 Ufasoft   http://ufasoft.com   mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com    ###################################################################################################
-;                                                                                                                                                                                                                                          #
-; This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3, or (at your option) any later version.         #
-; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. #
-; You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                    #
-;###########################################################################################################################################################################################################################################
+INCLUDE el/x86x64.inc
 
-include el/comp/x86x64.inc
-
-.CODE
 
 ;OPTION PROLOGUE:None
 ;OPTION EPILOGUE:None
 
 IF X64
 ELSE
-OPTION LANGUAGE: C
 .XMM
 ENDIF
-
 
 IF X64
 	ImpAddBignums	PROC PUBLIC USES ZBX ZSI ZDI
@@ -236,17 +226,17 @@ ENDIF
 		xchg	ZAX, ZBX
 		mov		ZSI, a
 		mov		ZCX, m
-		xor		ZBP, ZBP
+		xor		ZDX, ZDX
 @@y:	lodsZ
+		mov		ZBP, ZDX
 		mul		ZBX
 		add		ZAX, ZBP
 		adc		ZDX, 0
 		add		[ZDI], ZAX
+		lea		zdi, [ZDI+ZWORD_SIZE]
 		adc		ZDX, 0
-		add		ZDI, ZWORD_SIZE
-		mov		ZBP, ZDX		
 		loop	@@y
-		mov		[ZDI], ZBP
+		mov		[ZDI], ZDX
 		pop		ZBP
 		pop		ZDI
 		add		ZDI, ZWORD_SIZE
@@ -266,7 +256,7 @@ IF X64
 		mov		n, R8
 		mov		w, R9
 ELSE
-	ImpMulAddBignums	PROC stdcall PUBLIC USES ZBX ZSI ZDI, r:DWORD, a:DWORD, n:DWORD, w:DWORD
+	ImpMulAddBignums	PROC PUBLIC USES ZBX ZSI ZDI, r:DWORD, a:DWORD, n:DWORD, w:DWORD
 ENDIF
 		mov		ZSI, a
 		mov		ZCX, n
