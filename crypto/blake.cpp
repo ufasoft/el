@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "hash.h"
@@ -95,7 +87,7 @@ void Blake256::InitHash(void *dst) {
 	memcpy(dst, g_sha256_hinit, sizeof(g_sha256_hinit));
 }
 
-void Blake256::HashBlock(void *dst, const byte *src, UInt64 counter) {
+void Blake256::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
 	CalcHashBlock<UInt32, 14>(dst, src, counter, Salt, g_blake256_c, UInt32(counter), counter >> 32);
 }
 
@@ -103,7 +95,7 @@ void Blake512::InitHash(void *dst) {
 	memcpy(dst, g_sha512_hinit, sizeof(g_sha512_hinit));
 }
 
-void Blake512::HashBlock(void *dst, const byte *src, UInt64 counter) {
+void Blake512::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
 	CalcHashBlock<UInt64, 16>(dst, src, counter, Salt, g_blake512_c, counter, 0);
 }
 

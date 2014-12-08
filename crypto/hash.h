@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once 
 
 #include EXT_HEADER_DYNAMIC_BITSET
@@ -47,6 +39,11 @@ __forceinline UInt64 Rotr64(UInt64 v, int n) {
 
 class SHA1 : public HashAlgorithm {
 public:
+	SHA1() {
+		BlockSize = 64;
+		HashSize = 20;
+	}
+
 	hashval ComputeHash(Stream& stm) override;
 	hashval ComputeHash(const ConstBuf& mb) override;
 };
@@ -55,6 +52,11 @@ class SHA256 : public HashAlgorithm {
 public:
 	static void Init4Way(UInt32 state[8][4]);
 
+	SHA256() {
+		BlockSize = 64;
+		HashSize = 32;
+	}
+
 	void InitHash(void *dst) override;
 	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
@@ -62,6 +64,8 @@ public:
 class SHA512 : public HashAlgorithm {
 public:
 	SHA512() {
+		BlockSize = 128;
+		HashSize = 64;
 		Is64Bit = true;
 	}
 protected:
@@ -79,11 +83,21 @@ class SHA3 : public HashAlgorithm {
 
 template<> class SHA3<256> : HashAlgorithm {
 public:
+	SHA3<256>() {
+		BlockSize = 64;
+		HashSize = 32;
+	}
+
 	hashval ComputeHash(const ConstBuf& mb) override;
 	hashval ComputeHash(Stream& stm) override;
 };
 
 template<> class SHA3<512> : HashAlgorithm {
+	SHA3<512>() {
+		BlockSize = 128;
+		HashSize = 64;
+	}
+
 	hashval ComputeHash(const ConstBuf& mb) override;
 	hashval ComputeHash(Stream& stm) override;
 };
@@ -93,6 +107,8 @@ public:
 	UInt32 Salt[4];
 
 	Blake256() {
+		BlockSize = 128;	//!!!?
+		HashSize = 64;	//!!!?
 		IsHaifa = true;
 		ZeroStruct(Salt);
 	}
@@ -106,6 +122,8 @@ public:
 	UInt64 Salt[4];
 
 	Blake512() {
+		BlockSize = 128;	//!!!?
+		HashSize = 64;	//!!!?
 		IsHaifa = true;
 		Is64Bit = true;
 		ZeroStruct(Salt);
@@ -117,6 +135,11 @@ protected:
 
 class RIPEMD160 : public HashAlgorithm {
 public:
+	RIPEMD160() {
+		BlockSize = 64;
+		HashSize = 20;
+	}
+
 	hashval ComputeHash(Stream& stm) override;
 	hashval ComputeHash(const ConstBuf& mb) override;
 };
@@ -147,7 +170,7 @@ void CalcPbkdf2Hash_80_4way(UInt32 dst[32], const UInt32 *pIhash, const ConstBuf
 void ShuffleForSalsa(UInt32 w[32], const UInt32 src[32]);
 void UnShuffleForSalsa(UInt32 w[32], const UInt32 src[32]);
 void ScryptCore(UInt32 x[32], UInt32 alignedScratch[1024*32+32]);
-EXT_HASH_API CArray8UInt32 CalcSCryptHash(const ConstBuf& password);
+CArray8UInt32 CalcSCryptHash(const ConstBuf& password);
 std::array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const UInt32 input[20]);
 
 #if UCFG_CPU_X86_X64
@@ -222,6 +245,7 @@ public:
         return (NItems + size_t(1 << height)-1) >> height;
     }
 
+	int CalcTreeHeight() const;
 	virtual void AddHash(int height, size_t pos, const void *ar) =0;
 protected:
 	void TraverseAndBuild(int height, size_t pos, const void *ar, const dynamic_bitset<byte>& vMatch);
@@ -250,8 +274,8 @@ public:
 		Items.push_back(CalcHash(height, pos, (const T*)ar));
 	} 
 
-	T TraverseAndExtract(int height, size_t pos, size_t& nBitsUsed, int nHashUsed, vector<T>& vMatch) {
-		if (nBitsUsed > Bitset.size())
+	T TraverseAndExtract(int height, size_t pos, size_t& nBitsUsed, int& nHashUsed, vector<T>& vMatch) const {
+		if (nBitsUsed >= Bitset.size())
 			Throw(E_FAIL);
 		bool fParentOfMatch = Bitset[nBitsUsed++];
 		if (height==0 || !fParentOfMatch) {
@@ -267,7 +291,6 @@ public:
 			return m_h2(left, right);
 		}
 	}
-
 };
 
 
