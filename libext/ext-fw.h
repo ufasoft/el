@@ -738,7 +738,7 @@ public:
 		current_path(m_prevCurPath);
 	}
 private:
-	std::path m_prevCurPath;
+	path m_prevCurPath;
 };
 
 #endif // !UCFG_WCE
