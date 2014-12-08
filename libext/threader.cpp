@@ -1,15 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
-#pragma init_seg(lib)				// to initialize DateTime::MaxValue early
+#pragma init_seg(lib)
 
 #if UCFG_WIN32
 #	include <winuser.h>
@@ -31,17 +23,33 @@
 using namespace std;
 using namespace Ext;
 
-static mutex s_mtxDestructibleTls;
-typedef IntrusiveList<CDestructibleTls> CListDestructibleTlses;
-static CListDestructibleTlses s_listDestructibleTlses;
+class CListDestructibleTlses {
+public:
+	void insert(CDestructibleTls& tls) {
+		EXT_LOCKED(m_mtx, m_tlses.push_back(tls));
+	}
 
-static void TlsCleanup(void *arg) {
-	EXT_LOCK (s_mtxDestructibleTls) {
-		EXT_FOR (CDestructibleTls& dtls, s_listDestructibleTlses) {
-			if (void *p = dtls.get_Value())
-				dtls.OnThreadDetach(p);
+	void erase(CDestructibleTls& tls) {
+		EXT_LOCKED(m_mtx, m_tlses.erase(IntrusiveList<CDestructibleTls>::iterator(&tls)));
+	}
+
+	void ThreadCleanup() {
+		EXT_LOCK (m_mtx) {
+			EXT_FOR (CDestructibleTls& dtls, m_tlses) {
+				if (void *p = dtls.get_Value())
+					dtls.OnThreadDetach(p);
+			}
 		}
 	}
+private:
+	mutex m_mtx;
+	IntrusiveList<CDestructibleTls> m_tlses;
+};
+
+static InterlockedSingleton<CListDestructibleTlses> s_pDestructibleTlses;
+
+static void TlsCleanup(void *arg) {
+	s_pDestructibleTlses->ThreadCleanup();
 }
 
 #if UCFG_USE_PTHREADS
@@ -51,8 +59,8 @@ static volatile int s_initCleanup = ::pthread_key_create(&s_keyCleanup, &TlsClea
 
 #elif defined(_MSC_VER)
 
-static void NTAPI TlsCallback(PVOID DllHandle, DWORD Reason, PVOID Reserved) {
-	if (Reason == DLL_THREAD_DETACH)
+static void NTAPI TlsCallback(PVOID dllHandle, DWORD reason, PVOID reserved) {
+	if (reason == DLL_THREAD_DETACH)
 		TlsCleanup(0);
 }
 
@@ -219,7 +227,8 @@ void ThreadBase::Attach(HANDLE h, DWORD id, bool bOwn) {
 }
 
 void ThreadBase::AttachSelf() {
-	SetCurrentThread();
+	if (!TryGetCurrentThread())
+		SetCurrentThread();
 #if UCFG_WIN32
 	Attach(GetCurrentThread(), ::GetCurrentThreadId(), false);
 #	if !UCFG_STDSTL
@@ -631,7 +640,7 @@ void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
 
 void ThreadBase::OnEndThread(bool bDelete) {
 #if UCFG_WIN32
-	TRC(4, Name << " " << hex << m_nThreadID);
+	TRC(5, Name);
 #endif
 	
 	OnEnd();
@@ -677,7 +686,7 @@ UInt32 ThreadBase::CppThreadThunk() {
 		}
 		OnEndThread(true);
 	} catch (thread_interrupted& ex) {
-		exitCode = m_exitCode = ex.HResult;
+		exitCode = m_exitCode = ex.code().value();
 		TRC(1, ex.Message << " in Thread: " << get_id() << "\t" << Name);
 		OnEndThread(true);
 	} catch (...) {
@@ -908,108 +917,6 @@ void AFXAPI AfxTlsRelease() {
 
 
 
-void *CThreadSlotData::GetThreadValue(int nSlot) {
-	ASSERT(nSlot && nSlot < m_nMax);
-	ASSERT(m_arSlotData[nSlot].dwFlags & SLOT_USED);
-	CThreadData *pData = (CThreadData*)(void*)m_tls.Value;
-	if (!pData || nSlot >= (ssize_t)pData->size())
-		return 0;
-	return (*pData)[nSlot];
-}
-
-void CThreadSlotData::FreeSlot(int nSlot) {
-	EXT_LOCK (m_criticalSection) {
-		ASSERT(nSlot && nSlot < m_nMax);
-		ASSERT(m_arSlotData[nSlot].dwFlags & SLOT_USED);
-		for (CTDatas::iterator it=m_tdatas.begin(), e=m_tdatas.end(); it!=e; ++it) {
-			CThreadData& tdata = it->second;
-			if (nSlot < (ssize_t)tdata.size())
-				delete exchange(tdata[nSlot], nullptr);
-		}
-		m_arSlotData[nSlot].dwFlags &= ~SLOT_USED;
-	}
-}
-
-CThreadLocalObject::~CThreadLocalObject() {
-	if (m_nSlot != 0 && _afxThreadData)
-		_afxThreadData->FreeSlot(m_nSlot);
-	m_nSlot = 0;
-}
-
-int CThreadSlotData::AllocSlot() {
-	EXT_LOCK (m_criticalSection) {
-		int nAlloc = (int)m_arSlotData.size();
-		int nSlot = m_nRover;
-		if (nSlot >= nAlloc || (m_arSlotData[nSlot].dwFlags & SLOT_USED)) {
-			// search for first free slot, starting at beginning
-			for (nSlot = 1; nSlot < nAlloc && (m_arSlotData[nSlot].dwFlags & SLOT_USED); nSlot++)
-				;
-
-			// if none found, need to allocate more space
-			if (nSlot >= nAlloc)
-				m_arSlotData.resize(nSlot+1);
-		}
-		// adjust m_nMax to largest slot ever allocated
-		if (nSlot >= m_nMax)
-			m_nMax = nSlot+1;
-
-		ASSERT(!(m_arSlotData[nSlot].dwFlags & SLOT_USED));
-		m_arSlotData[nSlot].dwFlags |= SLOT_USED;
-		// update m_nRover (likely place to find a free slot is next one)
-		m_nRover = nSlot+1;
-
-		return nSlot;   // slot can be used for FreeSlot, GetValue, SetValue
-	}
-}
-
-void CThreadSlotData::SetValue(int nSlot, CNoTrackObject *pValue) {
-	ASSERT(nSlot && nSlot < m_nMax);
-	ASSERT(m_arSlotData[nSlot].dwFlags & SLOT_USED);
-	CThreadData *pData = (CThreadData*)(void*)m_tls.Value;
-	if (!pData || nSlot >= (ssize_t)pData->size() && pValue) {
-		if (!pData)
-			m_tls.Value = pData = EXT_LOCKED(m_criticalSection, &m_tdatas.insert(make_pair(std::this_thread::get_id(), CThreadData())).first->second);
-		pData->resize(m_nMax);
-	}
-	(*pData)[nSlot] = pValue;
-}
-
-CNoTrackObject* CThreadLocalObject::GetDataNA() {
-	if (m_nSlot == 0 || _afxThreadData == NULL)
-		return NULL;
-
-	CNoTrackObject* pValue =
-		(CNoTrackObject*)_afxThreadData->GetThreadValue(m_nSlot);
-	return pValue;
-}
-
-CNoTrackObject::CNoTrackObject() {
-}
-
-CNoTrackObject::~CNoTrackObject() {
-}
-
-void *CNoTrackObject::operator new(size_t nSize) {
-#ifdef WIN32
-	void* p = ::LocalAlloc(LPTR, nSize);
-#else
-	void* p = Malloc(nSize);
-#endif
-	if (!p)
-		Throw(E_OUTOFMEMORY);
-	return p;
-}
-
-void CNoTrackObject::operator delete(void* p) {
-	if (p) {
-#ifdef WIN32
-		::LocalFree(p);
-#else
-		Free(p);
-#endif
-	}
-}
-
 CTls::CTls() {
 #if UCFG_USE_PTHREADS
 	PthreadCheck(::pthread_key_create(&m_key, 0));
@@ -1035,11 +942,11 @@ void CTls::put_Value(const void *p) {
 }
 
 CDestructibleTls::CDestructibleTls() {
-	EXT_LOCKED(s_mtxDestructibleTls, s_listDestructibleTlses.push_back(_self));
+	s_pDestructibleTlses->insert(_self);
 }
 
 CDestructibleTls::~CDestructibleTls() {
-	EXT_LOCKED(s_mtxDestructibleTls, s_listDestructibleTlses.erase(CListDestructibleTlses::iterator(this)));
+	s_pDestructibleTlses->erase(_self);
 }
 
 void CThreadSlotData::AssignInstance(HINSTANCE hInst) {
@@ -1063,30 +970,6 @@ void AFXAPI AfxTermLocalData(HINSTANCE hInst, bool bAll) {
 		_afxThreadData->DeleteValues(hInst, bAll);
 }
 
-void CThreadLocalObject::AllocSlot() {
-	if (m_nSlot == 0) {
-		if (_afxThreadData == NULL) { //!!!
-			_afxThreadData = new(__afxThreadData) CThreadSlotData;
-			ASSERT(_afxThreadData != NULL);
-		}
-		m_nSlot = _afxThreadData->AllocSlot();
-		ASSERT(m_nSlot != 0);
-	}
-}
-
-CNoTrackObject* CThreadLocalObject::GetData(CNoTrackObject* (AFXAPI * pfnCreateObject)()) {
-	AllocSlot();			//!!! Normally Already Alloced
-	CNoTrackObject* pValue = (CNoTrackObject*)_afxThreadData->GetThreadValue(m_nSlot);
-	if (!pValue) {
-		// allocate zero-init object
-		pValue = (*pfnCreateObject)();
-
-		// set tls data to newly created object
-		_afxThreadData->SetValue(m_nSlot, pValue);
-		ASSERT(_afxThreadData->GetThreadValue(m_nSlot) == pValue);
-	}
-	return pValue;
-}
 
 #ifdef WIN32
 DWORD AFXAPI WaitWithMS(DWORD dwMS, HANDLE h0, HANDLE h1, HANDLE h2, HANDLE h3, HANDLE h4, HANDLE h5) {
