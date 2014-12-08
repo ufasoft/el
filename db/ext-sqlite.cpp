@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 
@@ -22,10 +14,12 @@
 
 #	if UCFG_USE_SQLITE==3
 #		include <sqlite3.h>
-#		if UCFG_USE_SQLITE_MDB
-#			pragma comment(lib, "sqlite3_mdb")
-#		else
-#			pragma comment(lib, "sqlite3")
+#		if UCFG_LIB_DECLS
+#			if UCFG_USE_SQLITE_MDB
+#				pragma comment(lib, "sqlite3_mdb")
+#			else
+#				pragma comment(lib, "sqlite3")
+#			endif
 #		endif
 
 #		define sqlite_prepare sqlite3_prepare_v2
@@ -51,6 +45,7 @@
 #define sqlite_extended_result_codes	sqlite_(extended_result_codes)
 #define sqlite_file						sqlite_(file)
 #define sqlite_last_insert_rowid		sqlite_(last_insert_rowid)
+#define sqlite_changes					sqlite_(changes)
 #define sqlite_mem_methods				sqlite_(mem_methods)
 #define sqlite_progress_handler			sqlite_(progress_handler)
 #define sqlite_step						sqlite_(step)
@@ -83,7 +78,12 @@ int SqliteCheck(sqlite_db *db, int code) {
 	case SQLITE_DONE:
 		return code;
 	}
-	throw SqliteException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_SQLITE, code), db ? String((const Char16*)sqlite_(errmsg16)(db)) : String());
+#if SQLITE_VERSION_NUMBER >= 3008000
+	String s = db ? String((const Char16*)sqlite_(errmsg16)(db)) : String(sqlite3_errstr(code));
+#else
+	String s = db ? String((const Char16*)sqlite_(errmsg16)(db)) : String("SQLite Error") + Convert::ToString(code);
+#endif
+	throw SqliteException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_SQLITE, code), s);
 }
 
 bool SqliteIsComplete(const char *sql) {
@@ -153,10 +153,10 @@ ConstBuf SqliteReader::GetBytes(int i) {
 DbType SqliteReader::GetFieldType(int i) {
 	switch (int typ = ::sqlite_(column_type)(m_cmd, i)) {
 	case SQLITE_(NULL): return DbType::Null;
-	case SQLITE_(INTEGER): return DbType::Integer;
+	case SQLITE_(INTEGER): return DbType::Int;
 	case SQLITE_(FLOAT): return DbType::Float;
 	case SQLITE_(BLOB): return DbType::Blob;
-	case SQLITE_(TEXT): return DbType::Text;
+	case SQLITE_(TEXT): return DbType::String;
 	default:
 		Throw(E_FAIL);
 	}
@@ -240,6 +240,11 @@ SqliteCommand& SqliteCommand::Bind(int column, Int64 v) {
 	return _self;
 }
 
+SqliteCommand& SqliteCommand::Bind(int column, double v) {
+	SqliteCheck(m_con, ::sqlite_(bind_double)(ResetHandle(), column, v));
+	return _self;
+}
+
 SqliteCommand& SqliteCommand::Bind(int column, const ConstBuf& mb, bool bTransient) {
 	SqliteCheck(m_con, ::sqlite_(bind_blob)(ResetHandle(), column, mb.P, mb.Size, bTransient ? SQLITE_(TRANSIENT) : SQLITE_(STATIC)));
 	return _self;
@@ -260,6 +265,10 @@ SqliteCommand& SqliteCommand::Bind(RCString parname, Int32 v) {
 }
 
 SqliteCommand& SqliteCommand::Bind(RCString parname, Int64 v) {
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
+}
+
+SqliteCommand& SqliteCommand::Bind(RCString parname, double v) {
 	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
 }
 
@@ -324,6 +333,10 @@ void SqliteConnection::ExecuteNonQuery(RCString sql) {
 
 Int64 SqliteConnection::get_LastInsertRowId() {
 	return sqlite_last_insert_rowid(m_db);
+}
+
+int SqliteConnection::get_NumberOfChanges() {
+	return sqlite_changes(m_db);
 }
 
 pair<int, int> SqliteConnection::Checkpoint(int eMode) {
@@ -488,7 +501,7 @@ static int NT_Read(sqlite3_file *file, void *data, int iAmt, sqlite3_int64 iOfst
 		iost.Information = 0;
 	else if (st != 0)
 		return SQLITE_IOERR_READ;
-	if (iost.Information < iAmt) {
+	if (int(iost.Information) < iAmt) {
 	    memset(&((char*)data)[iost.Information], 0, iAmt-iost.Information);
 		return SQLITE_IOERR_SHORT_READ;
 	}
@@ -503,7 +516,7 @@ static int NT_Write(sqlite3_file *file, const void *data, int iAmt, sqlite3_int6
 	NTSTATUS st = ::NtWriteFile(wf.h, 0, 0, 0, &iost, (void*)data, iAmt, &li, 0);
 	if (st != 0)
 		return SQLITE_IOERR_WRITE;
-	if (iost.Information < iAmt)
+	if (int(iost.Information) < iAmt)
 		return SQLITE_FULL;					//!!!?
 	return SQLITE_OK;
 }

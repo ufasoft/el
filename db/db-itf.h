@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 namespace Ext { namespace DB {
@@ -17,10 +9,10 @@ public:
 
 ENUM_CLASS(DbType) {
 	Null,
-	Integer,
+	Int,
 	Float,
 	Blob,
-	Text
+	String
 } END_ENUM_CLASS(DbType);
 
 interface IDataRecord : public Object {
@@ -53,12 +45,14 @@ interface IDbCommand : public Object {
 	virtual IDbCommand& Bind(int column, std::nullptr_t) =0;
 	virtual IDbCommand& Bind(int column, Int32 v) =0;
 	virtual IDbCommand& Bind(int column, Int64 v) =0;
+	virtual IDbCommand& Bind(int column, double v) =0;
 	virtual IDbCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(int column, RCString s) =0;
 
 	virtual IDbCommand& Bind(RCString parname, std::nullptr_t) =0;
 	virtual IDbCommand& Bind(RCString parname, Int32 v) =0;
 	virtual IDbCommand& Bind(RCString parname, Int64 v) =0;
+	virtual IDbCommand& Bind(RCString parname, double v) =0;
 	virtual IDbCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(RCString parname, RCString s) =0;
 
@@ -74,7 +68,7 @@ public:
 	virtual void Rollback() =0;
 };
 
-class TransactionScope : NonCopiable {
+class TransactionScope : noncopyable {
 public:
 	ITransactionable& m_db;
 
@@ -132,8 +126,8 @@ protected:
 	}
 };
 
-class DbException : public Exc {
-	typedef Exc base;
+class DbException : public Exception {
+	typedef Exception base;
 public:
 	DbException(HRESULT hr, RCString s)
 		:	base(hr, s)

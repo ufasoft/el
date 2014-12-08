@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include "db-itf.h"
@@ -75,6 +67,7 @@ public:
 	DbDataReader() {
 	}
 
+	bool Read() { return m_pimpl->Read(); }
 	Int32 GetInt32(int i) { return m_pimpl->GetInt32(i); }
 	Int64 GetInt64(int i) { return m_pimpl->GetInt64(i); }
 	double GetDouble(int i) { return m_pimpl->GetDouble(i); }
@@ -83,7 +76,6 @@ public:
 	DbType GetFieldType(int i) { return m_pimpl->GetFieldType(i); }
 	int FieldCount() { return m_pimpl->FieldCount(); }
 	String GetName(int idx) { return m_pimpl->GetName(idx); }
-	bool Read() { return m_pimpl->Read(); }
 	int GetOrdinal(RCString name) { return m_pimpl->GetOrdinal(name); }
 	bool IsDBNull(int i) { return m_pimpl->IsDBNull(i); }
 protected:
@@ -107,12 +99,14 @@ public:
 	SqliteCommand& Bind(int column, std::nullptr_t) override;
 	SqliteCommand& Bind(int column, Int32 v) override;
 	SqliteCommand& Bind(int column, Int64 v) override;
+	SqliteCommand& Bind(int column, double v) override;
 	SqliteCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) override;
 	SqliteCommand& Bind(int column, RCString s) override;
 
 	SqliteCommand& Bind(RCString parname, std::nullptr_t) override;
 	SqliteCommand& Bind(RCString parname, Int32 v) override;
 	SqliteCommand& Bind(RCString parname, Int64 v) override;
+	SqliteCommand& Bind(RCString parname, double v) override;
 	SqliteCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) override;
 	SqliteCommand& Bind(RCString parname, RCString s) override;
 
@@ -161,6 +155,7 @@ public:
 	ptr<IDbCommand> CreateCommand() override;
 	void ExecuteNonQuery(RCString sql) override;
 	Int64 get_LastInsertRowId() override;
+	int get_NumberOfChanges();
 	pair<int, int> Checkpoint(int eMode);
 
 	void BeginTransaction() override;
