@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -24,6 +16,30 @@
 namespace Ext {
 using namespace std;
 
+static class Ntos_error_catogory : public error_category {
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "ntos"; }
+	
+	string message(int errval) const override {
+		return "Unknow error"; //!!!TODO
+	}
+
+	error_condition default_error_condition(int errval) const noexcept override {
+		errc e;
+		switch (errval) {
+		case STATUS_NO_MEMORY:				e = errc::not_enough_memory;			break;
+		case STATUS_ACCESS_VIOLATION:		e = errc::permission_denied;		break;
+		default:
+			return base::default_error_condition(errval);
+		}
+		return e;
+	}
+
+} s_ntosErrorCategory;
+
+const error_category& ntos_category() { return s_ntosErrorCategory; }
+
 #ifdef _WIN32
 NTSTATUS AFXAPI NtCheck(NTSTATUS status, NTSTATUS allowableError) {
 	if (status < 0 && status != allowableError)
@@ -39,7 +55,7 @@ COperatingSystem System;
 //!!! use locale class instead of global change, because it changes fstream locale  static char *s_initLocale = ::setlocale(LC_CTYPE, "");   // only LC_CTYPE because List requires standard float
 
 
-String COperatingSystem::get_ExeFilePath() {
+path COperatingSystem::get_ExeFilePath() {
 #ifdef __FreeBSD__
 	int mib[4];
 	mib[0] = CTL_KERN;
@@ -95,14 +111,14 @@ CSyncObject::CSyncObject(RCString pstrName)
 }
 
 #ifdef WDM_DRIVER
-bool CSyncObject::LockEx(DWORD dwTimeout, KPROCESSOR_MODE mode, bool bAlertable) {
+bool CSyncObject::LockEx(UInt32 dwTimeout, KPROCESSOR_MODE mode, bool bAlertable) {
 	LARGE_INTEGER timeout, *pto = dwTimeout==INFINITE ? NULL : &timeout;
 	timeout.QuadPart = -(int)dwTimeout*10000;
 	return STATUS_SUCCESS == KeWaitForSingleObject(m_pObject, Executive, mode, bAlertable, pto);
 }
 #endif
 
-bool CSyncObject::Lock(DWORD dwTimeout) {
+bool CSyncObject::Lock(UInt32 dwTimeout) {
 #if UCFG_USE_POSIX
 	Throw(E_NOTIMPL);
 #endif
@@ -142,7 +158,7 @@ CCriticalSection::CCriticalSection()
 Win32Check(InitializeCriticalSectionAndSpinCount(&m_sect, dwSpinCount));
 }*/
 
-CCriticalSection::~CCriticalSection() {
+CCriticalSection::~CCriticalSection() noexcept {
 #if UCFG_USE_PTHREADS
 	PthreadCheck(::pthread_mutex_destroy(&m_mutex));
 #elif defined(WIN32)
@@ -198,7 +214,7 @@ void CCriticalSection::Init() {
 #endif
 }
 
-bool CCriticalSection::Lock(DWORD dwTimeout) {
+bool CCriticalSection::Lock(UInt32 dwTimeout) {
 	lock();
 	return true;
 }
@@ -298,7 +314,7 @@ void CEvent::Reset() {
 #endif
 }
 
-bool CEvent::Lock(DWORD dwTimeout) {
+bool CEvent::Lock(UInt32 dwTimeout) {
 #if UCFG_USE_PTHREADS
 	timespec abstime;
 	if (dwTimeout != INFINITE)
