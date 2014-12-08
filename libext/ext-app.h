@@ -66,7 +66,7 @@ public:
 #if UCFG_COMPLEX_WINAPP
 	HINSTANCE m_hInstance;
 
-	std::path m_exeName;
+	path m_exeName;
 	String m_cmdLine;
 	int m_nCmdShow;
 
