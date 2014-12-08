@@ -34,7 +34,7 @@ static void *OpenSslMallocFun(size_t size) {
 }
 
 static void OpenSslFree(void *p) {
-	Free(p);
+	free(p);
 }
 
 static void *OpenSslRealloc(void *p, size_t size) {
