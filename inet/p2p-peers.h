@@ -1,18 +1,10 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include <el/libext/ext-net.h>
 
 namespace Ext { namespace Inet { namespace P2P {
 
-const int MAX_OUTBOUND_CONNECTIONS = 8;
+const int MAX_OUTBOUND_CONNECTIONS = 4;
 
 const int MAX_LINKS = MAX_OUTBOUND_CONNECTIONS * 2;
 const int MAX_PEER_MISBEHAVINGS = 100;
@@ -118,8 +110,8 @@ protected:
 	CBool m_banned;
 };
 
-class LinkBase : public SocketThread {
-	typedef SocketThread base;
+class LinkBase : public Thread {
+	typedef Thread base;
 public:
 	typedef Interlocked interlocked_policy;
 	
@@ -149,37 +141,45 @@ public:
 
 class NetManager {
 public:
-	int ListeningPort;
 	IPEndPoint LocalEp4, LocalEp6;
-	CBool SoftPortRestriction;
 
 	mutex MtxNets;
 	vector<Net*> m_nets;
+
+	int ListeningPort;
+	CBool SoftPortRestriction;
 
 	NetManager()
 		:	ListeningPort(0)
 	{}
 
 	virtual Link *CreateLink(thread_group& tr);
-	virtual bool IsBanned(const IPAddress& ip) { return false; }
-	virtual void BanPeer(Peer& peer) { Throw(E_NOTIMPL); }
+
+	virtual bool IsBanned(const IPAddress& ip) {
+		return EXT_LOCKED(MtxBannedIPs, BannedIPs.count(ip));
+	}
+
+	virtual void BanPeer(Peer& peer) {
+		peer.Banned = true;
+		EXT_LOCKED(MtxBannedIPs, BannedIPs.insert(peer.get_EndPoint().Address));
+	}
+
 	virtual bool IsTooManyLinks();
 
 	bool IsLocal(const IPAddress& ip) {
-		EXT_LOCK (MtxLocal) {
-			return m_localIPs.count(ip);
-		}
+		return EXT_LOCKED(MtxLocalIPs, LocalIPs.count(ip));
 	}
 
 	void AddLocal(const IPAddress& ip) {
-		EXT_LOCK (MtxLocal) {
-			m_localIPs.insert(ip);
-		}
+		EXT_LOCKED(MtxLocalIPs, LocalIPs.insert(ip));
 	}
 
-private:
-	mutex MtxLocal;
-	set<IPAddress> m_localIPs;
+protected:
+	mutex MtxLocalIPs;
+	set<IPAddress> LocalIPs;
+
+	mutex MtxBannedIPs;
+	unordered_set<IPAddress> BannedIPs;
 };
 
 
@@ -248,7 +248,7 @@ public:
 	void Attempt(Peer *peer);
 	void Good(Peer *peer);
 	bool IsRoutable(const IPAddress& ip);
-	ptr<Peer> Add(const IPEndPoint& ep, UInt64 services, DateTime dt, TimeSpan penalty = 0);
+	ptr<Peer> Add(const IPEndPoint& ep, UInt64 services, DateTime dt, TimeSpan penalty = TimeSpan(0));
 
 	vector<ptr<Peer>> GetAllPeers() {
 		EXT_LOCK (MtxPeers) {

@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "p2p-peers.h"
@@ -153,9 +145,9 @@ void PeerManager::Good(Peer *peer) {
 
 			ptr<Peer> peerOldest;
 			for (int i=0; i<bucket.m_peers.size(); ++i) {
-				const ptr<Peer>& peer = bucket.m_peers[i];
-				if (!peerOldest || peer->LastPersistent < peerOldest->LastPersistent)
-					peerOldest = peer;
+				const ptr<Peer>& p = bucket.m_peers[i];
+				if (!peerOldest || p->LastPersistent < peerOldest->LastPersistent)
+					peerOldest = p;
 			}
 			Ext::Remove(bucket.m_peers, peerOldest);
 			NewBuckets.m_vec[peerOldest->GetHash() % NewBuckets.m_vec.size()].m_peers.push_back(peerOldest);
@@ -258,20 +250,17 @@ void PeerManager::OnPeriodic() {
 #endif
 
 		for (int n = std::max(MaxOutboundConnections-nOutgoing, 0); n--;) {
-#ifdef X_DEBUG//!!!D
-			ptr<Peer> peer = CreatePeer();
-			peer->EndPoint = IPEndPoint::Parse("127.0.0.1:18333");
-			peer->Services = 1;
-			if (peer) {
-#else
 			if (ptr<Peer> peer = Select()) {
-#endif
 				if (setConnectedSubnet.insert(peer->GetGroup()).second) {
 					ptr<Link> link = NetManager.CreateLink(*m_owner);
 					link->Net = dynamic_cast<Net*>(this);
 					link->Peer = peer;
 					peer->LastTry = now;
-					link->Start();
+					try {
+						link->Start();
+					} catch (RCExc) {
+//						TRC(3, ex.what());		// TRC crashes in inet_ntop() if IPv6 disabled
+					}
 				} else {
 					TRC(3, "Subnet already connected for " << peer->get_EndPoint().Address);
 				}
