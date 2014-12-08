@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 // This file should be included in each module, which uses it because problems with exporting constant data
@@ -54,7 +46,7 @@ void SHA256::Init4Way(UInt32 state[8][4]) {
 		state[i][0] = state[i][1] = state[i][2] = state[i][3] = g_sha256_hinit[i];
 }
 
-void SHA256::InitHash(void *dst) {
+void SHA256::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha256_hinit, sizeof(g_sha256_hinit));
 }
 

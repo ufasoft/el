@@ -83,7 +83,7 @@ void CalcHashBlock(void *dst, const byte *src, UInt64 counter, const W salt[4], 
 		h[i] ^= salt[i % 4] ^ w[i % 8] ^ w[8 + i % 8];
 }
 
-void Blake256::InitHash(void *dst) {
+void Blake256::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha256_hinit, sizeof(g_sha256_hinit));
 }
 
@@ -91,7 +91,7 @@ void Blake256::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
 	CalcHashBlock<UInt32, 14>(dst, src, counter, Salt, g_blake256_c, UInt32(counter), counter >> 32);
 }
 
-void Blake512::InitHash(void *dst) {
+void Blake512::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha512_hinit, sizeof(g_sha512_hinit));
 }
 

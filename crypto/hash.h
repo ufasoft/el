@@ -44,8 +44,9 @@ public:
 		HashSize = 20;
 	}
 
-	hashval ComputeHash(Stream& stm) override;
-	hashval ComputeHash(const ConstBuf& mb) override;
+protected:
+	void InitHash(void *dst) noexcept override;
+	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
 
 class SHA256 : public HashAlgorithm {
@@ -57,7 +58,7 @@ public:
 		HashSize = 32;
 	}
 
-	void InitHash(void *dst) override;
+	void InitHash(void *dst) noexcept  override;
 	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
 
@@ -69,7 +70,7 @@ public:
 		Is64Bit = true;
 	}
 protected:
-	void InitHash(void *dst) override;
+	void InitHash(void *dst) noexcept  override;
 	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
 
@@ -113,7 +114,7 @@ public:
 		ZeroStruct(Salt);
 	}
 protected:
-	void InitHash(void *dst) override;
+	void InitHash(void *dst) noexcept override;
 	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
 
@@ -129,7 +130,7 @@ public:
 		ZeroStruct(Salt);
 	}
 protected:
-	void InitHash(void *dst) override;
+	void InitHash(void *dst) noexcept override;
 	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
 };
 
