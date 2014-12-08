@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 #define _DECIMAL_
 
@@ -48,6 +40,8 @@ public:
 		,	m_exp(0)
 	{}
 
+	explicit decimal64_(double v);
+
 	decimal64_ operator-() const { return make_decimal64(-m_val, m_exp); }
 
 	decimal64_& operator*=(const decimal64_& v) {
@@ -62,10 +56,13 @@ private:
 	friend NormalizedDecimal AFXAPI Normalize(const decimal64_& a);
 	friend decimal64_ make_decimal64(Ext::Int64 val, int exp);
 	friend EXT_API ostream& operator<<(ostream& os, const decimal64_& v);
+	friend EXT_API istream& operator>>(istream& is, decimal64_& v);
 	friend decimal64_ operator*(const decimal64_& a, const decimal64_& b);
 	friend bool operator==(const decimal64_& a, const decimal64_& b);
 	friend bool operator<(const decimal64_& a, const decimal64_& b);
 	friend long long decimal_to_long_long(const decimal64_& v);
+	friend decimal64_ operator-(const decimal64_& a, const decimal64_& b);
+	friend double decimal_to_double(const decimal64_& v);
 };
 
 typedef decimal64_ decimal64;
@@ -76,13 +73,15 @@ decimal64 make_decimal64(Ext::Int64 val, int exp);
 EXT_API std::ostream& operator<<(std::ostream& os, const decimal64& v);
 
 decimal64 operator*(const decimal64& a, const decimal64& b);
-
+decimal64 operator-(const decimal64& a, const decimal64& b);
 
 bool operator==(const decimal64& a, const decimal64& b);
 inline bool operator!=(const decimal64& a, const decimal64& b) { return !(a == b); }
 
 bool operator<(const decimal64& a, const decimal64& b);
 inline bool operator>(const decimal64& a, const decimal64& b) { return b < a; }
+inline bool operator>=(const decimal64& a, const decimal64& b) { return !(a < b); }
+inline bool operator<=(const decimal64& a, const decimal64& b) { return !(b < a); }
 
 
 
