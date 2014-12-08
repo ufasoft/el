@@ -344,6 +344,7 @@ using ExtSTL::sys::temp_directory_path;
 using ExtSTL::sys::directory_iterator;
 using ExtSTL::sys::is_regular_file;
 using ExtSTL::sys::is_directory;
+using ExtSTL::sys::symlink_status;
 }}
 
 
