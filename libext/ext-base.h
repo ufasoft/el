@@ -1,16 +1,16 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include EXT_HEADER(map)
+#include EXT_HEADER_SYSTEM_ERROR
 
 namespace Ext {
+	using std::vector;
+	using std::map;
+	using std::error_code;
+	using std::error_condition;
+	using std::system_error;
+	using std::error_category;
+
 
 class CCriticalSection;
 class Exception;
@@ -30,7 +30,7 @@ public:
 	EXT_DATA static bool Use;
 
 	int AddrSize;
-	std::vector<UInt64> Frames;
+	vector<UInt64> Frames;
 
 	CStackTrace()
 		:	AddrSize(sizeof(void*))
@@ -41,22 +41,25 @@ public:
 };
 #endif
 
-const std::error_category& hresult_category();
+const error_category& win32_category();
+const error_category& hresult_category();
 
-class Exception : public std::system_error, public CPrintable {
+class Exception : public system_error, public CPrintable {
 	typedef std::system_error base;
 public:
 	typedef Exception class_type;
 
-	static tls_ptr<String> t_LastStringArg;
+#if !UCFG_WDM
+	static thread_specific_ptr<String> t_LastStringArg;
+#endif
 
-	HRESULT HResult;
 	mutable String m_message;
 
 	typedef std::map<String, String> CDataMap;
 	CDataMap Data;
 
 	explicit Exception(HRESULT hr = 0, RCString message = "");
+	~Exception() noexcept {}		//!!! necessary for GCC 4.6
 	String ToString() const;
 
 	virtual String get_Message() const;
@@ -79,13 +82,12 @@ class ExcLastStringArgKeeper {
 public:
 	String m_prev;
 
-	ExcLastStringArgKeeper(RCString s)
+	ExcLastStringArgKeeper(RCString s) {
 #if !UCFG_WDM
-		:	m_prev(*Exception::t_LastStringArg)
-#endif
-	{
-#if !UCFG_WDM
-		*Exception::t_LastStringArg = s;
+		String *ps = Exception::t_LastStringArg;
+		if (!ps)
+			Exception::t_LastStringArg.reset(ps = new String);
+		m_prev = exchange(*ps, s);
 #endif
 	}
 
@@ -97,19 +99,28 @@ public:
 
 	operator const String&() const {
 #if !UCFG_WDM
-		return *Exception::t_LastStringArg;
+		String *ps = Exception::t_LastStringArg;
+		if (!ps)
+			Exception::t_LastStringArg.reset(ps = new String);
+		return *ps;
 #endif
 	}
 
 	operator const char *() const {
 #if !UCFG_WDM
-		return *Exception::t_LastStringArg;
+		String *ps = Exception::t_LastStringArg;
+		if (!ps)
+			Exception::t_LastStringArg.reset(ps = new String);
+		return ps->c_str();
 #endif
 	}
 
 	operator const String::Char *() const {
 #if !UCFG_WDM
-		return *Exception::t_LastStringArg;
+		String *ps = Exception::t_LastStringArg;
+		if (!ps)
+			Exception::t_LastStringArg.reset(ps = new String);
+		return *ps;
 #endif
 	}
 };
@@ -125,6 +136,50 @@ EXT_DEFINE_EXC(NotImplementedExc, Exception, E_NOTIMPL)
 EXT_DEFINE_EXC(UnspecifiedException, Exception, E_FAIL)
 EXT_DEFINE_EXC(AccessDeniedException, Exception, E_ACCESSDENIED)
 
+/*!!!R
+class IOExc : public Exception {
+	typedef Exception base;
+public:
+	path FileName;
+
+	IOExc(HRESULT hr)
+		: base(hr) {
+	}
+
+	~IOExc() noexcept {}
+
+	String get_Message() const override {
+		String r = base::get_Message();
+		if (!FileName.empty())
+			r += " " + FileName.native();
+		return r;
+	}
+};
+
+class FileNotFoundException : public IOExc {
+	typedef IOExc base;
+public:
+	FileNotFoundException()
+		: base(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND)) {
+	}
+};
+
+class FileAlreadyExistsExc : public IOExc {
+	typedef IOExc base;
+public:
+	FileAlreadyExistsExc()
+		: base(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS)) {
+	}
+};
+
+class DirectoryNotFoundExc : public Exception {
+	typedef Exception base;
+public:
+	DirectoryNotFoundExc()
+		: base(HRESULT_OF_WIN32(ERROR_PATH_NOT_FOUND)) {
+	}
+};
+*/
 
 class thread_interrupted : public Exception {
 public:
@@ -142,10 +197,10 @@ public:
 };
 
 
-class CryptoExc : public Exception {
+class CryptoException : public Exception {
 	typedef Exception base;
 public:
-	explicit CryptoExc(HRESULT hr, RCString message)
+	explicit CryptoException(HRESULT hr, RCString message)
 		:	base(hr, message)
 	{}
 };
@@ -170,15 +225,18 @@ public:
 	{
 	}
 
+	~ProcNotFoundExc() noexcept {}
+
 	String get_Message() const override {
 		String r = base::get_Message();
-		if (!ProcName.IsEmpty())
-			r += " "+ProcName;
+		if (!ProcName.empty())
+			r += " " + ProcName;
 		return r;
 	}
 };
 
-INT_PTR WINAPI AfxApiNotFound();
+
+intptr_t __stdcall AfxApiNotFound();
 #define DEF_DELAYLOAD_THROW static FARPROC WINAPI DliFailedHook(unsigned dliNotify, PDelayLoadInfo  pdli) { return &AfxApiNotFound; } static struct InitDliFailureHook {  InitDliFailureHook() { __pfnDliFailureHook2 = &DliFailedHook; } } s_initDliFailedHook;
 
 extern "C" AFX_API void _cdecl AfxTestEHsStub(void *prevFrame);
@@ -208,6 +266,8 @@ public:
 		,	LineNumber(line)
 	{
 	}
+
+	~AssertFailedExc() noexcept {}
 };
 
 
@@ -331,7 +391,6 @@ struct CExceptionFabric {
 };
 
 DECLSPEC_NORETURN void AFXAPI ThrowS(HRESULT hr, RCString msg);
-
 
 
 } // Ext::
