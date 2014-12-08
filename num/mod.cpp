@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "mod.h"
@@ -20,7 +12,7 @@ ModNum inverse(const ModNum& mn) {
 		mod(mn.m_mod);
 #if UCFG_NUM == 'G'
 	Bn r;
-	int rc = mpz_invert(r.m_z.get_mpz_t(), v.m_z.get_mpz_t(), mod.m_z.get_mpz_t());
+	int rc = mpz_invert(r.get_mpz_t(), v.get_mpz_t(), mod.get_mpz_t());
 	ASSERT(rc);
 	return ModNum(r.ToBigInteger(), mn.m_mod);
 #else
@@ -31,14 +23,58 @@ ModNum inverse(const ModNum& mn) {
 #endif
 }
 
+UInt32 inverse(UInt32 a, UInt32 nPrime) {
+	if (a == 2)
+		return (nPrime+1)/2;
+    
+    int inverse;
+    for (int rem0=nPrime, rem1=a%nPrime, rem2, aux0 = 0, aux1 = 1, aux2, quotient; ;) {
+        if (rem1 <= 1) {
+            inverse = aux1;
+            break;
+        }
+
+        rem2 = rem0 % rem1;
+        quotient = rem0 / rem1;
+        aux2 = -quotient * aux1 + aux0;
+
+        if (rem2 <= 1) {
+            inverse = aux2;
+            break;
+        }
+
+        rem0 = rem1 % rem2;
+        quotient = rem1 / rem2;
+        aux0 = -quotient * aux2 + aux1;
+
+        if (rem0 <= 1) {
+            inverse = aux0;
+            break;
+        }
+
+        rem1 = rem2 % rem0;
+        quotient = rem2 / rem0;
+        aux1 = -quotient * aux0 + aux2;
+    }
+	ASSERT(UInt64(inverse + nPrime) * a % nPrime == 1);
+    return (inverse + nPrime) % nPrime;
+}
+
+#if UCFG_NUM == 'G'
+Bn PowM(const Bn& x, const Bn& e, const Bn& mod) {
+	Bn r(mod.Length+1, false);
+	::mpz_powm(r.get_mpz_t(), x.get_mpz_t(), e.get_mpz_t(), mod.get_mpz_t());
+	return r;
+}
+#endif
+
 ModNum pow(const ModNum& mn, const BigInteger& p) {
 	Bn v(mn.m_val),
 		mod(mn.m_mod);
-	Bn r;
 #if UCFG_NUM == 'G'
-	mpz_powm(r.m_z.get_mpz_t(), v.m_z.get_mpz_t(), Bn(p).m_z.get_mpz_t(), mod.m_z.get_mpz_t());
-	return ModNum(r.ToBigInteger(), mn.m_mod);
+	return ModNum(PowM(v, Bn(p), mod).ToBigInteger(), mn.m_mod);
 #else
+	Bn r;
 	BnCtx ctx;
 	SslCheck(::BN_mod_exp(r.Ref(), v, Bn(p), mod, ctx));
 	return ModNum(r.ToBigInteger(), mn.m_mod);
