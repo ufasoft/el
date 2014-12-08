@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include EXT_HEADER(stack)
@@ -509,42 +501,6 @@ public:
 };
 #endif // UCFG_WIN32
 
-
-#if UCFG_USE_LIBXML
-
-class LibxmlXmlException : public XmlException {
-	typedef XmlException base;
-public:
-	LibxmlXmlException(xmlError *err);
-	LibxmlXmlException(const LibxmlXmlException& e);
-
-	~LibxmlXmlException() {
-		xmlResetError(&m_xmlError);
-	}
-
-	long get_LineNumber() const {
-		return m_xmlError.line;
-	}
-
-	long get_LinePosition() const {
-		return m_xmlError.int2;
-	}
-
-	String get_Url() const {
-		return m_xmlError.file;
-	}
-
-	String get_Reason() const {
-		return m_xmlError.message;
-	}
-
-	String get_Message() const override;
-private:
-	xmlError m_xmlError;
-	
-	LibxmlXmlException& operator=(const LibxmlXmlException&);
-};
-
 ENUM_CLASS(ReadState) {				// compatible with xmlTextReaderMode
 	Initial = 0,
 	Interactive = 1,
@@ -651,7 +607,44 @@ public:
 	int LinePosition() const;
 };
 
-#endif // UCFG_USE_XML
+
+#if UCFG_USE_LIBXML
+
+class LibxmlXmlException : public XmlException {
+	typedef XmlException base;
+public:
+	LibxmlXmlException(xmlError *err);
+	LibxmlXmlException(const LibxmlXmlException& e);
+
+	~LibxmlXmlException() noexcept {
+		xmlResetError(&m_xmlError);
+	}
+
+	long get_LineNumber() const {
+		return m_xmlError.line;
+	}
+
+	long get_LinePosition() const {
+		return m_xmlError.int2;
+	}
+
+	String get_Url() const {
+		return m_xmlError.file;
+	}
+
+	String get_Reason() const {
+		return m_xmlError.message;
+	}
+
+	String get_Message() const override;
+private:
+	xmlError m_xmlError;
+	
+	LibxmlXmlException& operator=(const LibxmlXmlException&);
+};
+
+
+#endif // UCFG_USE_LIBXML
 
 class XmlWriter {
 public:
