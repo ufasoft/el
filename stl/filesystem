@@ -1,0 +1,342 @@
+#pragma once
+#define _FILESYSTEM_
+
+#include <chrono>
+
+namespace ExtSTL { namespace sys {
+using namespace std;
+
+class path {
+public:
+	typedef Ext::String string_type;
+#if UCFG_USE_POSIX
+	typedef char value_type;
+	static const value_type preferred_separator = '/';
+#else
+	typedef Ext::String::Char value_type;
+	static const value_type preferred_separator = '\\';
+#endif
+
+	path() {
+	}
+
+	path(const char *s)
+		:	m_s(s)
+	{}
+
+	path(const wchar_t *s)
+		:	m_s(s)
+	{}
+
+	path(const String& s)
+		:	m_s(s)
+	{}
+
+	class iterator : public std::iterator<bidirectional_iterator_tag, path> {
+	public:
+		iterator()
+			: m_pPath(0)
+		{}
+
+		iterator(const path& p, string_type::const_iterator it)
+			: m_pPath(&p)
+			, m_from(it)
+			, m_to(it) {
+			Retrieve();
+		}
+
+		path operator*() const { return m_el; }
+
+		iterator& operator++();
+		iterator& operator--();
+
+		iterator operator++(int) {
+			iterator r = *this;
+			operator++();
+			return r;
+		}
+
+		iterator operator--(int) {
+			iterator r = *this;
+			operator--();
+			return r;
+		}
+
+		bool operator==(const iterator& it) const { return m_pPath==it.m_pPath && m_from==it.m_from && m_to==it.m_to; }
+		bool operator!=(const iterator& it) const { return !(*this == it); }
+	private:
+		const path *m_pPath;
+		string_type m_el;
+		string_type::const_iterator m_from, m_to;
+
+		void Retrieve();
+	};
+
+	typedef iterator const_iterator;
+
+
+	iterator begin() const { return iterator(*this, m_s.begin()); }
+	iterator end() const { return iterator(*this, m_s.end()); }
+
+	path root_name() const;
+	path root_directory() const;
+	path root_path() const;
+	path relative_path() const;
+	path parent_path() const;
+	path stem() const;
+	path extension() const;
+	path& operator/=(const path& p);
+	path& operator+=(const string_type& s);
+	path& replace_extension(const path& e = path());
+	path& make_preferred();
+
+	void swap(path& b) noexcept { m_s.swap(b.m_s); }
+	path filename() const { return empty() ? path() : *--end(); }
+	const string_type native() const noexcept { return m_s; }
+	operator string_type() const { return m_s; }
+	const value_type *c_str() const { return m_s; }
+	bool empty() const { return m_s.empty(); }
+	bool has_root_name() const { return !root_name().empty(); }
+	bool has_root_directory() const { return !root_directory().empty(); }
+	bool has_root_path() const { return !root_path().empty(); }
+	bool has_parent_path() const { return !parent_path().empty(); }
+	bool has_stem() const { return !stem().empty(); }
+	bool has_extension() const { return !extension().empty(); }
+	bool has_filename() const { return !filename().empty(); }
+
+	bool is_absolute() const {
+		return has_root_directory()
+#if !UCFG_USE_POSIX
+			&& has_root_name()
+#endif
+			;
+	}
+
+	bool is_relative() const { return !is_absolute(); }
+
+
+private:
+	string_type m_s;
+
+	static bool IsSeparator(value_type ch) { return ch==preferred_separator || ch=='/'; }
+
+	size_t RootNameLen() const;
+};
+
+class filesystem_error : public system_error {
+	typedef system_error base;
+public:
+	filesystem_error(const string& msg, error_code ec)
+		:	base(ec, msg) {
+	}
+
+	filesystem_error(const string& msg, const path& p1, error_code ec)
+		:	base(ec, msg)
+		,	m_p1(p1)
+	{
+	}
+
+	filesystem_error(const string& msg, const path& p1, const path& p2, error_code ec)
+		:	base(ec, msg)
+		,	m_p1(p1)
+		,	m_p2(p2)
+	{
+	}
+
+	const path& path1() const noexcept { return m_p1; }
+	const path& path2() const noexcept { return m_p2; }
+private:
+	path m_p1, m_p2;
+};
+
+
+inline size_t hash_value(const path& p) noexcept { return hash<path::string_type>()(p.native()); }
+inline void swap(path& a, path& b) noexcept { a.swap(b); }
+
+inline bool operator==(const path& a, const path& b) noexcept { return a.native() == b.native(); }
+inline bool operator!=(const path& a, const path& b) noexcept { return !(a == b); }
+inline bool operator<(const path& a, const path& b) noexcept { return a.native() < b.native(); }
+inline bool operator>(const path& a, const path& b) noexcept { return b < a; }
+inline bool operator<=(const path& a, const path& b) noexcept { return !(b < a); }
+inline bool operator>=(const path& a, const path& b) noexcept { return !(a < b); }
+
+inline path operator/(const path& a, const path& b) { return path(a) /= b; }
+
+path AFXAPI u8path(Ext::RCString s);
+
+ENUM_CLASS(file_type) {
+	not_found = -1, none, regular, directory, symlink, block, character, fifo, socket, unknown
+} END_ENUM_CLASS(file_type);
+
+ENUM_CLASS(perms) {
+	none = 0,
+	owner_read = S_IRUSR,	owner_write = S_IWUSR,	owner_exec = S_IXUSR,	owner_all = S_IRWXU,
+	group_read = S_IRGRP,	group_write = S_IWGRP,	group_exec = S_IXGRP,	group_all = S_IRWXG,
+	others_read = S_IROTH,	others_write = S_IWOTH,	others_exec = S_IXOTH,	others_all = S_IRWXO,
+	all = 0777,
+	set_uid = S_ISUID,		set_gid = S_ISGID,
+	sticky_bit = S_ISVTX,
+	mask = 07777,	unknown = 0xFFFF,	add_perms = 0x10000,	remove_perms = 0x20000,	resolve_symlinks = 0x40000
+} END_ENUM_CLASS(perms);
+
+class file_status {
+public:
+	explicit file_status(file_type typ = file_type::none, perms per = perms::unknown) noexcept
+		:	m_type(typ)
+		,	m_perms(per)
+	{}
+
+	file_type type() const noexcept { return m_type; }
+	void type(file_type v) noexcept { m_type = v; }
+
+	perms permissions() const noexcept { return m_perms; }
+	void permissions(perms v) noexcept { m_perms = v; }
+private:
+	file_type m_type;
+	perms m_perms;
+};
+
+inline bool status_known(file_status s) noexcept { return s.type() != file_type::none; }			//!!!? file_type::unknown in the MS's implementation
+
+file_status AFXAPI status(const path& p, error_code& ec) noexcept;
+file_status AFXAPI status(const path& p);
+file_status AFXAPI symlink_status(const path& p, error_code& ec) noexcept;
+file_status AFXAPI symlink_status(const path& p);
+
+inline bool is_block_file		(file_status s) noexcept { return s.type() == file_type::block; }
+inline bool is_character_file	(file_status s) noexcept { return s.type() == file_type::character; }
+inline bool is_directory		(file_status s) noexcept { return s.type() == file_type::directory; }
+inline bool is_fifo				(file_status s) noexcept { return s.type() == file_type::fifo; }
+inline bool is_regular_file		(file_status s) noexcept { return s.type() == file_type::regular; }
+inline bool is_socket			(file_status s) noexcept { return s.type() == file_type::socket; }
+inline bool is_symlink			(file_status s) noexcept { return s.type() == file_type::symlink; }
+
+inline bool is_block_file		(const path& p, error_code& ec) noexcept { return is_block_file		(status(p, ec)); }
+inline bool is_character_file	(const path& p, error_code& ec) noexcept { return is_character_file	(status(p, ec)); }
+inline bool is_directory		(const path& p, error_code& ec) noexcept { return is_directory		(status(p, ec)); }
+inline bool is_fifo				(const path& p, error_code& ec) noexcept { return is_fifo			(status(p, ec)); }
+inline bool is_regular_file		(const path& p, error_code& ec) noexcept { return is_regular_file	(status(p, ec)); }
+inline bool is_socket			(const path& p, error_code& ec) noexcept { return is_socket			(status(p, ec)); }
+inline bool is_symlink			(const path& p, error_code& ec) noexcept { return is_symlink		(status(p, ec)); }
+
+inline bool is_block_file		(const path& p) { return is_block_file(status(p)); }
+inline bool is_character_file	(const path& p) { return is_character_file(status(p)); }
+inline bool is_directory		(const path& p) { return is_directory(status(p)); }
+inline bool is_fifo				(const path& p) { return is_fifo(status(p)); }
+inline bool is_regular_file		(const path& p) { return is_regular_file(status(p)); }
+inline bool is_socket			(const path& p) { return is_socket(status(p)); }
+inline bool is_symlink			(const path& p) { return is_symlink(status(p)); }
+
+inline bool exists(file_status s) noexcept { return status_known(s) && s.type()!=file_type::not_found; }
+inline bool exists(const path& p, error_code& ec) noexcept { return exists(status(p, ec)); }
+inline bool exists(const path& p) { return exists(status(p)); }
+
+inline bool is_other(file_status s) noexcept { return exists(s) && !is_regular_file(s) && !is_directory(s) && !is_symlink(s); }
+inline bool is_other(const path& p, error_code& ec) noexcept { return is_other(status(p, ec)); }
+inline bool is_other(const path& p) { return is_other(status(p)); }
+
+typedef chrono::time_point<chrono::system_clock> file_time_type;
+
+file_time_type last_write_time(const path& p, error_code& ec) noexcept;
+file_time_type last_write_time(const path& p);
+
+class directory_entry : public Ext::totally_ordered<directory_entry> {
+public:
+	directory_entry(const path& p = ExtSTL::sys::path(), file_status s = file_status(), file_status sls = file_status())
+		:	m_path(p)
+		,	m_status(s)
+		,	m_symlink_status(sls)
+	{}
+
+	bool operator==(const directory_entry& de) const noexcept { return m_path == de.m_path; }
+	bool operator<(const directory_entry& de) const noexcept { return m_path < de.m_path; }
+	const ExtSTL::sys::path& path() const noexcept { return m_path; }
+
+	file_status symlink_status(error_code& ec) const noexcept;
+	file_status symlink_status() const;
+	file_status status(error_code& ec) const noexcept;
+	file_status status() const;
+private:
+	ExtSTL::sys::path m_path;
+	mutable file_status m_status, m_symlink_status;
+};
+
+struct DirectoryObj : public Ext::Object {
+	intptr_t m_dir;
+
+	~DirectoryObj();
+};
+
+class directory_iterator : public iterator<input_iterator_tag, directory_entry> {
+public:
+	directory_iterator() {}
+	
+	explicit directory_iterator(const path& p);
+	directory_iterator(const path& p, error_code& ec) noexcept;
+
+	bool operator==(directory_iterator& di) const { return m_p == di.m_p; }
+	bool operator!=(directory_iterator& di) const { return !(*this == di); }
+	const directory_entry& operator*() const { return m_entry; }
+	const directory_entry* operator->() const { return &m_entry; }
+
+	directory_iterator& operator++();
+	directory_iterator& increment(error_code& ec) noexcept;
+private:
+	ptr<DirectoryObj> m_p;
+	path m_prefix;
+	directory_entry m_entry;
+	
+	void Init(const path& p, error_code& ec) noexcept;
+};
+
+
+bool AFXAPI equivalent(const path& p1, const path& p2, error_code& ec) noexcept;
+bool AFXAPI equivalent(const path& p1, const path& p2);
+
+ENUM_CLASS(copy_options) {
+	none = 0,			skip_existing = 1,		overwrite_existing = 2,		update_existing = 4,	recursive = 8,
+	copy_symlinks = 16, skip_symlinks = 32,		directories_only = 64,		create_symlinks = 128,	create_hard_links = 256
+} END_ENUM_CLASS(copy_options);
+
+bool AFXAPI copy_file(const path& from, const path& to, copy_options options, error_code& ec);
+bool AFXAPI copy_file(const path& from, const path& to, copy_options options = copy_options::none);
+inline bool AFXAPI copy_file(const path& from, const path& to, error_code& ec) { return copy_file(from, to, copy_options::none, ec); }
+
+uintmax_t AFXAPI file_size(const path& p, error_code& ec) noexcept;
+uintmax_t AFXAPI file_size(const path& p);
+bool AFXAPI create_directory(const path& p, error_code& ec) noexcept;
+bool AFXAPI create_directory(const path& p);
+bool AFXAPI create_directories(const path& p, error_code& ec); //!!! noexcept in SPEC
+bool AFXAPI create_directories(const path& p);
+bool AFXAPI remove(const path& p, error_code& ec) noexcept;
+bool AFXAPI remove(const path& p);
+uintmax_t AFXAPI remove_all(const path& p, error_code& ec);
+uintmax_t AFXAPI remove_all(const path& p);
+void AFXAPI rename(const path& old_p, const path& new_p, error_code& ec) noexcept;
+void AFXAPI rename(const path& old_p, const path& new_p);
+
+path AFXAPI temp_directory_path(error_code& ec);
+path AFXAPI temp_directory_path();
+
+path AFXAPI current_path(error_code& ec);
+path AFXAPI current_path();
+void AFXAPI current_path(const path& p, error_code& ec);
+void AFXAPI current_path(const path& p);
+
+path AFXAPI absolute(const path& p, const path& base = current_path());
+
+path AFXAPI canonical(const path& p, const path& base, error_code& ec);
+path AFXAPI canonical(const path& p, const path& base = current_path());
+path AFXAPI canonical(const path& p, error_code& ec);
+
+
+}} // ExtSTL::sys::
+
+namespace std { namespace sys {
+using ExtSTL::sys::path;
+using ExtSTL::sys::exists;
+}}
+
+
+
+
