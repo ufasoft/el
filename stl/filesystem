@@ -28,7 +28,7 @@ public:
 		:	m_s(s)
 	{}
 
-	path(const String& s)
+	path(const string_type& s)
 		:	m_s(s)
 	{}
 
