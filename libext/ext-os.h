@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 
@@ -36,10 +28,20 @@ namespace std {
 
 #endif
 
-
+#include EXT_HEADER_FILESYSTEM
 
 namespace Ext {
-
+using std::sys::exists;
+using std::sys::path;
+using std::sys::copy_file;
+using std::sys::copy_options;
+using std::sys::current_path;
+using std::sys::create_directory;
+using std::sys::create_directories;
+using std::sys::temp_directory_path;
+using std::sys::directory_iterator;
+using std::sys::is_regular_file;
+using std::sys::is_directory;
 
 class AFX_CLASS COperatingSystem {
 	typedef COperatingSystem class_type;
@@ -60,8 +62,8 @@ public:
 	DEFPROP_GET(String, UserName);
 
 #if UCFG_WIN32 || UCFG_USE_POSIX
-	static String AFXAPI get_ExeFilePath();
-	DEFPROP_GET(String, ExeFilePath);
+	static path AFXAPI get_ExeFilePath();
+	DEFPROP_GET(path, ExeFilePath);
 #endif
 
 #ifdef _WIN32
@@ -85,8 +87,8 @@ public:
 
 	bool Is64BitNativeSystem();
 
-	static String AFXAPI get_WindowsDirectory();
-	DEFPROP_GET(String, WindowsDirectory);
+	static path AFXAPI get_WindowsDirectory();
+	DEFPROP_GET(path, WindowsDirectory);
 
 #	if UCFG_WIN32_FULL
 	EXT_API static std::vector<String> AFXAPI get_LogicalDriveStrings();
@@ -130,7 +132,7 @@ public:
 
 	void Set();
 	void Reset();
-	bool Lock(DWORD dwTimeout = INFINITE);
+	bool Lock(UInt32 dwTimeout = INFINITE);
 	void Unlock();
 private:
 #if UCFG_USE_PTHREADS
