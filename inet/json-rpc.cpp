@@ -1,41 +1,67 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "json-rpc.h"
 
 namespace Ext { namespace Inet { 
 
+const error_category& json_rpc_category() {
+	static class json_rpc_category_impl : public error_category {
+		typedef error_category base;
+
+		const char *name() const noexcept override { return "JSON-RPC"; }
+		
+		string message(int errval) const override {
+			switch (errval) {
+			case  json_rpc_errc::ParseError: return "Parse Error";
+			case  json_rpc_errc::InvalidParams: return "Invalid Params";
+			case  json_rpc_errc::MethodNotFound: return "Method not Found";
+			case  json_rpc_errc::InvalidRequest: return "Invalid Request";
+			default:
+				return static_cast<string>(AfxProcessError(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_JSON_RPC, UInt16(errval))));
+			}
+		}
+	} s_json_rpc_category;
+
+	return s_json_rpc_category;
+}
+
 String JsonRpcRequest::ToString() const {
 	VarValue req;
+	if (V20)
+		req.Set("jsonrpc", "2.0");
 	req.Set("id", Id);
 	req.Set("method", Method);
 	req.Set("params", Params);
+	ptr<MarkupParser> markup = MarkupParser::CreateJsonParser();
+	markup->Compact = true;
 	ostringstream os;
-	MarkupParser::CreateJsonParser()->Print(os, req);
+	markup->Print(os, req);
 	return os.str();
 }
 
-String JsonResponse::ToString() const {
-	VarValue resp;
-	resp.Set("id", Id);
+VarValue JsonResponse::ToVarValue() const {
+	VarValue rv;
+	if (V20)
+		rv.Set("jsonrpc", "2.0");
+	rv.Set("id", Id);
 	if (Success) {
-		resp.Set("result", Result);
+		rv.Set("result", Result);
 	} else {
 		VarValue verr;
 		verr.Set("code", Code);
 		verr.Set("message", JsonMessage);
-		verr.Set("data", Data);
-		resp.Set("error", verr);
+		if (Data)
+			verr.Set("data", Data);
+		rv.Set("error", verr);
 	}
+	return rv;
+}
+
+String JsonResponse::ToString() const {
+	ptr<MarkupParser> markup = MarkupParser::CreateJsonParser();
+	markup->Compact = true;
 	ostringstream os;
-	MarkupParser::CreateJsonParser()->Print(os, resp);
+	markup->Print(os, ToVarValue());
 	return os.str();
 }
 
@@ -45,10 +71,12 @@ bool JsonRpc::TryAsRequest(const VarValue& v, JsonRpcRequest& req) {
 	req.Method = v["method"].ToString();
 	req.Id = v["id"];
 	req.Params = v["params"];
+	req.V20 = v.HasKey("jsonrpc") && v["jsonrpc"].ToString() == "2.0";
 	return true;
 }
 
 void JsonRpc::PrepareRequest(JsonRpcRequest *req) {
+	req->V20 = V20;
 	int id = Interlocked::Increment(m_nextId);
 	req->Id = VarValue(id);
 	EXT_LOCKED(MtxReqs, m_reqs.insert(make_pair(id, req)));
@@ -88,6 +116,7 @@ String JsonRpc::Notification(RCString method, const vector<VarValue>& params, pt
 
 JsonResponse JsonRpc::Response(const VarValue& v) {
 	JsonResponse r;
+	r.V20 = v.HasKey("jsonrpc") && v["jsonrpc"].ToString() == "2.0";
 	r.Id = v["id"];
 	if (r.Id.type() == VarType::Int) {
 		EXT_LOCK (MtxReqs) {
@@ -112,6 +141,90 @@ JsonResponse JsonRpc::Response(const VarValue& v) {
 			r.Data = er["data"];
 	}
 	return r;
+}
+
+VarValue JsonRpc::ProcessResponse(const VarValue& vjresp) {
+	JsonResponse resp = Response(vjresp);
+	if (resp.Success)
+		return resp.Result;
+	JsonRpcException exc(resp.Code);
+	exc.m_message = resp.JsonMessage;
+	exc.Data = resp.Data;
+	throw exc;
+}
+
+VarValue JsonRpc::Call(Stream& stm, RCString method, const vector<VarValue>& params) {
+	String s = Request(method, params);
+	const char *p = s.c_str();
+	stm.WriteBuffer(p, strlen(p));
+	stm.Flush();
+	return ProcessResponse(MarkupParser::CreateJsonParser()->ParseStream(stm).first);
+}
+
+VarValue JsonRpc::Call(Stream& stm, RCString method, const VarValue& arg0) {	
+	return Call(stm, method, vector<VarValue>(1, arg0));
+}
+
+VarValue JsonRpc::Call(Stream& stm, RCString method, const VarValue& arg0, const VarValue& arg1) {
+	vector<VarValue> params(2);
+	params[0] = arg0;
+	params[1] = arg1;
+	return Call(stm, method, params);
+}
+
+VarValue JsonRpc::ProcessRequest(const VarValue& v) {
+	JsonResponse resp;
+	resp.V20 = V20;
+	try {
+		JsonRpcRequest req;
+		if (!TryAsRequest(v, req))
+			Throw(json_rpc_errc::InvalidRequest);
+		if (req.V20)
+			V20 = true;
+		resp.Id = req.Id;
+		resp.Result = CallMethod(req.Method, req.Params);
+	} catch (system_error& ex) {
+		resp.Success = false;
+		resp.JsonMessage = ex.what();
+		resp.Code = ex.code().category()==json_rpc_category() ? ex.code().value() : ToHResult(ex);
+	} catch (RCExc& ex) {
+		resp.Success = false;
+		resp.JsonMessage = ex.what();
+		switch (HRESULT hr = HResultInCatch(ex)) {
+/*!!!R		case E_EXT_JSON_RPC_ParseError:		resp.Code = JsonRpcErrorCode::ParseError; break;
+		case E_EXT_JSON_RPC_IsNotRequest:	resp.Code = -32600; break;
+		case E_EXT_JSON_RPC_MethodNotFound:	resp.Code = JsonRpcErrorCode::MethodNotFound; break;
+		case E_EXT_JSON_RPC_InvalidParams:	resp.Code = -32602; break;
+		case E_EXT_JSON_RPC_Internal:		resp.Code = -32603; break; */
+		default:
+			resp.Code = hr;
+		}		
+	}
+	return resp.ToVarValue();
+}
+
+void JsonRpc::SendChunk(Stream& stm, const ConstBuf& cbuf) {
+	stm.WriteBuf(cbuf);
+}
+
+void JsonRpc::ServerLoop(Stream& stm) {
+	ptr<MarkupParser> markup = MarkupParser::CreateJsonParser();
+
+	for (pair<VarValue, Blob> pp;  (pp=markup->ParseStream(stm, pp.second)).first;) {
+		const VarValue& v = pp.first;
+		VarValue vr;
+		if (v.type() != VarType::Array)
+			vr = ProcessRequest(v);
+		else {		// batch
+			for (size_t size=v.size(), i=0; i<size; ++i) {
+				vr.Set(i, ProcessRequest(v[i]));
+			}
+		}
+		ostringstream os;
+		markup->Print(os, vr);
+		string s = os.str();
+		SendChunk(stm, ConstBuf(s.data(), s.size()));
+	}
 }
 
 

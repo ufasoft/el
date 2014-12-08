@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 
@@ -135,13 +127,18 @@ void Link::ReceiveAndProcessLineMessage(const ConstBuf& bufLine) {
 }
 
 void Link::OnPingTimeout() {
-	if (ptr<Message> m = CreatePingMessage())
-		Send(m);
+	if (Net)
+		Net->OnPingTimeout(_self);
 }
 
 void Link::OnCloseLink() {
 	if (Net)
 		Net->OnCloseLink(_self);
+}
+
+void Link::BeforeStart() {
+	if (!Incoming)
+		Tcp.Client.Create(Peer->get_EndPoint().Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
 }
 
 void Link::Execute() {
@@ -151,13 +148,7 @@ void Link::Execute() {
 	try {
 		if (Incoming)
 			epRemote = Tcp.Client.RemoteEndPoint;
-		else {
-			IPEndPoint ep = Peer->EndPoint;
-			Tcp.Client.Create(ep.Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
-		}
 
-		SocketKeeper sockKeeper(_self, Tcp.Client);
-		
 		DBG_LOCAL_IGNORE_WIN32(WSAECONNREFUSED);	
 		DBG_LOCAL_IGNORE_WIN32(WSAECONNABORTED);	
 		DBG_LOCAL_IGNORE_WIN32(WSAECONNRESET);
@@ -168,7 +159,7 @@ void Link::Execute() {
 
 		bool bMagicReceived = false;
 		if (Incoming) {			
-			DBG_LOCAL_IGNORE_NAME(E_EXT_EndOfStream, ignE_EXT_EndOfStream);
+			DBG_LOCAL_IGNORE(E_EXT_EndOfStream);
 
 			if (UseMagic) {
 				UInt32 magic = BinaryReader(Tcp.Stream).ReadUInt32();
@@ -267,8 +258,7 @@ LAB_FOUND:
 							ReceiveAndProcessLineMessage(ConstBuf(p, cbMsg));
 							memmove(blobMessage.data(), blobMessage.data()+cbMsg, cbReceived -= cbMsg);
 						}						
-					}			
-					
+					}					
 
 					int rc = Tcp.Client.Receive(blobMessage.data()+cbReceived, blobMessage.Size-cbReceived);
 					if (!rc)
@@ -327,7 +317,7 @@ LAB_FOUND:
 	} catch (RCExc) {
 	}
 LAB_EOF:
-	TRC(3, "Disconnecting " << epRemote);
+	TRC(3, "Disconnecting " << epRemote << "  Socket " << (Int64)Tcp.Client.DangerousGetHandleEx());
 #if UCFG_P2P_SEND_THREAD
 	if (SendThread) {
 		if (!SendThread->m_bStop)
@@ -336,6 +326,24 @@ LAB_EOF:
 	}
 #endif
 	OnCloseLink();
+}
+
+void Link::Stop() {
+#if UCFG_P2P_SEND_THREAD
+	if (SendThread)
+		SendThread->Stop();
+#endif
+	base::Stop();
+#if UCFG_WCE
+	try {
+		Tcp.Client.Shutdown();
+	} catch (RCExc) {
+	}
+#endif
+	Tcp.Client.Close();
+#if UCFG_WIN32_FULL
+	QueueAPC();
+#endif
 }
 
 ListeningThread::ListeningThread(P2P::NetManager& netManager, thread_group& tr, AddressFamily af)
@@ -401,7 +409,7 @@ void ListeningThread::Execute() {
 			} else if (NetManager.IsTooManyLinks()) {
 				TRC(2, "Incoming connection refused: Too many links");
 			} else {
-				TRC(3, "Connected from " << epRemote);
+				TRC(3, "Connected from " << epRemote << "  Socket " << (Int64)s.DangerousGetHandle());
 
 				ptr<Link> link = NetManager.CreateLink(*m_owner);
 				link->Incoming = true;
