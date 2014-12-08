@@ -340,6 +340,7 @@ using ExtSTL::sys::copy_options;
 using ExtSTL::sys::current_path;
 using ExtSTL::sys::create_directory;
 using ExtSTL::sys::create_directories;
+using ExtSTL::sys::file_size;
 using ExtSTL::sys::temp_directory_path;
 using ExtSTL::sys::directory_iterator;
 using ExtSTL::sys::is_regular_file;
