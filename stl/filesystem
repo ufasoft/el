@@ -282,7 +282,7 @@ public:
 	directory_iterator& operator++();
 	directory_iterator& increment(error_code& ec) noexcept;
 private:
-	ptr<DirectoryObj> m_p;
+	Ext::ptr<DirectoryObj> m_p;
 	path m_prefix;
 	directory_entry m_entry;
 	
