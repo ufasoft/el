@@ -333,17 +333,17 @@ path AFXAPI canonical(const path& p, error_code& ec);
 }} // ExtSTL::sys::
 
 namespace std { namespace sys {
-using std::sys::exists;
-using std::sys::path;
-using std::sys::copy_file;
-using std::sys::copy_options;
-using std::sys::current_path;
-using std::sys::create_directory;
-using std::sys::create_directories;
-using std::sys::temp_directory_path;
-using std::sys::directory_iterator;
-using std::sys::is_regular_file;
-using std::sys::is_directory;
+using ExtSTL::sys::exists;
+using ExtSTL::sys::path;
+using ExtSTL::sys::copy_file;
+using ExtSTL::sys::copy_options;
+using ExtSTL::sys::current_path;
+using ExtSTL::sys::create_directory;
+using ExtSTL::sys::create_directories;
+using ExtSTL::sys::temp_directory_path;
+using ExtSTL::sys::directory_iterator;
+using ExtSTL::sys::is_regular_file;
+using ExtSTL::sys::is_directory;
 }}
 
 
