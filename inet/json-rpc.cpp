@@ -190,15 +190,15 @@ VarValue JsonRpc::ProcessRequest(const VarValue& v) {
 	} catch (RCExc& ex) {
 		resp.Success = false;
 		resp.JsonMessage = ex.what();
-		switch (HRESULT hr = HResultInCatch(ex)) {
-/*!!!R		case E_EXT_JSON_RPC_ParseError:		resp.Code = JsonRpcErrorCode::ParseError; break;
+/*!!!R		switch (HRESULT hr = ) {
+		case E_EXT_JSON_RPC_ParseError:		resp.Code = JsonRpcErrorCode::ParseError; break;
 		case E_EXT_JSON_RPC_IsNotRequest:	resp.Code = -32600; break;
 		case E_EXT_JSON_RPC_MethodNotFound:	resp.Code = JsonRpcErrorCode::MethodNotFound; break;
 		case E_EXT_JSON_RPC_InvalidParams:	resp.Code = -32602; break;
-		case E_EXT_JSON_RPC_Internal:		resp.Code = -32603; break; */
+		case E_EXT_JSON_RPC_Internal:		resp.Code = -32603; break;
 		default:
-			resp.Code = hr;
-		}		
+		}		 */
+		resp.Code = HResultInCatch(ex);
 	}
 	return resp.ToVarValue();
 }
