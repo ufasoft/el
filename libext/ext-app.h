@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 namespace Ext {
@@ -49,10 +41,10 @@ class CAppBase
 public:
 	EXT_DATA static bool s_bSigBreak;
 
-	std::vector<String> m_argv;
+	vector<String> m_argv;
 	int Argc;
 	CPointer<argv_char_t *> Argv;
-	std::vector<argv_char_t*> m_argvp;
+	vector<argv_char_t*> m_argvp;
 
 	bool m_bPrintLogo;
 	String FileDescription;
@@ -66,16 +58,15 @@ public:
 
 	String GetInternalName();
 
-	String m_appDataDir;
+	path m_appDataDir;
 
-	String get_AppDataDir();
-	DEFPROP_GET(String, AppDataDir);
-
+	path get_AppDataDir();
+	DEFPROP_GET(path, AppDataDir);
 
 #if UCFG_COMPLEX_WINAPP
 	HINSTANCE m_hInstance;
 
-	String m_exeName;
+	std::path m_exeName;
 	String m_cmdLine;
 	int m_nCmdShow;
 
@@ -276,8 +267,6 @@ const int UWM_INVALID_REGCODE = WM_USER+10;
 //!!!FILETIME AFXAPI StringToFileTime(RCString s);
 
 //!!!#	ifndef _EXT 
-
-
 
 class CConsoleStreamHook {
 	FILE *m_file;
