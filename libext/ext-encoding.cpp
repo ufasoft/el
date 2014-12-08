@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -38,7 +30,7 @@ class AnsiPageEncoding : public Encoding {
 public:
 	size_t GetBytes(const wchar_t *chars, size_t charCount, byte *bytes, size_t byteCount) {
 		ANSI_STRING as = { (USHORT)byteCount, (USHORT)byteCount, (PCHAR)bytes };
-		UNICODE_STRING us = { charCount*sizeof(wchar_t), charCount*sizeof(wchar_t), (PWCH)chars };
+		UNICODE_STRING us = { USHORT(charCount*sizeof(wchar_t)), USHORT(charCount*sizeof(wchar_t)), (PWCH)chars };
 		NTSTATUS st = RtlUnicodeStringToAnsiString(&as, &us, FALSE);
 		if (NT_SUCCESS(st))
 			return as.Length;
@@ -50,14 +42,13 @@ public:
 ASSERT_CDECL;
 #endif
 
-
 Encoding *Encoding::s_Default;
 UTF8Encoding Encoding::UTF8;
 
 #if UCFG_WDM
 bool Encoding::t_IgnoreIncorrectChars;
 #else
-EXT_THREAD_PTR(Encoding, Encoding::t_IgnoreIncorrectChars);
+EXT_THREAD_PTR(Encoding) Encoding::t_IgnoreIncorrectChars;
 #endif
 
 mutex m_csEncodingMap;
@@ -65,14 +56,18 @@ Encoding::CEncodingMap Encoding::s_encodingMap;
 
 Encoding& AFXAPI Encoding::Default() {
 	if (!s_Default) {
-#if UCFG_CODEPAGE_UTF8
-		static UTF8Encoding s_defaultEncoding;
-#elif UCFG_WDM
-		static AnsiPageEncoding s_defaultEncoding;
+#if UCFG_WDM
+		s_Default = new UTF8Encoding;
 #else
+#	if UCFG_CODEPAGE_UTF8
+		static UTF8Encoding s_defaultEncoding;
+#	elif UCFG_WDM
+		static AnsiPageEncoding s_defaultEncoding;
+#	else
 		static CodePageEncoding s_defaultEncoding(CP_ACP);
-#endif
+#	endif
 		s_Default = &s_defaultEncoding;
+#endif
 	}
 	return *s_Default;
 }
@@ -123,7 +118,7 @@ Encoding *Encoding::GetEncoding(RCString name) {
 		else if (upper == "ASCII")
 			r = new ASCIIEncoding;
 		else if (upper.Left(2) == "CP") {
-			int codePage = atoi(upper.Mid(2));
+			int codePage = atoi(upper.substr(2));
 			r = new CodePageEncoding(codePage);
 		} else {
 #if UCFG_COM
@@ -253,9 +248,6 @@ Blob Encoding::GetBytes(RCString s) {
 }
 
 void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::Char, bool>& visitor) {
-#ifdef X_DEBUG//!!!D
-	cout.write((char*)mb.P, mb.Size);
-#endif
 	size_t len = mb.Size;
 	for (const byte *p=mb.P; len--;) {
 		byte b = *p++;
@@ -379,20 +371,10 @@ size_t UTF8Encoding::GetBytes(const String::Char *chars, size_t charCount, byte 
 }
 
 size_t UTF8Encoding::GetCharCount(const ConstBuf& mb) {
-	struct Visitor : UnaryFunction<String::Char, bool> {
-		size_t count;
+	ASSERT(mb.Size <= INT_MAX);
 
-		Visitor()
-			:	count(0)
-		{}
-
-		bool operator()(String::Char ch) {
-			++count;
-			return true;
-		}
-	} v;
-	Pass(mb, v);
-	return v.count;
+	Cvt::state_type s = Cvt::state_type();
+	return (size_t)m_cvt.length(s, (const char*)mb.P, (const char*)mb.P+mb.Size, INT_MAX);
 }
 
 std::vector<String::Char> UTF8Encoding::GetChars(const ConstBuf& mb) {

@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_COM
@@ -83,20 +75,20 @@ public:
 	CStringBlobBuf(const void *p, size_t len);
 	CStringBlobBuf(size_t len, const void *buf, size_t copyLen);
 
-	~CStringBlobBuf() {
+	~CStringBlobBuf() noexcept {
 		if (m_pChar)
-			Free(m_pChar);
+			free(m_pChar);
 	}
 
 	void * AFXAPI operator new(size_t sz);
-	__forceinline void operator delete(void *p) { Free(p); }
+	__forceinline void operator delete(void *p) { free(p); }
 	void * AFXAPI operator new(size_t sz, size_t len);
-	__forceinline void operator delete(void *p, size_t) { Free(p); }
+	__forceinline void operator delete(void *p, size_t) { free(p); }
 
 	CStringBlobBuf *AsStringBlobBuf() { return this; }
 
-	Char *GetBSTR() { return (Char*)(this+1); } //!!! was BSTR
-	size_t GetSize() { return m_size; }
+	Char *GetBSTR() noexcept { return (Char*)(this+1); } //!!! was BSTR
+	size_t GetSize() noexcept { return m_size; }
 
 	CStringBlobBuf *Clone();
 	CStringBlobBuf *SetSize(size_t size);
@@ -180,34 +172,39 @@ public:
 
 	~Blob();
 
-	void swap(Blob& x) {
+	void swap(Blob& x) noexcept {
 		std::swap(m_pData, x.m_pData);
 	}
-	
+
+	operator ConstBuf() const noexcept { return m_pData ? ConstBuf(constData(), Size) : ConstBuf(0, 0); }
+
 	void AssignIfNull(const Blob& val);
 	Blob& operator=(const Blob& val);
 	Blob& operator=(const ConstBuf& mb) { return operator=(Blob(mb)); }
-	bool operator==(const Blob& blob) const;
-	bool operator<(const Blob& blob) const;
+
+	bool operator==(const ConstBuf& cbuf) const {
+		return Ext::operator==(operator ConstBuf(), cbuf);
+	}
+
+	bool operator==(const Blob& blob) const noexcept;
+	bool operator<(const Blob& blob) const noexcept;
 
 	bool operator!=(const Blob& blob) const { return !operator==(blob); }
 
 	Blob& operator+=(const ConstBuf& mb);
 
 	bool operator!() const { return !m_pData; }
-
-	operator ConstBuf() const { return m_pData ? ConstBuf(constData(), Size) : ConstBuf(0, 0); }
-
+	
 	static Blob AFXAPI FromHexString(RCString s);
 
-	size_t get_Size() const { return m_pData->GetSize(); }
+	size_t get_Size() const noexcept { return m_pData->GetSize(); }
 	void put_Size(size_t size);
 	DEFPROP_CONST(size_t, Size);
 
 	// we don't use property feature to explicit call constData() for efficiency
 	byte *data();
-	__forceinline const byte *data() const { return (const byte*)m_pData->GetBSTR(); }
-	__forceinline const byte *constData() const { return (const byte*)m_pData->GetBSTR(); }
+	__forceinline const byte *data() const noexcept { return (const byte*)m_pData->GetBSTR(); }
+	__forceinline const byte *constData() const noexcept { return (const byte*)m_pData->GetBSTR(); }
 
 	const byte *begin() const { return constData(); }
 	const byte *end() const { return constData()+Size; }
@@ -236,7 +233,7 @@ private:
 friend class String;
 };
 
-inline void swap(Blob& x, Blob& y) {
+inline void swap(Blob& x, Blob& y) noexcept {
 	x.swap(y);
 }
 

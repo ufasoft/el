@@ -1,16 +1,4 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
-
-
-
-
 
 
 #define CREATE_NEW          1 //!!!  windows
@@ -20,6 +8,9 @@ typedef struct tagEXCEPINFO EXCEPINFO;
 #	include <nl_types.h>
 #endif
 
+
+#include EXT_HEADER_FILESYSTEM
+
 namespace Ext {
 
 class Stream;
@@ -28,6 +19,8 @@ class DirectoryInfo;
 
 typedef UInt32 (*AFX_THREADPROC)(void *);
 
+bool AFXAPI GetSilentUI();
+void AFXAPI SetSilentUI(bool b);
 
 #if !UCFG_WDM
 class CResID : public CPersistent, public CPrintable {
@@ -232,47 +225,6 @@ struct CTimesInfo {
 
 #endif
 
-class IOExc : public Exception {
-	typedef Exception base;
-public:
-	String FileName;
-
-	IOExc(HRESULT hr)
-		:	base(hr)
-	{}
-
-	String get_Message() const override {
-		String r = base::get_Message();
-		if (!FileName.IsEmpty())
-			r += " "+FileName;
-		return r;
-	}
-};
-
-class FileNotFoundException : public IOExc {
-	typedef IOExc base;
-public:
-	FileNotFoundException()
-		:	base(HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
-	{}
-};
-
-class FileAlreadyExistsExc : public IOExc {
-	typedef IOExc base;
-public:
-	FileAlreadyExistsExc()
-		:	base(HRESULT_FROM_WIN32(ERROR_FILE_EXISTS))
-	{}
-};
-
-class DirectoryNotFoundExc : public Exception {
-	typedef Exception base;
-public:
-	DirectoryNotFoundExc()
-		:	base(HRESULT_OF_WIN32(ERROR_PATH_NOT_FOUND))
-	{}
-};
-
 
 #ifdef WIN32
 
@@ -326,10 +278,6 @@ public:
 		archive =   0x20
 	};
 
-	static bool AFXAPI Exists(RCString path);
-	static void AFXAPI Delete(RCString path);
-	static void AFXAPI Copy(RCString src, RCString dest, bool bOverwrite = false);
-	static void AFXAPI Move(RCString src, RCString dest);
 
 	EXT_DATA static bool s_bCreateFileWorksWithMMF;
 	CBool m_bFileForMapping;
@@ -340,8 +288,8 @@ public:
 		Attach(h, bOwn);
 	}
 
-	File(RCString path, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read) {
-		Open(path, mode, access, share);
+	File(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read) {
+		Open(p, mode, access, share);
 	}
 
 	~File();
@@ -353,7 +301,7 @@ public:
 	static void AFXAPI WriteAllText(RCString path, RCString contents, Encoding *enc = &Encoding::UTF8);
 
 	struct OpenInfo {
-		String Path;
+		path Path;
 		FileMode Mode;
 		FileAccess Access;
 		FileShare Share;
@@ -370,7 +318,7 @@ public:
 	};
 
 	void Open(const OpenInfo& oi);
-	EXT_API virtual void Open(RCString path, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
+	EXT_API virtual void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
 #ifdef WIN32
 	void Create(RCString fileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
 	void CreateForMapping(LPCTSTR lpFileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
@@ -528,19 +476,6 @@ public:
 };
 
 
-class AFX_CLASS CSingleLock {
-public:
-	CSingleLock(CSyncObject *pObject, bool bInitialLock = false);
-	~CSingleLock();
-	void Lock(DWORD dwTimeOut = INFINITE);
-	void Unlock();
-	bool IsLocked();
-protected:
-	CSyncObject *m_pObject;
-	CBool m_bAcquired;
-};
-
-
 class FileStream : public Stream {
 	typedef FileStream class_type;
 public:
@@ -571,10 +506,10 @@ public:
 	{
 	}
 
-	FileStream(RCString path, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read)
+	FileStream(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read)
 		:	m_fstm(0)
 	{
-		Open(path, mode, access, share);
+		Open(p, mode, access, share);
 	}
 
 	~FileStream() {
@@ -582,7 +517,7 @@ public:
 			Close();
 	}
 
-	EXT_API void Open(RCString path, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
+	EXT_API void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
 	size_t Read(void *buf, size_t count) const override;
 	void ReadBuffer(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
@@ -687,7 +622,7 @@ EXT_DEF_HASH(Ext::Guid)
 
 namespace Ext {
 
-class Version : public CPrintable {
+class Version : public CPrintable, totally_ordered<Version> {
 public:
 	int Major, Minor, Build, Revision;
 
@@ -708,17 +643,11 @@ public:
 		return Major==ver.Major && Minor==ver.Minor && Build==ver.Build && Revision==ver.Revision;
 	}
 
-	bool operator!=(const Version& ver) const { return !operator==(ver); }
-
 	bool operator<(const Version& ver) const {
 		return Major<ver.Major ||
 			Major==ver.Major && (Minor<ver.Minor ||
 			                     Minor==ver.Minor && (Build<ver.Build ||
 								                      Build==ver.Build  && Revision<ver.Revision));
-	}
-
-	bool operator>(const Version& ver) const {
-		return ver < *this;
 	}
 
 	String ToString(int fieldCount) const;
@@ -795,44 +724,24 @@ public:
 #endif
 
 
-class Directory {
-public:
-	EXT_API static DirectoryInfo AFXAPI CreateDirectory(RCString path);
-	static void AFXAPI Delete(RCString path, bool bRecursive = false);
-	static bool AFXAPI Exists(RCString path);
-
-	static std::vector<String> AFXAPI GetFiles(RCString path, RCString searchPattern = "*") {
-		return GetItems(path, searchPattern, false);
-	}
-
-	static std::vector<String> AFXAPI GetDirectories(RCString path, RCString searchPattern = "*") {
-		return GetItems(path, searchPattern, true);
-	}
-
-#if !UCFG_WCE
-	EXT_API static String AFXAPI GetCurrentDirectory();
-	EXT_API static void AFXAPI SetCurrentDirectory(RCString path);
-#endif
-private:
-	EXT_API static std::vector<String> AFXAPI GetItems(RCString path, RCString searchPattern, bool bDirs);
-};
-
 #if !UCFG_WCE
 
-class CDirectoryKeeper {
-	String m_prevDir;
+class CDirectoryKeeper {													//!!! Non Thread-safe
 public:
-	CDirectoryKeeper(RCString newDir) {
-		m_prevDir = Directory::GetCurrentDirectory();
-		Directory::SetCurrentDirectory(newDir);
+	CDirectoryKeeper(const path& p)
+		:	m_prevCurPath(current_path())
+	{
+		current_path(p);
 	}
 
 	~CDirectoryKeeper() {
-		Directory::SetCurrentDirectory(m_prevDir);
+		current_path(m_prevCurPath);
 	}
+private:
+	std::path m_prevCurPath;
 };
 
-#endif
+#endif // !UCFG_WCE
 
 class /*!!!R EXTCLASS*/ Path {
 public:
@@ -844,38 +753,26 @@ public:
 	};
 
 #ifdef _WIN32				//	for WDM too
-	static const char DirectorySeparatorChar = '\\';
 	static const char AltDirectorySeparatorChar = '/';
 	static const char VolumeSeparatorChar = ':';
 	static const char PathSeparator = ';';
 #else
-	static const char DirectorySeparatorChar = '/';
 	static const char AltDirectorySeparatorChar = '/';
 	static const char VolummeSeparatorChar = '/';
 	static const char PathSeparator = ':';
 #endif
 
-	EXT_API static String AFXAPI GetTempPath();
 	EXT_API static std::pair<String, UINT> AFXAPI GetTempFileName(RCString path, RCString prefix, UINT uUnique = 0);
-	EXT_API static String AFXAPI GetTempFileName() { return GetTempFileName(GetTempPath(), "tmp").first; }
-	static String AFXAPI GetFullPath(RCString s);
-	static bool AFXAPI IsPathRooted(RCString path);
+	EXT_API static String AFXAPI GetTempFileName() { return GetTempFileName(temp_directory_path(), "tmp").first; }
 
 	static CSplitPath AFXAPI SplitPath(RCString path);
-	static String AFXAPI GetDirectoryName(RCString path);
-	static String AFXAPI GetFileName(RCString path);
-	static String AFXAPI GetFileNameWithoutExtension(RCString path);
-	static String AFXAPI GetExtension(RCString path);
-	static bool AFXAPI HasExtension(RCString path) { return !GetExtension(path).IsEmpty(); }
 
-	static String AFXAPI Combine(RCString path1, RCString path2);
-	static String AFXAPI ChangeExtension(RCString path, RCString ext);
 	static String AFXAPI GetPhysicalPath(RCString p);
 	static String AFXAPI GetTruePath(RCString p);
 };
 
-AFX_API String AFXAPI AddDirSeparator(RCString s);
-AFX_API String AFXAPI RemoveDirSeparator(RCString s, bool bOnEndOnly = false);
+path AFXAPI AddDirSeparator(const path& p);
+//!!!RAFX_API String AFXAPI RemoveDirSeparator(RCString s, bool bOnEndOnly = false);
 
 
 class FileSystemInfo {
@@ -891,17 +788,6 @@ public:
 
 	DWORD get_Attributes() const;
 	DEFPROP_GET(DWORD, Attributes);
-
-	bool get_Exists() const {
-		return m_bDir ? Directory::Exists(FullPath) : File::Exists(FullPath);
-	}
-	DEFPROP_GET_CONST(bool, Exists);
-
-	void Delete(RCString path) {
-		return m_bDir ? Directory::Delete(FullPath) : File::Delete(FullPath);
-	}
-
-	operator bool() const { return Exists; }
 
 	DateTime get_CreationTime() const;
 	void put_CreationTime(const DateTime& dt);
@@ -927,21 +813,6 @@ public:
 		:	FileSystemInfo(name, false)
 	{}
 
-	Int64 get_Length() const;
-	DEFPROP_GET(Int64, Length);
-
-	FileInfo CopyTo(RCString destFileName, bool bOverwrite = false) {
-		File::Copy(FullPath, destFileName, bOverwrite);
-		return destFileName;
-	}
-	
-	void MoveTo(RCString destFileName) {
-		File::Move(FullPath, destFileName);
-	}
-	
-	void Delete() {
-		File::Delete(FullPath);
-	}
 };
 
 class DirectoryInfo : public FileSystemInfo {
@@ -949,10 +820,6 @@ public:
 	DirectoryInfo(RCString name)
 		:	FileSystemInfo(name, true)
 	{}
-
-	void Delete(RCString path, bool bRecursive) {
-		Directory::Delete(path, bRecursive);
-	}
 };
 
 #if UCFG_WIN32_FULL
@@ -1101,15 +968,15 @@ public:
 
 	static String AFXAPI CommandLine();
 #if !UCFG_WCE
-	EXT_API static std::vector<String> AFXAPI GetCommandLineArgs();
+	EXT_API static vector<String> AFXAPI GetCommandLineArgs();
 	EXT_API static String AFXAPI GetEnvironmentVariable(RCString s);
 	EXT_API static void AFXAPI SetEnvironmentVariable(RCString name, RCString val);
 	AFX_API static String AFXAPI ExpandEnvironmentVariables(RCString name);
-	EXT_API static std::map<String, String> AFXAPI GetEnvironmentVariables();
+	EXT_API static map<String, String> AFXAPI GetEnvironmentVariables();
 #endif
 
-	static String AFXAPI SystemDirectory();
-	EXT_API static String AFXAPI GetFolderPath(SpecialFolder folder);
+	static path AFXAPI SystemDirectory();
+	EXT_API static path AFXAPI GetFolderPath(SpecialFolder folder);
 	static String AFXAPI GetMachineType();
 	static String AFXAPI GetMachineVersion();
 	
@@ -1184,7 +1051,14 @@ typedef vararray<byte, 64> hashval;
 
 class HashAlgorithm {
 public:
+	size_t BlockSize,
+		HashSize;
 	CBool IsHaifa;
+
+	HashAlgorithm()
+		:	BlockSize(0)
+		,	HashSize(0)
+	{}
 
 	virtual ~HashAlgorithm() {}
 	virtual hashval ComputeHash(Stream& stm);
@@ -1195,6 +1069,9 @@ public:
 protected:
 	CBool Is64Bit;
 };
+
+hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text);
+
 
 class Crc32 : public HashAlgorithm {
 	typedef HashAlgorithm base;
@@ -1238,11 +1115,6 @@ private:
 #endif // UCFG_USE_POSIX
 
 
-class AFX_CLASS CNoTrackString : public CNoTrackObject {
-public:
-	String m_string;
-};
-
 class AFX_CLASS CMessageRange {
 public:
 	CMessageRange();
@@ -1250,15 +1122,15 @@ public:
 	virtual String CheckMessage(DWORD code) { return ""; }
 };
 
-class EXTAPI CMessageProcessor {
+class EXTAPI CMessageProcessor : noncopyable {
 	struct CModuleInfo {
 		UInt32 m_lowerCode, m_upperCode;
-		String m_moduleName;
+		path m_moduleName;
 #if UCFG_USE_POSIX
 		MessageCatalog m_mcat;
 		CBool m_bCheckedOpen;
 #endif
-		void Init(UInt32 lowerCode, UInt32 upperCode, RCString moduleName);
+		void Init(UInt32 lowerCode, UInt32 upperCode, const path& moduleName);
 		String GetMessage(HRESULT hr);
 	};
 
@@ -1277,7 +1149,7 @@ public:
 	String ProcessInst(HRESULT hr);
 	static String AFXAPI Process(HRESULT hr);
 
-	CThreadLocal<CNoTrackString> m_param;
+	thread_specific_ptr<String> m_param;
 
 	static void AFXAPI SetParam(RCString s);
 };
@@ -1315,6 +1187,8 @@ public:
 	virtual void Set(int idx, const VarValue& v) =0;
 	virtual void Set(RCString key, const VarValue& v) =0;
 	virtual std::vector<String> Keys() const =0;
+
+	virtual void Print(std::ostream& os) const { Throw(E_NOTIMPL); }
 };
 
 class VarValue {
@@ -1355,6 +1229,7 @@ public:
 	void Set(RCString key, const VarValue& v);
 	void SetType(VarType typ);
 	std::vector<String> Keys() const { return Impl().Keys(); }
+	void Print(std::ostream& os) const { Impl().Print(os); }
 private:
 	template <typename T>
 	VarValue(const T*);							// to prevent VarValue(bool) ctor for pointers
@@ -1366,6 +1241,11 @@ private:
 	}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const VarValue& v) {
+	v.Print(os);
+	return os;
+}
+
 } // Ext::
 namespace EXT_HASH_VALUE_NS {
 	size_t hash_value(const Ext::VarValue& v);
@@ -1376,11 +1256,20 @@ namespace Ext {
 
 class MarkupParser : public Object {
 public:
+	int Indent;
+	CBool Compact;
+
+	MarkupParser()
+		:	Indent(0)
+	{}
+
 	virtual ~MarkupParser() {
 	}
 
 	virtual VarValue Parse(std::istream& is, Encoding *enc = &Encoding::UTF8) =0;
 	virtual void Print(std::ostream& os, const VarValue& v) =0;
+	
+	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf = ConstBuf()) { Throw(E_NOTIMPL); }
 
 	static ptr<MarkupParser> AFXAPI CreateJsonParser();
 };
@@ -1501,9 +1390,9 @@ public:
 
 struct ProcessStartInfo {
 	std::map<String, String> EnvironmentVariables;
-	String FileName,
-		Arguments,
+	path FileName,
 		WorkingDirectory;
+	String Arguments;
 	CBool CreateNewWindow,
 		CreateNoWindow,
 		RedirectStandardInput,
@@ -1511,7 +1400,7 @@ struct ProcessStartInfo {
 		RedirectStandardError;
 	DWORD Flags;
 
-	ProcessStartInfo(RCString fileName = String(), RCString arguments = String());
+	ProcessStartInfo(const path& fileName = path(), RCString arguments = String());
 };
 
 class ProcessObj : public SafeHandle { //!!!
@@ -1521,7 +1410,7 @@ public:
 
 	ProcessStartInfo StartInfo;
 
-#if UCFG_EXTENDED && !UCFG_WCE
+#if !UCFG_WCE
 protected:
 	File m_fileIn, m_fileOut, m_fileErr;
 public:
@@ -1564,7 +1453,6 @@ public:
 	void put_PriorityClass(DWORD pc) { Win32Check(::SetPriorityClass(HandleAccess(*this), pc)); }
 
 	String get_MainModuleFileName();
-	DEFPROP_GET(String, MainModuleFileName);
 #endif
 
 	void FlushInstructionCache(LPCVOID base = 0, SIZE_T size = 0) { Win32Check(::FlushInstructionCache(HandleAccess(*this), base, size)); }
@@ -1596,8 +1484,10 @@ public:
 
 	static Process AFXAPI Start(const ProcessStartInfo& psi);
 
-#if UCFG_EXTENDED && !UCFG_WCE
+#if !UCFG_WCE
 	Stream& StandardInput() { return m_pimpl->StandardInput; }
+	Stream& StandardOutput() { return m_pimpl->StandardOutput; }
+	Stream& StandardError() { return m_pimpl->StandardError; }
 #endif
 
 	DWORD get_ID() const { return m_pimpl->get_ID(); }
@@ -1618,14 +1508,25 @@ public:
 	static std::vector<Process> AFXAPI GetProcesses();
 	static std::vector<Process> AFXAPI GetProcessesByName(RCString name);
 
+#if UCFG_WIN32
+	static Process AFXAPI FromHandle(HANDLE h, bool bOwn);
+	void FlushInstructionCache(LPCVOID base = 0, SIZE_T size = 0) { m_pimpl->FlushInstructionCache(base, size); }
+	DWORD VirtualProtect(void *addr, size_t size, DWORD flNewProtect) { return m_pimpl->VirtualProtect(addr, size, flNewProtect); }
+	MEMORY_BASIC_INFORMATION VirtualQuery(const void *addr) { return m_pimpl->VirtualQuery(addr); }
+	SIZE_T ReadMemory(LPCVOID base, LPVOID buf, SIZE_T size) { return m_pimpl->ReadMemory(base, buf, size); }
+	SIZE_T WriteMemory(LPVOID base, LPCVOID buf, SIZE_T size) { return m_pimpl->WriteMemory(base, buf, size); }
+#endif
+
 #if UCFG_WIN32_FULL
 	DWORD get_PriorityClass() { return m_pimpl->get_PriorityClass(); }
 	void put_PriorityClass(DWORD pc) { m_pimpl->put_PriorityClass(pc); }
 	DEFPROP(DWORD, PriorityClass);
 
 	void GenerateConsoleCtrlEvent(DWORD dwCtrlEvent = 1);		// CTRL_BREAK_EVENT==1
-#endif
 
+	String get_MainModuleFileName() { return m_pimpl->get_MainModuleFileName(); }
+	DEFPROP_GET(String, MainModuleFileName);
+#endif
 };
 
 

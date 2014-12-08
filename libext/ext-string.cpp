@@ -1,14 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
+#	define WIN32_LEAN_AND_MEAN
 #	include <comutil.h>
 #endif
 
@@ -179,7 +172,7 @@ const char *String::c_str() const {  //!!! optimize
 					char *pch = p.release();
 					pch[r] = 0; //!!!? R
 					if (Interlocked::CompareExchange(pChar, pch, (char*)nullptr))
-						Free(pch);
+						free(pch);
 					break;
 				}
 			}
@@ -270,10 +263,10 @@ String::String(const std::vector<Char>& vec)
 	Init(vec.empty() ? 0 : &vec[0], vec.size());
 }
 
-void String::MakeDirty() {
+void String::MakeDirty() noexcept {
 	if (m_blob.m_pData)
 		if (char * volatile &p = m_blob.m_pData->AsStringBlobBuf()->m_pChar)
-			Free(exchange(p, (char*)0));
+			free(exchange(p, (char*)0));
 }
 
 #if UCFG_WDM
@@ -403,10 +396,20 @@ int String::Compare(const String& s) const {
 	}
 }
 
+#if UCFG_WDM
+static locale s_locale("");
+
+static locale& UserLocale() {
+	return s_locale; 
+}
+
+#else
 static locale& UserLocale() {
 	static locale s_locale("");
 	return s_locale; 
 }
+
+#endif // UCFG_WDM
 
 static locale& s_locale_not_used = UserLocale();	// initialize while one thread, don't use
 
@@ -433,20 +436,33 @@ int String::CompareNoCase(const String& s) const {
 	}
 }
 
-bool String::IsEmpty() const noexcept {
+bool String::empty() const noexcept {
 	return !m_blob.m_pData || m_blob.Size==0;
 }
 
-void String::Empty() {
-	m_blob.Size = 0;
+void String::clear() {		//  noexcept 
+	m_blob.Size = 0;		//!!!TODO make this function noexcept
 	MakeDirty();
 }
 
-int String::Find(Char c) const {
-	for (size_t i=0,e=Length; i<e; i++)
-		if (_self[i] == c)
-			return (int)i;
-	return -1;
+String::size_type String::find(Char ch, size_type pos) const {
+	const Char *p = _self;
+	for (size_t i=pos, e=size(); i<e; ++i)
+		if (p[i] == ch)
+			return i;
+	return npos;
+}
+
+String::size_type String::find(const Char *s, size_type pos, size_type count) const {
+	size_t cbS = sizeof(Char) * count;
+	if (count <= size()) {
+		const Char *p = _self,
+			*q = s;
+		for (size_t i=pos, e=size()-count; i<e; ++i)
+			if (!memcmp(p+i, q, cbS))
+				return i;
+	}
+	return npos;
 }
 
 int String::LastIndexOf(Char c) const {
@@ -456,34 +472,10 @@ int String::LastIndexOf(Char c) const {
 	return -1;
 }
 
-int String::Find(RCString s, int nStart) const {
-	if (nStart > (ssize_t)Length)
-		return -1;
-	const Char *p = _self;
-	const Char *lpsz = StrStr<Char>(p+nStart, s);
-	return int(lpsz ? lpsz - p : -1);
-}
-
-String String::Mid(int nFirst, int nCount) const {
-	// out-of-bounds requests return sensible things
-	if (nFirst < 0)
-		nFirst = 0;
-	if (nCount < 0)
-		nCount = 0;
-
-	if ((DWORD)nFirst + (DWORD)nCount > (DWORD)Length)
-		nCount = int(Length - nFirst);
-	if (nFirst > (ssize_t)Length)
-		nCount = 0;
-
-	// optimize case of returning entire string
-	if (nFirst == 0 && nFirst + nCount == (ssize_t)Length)
-		return _self;
-
-	String dest;
-	dest.m_blob.Size = nCount*sizeof(Char);
-	memcpy(dest.m_blob.data(), m_blob.constData()+nFirst*sizeof(Char), nCount*sizeof(Char));
-	return dest;
+String String::substr(size_type pos, size_type count) const {
+	if (pos > size())
+		Throw(E_EXT_IndexOutOfRange);
+	return !pos && count>=size() ? _self : String((const Char*)_self + pos, min(count, size()-pos));
 }
 
 String String::Right(ssize_t nCount) const {
@@ -515,7 +507,7 @@ String String::TrimStart(RCString trimChars) const {
 		if (!trimChars) {
 			if (!iswspace(ch)) //!!! must test wchar_t
 				break;
-		} else if (trimChars.Find(ch) == -1)
+		} else if (trimChars.find(ch) == npos)
 			break;
 	}
 	return Right(int(Length-i));
@@ -528,14 +520,14 @@ String String::TrimEnd(RCString trimChars) const {
 		if (!trimChars) {
 			if (!iswspace(ch)) //!!! must test wchar_t
 				break;
-		} else if (trimChars.Find(ch) == -1)
+		} else if (trimChars.find(ch) == npos)
 			break;
 	}
 	return Left(int(i+1));
 }
 
 vector<String> String::Split(RCString separator, size_t count) const {
-	String sep = separator.IsEmpty() ? " \t\n\r\v\f\b" : separator;
+	String sep = separator.empty() ? " \t\n\r\v\f\b" : separator;
 	vector<String> ar;
 	for (const Char *p = _self; count-- && *p;) {
 		if (count) {
@@ -583,8 +575,8 @@ void String::Replace(int offset, int size, const String& s) {
 	m_blob.Replace(offset*sizeof(Char), size*sizeof(Char), s.m_blob);
 }
 
-size_t String::GetLength() const {
-	return m_blob.Size/sizeof(Char);
+size_t String::GetLength() const noexcept {
+	return m_blob.Size / sizeof(Char);
 }
 
 #if UCFG_COM

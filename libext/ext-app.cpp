@@ -1,16 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "ext-fw.h"
 
 #if UCFG_WIN32
+#	include EXT_HEADER_CODECVT
 #	include <el/libext/win32/ext-win.h>
 #endif
 
@@ -38,19 +31,19 @@ void CCommandLineInfo::ParseParamFlag(RCString pszParam) {
 }
 
 void CCommandLineInfo::ParseParamNotFlag(RCString pszParam) {
-	if (m_strFileName.IsEmpty())
+	if (m_strFileName.empty())
 		m_strFileName = pszParam;
-	else if (m_nShellCommand == FilePrintTo && m_strPrinterName.IsEmpty())
+	else if (m_nShellCommand == FilePrintTo && m_strPrinterName.empty())
 		m_strPrinterName = pszParam;
-	else if (m_nShellCommand == FilePrintTo && m_strDriverName.IsEmpty())
+	else if (m_nShellCommand == FilePrintTo && m_strDriverName.empty())
 		m_strDriverName = pszParam;
-	else if (m_nShellCommand == FilePrintTo && m_strPortName.IsEmpty())
+	else if (m_nShellCommand == FilePrintTo && m_strPortName.empty())
 		m_strPortName = pszParam;
 }
 
 void CCommandLineInfo::ParseLast(bool bLast) {
 	if (bLast) {
-		if ((m_nShellCommand == FileNew || m_nShellCommand == FileNothing)&& !m_strFileName.IsEmpty())
+		if ((m_nShellCommand == FileNew || m_nShellCommand == FileNothing)&& !m_strFileName.empty())
 			m_nShellCommand = FileOpen;
 		m_bShowSplash = !m_bRunEmbedded && !m_bRunAutomated;
 	}
@@ -108,7 +101,7 @@ String CAppBase::GetCompanyName() {
 	String companyName = MANUFACTURER;
 	DWORD dw;
 	try {
-		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName, &dw)) //!!!
+		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName.native(), &dw)) //!!!
 			companyName = FileVersionInfo().CompanyName;
 	} catch (RCExc){
 	}
@@ -135,7 +128,7 @@ RegistryKey& CAppBase::get_KeyCU() {
 
 #if UCFG_WIN32_FULL
 
-String COperatingSystem::get_WindowsDirectory() {
+path COperatingSystem::get_WindowsDirectory() {
 	TCHAR szPath[_MAX_PATH];
 	Win32Check(::GetWindowsDirectory(szPath , _countof(szPath)));
 	return szPath;
@@ -146,34 +139,34 @@ String COperatingSystem::get_WindowsDirectory() {
 
 #if UCFG_WIN32
 
-String AFXAPI GetAppDataManufacturerFolder() {
-	String r;
+path AFXAPI GetAppDataManufacturerFolder() {
+	path r;
 #	if !UCFG_WCE
 	try {
 		r = Environment::GetEnvironmentVariable("APPDATA");
-		if (!r)
+		if (r.empty())
 			r = Environment::GetFolderPath(SpecialFolder::ApplicationData);
 	} catch (RCExc) {
-		r = Path::Combine(System.WindowsDirectory, "Application Data");
+		r = System.WindowsDirectory / "Application Data";
 	}
 #	endif
 #if UCFG_COMPLEX_WINAPP
-	r = Path::Combine(r, AfxGetApp()->GetCompanyName());
+	r /= AfxGetApp()->GetCompanyName();
 #else
-	r = Path::Combine(r, MANUFACTURER);
+	r /= MANUFACTURER;
 #endif
-	Directory::CreateDirectory(r);
+	create_directory(r);
 	return r;
 }
 #endif
 
 
 String CAppBase::GetInternalName() {
-	if (!m_internalName.IsEmpty())
+	if (!m_internalName.empty())
 		return m_internalName;
 #if UCFG_WIN32
 	DWORD dw;
-	if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName, &dw))
+	if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName.native(), &dw))
 		return FileVersionInfo().InternalName;
 #endif
 #ifdef VER_INTERNALNAME_STR
@@ -183,14 +176,14 @@ String CAppBase::GetInternalName() {
 #endif
 }
 
-String CAppBase::get_AppDataDir() {
-	if (m_appDataDir.IsEmpty()) {
+path CAppBase::get_AppDataDir() {
+	if (m_appDataDir.empty()) {
 #if UCFG_WIN32
-		String dir = Path::Combine(GetAppDataManufacturerFolder(), GetInternalName());
+		path dir = GetAppDataManufacturerFolder() / GetInternalName();
 #elif UCFG_USE_POSIX
-		String dir = Path::Combine(Environment::GetFolderPath(SpecialFolder::ApplicationData), "."+GetInternalName());
+		path dir = Environment::GetFolderPath(SpecialFolder::ApplicationData) / ("."+GetInternalName());
 #endif
-		Directory::CreateDirectory(AddDirSeparator(m_appDataDir = dir));
+		create_directory(m_appDataDir = dir);
 	}
 	return m_appDataDir;
 }
@@ -271,66 +264,96 @@ CAppBase * AFXAPI AfxGetCApp() {
 #endif
 }
 
+#if UCFG_WIN32
 
-/*!!!R
-#if UCFG_WIN32_FULL
-
-class COemStreambuf : public filebuf {
-	int overflow(int c) override {
-#if UCFG_WIN32_FULL
-		if (c != EOF)
-			CharToOemA((LPCSTR)&c, (LPSTR)&c);
-#endif
-		if (c == 7) //!!! BELL
-			return c; 
-		return filebuf::overflow(c);
-	}
+class OutputForwarderBuffer : public basic_streambuf<char>, noncopyable {
+	typedef basic_streambuf<char> base;
 public:
-	COemStreambuf(FILE *file)
-		:	filebuf(file)
-	{}
-};
+    typedef base StreamBuffer;
+    typedef basic_streambuf<wchar_t> WideStreamBuffer;
+	
+    OutputForwarderBuffer(StreamBuffer& existingBuffer, WideStreamBuffer* pWideStreamBuffer)
+        :	base( existingBuffer )
+        ,	m_wideStreamBuf(pWideStreamBuffer)
+		,	m_state()
+    {}
+protected:
+    streamsize xsputn(const char* s, streamsize n) override {
+		size_t bufSize = std::min(size_t(100), size_t(n));
+		wchar_t *wbuf = (wchar_t*)alloca(bufSize * sizeof(wchar_t)), *wnext;
+		for (const char *next, *fb=s, *fe=s+n; ;) {
+			Cvt::result rc = m_cvt.in(m_state, fb, fe, next, wbuf, wbuf+bufSize, wnext);
+			if (wnext != wbuf)
+				m_wideStreamBuf->sputn(wbuf, wnext-wbuf);
+			if (exchange(fb, next) == next)
+				return next-s;
+		}
+    }
 
-
-class CConsoleFilter {
-public:
-	CConsoleFilter()
-		:	m_sbufStdout(stdout)
-		,	m_sbufStderr(stderr)
-	{
-		if (_isatty(_fileno(stdout)))
-			cout.rdbuf(&m_sbufStdout);
-		if (_isatty(_fileno(stderr)))
-			cerr.rdbuf(&m_sbufStderr);
-	}
+    int_type overflow(int_type c) override {
+        const bool cIsEOF = traits_type::eq_int_type( c, traits_type::eof() );
+        const int_type failureValue = traits_type::eof();
+        const int_type successValue = cIsEOF ? traits_type::not_eof(c) : c;
+ 
+        if( !cIsEOF ) {
+            const char_type ch = traits_type::to_char_type( c );
+            const streamsize nCharactersWritten  = xsputn( &ch, 1 ); 
+            return (nCharactersWritten == 1? successValue : failureValue);
+        }
+        return successValue;
+    }
 private:
-	COemStreambuf m_sbufStdout,
-				m_sbufStderr;
+	WideStreamBuffer *m_wideStreamBuf;
 
-}; //!!! g_consoleFilter;
+	typedef codecvt_utf8_utf16<wchar_t> Cvt;
+	Cvt m_cvt;
+	Cvt::state_type	m_state;
+};
+  
+class DirectOutputBuffer : public basic_streambuf<wchar_t>, noncopyable  {
+public:
+    enum StreamId { outputStreamId, errorStreamId, logStreamId };
+ 
+    DirectOutputBuffer( StreamId streamId = outputStreamId )
+        :	streamId_( streamId )
+    {} 
+protected:
+    streamsize xsputn(const wchar_t* s, streamsize n) override {
+        static HANDLE const outputStreamHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+        static HANDLE const errorStreamHandle = GetStdHandle(STD_ERROR_HANDLE);
+ 
+        HANDLE const streamHandle = (streamId_ == outputStreamId? outputStreamHandle : errorStreamHandle);         
+        DWORD nCharactersWritten = 0;
+        bool writeSucceeded = ::WriteConsole(streamHandle, s, (DWORD)n, &nCharactersWritten, 0);
+        return writeSucceeded ? (streamsize)nCharactersWritten  : 0;
+    }
+private:
+    StreamId streamId_;
+};
+#endif // UCFG_WIN32
 
-#endif
-*/
 
 CConApp::CConApp() {
 	s_pApp = this;
 	setlocale(LC_CTYPE, "");
 #if UCFG_WIN32
 	_wsetlocale(LC_CTYPE, L"");
-#endif
 
-	/*!!!
-#if UCFG_WIN32_FULL
-	locale locConsole(locale(), new CodepageCvt(::GetConsoleOutputCP()));
-	if (_isatty(_fileno(stdout)))
-		wcout.imbue(locConsole);
-	if (_isatty(_fileno(stderr)))
-		wcerr.imbue(locConsole);
-	
-
-//!!!	new CConsoleFilter;
-#endif 
-*/
+	static bool s_bSetUtf8Mode;
+	if (!exchange(s_bSetUtf8Mode, true)) {
+#	if _VC_CRT_MAJOR_VERSION<14
+		_setmode(_fileno(stdin), _O_U8TEXT);
+		_setmode(_fileno(stdout), _O_U8TEXT);
+		_setmode(_fileno(stderr), _O_U8TEXT);
+#	endif
+		static OutputForwarderBuffer coutBuffer(*cout.rdbuf(), wcout.rdbuf()),
+			cerrBuffer(*cerr.rdbuf(), wcerr.rdbuf()),
+			clogBuffer(*clog.rdbuf(), wclog.rdbuf()); 
+	    cout.rdbuf( &coutBuffer );
+    	cerr.rdbuf( &cerrBuffer );
+	    clog.rdbuf( &clogBuffer );
+	}
+#endif // UCFG_WIN32
 }
 
 
@@ -355,13 +378,13 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 		ParseCommandLine(_self);
 		if (m_bPrintLogo) {
 			wcerr << FileDescription << ' ' << SVersion << "  " << LegalCopyright;
-			if (!Url.IsEmpty())
+			if (!Url.empty())
 				wcerr << "  " << Url;
 			wcerr << endl;
 		}
 		Execute();
 	} catch (const Exception& ex) {
-		switch (ex.HResult) {
+		switch (ex.code().value()) {
 		case 1:
 			Usage();
 		case 0:

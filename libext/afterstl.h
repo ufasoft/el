@@ -1,15 +1,6 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include EXT_HEADER(list)
-#include EXT_HEADER_DYNAMIC_BITSET
 
 
 namespace Ext {
@@ -41,7 +32,7 @@ public:
 
 	~Array() {
 		if (m_p)
-			Free(m_p);
+			free(m_p);
 	}
 
 	char *get() const { return m_p; }
@@ -292,12 +283,7 @@ void *ListIteratorToPtr(LI li) {
 #endif
 }
 
-/*!!!R
-#ifdef _DEBUG//!!!D
-#	define ASSERT_INTRUSIVE assert(empty() || (getP()->Prev != getP() && getP()->Prev != getP())) 
-#else */
 #	define ASSERT_INTRUSIVE
-//!!!R #endif
 
 template <typename T>
 class IntrusiveList : noncopyable {
@@ -526,12 +512,14 @@ private:
 		e;
 };
 
-
 template <class I>
 void Reverse(const Range<I>& range) { reverse(range.begin, range.end); }
 
 template <class I, class L>
 void Sort(Range<I> range, L cmp) { sort(begin(range), end(range), cmp); }
+
+template <class C, class P>
+bool AllOf(C& range, P pred) { return all_of(begin(range), end(range), pred); }
 
 template <class C>
 void Sort(C& range) { sort(begin(range), end(range)); }
@@ -631,7 +619,6 @@ public:
 	}
 };
 
-UInt64 ToUInt64AtBytePos(const std::dynamic_bitset<byte>& bs, size_t pos);
 
 template <typename T, class L>
 T clamp(const T& v, const T& lo, const T& hi, L pred) {
@@ -657,7 +644,5 @@ template <class T>
 size_t AFXAPI hash_value(const Ext::Pimpl<T>& v) { return hash_value(v.m_pimpl); }
 
 } // stdext::
-
-
 
 

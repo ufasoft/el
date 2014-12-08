@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_STDSTL
@@ -14,10 +6,16 @@
 #	define EXT_HEADER(hname) <el/stl/hname>
 #endif
 
-#if UCFG_CPP11_HAVE_DECIMAL
+#if UCFG_STD_DECIMAL
 #	define EXT_HEADER_DECIMAL EXT_HEADER(decimal/decimal)			//!!!?
 #else
 #	define EXT_HEADER_DECIMAL <el/stl/decimal>
+#endif
+
+#if UCFG_CPP11_HAVE_CODECVT
+#	define EXT_HEADER_CODECVT EXT_HEADER(codecvt)
+#else
+#	define EXT_HEADER_CODECVT <el/stl/codecvt>
 #endif
 
 #define EXT_HEADER_CONDITION_VARIABLE EXT_HEADER(condition_variable)
@@ -33,6 +31,12 @@
 #	define EXT_HEADER_DYNAMIC_BITSET EXT_HEADER(dynamic_bitset)
 #else
 #	define EXT_HEADER_DYNAMIC_BITSET <el/stl/dynamic_bitset>
+#endif
+
+#if UCFG_STD_SYSTEM_ERROR
+#	define EXT_HEADER_SYSTEM_ERROR EXT_HEADER(system_error)
+#else
+#	define EXT_HEADER_SYSTEM_ERROR <el/stl/system_error>
 #endif
 
 #if UCFG_STD_FILESYSTEM
@@ -229,8 +233,8 @@ AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, i
 #	define noexcept throw()
 #endif
 
-#include "exthelpers.h"		// uses std::swap() from <utility>
 
+#include "exthelpers.h"		// uses std::swap() from <utility>
 
 namespace Ext {
 	class CCriticalSection;
@@ -292,27 +296,129 @@ typename enable_if<Ext::is_movable<T>::value, Ext::rv<T>&>::type move(T& x) {
 	return *static_cast<Ext::rv<T>* >(&x);
 } // std::
 
-
 }
 
-
-
-
-
 #endif // UCFG_CPP11_RVALUE
+
+#include "ext-ptr.h"
 
 #if !UCFG_MINISTL
 #	include "ext-meta.h"
 #endif
 
-#if UCFG_FRAMEWORK && !defined(_CRTBLD)
+#if UCFG_FRAMEWORK && !defined(_CRTBLD) //!!! || (UCFG_CRT=='U')
 #	include "ext-safehandle.h"
 #	include "ext-sync.h"
 #endif
 
 #define AFX_STATIC_DATA extern __declspec(selectany)
 
-#if UCFG_STL && !defined(_CRTBLD)
+namespace Ext {
+
+class CAlloc {
+public:
+#if UCFG_INDIRECT_MALLOC
+	EXT_DATA static void * (AFXAPI *s_pfnMalloc)(size_t size);
+	EXT_DATA static void (AFXAPI *s_pfnFree)(void *p) noexcept ;
+	EXT_DATA static size_t (AFXAPI *s_pfnMSize)(void *p);
+	EXT_DATA static void * (AFXAPI *s_pfnRealloc)(void *p, size_t size);
+	EXT_DATA static void * (AFXAPI *s_pfnAlignedMalloc)(size_t size, size_t align);
+	EXT_DATA static void (AFXAPI *s_pfnAlignedFree)(void *p);
+#endif
+	static void * AFXAPI Malloc(size_t size);
+	static void AFXAPI Free(void *p) EXT_NOEXCEPT;
+	static size_t AFXAPI MSize(void *p);
+	static void * AFXAPI Realloc(void *p, size_t size);
+	static void * AFXAPI AlignedMalloc(size_t size, size_t align);
+	static void AFXAPI AlignedFree(void *p);
+
+	static void AFXAPI DbgIgnoreObject(void *p)
+#if UCFG_ALLOCATOR=='T' && UCFG_HEAP_CHECK
+		;
+#else
+	{}
+#endif
+};
+
+#if UCFG_WCE
+	bool SetCeAlloc();
+#endif
+
+	inline void * __fastcall Malloc(size_t size) {
+#if UCFG_INDIRECT_MALLOC
+		return CAlloc::s_pfnMalloc(size);
+#else
+		return CAlloc::Malloc(size);
+#endif
+	}
+
+	/*!!!
+	inline void __fastcall Free(void *p) noexcept {
+#if UCFG_INDIRECT_MALLOC
+		CAlloc::s_pfnFree(p);
+#else
+		CAlloc::Free(p);
+#endif
+	}*/
+
+#if UCFG_HAS_REALLOC
+	inline void * __fastcall Realloc(void *p, size_t size) {
+#	if UCFG_INDIRECT_MALLOC
+		return CAlloc::s_pfnRealloc(p, size);
+#	else
+		return CAlloc::Realloc(p, size);
+#	endif
+	}
+#endif
+
+	inline void * __fastcall AlignedMalloc(size_t size, size_t align) {
+#if UCFG_INDIRECT_MALLOC
+		return CAlloc::s_pfnAlignedMalloc(size, align);
+#else
+		return CAlloc::AlignedMalloc(size, align);
+#endif
+	}
+
+	inline void __fastcall AlignedFree(void *p) {
+#if UCFG_INDIRECT_MALLOC
+		CAlloc::s_pfnAlignedFree(p);
+#else
+		CAlloc::AlignedFree(p);
+#endif
+	}
+
+/*!!!
+#if UCFG_USE_POSIX
+	inline void * __cdecl _aligned_malloc(size_t size, size_t align) {
+		void *r;
+		CCheck(posix_memalign(&r, align, size));
+		return r;
+	}
+
+	inline void __cdecl _aligned_free(void *p) {
+		return free(p);
+	}
+#endif
+*/
+
+class AlignedMem {
+public:
+	AlignedMem(size_t size, size_t align)
+		:	m_p(AlignedMalloc(size, align))
+	{}
+	
+	~AlignedMem() {
+		AlignedFree(m_p);
+	}
+
+	void* get() { return m_p; }
+private:
+	void *m_p;
+};
+
+} // Ext::
+
+#if UCFG_STL && !defined(_CRTBLD) //!!! || (UCFG_CRT=='U')
 //#	define NS std
 #	if !UCFG_STDSTL || UCFG_WCE //!!!
 #		include <el/stl/exttemplates.h>
@@ -325,6 +431,11 @@ typename enable_if<Ext::is_movable<T>::value, Ext::rv<T>&>::type move(T& x) {
 #	endif
 //#	undef NS
 #endif
+
+#if !UCFG_STDSTL
+#	include <el/stl/array>
+#endif
+
 
 #if UCFG_STDSTL && UCFG_USE_REGEX && !UCFG_CPP11_HAVE_REGEX
 #	include <el/stl/regex>
@@ -365,86 +476,40 @@ namespace Ext {
 
 class AFX_CLASS CNoTrackObject {
 public:
-	void* __stdcall operator new(size_t nSize);
-	void __stdcall operator delete(void*);
-
 	CNoTrackObject();
 	virtual ~CNoTrackObject();
 };
 
-#if UCFG_FRAMEWORK && !defined(_CRTBLD)
+#if UCFG_FRAMEWORK && !defined(_CRTBLD) || (UCFG_CRT=='U')
 
-struct HResultItem {
-	HResultItem *Next, *Prev;
-	HRESULT HResult;
+class EXT_CLASS CLocalIgnoreBase {
+public:
+	CLocalIgnoreBase *Next;
 
-	explicit HResultItem(HRESULT hr)
-		:	HResult(hr)
-	{}
-		
-	operator HRESULT() const { return HResult; }
+	CLocalIgnoreBase() noexcept;
+	~CLocalIgnoreBase() noexcept;
+	static bool AFXAPI ErrorCodeIsIgnored(const std::error_code& ec) noexcept;
+	virtual bool equivalent(const std::error_code& ec) const noexcept =0;
 };
 
-class EXT_CLASS CLocalIgnore : public HResultItem {
-	typedef HResultItem base;
+template <class T>
+class CLocalIgnore : public CLocalIgnoreBase {
 public:
-	CLocalIgnore(HRESULT hr);
-	~CLocalIgnore();
+	T m_ec;
+
+	CLocalIgnore(const T& ec)
+		: m_ec(ec) {
+	}
+
+	bool equivalent(const std::error_code& ec) const noexcept override {
+		return ec == m_ec;
+	}
 };
 
 #endif	// UCFG_FRAMEWORK && !defined(_CRTBLD)
 
 //!!!R AFX_API void AFXAPI DbgAddIgnoredHResult(HRESULT hr);
 
-class AFX_CLASS CThreadLocalObject {
-public:
-	CThreadLocalObject() {
-		AllocSlot();
-	}
-
-	CNoTrackObject* GetData(CNoTrackObject* (AFXAPI * pfnCreateObject)());
-	CNoTrackObject* GetDataNA();
-
-	int m_nSlot;
-	~CThreadLocalObject();
-private:
-	void AllocSlot();
-};
-
-template <class TYPE> class AFX_CLASS CThreadLocal : public CThreadLocalObject {
-public:
-	TYPE* GetData()
-	{
-		TYPE* pData = (TYPE*)CThreadLocalObject::GetData(&CreateObject);
-		//!!!CE		ASSERT(pData != NULL);
-		return pData;
-	}
-	TYPE* GetDataNA()
-	{
-		TYPE* pData = (TYPE*)CThreadLocalObject::GetDataNA();
-		return pData;
-	}
-	operator TYPE*()
-	{ return GetData(); }
-	TYPE* operator->()
-	{ return GetData(); }
-
-	//!!!	static CNoTrackObject* CreateObject()
-	static CNoTrackObject * AFXAPI CreateObject()
-	{ return new TYPE; }
-};
-
-template <class T>
-class tls_ptr {
-	struct CWrap : public CNoTrackObject {
-		T m_val;
-	};
-
-	CThreadLocal<CWrap> m_wrap;
-public:
-	operator T*() { return &m_wrap.GetData()->m_val; }
-	T* operator->() { return operator T*(); }
-};
 
 
 	//!!!extern vector<HRESULT> g_arIgnoreExceptions;
@@ -463,9 +528,7 @@ inline Ext::Int64 abs(const Ext::Int64& v) {
 #define HRESULT_OF_WIN32(x) ((HRESULT) ((x) & 0x0000FFFF | (FACILITY_WIN32 << 16) | 0x80000000))			// variant of HRESULT_FROM_WIN32 without condition
 
 
-#ifndef _CRTBLD
-
-
+#if !defined(_CRTBLD) || UCFG_CRT=='U'
 
 
 #if UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
@@ -497,62 +560,25 @@ template <> struct is_scalar<std::nullptr_t> { //!!! bug in VC
 } // std::
 #endif // UCFG_MSC_VERSION <= 1800
 
-#if !UCFG_STD_EXCHANGE && !UCFG_MINISTL
+
+#if !UCFG_STD_IDENTITY
 namespace std {
-template <typename T, typename U>
-inline T Do_exchange(T& obj, const U EXT_REF new_val, false_type) {
-#	if UCFG_CPP11_RVALUE
-	T old_val = std::move(obj);
-	obj = std::forward<U>(new_val);
-#else
-	T old_val = obj;
-	obj = new_val;
-#endif
-  	return old_val;
-}
 
-template <typename T, typename U>
-inline T Do_exchange(T& obj, const U& new_val, false_type) {
-#	if UCFG_CPP11_RVALUE
-	T old_val = std::move(obj);
-#else
-	T old_val = obj;
-#endif
-	obj = new_val;
-  	return old_val;
-}
-
-template <typename T, typename U>
-inline T Do_exchange(T& obj, const U new_val, true_type) {
-#	if UCFG_CPP11_RVALUE
-	T old_val = std::move(obj);
-#else
-	T old_val = obj;
-#endif
-	obj = new_val;
-  	return old_val;
-}
-
-template <typename T, typename U>
-inline T exchange(T& obj, const U EXT_REF new_val) {
-	return Do_exchange(obj, new_val, typename is_scalar<U>::type());
-}
-
-#	if UCFG_CPP11_RVALUE
-
-	template <typename T, typename U>
-	inline T exchange(T& obj, const U& new_val) {
-		return Do_exchange(obj, new_val, typename is_scalar<U>::type());
-	}
-#	endif
+template <typename T>
+struct identity {
+   template <typename U> T &&operator() (U&& v) {
+	   return forward<T>(v);
+   }
+};
 
 } // std::
-#endif // !UCFG_STD_EXCHANGE
-
+#endif // !UCFG_STD_IDENTITY
 
 namespace Ext {
 
-using std::exchange;
+#if !UCFG_MINISTL
+	using std::exchange;
+#endif
 
 #if UCFG_FULL && !UCFG_MINISTL
 template <class T, size_t MAXSIZE>
@@ -653,106 +679,12 @@ EXTAPI int AFXAPI CCheck(int i, int allowableError = INT_MAX);
 EXTAPI int AFXAPI NegCCheck(int rc);
 EXTAPI void AFXAPI CFileCheck(int i);
 
-
-class CAlloc {
-public:
-#if UCFG_INDIRECT_MALLOC
-	EXT_DATA static void * (AFXAPI *s_pfnMalloc)(size_t size);
-	EXT_DATA static void (AFXAPI *s_pfnFree)(void *p) noexcept ;
-	EXT_DATA static size_t (AFXAPI *s_pfnMSize)(void *p);
-	EXT_DATA static void * (AFXAPI *s_pfnRealloc)(void *p, size_t size);
-	EXT_DATA static void * (AFXAPI *s_pfnAlignedMalloc)(size_t size, size_t align);
-	EXT_DATA static void (AFXAPI *s_pfnAlignedFree)(void *p);
-#endif
-	static void * AFXAPI Malloc(size_t size);
-	static void AFXAPI Free(void *p) noexcept ;
-	static size_t AFXAPI MSize(void *p);
-	static void * AFXAPI Realloc(void *p, size_t size);
-	static void * AFXAPI AlignedMalloc(size_t size, size_t align);
-	static void AFXAPI AlignedFree(void *p);
-
-	static void AFXAPI DbgIgnoreObject(void *p)
-#if UCFG_ALLOCATOR==UCFG_ALLOCATOR_TC_MALLOC && UCFG_HEAP_CHECK
-		;
-#else
-	{}
-#endif
-};
-
-#if UCFG_WCE
-	bool SetCeAlloc();
-#endif
-
-	inline void * __fastcall Malloc(size_t size) {
-#if UCFG_INDIRECT_MALLOC
-		return CAlloc::s_pfnMalloc(size);
-#else
-		return CAlloc::Malloc(size);
-#endif
-	}
-
-	inline void __fastcall Free(void *p) noexcept {
-#if UCFG_INDIRECT_MALLOC
-		CAlloc::s_pfnFree(p);
-#else
-		CAlloc::Free(p);
-#endif
-	}
-
-
-#if UCFG_HAS_REALLOC
-	inline void * __fastcall Realloc(void *p, size_t size) {
-#	if UCFG_INDIRECT_MALLOC
-		return CAlloc::s_pfnRealloc(p, size);
-#	else
-		return CAlloc::Realloc(p, size);
-#	endif
-	}
-#endif
-
-	inline void * __fastcall AlignedMalloc(size_t size, size_t align) {
-#if UCFG_INDIRECT_MALLOC
-		return CAlloc::s_pfnAlignedMalloc(size, align);
-#else
-		return CAlloc::AlignedMalloc(size, align);
-#endif
-	}
-
-	inline void __fastcall AlignedFree(void *p) {
-#if UCFG_INDIRECT_MALLOC
-		CAlloc::s_pfnAlignedFree(p);
-#else
-		CAlloc::AlignedFree(p);
-#endif
-	}
-
-/*!!!
-#if UCFG_USE_POSIX
-	inline void * __cdecl _aligned_malloc(size_t size, size_t align) {
-		void *r;
-		CCheck(posix_memalign(&r, align, size));
-		return r;
-	}
-
-	inline void __cdecl _aligned_free(void *p) {
-		return free(p);
-	}
-#endif
-*/
-
-class AlignedMem {
-public:
-	AlignedMem(size_t size, size_t align)
-		:	m_p(AlignedMalloc(size, align))
-	{}
-	
-	~AlignedMem() {
-		AlignedFree(m_p);
-	}
-
-	void* get() { return m_p; }
-private:
-	void *m_p;
+template <class T>
+struct totally_ordered {
+	friend bool operator!=(const T& x, const T& y) { return !(x == y); }
+	friend bool operator>(const T& x, const T& y) { return y < x; }
+	friend bool operator>=(const T& x, const T& y) { return !(x < y); }
+	friend bool operator<=(const T& x, const T& y) { return !(y < x); }
 };
 
 
@@ -764,6 +696,9 @@ inline size_t hash_value(const Ext::ConstBuf& mb) {
 }
 }
 
+#ifndef _GLIBCXX_USE_NOEXCEPT		//!!!?
+#	define _GLIBCXX_USE_NOEXCEPT
+#endif
 
 //!!! #if UCFG_WDM
 
@@ -774,11 +709,11 @@ inline void * __cdecl operator new(size_t sz) {
 }
 
 inline void __cdecl operator delete(void *p) {
-	Ext::Free(p);
+	free(p);
 }
 
 inline void __cdecl operator delete[](void* p) {
-	Ext::Free(p);
+	free(p);
 }
 
 inline void * __cdecl operator new[](size_t sz) {
@@ -788,13 +723,11 @@ inline void * __cdecl operator new[](size_t sz) {
 #else
 
 void * __cdecl operator new(size_t sz);
-void __cdecl operator delete(void *p);
-void __cdecl operator delete[](void* p);
+void __cdecl operator delete(void *p) _GLIBCXX_USE_NOEXCEPT;
+void __cdecl operator delete[](void* p) _GLIBCXX_USE_NOEXCEPT;
 void * __cdecl operator new[](size_t sz);
 
 #endif // UCFG_DEFINE_NEW
-
-
 
 //!!!#endif
 
@@ -825,6 +758,7 @@ void * __cdecl operator new[](size_t sz);
 #		include <boost/functional/hash.hpp>
 #	endif
 
+#	if _HAS_EXCEPTIONS
 #		ifdef _MSC_VER
 #			define tr1 C_tr1
 #				include <functional>
@@ -832,6 +766,7 @@ void * __cdecl operator new[](size_t sz);
 #		else
 #				include <functional>
 #		endif
+#	endif
 
 
 /*!!!R
@@ -852,23 +787,25 @@ void * __cdecl operator new[](size_t sz);
 	}
 #	endif
 
-
-
-
+	
 #endif
-
 
 #if UCFG_FRAMEWORK && !defined(_CRTBLD)
 #	include "afterstl.h"
 #	include "ext-lru.h"
 
 namespace Ext {
-class CIgnoreList : public CNoTrackObject {
+class CIgnoreList {
 public:
-	typedef IntrusiveList<HResultItem> CIgnoredExceptions;
+	typedef IntrusiveList<CLocalIgnoreBase> CIgnoredExceptions;
 	CIgnoredExceptions IgnoredExceptions;
 };
-extern CThreadLocal<CIgnoreList> t_ignoreList;
+//extern thread_specific_ptr<CIgnoreList> t_ignoreList;
+
+#	if UCFG_EH_SUPPORT_IGNORE
+//!!!?		extern EXT_THREAD_PTR(HResultItem) t_ignoreList;
+#	endif
+
 }	// Ext::
 
 #endif	// UCFG_FRAMEWORK && !defined(_CRTBLD)
@@ -891,18 +828,6 @@ namespace ww {
     };
 }
 
-#ifndef NDEBUG
-#   define StaticAssert(test, errormsg)                         \
-    do {                                                        \
-        struct ERROR_##errormsg {};                             \
-        typedef ww::compile_time_check< (test) != 0 > tmplimpl; \
-        tmplimpl aTemp = tmplimpl(ERROR_##errormsg());          \
-        sizeof(aTemp);                                          \
-    } while (0)
-#else
-#   define StaticAssert(test, errormsg)                         \
-    do {} while (0)
-#endif
 
 
 
@@ -914,9 +839,7 @@ class String;
 class CTime; //!!! need by MFC headers
 class CWnd;
 
-
 #if defined(_MSC_VER) && defined (WIN32)
-
 
 #	if UCFG_EXTENDED
 #		include "el/extres.h"
@@ -1061,17 +984,14 @@ namespace std {
 #endif // !UCFG_STDSTL
 
 
-
-
-#if !defined(_CRTBLD)
-
+#if !defined(_CRTBLD) || (UCFG_CRT=='U')
 
 
 #include "ext_messages.h"
 
 namespace Ext {
 
-#if !UCFG_MINISTL
+#if !UCFG_MINISTL && !defined(_CRTBLD)
 class EXT_CLASS CTraceWriter {
 public:
 	CTraceWriter(int level, const char* funname = 0) noexcept;
@@ -1091,7 +1011,7 @@ private:
 };
 #endif // !UCFG_MINISTL
 
-#if UCFG_WIN32
+#if UCFG_WIN32 && !defined(_CRTBLD)
 	AFX_API int AFXAPI Win32Check(LRESULT i);
 	AFX_API bool AFXAPI Win32Check(BOOL b, DWORD allowableError);
 #endif
@@ -1129,7 +1049,6 @@ template<> struct type_presentation<unsigned long> {
 */
 
 } // Ext::
-
 
 #if UCFG_FRAMEWORK
 #	include "ext-stream.h"
@@ -1321,7 +1240,7 @@ inline void * __cdecl operator new[](size_t size, int id, const char *file, int 
 
 
 
-#if UCFG_STL && !UCFG_STDSTL && !defined(_CRTBLD) && UCFG_FRAMEWORK
+#if UCFG_STL && !UCFG_STDSTL && !defined(_CRTBLD) && UCFG_FRAMEWORK && _HAS_EXCEPTIONS
 #	include EXT_HEADER_FUTURE			// uses AutoResetEvent
 #endif // UCFG_STL && !UCFG_STDSTL
 

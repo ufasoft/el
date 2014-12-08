@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -28,20 +20,25 @@
 namespace Ext {
 using namespace std;
 
-static bool WithDirSeparator(RCString s) {
-	if (s.IsEmpty())
-		return false;
-	wchar_t ch = s[s.Length-1];
-	return ch==Path::DirectorySeparatorChar || ch==Path::AltDirectorySeparatorChar;
+path AFXAPI AddDirSeparator(const path& p) {
+	path fn = p.filename();
+	return fn.native() == "/" || fn.native() == "." ? p : p / "/";
 }
 
-String AFXAPI AddDirSeparator(RCString s) {
-	return WithDirSeparator(s) ? s : s+String(Path::DirectorySeparatorChar);
+/*!!!R
+
+static bool WithDirSeparator(RCString s) {
+if (s.IsEmpty())
+return false;
+wchar_t ch = s[s.Length-1];
+return ch==path::preferred_separator || ch==Path::AltDirectorySeparatorChar;
 }
+
+
 
 String AFXAPI RemoveDirSeparator(RCString s, bool bOnEndOnly) {
 	return WithDirSeparator(s) && (!bOnEndOnly || s.Length!=1) ? s.Left(int(s.Length-1)) : s;
-}
+}*/
 
 Path::CSplitPath Path::SplitPath(RCString path) {
 	CSplitPath sp;
@@ -77,25 +74,6 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 	return sp;
 }
 
-bool Path::IsPathRooted(RCString path) {
-	wchar_t ch = SplitPath(path).m_dir[0];
-	return ch==Path::DirectorySeparatorChar || ch==Path::AltDirectorySeparatorChar;
-}
-
-String Path::GetTempPath() {
-#if UCFG_USE_POSIX
-	char buf[PATH_MAX+1] = "XXXXXX";
-	int fd = CCheck(::mkstemp(buf));
-	close(fd);
-	return buf;
-#else
-	TCHAR buf[MAX_PATH];
-	DWORD r = ::GetTempPath(_countof(buf), buf);
-	Win32Check(r && r<_countof(buf)); //!!! need to improve
-	return buf;
-#endif
-}
-
 pair<String, UINT> Path::GetTempFileName(RCString path, RCString prefix, UINT uUnique) {
 #if UCFG_USE_POSIX
 	char buf[PATH_MAX+1];
@@ -110,42 +88,6 @@ pair<String, UINT> Path::GetTempFileName(RCString path, RCString prefix, UINT uU
 #endif
 }
 
-String AFXAPI Path::GetDirectoryName(RCString path) {
-	if (path.IsEmpty())
-		return nullptr;
-	CSplitPath sp = SplitPath(path);  
-	return RemoveDirSeparator(sp.m_drive+sp.m_dir, true);
-}
-
-String AFXAPI Path::GetFileName(RCString path) {
-	if (path == nullptr)
-		return nullptr;
-	CSplitPath sp = SplitPath(path);  
-	return sp.m_fname+sp.m_ext;
-}
-
-String AFXAPI Path::GetFileNameWithoutExtension(RCString path) {
-	return SplitPath(path).m_fname;
-}
-
-String AFXAPI Path::GetExtension(RCString path) {
-	if (!path)
-		return nullptr;
-	return SplitPath(path).m_ext;
-}
-
-String Path::Combine(RCString path1, RCString path2) {
-	if (path2.IsEmpty())
-		return path1;
-	if (path1.IsEmpty() || IsPathRooted(path2))
-		return path2;
-	return AddDirSeparator(path1)+path2;
-}
-
-String Path::ChangeExtension(RCString path, RCString ext) {
-	return Combine(GetDirectoryName(path), GetFileNameWithoutExtension(path) + ext);
-}
-
 String Path::GetPhysicalPath(RCString p) {
 	String path = p;
 #if UCFG_WIN32_FULL
@@ -154,7 +96,7 @@ String Path::GetPhysicalPath(RCString p) {
 		vector<String> vec = System.QueryDosDevice(sp.m_drive);				// expand SUBST-ed drives
 		if (vec.empty() || vec[0].Left(4) != "\\??\\")
 			break;
-		path = vec[0].Mid(4)+sp.m_dir+sp.m_fname+sp.m_ext;
+		path = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
 	}
 #endif
 	return path;
@@ -209,109 +151,6 @@ String Path::GetTruePath(RCString p) {
 #endif
 }
 
-DirectoryInfo Directory::CreateDirectory(RCString path) {
-	vector<String> ar = path.Split(String(Path::DirectorySeparatorChar)+String(Path::AltDirectorySeparatorChar));
-	String dir;
-	bool b = true;
-	for (size_t i=0; i<ar.size(); i++) {
-		dir = AddDirSeparator(dir+ar[i]);
-#if UCFG_USE_POSIX
-		if (::mkdir(dir, 0777) < 00 && errno!=EEXIST && errno!=EISDIR)
-			CCheck(-1);
-	}
-#else
-		b = ::CreateDirectory(dir, 0);
-	}
-	Win32Check(b, ERROR_ALREADY_EXISTS);
-#endif
-	return DirectoryInfo(path);
-}
-
-vector<String> Directory::GetItems(RCString path, RCString searchPattern, bool bDirs) {
-#if UCFG_USE_POSIX
-#	if UCFG_STLSOFT
-	typedef unixstl::glob_sequence gs_t;
-	gs_t gs(path.c_str(), searchPattern.c_str(), gs_t::files | (bDirs ? gs_t::directories : 0));
-	return vector<String>(gs.begin(), gs.end());
-#	else
-	vector<String> r;
-	glob_t gt;
-	CCheck(::glob(Path::Combine(path, searchPattern), GLOB_MARK, 0, &gt));
-	for (int i=0; i<gt.gl_pathc; ++i) {
-		const char *p = gt.gl_pathv[i];
-		size_t len = strlen(p);
-		if (p[len-1] != '/')
-			r.push_back(p);
-		else if (bDirs)
-			r.push_back(String(p, len-1));
-	}
-	globfree(&gt);
-	if (searchPattern == "*") {
-		CCheck(::glob(Path::Combine(path, ".*"), GLOB_MARK, 0, &gt));
-		for (int i=0; i<gt.gl_pathc; ++i) {
-			const char *p = gt.gl_pathv[i];
-			size_t len = strlen(p);
-			if (p[len-1] != '/')
-				r.push_back(p);
-			else if (bDirs) {
-				String s(p, len-1);
-				if (s.Right(3) != "/.." && s.Right(2) != "/.")
-					r.push_back(s);
-			}
-		}
-		globfree(&gt);
-	}
-	return r;
-#	endif
-#else
-	vector<String> r;
-	CWinFileFind ff(Path::Combine(path, searchPattern));
-	for (WIN32_FIND_DATA fd; ff.Next(fd);) {
-		if (!(bool(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ^ bDirs)) {
-			String name = fd.cFileName;
-			if (name != "." && name != "..")
-				r.push_back(Path::Combine(path, name));
-		}
-	}
-	return r;
-#endif
-}
-
-static bool FileDirectoryExists(RCString path, bool bDir) {
-#if UCFG_USE_POSIX
-	struct stat st;
-	int rc = ::stat(path, &st);
-	if (rc < 0) {
-		if (errno != ENOENT)
-			CCheck(rc);
-		return false;
-	} else
-		return !(st.st_mode & S_IFDIR) ^ bDir;
-#else
-	DWORD r = ::GetFileAttributes(path);
-	return r!=INVALID_FILE_ATTRIBUTES &&  (!(r & FILE_ATTRIBUTE_DIRECTORY) ^ bDir);
-#endif
-}
-
-bool Directory::Exists(RCString path) {
-	return FileDirectoryExists(path, true);
-}
-
-void Directory::Delete(RCString path, bool bRecursive) {
-	if (bRecursive) {
-		vector<String> ar =  Directory::GetFiles(path);
-		for (int i=ar.size(); i--;)
-			FileInfo(ar[i]).Delete();
-		ar = Directory::GetDirectories(path);
-		for (int i=ar.size(); i--;)
-			Delete(ar[i], true);
-	}
-#if UCFG_USE_POSIX
-	CCheck(::rmdir(path));
-#else
-	Win32Check(::RemoveDirectory(path));
-#endif
-}
 
 #if UCFG_WIN32
 bool File::s_bCreateFileWorksWithMMF = (System.Version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) ||
@@ -409,49 +248,13 @@ void File::Open(const File::OpenInfo& oi) {
 #endif	// UCFG_USE_POSIX
 }
 
-void File::Open(RCString path, FileMode mode, FileAccess access, FileShare share) {
+void File::Open(const path& p, FileMode mode, FileAccess access, FileShare share) {
 	OpenInfo oi;
-	oi.Path = path;
+	oi.Path = p;
 	oi.Mode = mode;
 	oi.Access = access;
 	oi.Share = share;
 	Open(oi);
-}
-
-bool File::Exists(RCString path) {
-	return FileDirectoryExists(path, false);
-}
-
-void AFXAPI File::Delete(RCString path) {
-#if UCFG_USE_POSIX
-	CCheck(::remove(ExcLastStringArgKeeper(path)));
-#else
-	Win32Check(::DeleteFile(ExcLastStringArgKeeper(path)), ERROR_FILE_NOT_FOUND);
-#endif
-}
-
-void AFXAPI File::Copy(RCString src, RCString dest, bool bOverwrite) {
-#if UCFG_USE_POSIX
-	ifstream ifs((const char*)src, ios::binary);
-	ofstream ofs((const char*)dest, ios::openmode(ios::binary | (bOverwrite ? ios::trunc : 0)));
-	if (!ofs)
-		Throw(E_FAIL);
-	while (ifs) {
-		char buf[4096];
-		ifs.read(buf, sizeof buf);
-		ofs.write(buf, ifs.gcount());		
-	}
-#else
-	Win32Check(::CopyFile(src, dest, !bOverwrite));
-#endif
-}
-
-void AFXAPI File::Move(RCString src, RCString dest) {
-#if UCFG_USE_POSIX
-	CCheck(::rename(src, dest));
-#else
-	Win32Check(::MoveFile(src, dest));
-#endif
 }
 
 Blob File::ReadAllBytes(RCString path) {
@@ -758,8 +561,8 @@ void File::put_Length(UInt64 len) {
 #endif
 }
 
-void FileStream::Open(RCString path, FileMode mode, FileAccess access, FileShare share) {
-	HANDLE h = File(path, mode, access, share).Detach();
+void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share) {
+	HANDLE h = File(p, mode, access, share).Detach();
 #if UCFG_WIN32_FULL
 	int flags = 0;
 	if (mode == FileMode::Append)
@@ -890,10 +693,10 @@ size_t FileStream::Read(void *buf, size_t count) const {
 			if (r != 0)
 				Throw(E_FAIL);
 			try {
-				DBG_LOCAL_IGNORE_WIN32(ERROR_BROKEN_PIPE);
+				DBG_LOCAL_IGNORE_CONDITION(errc::broken_pipe);
 				n = m_pFile->GetOverlappedResult(*m_ovl);
-			} catch (const Exception& ex) {
-				if (ex.HResult != HRESULT_FROM_WIN32(ERROR_BROKEN_PIPE))
+			} catch (const system_error& ex) {
+				if (ex.code() != errc::broken_pipe)
 					throw;
 				n = 0;
 			}
@@ -1080,100 +883,14 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 #endif
 }
 
-Int64 FileInfo::get_Length() const {
-#if UCFG_USE_POSIX
-	struct stat st;
-	CCheck(::stat(FullPath, &st));
-	return st.st_size;
-#elif !UCFG_WCE
-	CFileStatus st;
-	Win32Check(File::GetStatus(FullPath, st)); //!!!
-	return st.m_size;
-#else
-	Throw(E_NOTIMPL);
-#endif
-}
-
-#if !UCFG_WCE
-String Directory::GetCurrentDirectory() {
-#if UCFG_USE_POSIX
-	char path[PATH_MAX];
-	char *r = ::getcwd(path, sizeof path);
-	CCheck(r ? 0 : -1);
-	return r;
-#else
-	_TCHAR *p = (_TCHAR*)alloca(_MAX_PATH*sizeof(_TCHAR));
-	DWORD dw = ::GetCurrentDirectory(_MAX_PATH, p);
-	if (dw > _MAX_PATH) {
-		p = (_TCHAR*)alloca(dw*sizeof(_TCHAR));
-		dw = ::GetCurrentDirectory(dw, p);
-	}
-	Win32Check(dw);
-	return p;
-#endif
-}
-
-void Directory::SetCurrentDirectory(RCString path) {
-#if UCFG_USE_POSIX
-	CCheck(::chdir(path));
-#else
-	Win32Check(::SetCurrentDirectory(path));
-#endif
-}
-
-String Path::GetFullPath(RCString s) {
-#if UCFG_USE_POSIX
-	return s;
-#else
-	_TCHAR *path = (TCHAR*)alloca(_MAX_PATH*sizeof(TCHAR));
-	_TCHAR *p;
-	DWORD dw = ::GetFullPathName(s, _MAX_PATH, path, &p);
-	Win32Check(dw);
-	if (dw >= _MAX_PATH) {
-		int len = dw+1;
-		path = (TCHAR*)alloca(len*sizeof(TCHAR));
-		Win32Check(::GetFullPathName(s, len, path, &p));
-	}
-	return path;
-#endif
-}
-#endif
-
 
 
 #if UCFG_WIN32_FULL
-CFileFind::CFileFind()
-	:	m_handle(-1)
-	,	m_b(false)
-{
-}
-
-CFileFind::CFileFind(RCString filespec) {
-	First(filespec);
-}
-
-CFileFind::~CFileFind() {
-	if (m_handle != -1)
-		CCheck(_findclose(m_handle));
-}
-
-void CFileFind::First(RCString filespec) {
-	m_handle = _findfirst(filespec, &m_fd);  //!!! TCHAR
-	m_b = m_handle != -1;
-}
-
-bool CFileFind::Next(SFindData& fd) {
-	fd = m_fd;
-	bool r = m_b;
-	if (m_handle != -1)
-		m_b = !_findnext(m_handle, &m_fd);  //!!! TCHAR
-	return r;
-}
 
 vector<String> AFXAPI SerialPort::GetPortNames() {
 	vector<String> r;
 	try {
-		DBG_LOCAL_IGNORE_NAME(E_ACCESSDENIED, E_ACCESSDENIED);
+		DBG_LOCAL_IGNORE(E_ACCESSDENIED);
 
 		RegistryKey key(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", false);
 		CRegistryValues rvals(key);

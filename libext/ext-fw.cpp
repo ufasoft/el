@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -45,6 +37,11 @@
 namespace Ext { 
 using namespace std;
 
+static bool s_bSilentUI;
+
+bool AFXAPI GetSilentUI() { return s_bSilentUI; }
+void AFXAPI SetSilentUI(bool b) { s_bSilentUI = b; }
+
 mutex g_mfcCS;
 
 void AFXAPI CCheckErrcode(int en) {
@@ -67,7 +64,7 @@ int AFXAPI CCheck(int i, int allowableError) {
 #if UCFG_HAVE_STRERROR
 	ThrowS(HRESULT_FROM_C(en), strerror(en));
 #else
-	Throw(E_NOTIMPL); //!!!
+	Throw(HRESULT_FROM_C(en));
 #endif
 }
 
@@ -322,7 +319,7 @@ String OperatingSystem::get_PlatformName() const {
 String OperatingSystem::get_VersionString() const {
 	String r = get_PlatformName()+" "+get_VersionName();
 	r += " "+Version.ToString();
-	if (!ServicePack.IsEmpty())
+	if (!ServicePack.empty())
 		r += " "+ServicePack;
 	return r;
 }
@@ -332,58 +329,26 @@ String OperatingSystem::get_VersionName() const {
 	String s;
 	switch (int osver = GetOsVersion()) {
 #if UCFG_WIN32_FULL
-	case OSVER_95:
-		s = "95";
-		break;
-	case OSVER_98:
-		s = "98";
-		break;
-	case OSVER_ME:
-		s = "Millenium";
-		break;
-	case OSVER_NT4:
-		s = "NT 4";
-		break;
-	case OSVER_2000:
-		s = "2000";
-		break;
-	case OSVER_XP:
-		s = "XP";
-		break;
-	case OSVER_SERVER_2003:
-		s = "Server 2003";
-		break;
-	case OSVER_VISTA:
-		s = "Vista";
-		break;
-	case OSVER_2008:
-		s = "Server 2008";
-		break;
-	case OSVER_7:
-		s = "7";
-		break;
-	case OSVER_2008_R2:
-		s = "Server 2008 R2";
-		break;
-	case OSVER_8:
-		s = "8";
-		break;
-	case OSVER_FUTURE:
-		s = "Unknown Future Version";
-		break;
+	case OSVER_95:		s = "95";			break;
+	case OSVER_98:		s = "98";			break;
+	case OSVER_ME:		s = "Millenium";	break;
+	case OSVER_NT4:		s = "NT 4";			break;
+	case OSVER_2000:	s = "2000";			break;
+	case OSVER_XP:		s = "XP";			break;
+	case OSVER_SERVER_2003:	s = "Server 2003";	break;
+	case OSVER_VISTA:	s = "Vista";		break;
+	case OSVER_2008:	s = "Server 2008";	break;
+	case OSVER_7:		s = "7";			break;
+	case OSVER_2008_R2:	s = "Server 2008 R2";	break;
+	case OSVER_8:		s = "8";			break;
+	case OSVER_8_1:		s = "8.1";			break;
+	case OSVER_10:		s = "10";			break;
+	case OSVER_FUTURE:	s = "Unknown Future Version";	break;
 #endif
-	case OSVER_CE_5:
-		s = "CE 5";
-		break;
-	case OSVER_CE_6:
-		s = "CE 5";
-		break;
-	case OSVER_CE_FUTURE:
-		s = "CE Future";
-		break;
-	default:
-		s = "Unknown new";
-		break;
+	case OSVER_CE_5:	s = "CE 5";		break;
+	case OSVER_CE_6:	s = "CE 5";		break;
+	case OSVER_CE_FUTURE:	s = "CE Future";	break;
+	default:			s = "Unknown new";	break;
 	}
 	return s;
 #else
@@ -425,13 +390,12 @@ const OperatingSystem Environment::OSVersion;
 
 class Environment Environment;
 
-String Environment::GetFolderPath(SpecialFolder folder) {
+path Environment::GetFolderPath(SpecialFolder folder) {
 #if UCFG_USE_POSIX
-	String homedir = GetEnvironmentVariable("HOME");
-	switch (folder)
-	{
-	case SpecialFolder::Desktop: return Path::Combine(homedir, "Desktop");
-	case SpecialFolder::ApplicationData: return Path::Combine(homedir, ".config");
+	path homedir = GetEnvironmentVariable("HOME");
+	switch (folder) {
+	case SpecialFolder::Desktop: return homedir / "Desktop";
+	case SpecialFolder::ApplicationData: homedir / ".config";
 	default:
 		Throw(E_NOTIMPL);
 	}
@@ -536,7 +500,7 @@ vector<String> AFXAPI Environment::GetCommandLineArgs() {
 	return ParseCommandLine(CommandLine());
 }
 
-String Environment::SystemDirectory() {
+path Environment::SystemDirectory() {
 #if UCFG_USE_POSIX
 	return "";
 #else
@@ -687,6 +651,8 @@ NameValueCollection HttpUtility::ParseQueryString(RCString query) {
 }
 #endif
 
+// RFC 4648
+
 class CBase64Table : public vector<int> {
 public:
 	static const char s_toBase64[];
@@ -737,7 +703,7 @@ String Convert::ToBase64String(const ConstBuf& mb) {
 	vector<String::Char> v;
 	const byte *p = mb.P;
 	for (size_t i=mb.Size/3; i--; p+=3) {
-		DWORD dw = (p[0]<<16) | (p[1]<<8) | p[2];
+		UInt32 dw = (p[0]<<16) | (p[1]<<8) | p[2];
 		v.push_back(CBase64Table::s_toBase64[(dw>>18) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>12) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>6) & 0x3F]);
@@ -745,8 +711,7 @@ String Convert::ToBase64String(const ConstBuf& mb) {
 	}
 	if (size_t rem = mb.Size % 3) {
 		v.push_back(CBase64Table::s_toBase64[(p[0]>>2) & 0x3F]);
-		switch (rem)
-		{
+		switch (rem) {
 		case 1:
 			v.push_back(CBase64Table::s_toBase64[(p[0]<<4) & 0x3F]);
 			v.push_back('=');
@@ -759,6 +724,97 @@ String Convert::ToBase64String(const ConstBuf& mb) {
 	}
 	return String(&v[0], v.size());
 }
+
+class BitWriteStream {
+public:
+	Stream& Base;
+	int Offset;
+
+	BitWriteStream(Stream& bas)
+	:	Base(bas)
+	,	Offset(0)
+	,	m_prevValue(0)
+	{}
+
+	void Write(int count, uint32_t value) {
+		ASSERT(count <= 8);
+		m_prevValue |= value << (8-count) >> Offset;
+		if (Offset + count >= 8) {
+			Base.WriteBuffer(&m_prevValue, 1);
+			m_prevValue = byte(value << (16 - Offset - count));
+		}			
+		Offset = (Offset + count) % 8;
+	}
+
+	void Flush() {
+		if (Offset)
+			Base.WriteBuffer(&m_prevValue, 1);
+		Offset = 0;
+		m_prevValue = 0;
+	}
+public:
+	byte m_prevValue;
+};
+
+static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable) {
+	MemoryStream ms;
+	BitWriteStream bs(ms);
+	for (size_t i=0; i<s.size(); i+=charsInGroup) {
+		for (size_t j=0; j<charsInGroup; ++j) {
+			wchar_t ch = s[i+j];
+			if ('=' == ch) {
+				bs.Offset = 0;
+				bs.Flush();
+				break;
+			}
+			if (UInt16(ch) >= 256)
+				Throw(E_INVALIDARG);
+			bs.Write(5, valTable[ch]);
+		}
+	}
+	if (bs.Offset)
+		Throw(E_INVALIDARG);
+	return ms;
+}
+
+static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
+	ostringstream os;
+	const int bitsInGroup = bytesInGroup * 8 / charsInGroup, 
+		mask = (1<<bitsInGroup) - 1;
+	for (size_t i=0; i<mb.Size;) {
+		int nbits = 0;
+		UInt64 val = 0;
+		for (int j=bytesInGroup; j-- && i<mb.Size; nbits+=8)
+			val |= UInt64(mb.P[i++]) << (j*8);
+		for (int j=charsInGroup; j--; nbits-=bitsInGroup)
+			os.put(nbits>0 ?table[(val >> (j*bitsInGroup)) & mask] : '=');
+	}
+	return os.str();
+}
+
+class CBase32Table : public vector<int> {
+public:
+	static const char s_toBase32[];
+
+	CBase32Table()
+		: vector<int>((size_t)256, EOF) {
+		for (byte i=(byte)strlen(s_toBase32); i--;) // to eliminate trailing zero
+			_self[s_toBase32[i]] = i;
+	}
+};
+
+static InterlockedSingleton<CBase32Table> s_pBase32Table;
+
+const char CBase32Table::s_toBase32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+Blob Convert::FromBase32String(RCString s) {
+	return FromBaseX(8, s.ToUpper(), *s_pBase32Table);
+}
+
+String Convert::ToBase32String(const ConstBuf& mb) {
+	return ToBaseX(8, 5, mb, CBase32Table::s_toBase32);
+}
+
 
 #if UCFG_USE_REGEX
 static StaticRegex s_reGuid("\\{([0-9A-Fa-f]{8,8})-([0-9A-Fa-f]{4,4})-([0-9A-Fa-f]{4,4})-([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})-([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})([0-9A-Fa-f]{2,2})\\}");
@@ -808,11 +864,11 @@ String Guid::ToString(RCString format) const {
 #endif
 	if ("B" == format)
 		return s;
-	s = s.Mid(1, s.Length-2);
-	if (format.IsEmpty() || "D"==format)
+	s = s.substr(1, s.Length-2);
+	if (format.empty() || "D"==format)
 		return s;
 	if ("N" == format)
-		return s.Mid(0, 8)+s.Mid(9, 4)+s.Mid(14, 4)+s.Mid(19, 4)+s.Mid(24);
+		return s.substr(0, 8) + s.substr(9, 4) + s.substr(14, 4) + s.substr(19, 4)+s.substr(24);
 	if ("P" == format)
 		return "("+s+")";
 	Throw(E_FAIL);
@@ -863,14 +919,14 @@ AFX_API CResID& CResID::operator=(RCString resId) {
 }
 
 CResID::operator const char *() const {
-	if (m_name.IsEmpty())
+	if (m_name.empty())
 		return (const char*)m_resId;
 	else
 		return m_name;
 }
 
 CResID::operator const String::Char *() const {
-	if (m_name.IsEmpty())
+	if (m_name.empty())
 		return (const String::Char *)m_resId;
 	else
 		return m_name;
@@ -883,7 +939,7 @@ CResID::operator UINT() const {
 #endif
 
 String CResID::ToString() const {
-	return m_name.IsEmpty() ? Convert::ToString((DWORD)m_resId) : m_name;
+	return m_name.empty() ? Convert::ToString((DWORD)m_resId) : m_name;
 }
 
 void CResID::Read(const BinaryReader& rd) {
@@ -1047,6 +1103,26 @@ hashval HashAlgorithm::ComputeHash(const ConstBuf& mb) {
 	return ComputeHash(stm);
 }
 
+// RFC 2104
+hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text) {
+	ConstBuf k = key;
+	hashval hk;
+	if (key.Size > halgo.BlockSize) {
+		hk = halgo.ComputeHash(key);
+		k = hk;
+	}
+	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.Size);
+	byte *buf = (byte*)alloca(size);
+	for (size_t i=0; i<halgo.BlockSize; ++i)
+		buf[i] = i<k.Size ? k.P[i] ^ 0x36 : 0x36;
+	memcpy(buf+halgo.BlockSize, text.P, text.Size);
+	hashval hv = halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+text.Size));
+	for (size_t i=0; i<halgo.BlockSize; ++i)
+		buf[i] = i<k.Size ? k.P[i] ^ 0x5C : 0x5C;
+	memcpy(buf+halgo.BlockSize, hv.constData(), hv.size());
+	return halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+hv.size()));
+}
+
 
 static UInt32 s_crcTable[256];
 
@@ -1074,10 +1150,14 @@ hashval Crc32::ComputeHash(Stream& stm) {
 
 CMessageProcessor g_messageProcessor;
 
+const DWORD //!!!E_EXT_BASE = 0x80040000 | 10000,
+	E_EXT_UPPER = E_EXT_BASE+0xFFFF;
 
 CMessageProcessor::CMessageProcessor() {
-	m_default.Init(0, UInt32(-1), Path::GetFileNameWithoutExtension(System.ExeFilePath));
-	///!!!  RegisterModule(E_EXT_BASE, E_EXT_UPPER, EXT_MODULE);
+	m_default.Init(0, UInt32(-1), System.ExeFilePath.stem());
+#ifdef X_AFXDLL	 //!!!
+	RegisterModule(E_EXT_BASE, E_EXT_UPPER, Path::GetFileName(AfxGetModuleState()->FileName));
+#endif
 }
 
 CMessageRange::CMessageRange() {
@@ -1088,15 +1168,15 @@ CMessageRange::~CMessageRange() {
 	g_messageProcessor.m_ranges.erase(std::remove(g_messageProcessor.m_ranges.begin(), g_messageProcessor.m_ranges.end(), this), g_messageProcessor.m_ranges.end());
 }
 
-void CMessageProcessor::CModuleInfo::Init(UInt32 lowerCode, UInt32 upperCode, RCString moduleName) {
+void CMessageProcessor::CModuleInfo::Init(UInt32 lowerCode, UInt32 upperCode, const path& moduleName) {
 	m_lowerCode = lowerCode;
 	m_upperCode = upperCode;
 	m_moduleName = moduleName;
-	if (!Path::HasExtension(m_moduleName)) {
+	if (!m_moduleName.has_extension()) {
 #if UCFG_USE_POSIX
-		m_moduleName += ".cat";
+		m_moduleName /= ".cat";
 #elif UCFG_WIN32
-		m_moduleName += ".dll";
+		m_moduleName /= ".dll";
 #endif
 	}
 }
@@ -1123,7 +1203,7 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 	return m_mcat.GetMessage((hr>>16) & 0xFF, hr & 0xFFFF);
 #elif UCFG_WIN32
 	TCHAR buf[256];
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(m_moduleName)), hr, 0, buf, sizeof buf, 0))
+	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(m_moduleName.native())), hr, 0, buf, sizeof buf, 0))
 		return buf;
 	else
 		return nullptr;
@@ -1133,7 +1213,10 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 }
 
 void CMessageProcessor::SetParam(RCString s) {
-	g_messageProcessor.m_param.GetData()->m_string = s;
+	String *ps = g_messageProcessor.m_param;
+	if (!ps)
+		g_messageProcessor.m_param.reset(ps = new String);
+	*ps = s;
 }
 
 String AFXAPI AfxProcessError(HRESULT hr) {
@@ -1172,9 +1255,9 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	TCHAR buf[256];
 	char *ar[5] = {0, 0, 0, 0, 0};
 	char **p = 0;
-	String s = m_param->m_string;
-	if (!s.IsEmpty()) {
-		ar[0] = (char*)(const char*)s;
+	String *ps = m_param;
+	if (ps && !ps->empty()) {
+		ar[0] = (char*)ps->c_str();
 		p = ar;
 	}
 #if UCFG_WIN32
@@ -1182,7 +1265,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 		return String(hex)+":  "+buf;
 	for (size_t i=0; i<m_ranges.size(); i++) {
 		String msg = m_ranges[i]->CheckMessage(hr);
-		if (!msg.IsEmpty())
+		if (!msg.empty())
 			return String(hex)+L":  "+msg;
 	}
 	switch (HRESULT_FACILITY(hr)) {
@@ -1245,9 +1328,6 @@ String CMessageProcessor::Process(HRESULT hr) {
 	return g_messageProcessor.ProcessInst(hr);
 }
 
-const int //!!!E_EXT_BASE = 0x80040000 | 10000,
-	E_EXT_UPPER = E_EXT_BASE+0xFFFF;
-
 void CMessageProcessor::CheckStandard() {
 #if UCFG_EXTENDED
 	if (m_vec.size() == 0) {
@@ -1260,28 +1340,26 @@ void CMessageProcessor::CheckStandard() {
 #else
 		AFX_MODULE_STATE *pMS = &_afxBaseModuleState;
 #endif
-		info.m_moduleName = Path::GetFileName(pMS->FileName);
+		info.m_moduleName = pMS->FileName.filename();
 		m_vec.push_back(info);
 	}
 #endif
 }
 
 bool PersistentCache::Lookup(RCString key, Blob& blob) {
-	String fn = AfxGetCApp()->get_AppDataDir()+"/.cache";
-	Directory::CreateDirectory(fn);
-	fn = Path::Combine(fn, key);
-	if (!File::Exists(fn))
+	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key;
+	create_directories(fn.parent_path());
+	if (!exists(fn))
 		return false;
-	FileStream fs(fn, FileMode::Open, FileAccess::Read);
+	FileStream fs(fn.c_str(), FileMode::Open, FileAccess::Read);
 	blob.Size = (size_t)fs.Length;
 	fs.ReadBuffer(blob.data(), blob.Size);
 	return true;
 }
 
 void PersistentCache::Set(RCString key, const ConstBuf& mb) {
-	String fn = AfxGetCApp()->get_AppDataDir()+"/.cache";
-	Directory::CreateDirectory(fn);
-	fn = Path::Combine(fn, key);
+	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key;
+	create_directories(fn.parent_path());
 	FileStream fs(fn, FileMode::Create, FileAccess::Write);
 	fs.WriteBuffer(mb.P, mb.Size);
 
@@ -1361,7 +1439,7 @@ void AFXAPI LogObjectCounters(bool fFull) {
 #endif
 }
 
-ProcessStartInfo::ProcessStartInfo(RCString fileName, RCString arguments)
+ProcessStartInfo::ProcessStartInfo(const path& fileName, RCString arguments)
 	:	Flags(0)
 	,	FileName(fileName)
 	,	Arguments(arguments)
@@ -1386,7 +1464,7 @@ ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
 }
 
 void ProcessObj::CommonInit() {
-#if UCFG_EXTENDED && !UCFG_WCE
+#if !UCFG_WCE
 	StandardInput.m_pFile = &m_fileIn;
 	StandardOutput.m_pFile = &m_fileOut;
 	StandardError.m_pFile = &m_fileErr;
@@ -1484,7 +1562,7 @@ bool ProcessObj::Start() {
 #if UCFG_WIN32_FULL
 
 	STARTUPINFO si = {sizeof si};
-	StaticAssert(SW_SHOWNORMAL == 1, Invalid_SW_SHOWNORMAL);
+	static_assert(SW_SHOWNORMAL == 1, "Invalid SW SHOWNORMAL");
 	si.wShowWindow = SW_SHOWNORMAL; // same as SW_NORMAL Critical for running iexplore
 	SafeHandle hI, hO, hE;
 #if UCFG_WCE
@@ -1497,7 +1575,6 @@ bool ProcessObj::Start() {
 		si.hStdOutput = StdHandle::Get(STD_OUTPUT_HANDLE);
 		si.hStdError = StdHandle::Get(STD_ERROR_HANDLE);
 		si.dwFlags |= STARTF_USESTDHANDLES;
-#if	 UCFG_EXTENDED
 		HANDLE hRead, hWrite;
 		SECURITY_ATTRIBUTES sattr = { sizeof(sattr), 0, TRUE };
 		if (StartInfo.RedirectStandardInput) {
@@ -1518,22 +1595,21 @@ bool ProcessObj::Start() {
 			hE.Attach(hWrite);
 			StandardError.m_pFile->Duplicate(hRead, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
 		}
-#	endif
 	}
 	STARTUPINFO *psi = &si;
 	bool bInheritHandles = bool(si.dwFlags & STARTF_USESTDHANDLES);
-	String dir = StartInfo.WorkingDirectory.IsEmpty() ? nullptr : StartInfo.WorkingDirectory;
+	String dir = StartInfo.WorkingDirectory.empty() ? String(nullptr) : String(StartInfo.WorkingDirectory);
 	LPCTSTR pCurrentDirectory = dir;
 #endif
 
 	PROCESS_INFORMATION pi;
 	String cls = StartInfo.FileName;
-	if (!StartInfo.Arguments.IsEmpty())
+	if (!StartInfo.Arguments.empty())
 		cls += " "+StartInfo.Arguments;
 	size_t len = (cls.Length+1)*sizeof(TCHAR);
 	TCHAR *cl = (TCHAR*)alloca(len);
 	memcpy(cl, (const TCHAR*)cls, len);
-	String fileName = StartInfo.FileName.IsEmpty() ? nullptr : StartInfo.FileName;
+	String fileName = StartInfo.FileName.empty() ? String(nullptr) : String(StartInfo.FileName);
 	DWORD flags = StartInfo.Flags;
 	void *pEnvironment = 0;
 #if !UCFG_WCE
@@ -1580,7 +1656,7 @@ String Process::get_ProcessName() {
 	String r = buf;
 	String ext = r.ToLower().Right(4);
 	if (ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd")
-		r = r.Substring(0, r.Length-4);
+		r = r.substr(0, r.Length-4);
 	return r;
 #endif
 }
@@ -1598,6 +1674,14 @@ Process AFXAPI Process::GetProcessById(pid_t pid) {
 Process AFXAPI Process::GetCurrentProcess() {
 	return GetProcessById(getpid());
 }
+
+#if UCFG_WIN32
+Process AFXAPI Process::FromHandle(HANDLE h, bool bOwn) {
+	Process r;
+	r.m_pimpl = new ProcessObj(h, bOwn);
+	return r;
+}
+#endif // UCFG_WIN32
 
 vector<Process> AFXAPI Process::GetProcesses() {
 #if UCFG_USE_POSIX
@@ -1627,26 +1711,56 @@ vector<Process> AFXAPI Process::GetProcesses() {
 vector<Process> AFXAPI Process::GetProcessesByName(RCString name) {
 	vector<Process> procs = GetProcesses(),
 		r;
-	DBG_LOCAL_IGNORE_WIN32(ERROR_INVALID_HANDLE);
+	DBG_LOCAL_IGNORE_CONDITION(errc::bad_file_descriptor);
 	DBG_LOCAL_IGNORE_WIN32(ERROR_PARTIAL_COPY);
 	EXT_FOR (Process& p, procs) {
 		try {
 			if (p.ProcessName == name)
 				r.push_back(p);
-		} catch (Exception& ex) {
-			switch (ex.HResult) {
+		} catch (system_error& ex) {
+			const error_code& ec = ex.code();
+			if (ec != errc::bad_file_descriptor
+				&& ec != errc::permission_denied
 #ifdef WIN32
-			case HRESULT_OF_WIN32(ERROR_INVALID_HANDLE):
-			case HRESULT_OF_WIN32(ERROR_PARTIAL_COPY):
+				&& ec != error_code(ERROR_PARTIAL_COPY, system_category())
 #endif
-			case E_ACCESSDENIED:
-				break;
-			default:
+				)
 				throw;
-			}
 		}
 	}
 	return r;
+}
+
+HRESULT AFXAPI ToHResult(const system_error& ex) {
+	const error_code& ec = ex.code();
+	const error_category& cat = ec.category();
+	int ecode = ec.value();
+	if (cat == generic_category())
+		return HRESULT_FROM_C(ecode);
+	else if (cat == system_category())
+		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_OS << 16) | 0x80000000);
+	else if (cat == hresult_category())
+		return ecode;
+	else
+		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_UNKNOWN << 16) | 0x80000000);			//!!! category info lost here
+}
+
+HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
+	try {
+		throw;
+	} catch (const system_error& ex) {
+		return ToHResult(ex);
+	} catch (const bad_alloc&) {
+		return E_OUTOFMEMORY;
+	} catch (invalid_argument&) {
+		return E_INVALIDARG;
+	} catch (bad_cast&) {
+		return E_EXT_InvalidCast;
+	} catch (const out_of_range&) {
+		return E_EXT_IndexOutOfRange;
+	} catch (const exception&) {
+		return E_FAIL;
+	}
 }
 
 

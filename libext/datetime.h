@@ -1,19 +1,18 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
+
+#include <chrono>
 
 struct timeval;
 
 namespace Ext {
+using namespace std::chrono;
+using std::ratio;
 
 enum Microseconds {
 };
+
+extern const Int64 Unix_FileTime_Offset, Unix_DateTime_Offset;
+
 
 class DateTimeBase {
 	typedef DateTimeBase class_type;
@@ -59,7 +58,7 @@ public:
 
 	static const EXT_DATA TimeSpan MaxValue;
 
-	TimeSpan(Int64 ticks = 0)
+	explicit TimeSpan(Int64 ticks = 0)
 		:	base(ticks)
 	{}
 
@@ -89,18 +88,18 @@ public:
 	}
 #endif
 
-	TimeSpan operator+(const TimeSpan& span) const { return m_ticks+span.Ticks; }
+	TimeSpan operator+(const TimeSpan& span) const { return TimeSpan(m_ticks + span.Ticks); }
 	TimeSpan& operator+=(const TimeSpan& span) { m_ticks+=span.Ticks; return *this;}
 
-	TimeSpan operator-(const TimeSpan& span) const {return m_ticks-span.m_ticks; }
+	TimeSpan operator-(const TimeSpan& span) const { return TimeSpan(m_ticks - span.m_ticks); }
 	TimeSpan& operator-=(const TimeSpan& span) { m_ticks-=span.Ticks; return *this;}
 
 	TimeSpan operator*(double v) const {
-		return Int64(m_ticks*v);
+		return TimeSpan(Int64(m_ticks * v));
 	}
 
 	TimeSpan operator/(double v) const {
-		return Int64(m_ticks/v);
+		return TimeSpan(Int64(m_ticks / v));
 	}
 
 	double get_TotalMilliseconds() const { return double(m_ticks)/10000; }
@@ -132,8 +131,8 @@ public:
 
 	String ToString(int w = 0) const;
 
-	static TimeSpan AFXAPI FromMilliseconds(double value) { return Int64(value * 10000); }		//!!! behavior from .NET, where value rounds to milliseconds
-	static TimeSpan AFXAPI FromSeconds(double value)	{ return Int64(value * 10000000); }
+	static TimeSpan AFXAPI FromMilliseconds(double value) { return TimeSpan(Int64(value * 10000)); }		//!!! behavior from .NET, where value rounds to milliseconds
+	static TimeSpan AFXAPI FromSeconds(double value)	{ return TimeSpan(Int64(value * 10000000)); }
 	static TimeSpan AFXAPI FromMinutes(double value)	{ return FromSeconds(value * 60); }
 	static TimeSpan AFXAPI FromHours(double value)		{ return FromSeconds(value * 3600); }
 	static TimeSpan AFXAPI FromDays(double value)		{ return FromSeconds(value * 3600*24); }
@@ -176,9 +175,15 @@ public:
 		:	base(dt.m_ticks)
 	{}
 
-	DateTime(Int64 ticks)
+	explicit DateTime(Int64 ticks)
 		:	base(ticks)
 	{}
+
+	template <typename D>
+	DateTime(const std::chrono::time_point<system_clock, D>& tp) {
+		typedef ratio_multiply<ratio<10000000>, typename D::period> ticks_t;
+		m_ticks = from_time_t(0).Ticks + tp.time_since_epoch().count() * ticks_t::num / ticks_t::den;		//!!!TODO Optimize
+	}
 
 	DateTime(const FILETIME& ft)
 		:	base((Int64&)ft + FileTimeOffset)
@@ -194,6 +199,14 @@ public:
 	DEFPROP_GET(int, DayOfYear);
 
 #endif
+
+	typedef std::chrono::duration<Int64, ratio<1, 10000000>> duration;
+	typedef std::chrono::time_point<system_clock, duration> time_point;
+
+	operator time_point() const {
+		return time_point(duration(Ticks - from_time_t(0).Ticks));
+	}
+
 	void ToTimeval(timeval& tv)  const;
 	operator tm() const;
 
@@ -240,7 +253,7 @@ public:
 
 #ifdef WIN32
 
-	DateTime(const COleVariant& v);
+	explicit DateTime(const COleVariant& v);
 
 	FILETIME ToFileTime() const {
 		Int64 n = m_ticks - FileTimeOffset;
@@ -262,20 +275,13 @@ public:
 	DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int ms = 0);
 	DateTime(const tm& t);
 
-	/*!!!
-	DateTime& operator=(const DateTime& dt)
-	{
-	m_ticks = dt.m_ticks;
-	return _self;
-	}*/
-
-	DateTime operator+(const TimeSpan& span) const { return m_ticks+span.m_ticks; }
+	DateTime operator+(const TimeSpan& span) const { return DateTime(m_ticks + span.m_ticks); }
 	DateTime& operator+=(const TimeSpan& span) { return *this = *this + span; }
 
-	DateTime operator-(const TimeSpan& span) const { return m_ticks-span.m_ticks; }
+	DateTime operator-(const TimeSpan& span) const { return DateTime(m_ticks - span.m_ticks); }
 	DateTime& operator-=(const TimeSpan& span) { return *this = *this - span; }
 
-	TimeSpan operator-(const DateTime& dt) const { return m_ticks-dt.m_ticks; }
+	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
 
 	LocalDateTime ToLocalTime();
 	static LocalDateTime AFXAPI Now();
@@ -304,7 +310,7 @@ public:
 	}
 	DEFPROP_GET(int, Day);
 
-	TimeSpan get_TimeOfDay() const { return Ticks%(24LL*3600*10000000); }
+	TimeSpan get_TimeOfDay() const { return TimeSpan(Ticks % (24LL*3600*10000000)); }
 	DEFPROP_GET_CONST(TimeSpan, TimeOfDay);
 
 	DateTime get_Date() const { return *this - TimeOfDay; }
@@ -387,7 +393,6 @@ inline bool AFXAPI operator<=(const DateTime& dt1, const DateTime& dt2) { return
 inline bool AFXAPI operator>=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 < dt2); }
 inline bool AFXAPI operator==(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks == dt2.Ticks; }
 inline bool AFXAPI operator!=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 == dt2); }
-
 
 inline BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const DateTimeBase& dt) {
 	dt.Write(wr);

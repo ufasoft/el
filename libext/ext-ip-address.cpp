@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -31,10 +23,10 @@ void SocketStartupCheck(int code) {
 CUsingSockets::~CUsingSockets() {
 #if UCFG_WIN32
 	try {
-		DBG_LOCAL_IGNORE_NAME(HRESULT_FROM_WIN32(WSASYSNOTREADY), ignWSASYSNOTREADY);	
+		DBG_LOCAL_IGNORE_WIN32(WSASYSNOTREADY);
 		Close();
-	} catch (RCExc ex) {
-		if (HResultInCatch(ex) != HRESULT_FROM_WIN32(WSASYSNOTREADY))
+	} catch (system_error& ex) {
+		if (ex.code() != error_condition(WSASYSNOTREADY, win32_category()))
 			throw;
 	}
 #endif
@@ -77,14 +69,14 @@ extern "C" const char * __cdecl API_inet_ntop(int af, const void *src, char *dst
 	switch (af) {
 	case AF_INET:
 		{
-			sockaddr_in sa = { (short)af };
+			sockaddr_in sa = { (ADDRESS_FAMILY)af };
 			memcpy(&sa.sin_addr, src, 4);
 			rc = ::WSAAddressToString((LPSOCKADDR)&sa, sizeof sa, 0, buf, &len);
 		}
 		break;
 	case AF_INET6:
 		{
-			sockaddr_in6 sa = { (short)af };
+			sockaddr_in6 sa = { (ADDRESS_FAMILY)af };
 			memcpy(&sa.sin6_addr, src, 16);
 			rc = ::WSAAddressToString((LPSOCKADDR)&sa, sizeof sa, 0, buf, &len);
 		}
@@ -200,8 +192,7 @@ void IPAddress::CreateCommon() {
 IPAddress::IPAddress(const sockaddr& sa)
 	:	m_domainname(nullptr)
 {
-	switch (sa.sa_family)
-	{
+	switch (sa.sa_family) {
 	case AF_INET:
 		memcpy(&m_sin, &sa, sizeof(sockaddr_in));
 		break;

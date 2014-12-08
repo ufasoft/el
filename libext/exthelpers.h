@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 // Code common for Win32 and Kernel mode
 
 #pragma once
@@ -30,13 +22,6 @@ inline long exchange(long& obj, long new_val) {
 	obj = new_val;
 	return old_val;
 }
-/*!!!R
-template <typename T>
-inline T *exchange(T *&obj, nullptr_t) {
-	T *old_val = obj;
-	obj = 0;
-	return old_val;
-}*/
 } // std::
 #endif // !UCFG_STD_EXCHANGE
 
@@ -654,343 +639,12 @@ public: \
 	IMPLEMENT_RUNTIMECLASS(class_name, base_class_name, 0xFFFF, \
 	class_name::CreateObject, NULL)
 
-template <typename T> class SelfCountPtr {
-	T *m_p;
-	RefCounter *m_pRef;
-
-	void Destroy() {
-		if (m_pRef && !--m_pRef) {
-			delete m_pRef;
-			delete m_p;
-		}
-	}
-public:
-	SelfCountPtr()
-		:	m_p(0)
-		,	m_pRef(0)
-	{}
-
-	SelfCountPtr(T *p)
-		:	m_p(p)
-		,	m_pRef(new RefCounter(1))
-	{}
-
-	SelfCountPtr(const SelfCountPtr& p)
-		:	m_p(p.m_p)
-		,	m_pRef(p.m_pRef)
-	{
-		m_pRef++;
-	}
-
-	~SelfCountPtr() {
-		Destroy();
-	}
-
-	bool operator<(const SelfCountPtr& p) const { return m_p < p.m_p; }
-	bool operator==(const SelfCountPtr& p) const { return m_p == p.m_p; }
-	bool operator==(T *p) const { return m_p == p; }
-
-	SelfCountPtr& operator=(const SelfCountPtr& p) {
-		if (&p != this) {
-			Destroy();
-			m_p = p.m_p;
-			++*(m_pRef = p.m_pRef);
-		}
-		return *this;
-	}
-
-	operator T*() const { return m_p; }
-	T *operator->() const { return m_p; }
-};
-
-template <class T, class L> class CCounterIncDec {
-public:
-	static RefCounter __fastcall AddRef(T *p) {
-		return L::Increment(p->m_dwRef);
-	}
-
-	static RefCounter __fastcall Release(T *p) {
-		RefCounter r = L::Decrement(p->m_dwRef);
-		if (!r)
-			delete p;
-		return r;
-	}
-};
-
-template <class T> class CAddRefIncDec {
-public:
-	static RefCounter AddRef(T *p) {
-		return p->AddRef();
-	}
-
-	static RefCounter Release(T *p) {
-		return p->Release();
-	}
-};
-
-template <typename T>
-class PtrBase {
-public:
-	typedef T element_type;
-	PtrBase(T *p = 0)
-		:	m_p(p)
-	{}
-
-	T *get() const noexcept { return m_p; }
-	T *operator->() const noexcept { return m_p; }
-
-	void swap(PtrBase& p) noexcept {
-		std::swap(m_p, p.m_p);
-	}
-protected:
-	T *m_p;
-};
-
-template <typename T, typename L>
-class RefPtr : public PtrBase<T> {
-	typedef PtrBase<T> base;
-public:
-	using base::get;
-
-	RefPtr(T *p = 0)
-		:	base(p)
-	{
-		AddRef();
-	}
-
-	RefPtr(const RefPtr& p)
-		:	base(p)
-	{
-		AddRef();
-	}
-
-	~RefPtr() {
-		Destroy();
-	}
-
-	bool operator<(const RefPtr& p) const { return m_p < p.m_p; }
-	bool operator==(const RefPtr& p) const { return m_p == p.m_p; }
-	bool operator==(T *p) const { return m_p == p; }
-
-	RefPtr& operator=(const RefPtr& p) {
-		if (&p != this) {
-			Destroy();
-			m_p = p.m_p;
-			AddRef();
-		}
-		return *this;
-	}
-
-	void Attach(T *p) {
-		if (m_p)
-			Throw(E_EXT_NonEmptyPointer);
-		m_p = p;
-	}
-
-	operator T*() const { return get(); }
-
-	T** AddressOf() {
-		if (m_p)
-			Throw(E_EXT_NonEmptyPointer);
-		return &m_p;
-	}
-
-	void reset() {
-		if (m_p)
-			L::Release(exchange(m_p, (T*)0));
-	}
-protected:
-	using base::m_p;
-private:
-	void Destroy() {
-		if (m_p)
-			L::Release(m_p);
-	}
-
-	void AddRef() {
-		if (m_p)
-			L::AddRef(m_p);
-	}
-
-/*!!!R		T** operator&();				// conflict with std::swap
-	{
-		return AddressOf();
-	}*/
-
-};
-
-
-template <typename T, typename I = typename ptr_traits<T>::interlocked_policy>
-class ptr : public RefPtr<T, CCounterIncDec<T, I> > {
-public:
-	typedef ptr class_type;
-	typedef RefPtr<T, CCounterIncDec<T, I> > base;
-
-	ptr(T *p = 0)
-		:	base(p)
-	{}
-
-	ptr(const std::nullptr_t&)
-		:	base(0)
-	{}
-
-	ptr(const ptr& p)
-		:	base(p)
-	{}
-
-	template <class U>
-	ptr(const ptr<U>& pu)
-		:	base(pu.get())
-	{}
-
-	ptr& operator=(const ptr& p) {
-		base::operator=(p);
-		return *this;
-	}
-
-	ptr& operator=(T *p) {
-		return operator=(class_type(p));
-	}
-
-	template <class U>
-	ptr& operator=(const ptr<U>& pu) {
-		base::operator=(pu.get());
-		return *this;
-	}
-
-	ptr& operator=(const std::nullptr_t& np) {
-		return operator=(class_type(np));
-	}
-
-/*!!!R
-	T *get_P() const { return (T*)*this; }
-	DEFPROP_GET(T*, P);
-	*/
-
-	ptr *This() { return this; }
-
-	RefCounter use_count() const { return m_p ? m_p->m_dwRef : 0; }
-protected:
-	using base::m_p;
-};
-
-template <class T>
-class Pimpl {
-public:
-	bool operator<(const Pimpl& tn) const {
-		return m_pimpl < tn.m_pimpl;
-	}
-
-	bool operator==(const Pimpl& tn) const {
-		return m_pimpl == tn.m_pimpl;
-	}
-
-	bool operator!=(const Pimpl& tn) const {
-		return !operator==(tn);
-	}
-
-	ptr<T> m_pimpl;
-
-	EXPLICIT_OPERATOR_BOOL() const {
-		return m_pimpl ? EXT_CONVERTIBLE_TO_TRUE : 0;
-	}
-protected:
-};
-
 
 } // Ext::
 
-namespace EXT_HASH_VALUE_NS {
-
-template <typename T> size_t hash_value(const ptr<T>& v) {
-    return reinterpret_cast<size_t>(v.get());
-}
-
-}
 
 namespace Ext {
 
-template <typename T>
-class addref_ptr : public RefPtr<T, CAddRefIncDec<T> > {
-public:
-	typedef addref_ptr class_type;
-	typedef RefPtr<T, CAddRefIncDec<T> > base;
-
-	addref_ptr(T *p = 0)
-		:	base(p)
-	{}
-
-	addref_ptr(const base& p) //!!! was ptr
-		:	base(p)
-	{}
-
-	addref_ptr& operator=(const addref_ptr& p)
-	{
-		base::operator=(p);
-		return *this;
-	}
-/*!!!R
-	T *get_P() const { return (T*)*this; }
-	DEFPROP_GET(T*, P);
-	*/
-};
-
-template <class T>
-class AFX_CLASS CRefCounted {
-public:
-	class AFX_CLASS CRefCountedData : public T {
-	public:
-		RefCounter m_dwRef;
-
-		void AddRef() {
-			Interlocked::Increment(m_dwRef);
-		}
-
-		void Release() {
-			if (!Interlocked::Decrement(m_dwRef))
-				delete this;
-		}
-	};
-
-	CRefCountedData *m_pData;
-
-	CRefCounted()
-		:	m_pData(new CRefCountedData)
-	{
-		m_pData->m_dwRef = 1;
-	}
-
-	CRefCounted(const CRefCounted& rc)
-		:	m_pData(rc.m_pData)
-	{
-		m_pData->AddRef();
-	}
-
-	CRefCounted(CRefCountedData *p)
-		:	m_pData(p)
-	{
-		m_pData->m_dwRef = 1;
-	}
-
-	~CRefCounted() {
-		m_pData->Release();
-	}
-
-	void Init(CRefCountedData *p) {
-		m_pData->Release();
-		m_pData = p;
-		m_pData->m_dwRef = 1;
-	}
-
-	CRefCounted<T>& operator=(const CRefCounted<T>& val) {
-		if (m_pData != val.m_pData) {
-			m_pData->Release();
-			m_pData = val.m_pData;
-			m_pData->AddRef();
-		}
-		return *this;
-	}
-};
 
 template <typename T>
 class optional {
@@ -1038,10 +692,6 @@ private:
 	T m_v;
 	volatile bool m_bInitialized;
 };
-
-template <typename U, typename T, typename L> U *StaticCast(const ptr<T, L>& p) 	{
-	return static_cast<U*>(p.get());
-}
 
 class InterlockedSemaphore {
 public:
@@ -1154,39 +804,51 @@ inline HRESULT HResult(HRESULT err) { return err; }
 inline HRESULT HResult(unsigned int err) { return (HRESULT)err; }
 inline HRESULT HResult(unsigned long err) { return (HRESULT)err; }
 
+#define EXT_CONCAT1(a, b) a##b
+#define EXT_CONCAT(a, b) EXT_CONCAT1(a, b)
+
 #if UCFG_EH_SUPPORT_IGNORE
-#	define DBG_LOCAL_IGNORE(hr) CLocalIgnore _localIgnore(HResult(hr));
-#	define DBG_LOCAL_IGNORE_WIN32(name) CLocalIgnore _localIgnore##name(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_WIN32, name));
-#	define DBG_LOCAL_IGNORE_NAME(hr, name) CLocalIgnore _localIgnore##name(HResult(hr));
+#	define DBG_LOCAL_IGNORE(hr)					CLocalIgnore<std::error_code> EXT_CONCAT(_localIgnore, __COUNTER__)(error_code(Ext::HResult(hr), Ext::hresult_category()));
+#	define DBG_LOCAL_IGNORE_CONDITION(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(econd);
+#	define DBG_LOCAL_IGNORE_WIN32(name)			CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(error_condition(name, Ext::win32_category()));
+//!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)	CLocalIgnore<std::error_code> _localIgnore##name(error_code(Ext::HResult(hr), Ext::hresult_category()));
 #else
 #	define DBG_LOCAL_IGNORE(hr)
+#	define DBG_LOCAL_IGNORE_CONDITION(econd)
 #	define DBG_LOCAL_IGNORE_WIN32(name)
-#	define DBG_LOCAL_IGNORE_NAME(hr, name)
+//!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)
 #endif
 
-
+String TruncPrettyFunction(const char *fn);
 
 } // Ext::
 
 
 #define OUTPUT_DEBUG(s) ((*(ostream*)Ext::CTrace::s_pOstream << s), 0)
 
+#ifdef _MSC_VER
+#	define EXT_TRC_FUNCNAME __FUNCTION__
+#else
+#	define EXT_TRC_FUNCNAME Ext::TruncPrettyFunction(__PRETTY_FUNCTION__)
+#endif
+
+
 #if UCFG_TRC
 #	define DBG_PARAM(param) param
-#	define TRC(level, s) { if ((1<<level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1<<level, __FUNCTION__).Stream() << s; }
+#	define TRC(level, s) { if ((1<<level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1<<level, EXT_TRC_FUNCNAME).Stream() << s; }
 
 #	define TRCP(level, s) { if (level & Ext::CTrace::s_nLevel) {				\
 		char obj[sizeof(Ext::CTraceWriter)];									\
-		Ext::CTraceWriter& w = Ext::CTraceWriter::CreatePreObject(obj, level, __FUNCTION__);				\
+		Ext::CTraceWriter& w = Ext::CTraceWriter::CreatePreObject(obj, level, EXT_TRC_FUNCNAME);				\
 		w.Printf s;																\
 		w.~CTraceWriter(); }}												
 
 
 #	define TRC_SHORT(level, s) ( (1<<level) & Ext::CTrace::s_nLevel ? OUTPUT_DEBUG(' ' << s) : 0)
 #	define D_TRACE(cat, level, args) ( ((1<<level) & Ext::CTrace::s_nLevel) && cat.Enabled ? OUTPUT_DEBUG(cat.m_name << ": " << args << endl):0)
-#	define FUN_TRACE  Ext::CFunTrace _funTrace(__FUNCTION__, 0);
-#	define FUN_TRACE_1  Ext::CFunTrace _funTrace(__FUNCTION__, 1);
-#	define FUN_TRACE_2  Ext::CFunTrace _funTrace(__FUNCTION__, 2);
+#	define FUN_TRACE  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 0);
+#	define FUN_TRACE_1  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 1);
+#	define FUN_TRACE_2  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 2);
 
 #	define CLASS_TRACE(name) class CClassTrace : public CFunTrace { \
 	public: \

@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -13,6 +5,12 @@
 
 #if UCFG_WIN32
 #	include <windows.h>
+#endif
+
+#if UCFG_WIN32 && !UCFG_MINISTL
+#	include <shlwapi.h>
+
+#	include <el/libext/win32/ext-win.h>
 #endif
 
 namespace Ext {
@@ -92,8 +90,7 @@ bool CHandleBaseBase::Close(bool bFromDtor) {
 
 
 #ifndef WDM_DRIVER
-//!!!RCTls SafeHandle::t_pCurrentHandle;
-EXT_THREAD_PTR(void, SafeHandle::t_pCurrentHandle);
+EXT_THREAD_PTR(void) SafeHandle::t_pCurrentHandle;
 #endif
 
 SafeHandle::HandleAccess::~HandleAccess() {	
@@ -217,7 +214,7 @@ HANDLE SafeHandle::Detach() { //!!!
 	return (HANDLE)exchange(m_handle, m_invalidHandleValue);
 }
 
-void SafeHandle::Duplicate(HANDLE h, DWORD dwOptions) {
+void SafeHandle::Duplicate(HANDLE h, UInt32 dwOptions) {
 #if UCFG_WIN32
 	if (Valid())
 		Throw(E_EXT_AlreadyOpened);
@@ -267,19 +264,19 @@ SafeHandle::BlockingHandleAccess::~BlockingHandleAccess() {
 }
 
 #if !UCFG_WDM
-tls_ptr<String> Exception::t_LastStringArg;
+thread_specific_ptr<String> Exception::t_LastStringArg;
 #endif
 
 String Exception::get_Message() const {
 #if UCFG_WDM
 	return m_message;
 #else
-	return m_message.IsEmpty() ? AfxProcessError(HResult) : m_message;
+	return m_message.empty() ? AfxProcessError(code().value()) : m_message;
 #endif
 }
 
 const char *Exception::what() const noexcept {
-	if (m_message.IsEmpty())
+	if (m_message.empty())
 		m_message = get_Message();
 	return m_message.c_str();
 }
@@ -295,23 +292,39 @@ String Exception::ToString() const {
 	return r;
 }
 
-static class HResultCategory : public error_category {
-	const char *name() const noexcept override {
-		return "HResult";		
-	}
+
+static class HResultCategory : public error_category {		// outside function to eliminate thread-safe static machinery
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "HResult"; }
 
 	string message(int eval) const override {
+#if UCFG_WDM
+		return "Error";		//!!!
+#else
 		return explicit_cast<string>(AfxProcessError(eval));
+#endif
 	}
+
+	bool equivalent(int errval, const error_condition& c) const noexcept override {
+		if (HRESULT_FACILITY(errval) == FACILITY_WIN32)
+			return win32_category().equivalent(errval & 0xFFFF, c);
+		else if (HRESULT_FACILITY(errval) == FACILITY_C)
+			return generic_category().equivalent(errval & 0xFFFF, c);
+		else
+			return base::equivalent(errval, c);
+	}
+
+	bool equivalent(const error_code& ec, int errval) const noexcept override { return base::equivalent(ec, errval); }
 } s_hresultCategory;
 
-const std::error_category& hresult_category() {
+const error_category& hresult_category() {
+
 	return s_hresultCategory;
 }
 
 Exception::Exception(HRESULT hr, RCString message)
-	:	base(hr, hresult_category(), message.IsEmpty() ? string() : string(explicit_cast<string>(message)))
-	,	HResult(hr)
+	:	base(hr, hresult_category(), message.empty() ? string() : string(explicit_cast<string>(message)))
 	,	m_message(message)
 {
 #if !UCFG_WCE
@@ -320,36 +333,12 @@ Exception::Exception(HRESULT hr, RCString message)
 #endif
 }
 
-HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
-	try {
-		throw;
-	} catch (const Exception& ex) {
-		return ex.HResult;
-	} catch (const system_error& ex) {
-		const error_code& ec = ex.code();
-		const error_category& cat = ec.category();
-		int ecode = ec.value();
-		if (cat == generic_category())
-			return HRESULT_FROM_C(ecode);
-		else if (cat == system_category())
-			return (HRESULT) (((ecode) & 0x0000FFFF) | (FACILITY_OS << 16) | 0x80000000);
-		else if (cat == hresult_category())
-			return ecode;
-		else
-			return (HRESULT) (((ecode) & 0x0000FFFF) | (FACILITY_UNKNOWN << 16) | 0x80000000);			//!!! category info lost here
-	} catch (const bad_alloc&) {
-		return E_OUTOFMEMORY;
-	} catch (invalid_argument&) {
-		return E_INVALIDARG;
-	} catch (bad_cast&) {
-		return E_EXT_InvalidCast;
-	} catch (const exception&) {
-		return E_FAIL;
-	}
+intptr_t __stdcall AfxApiNotFound() {
+	Throw(HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND));
 }
 
-INT_PTR AFXAPI AfxApiNotFound() {
-	Throw(HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND));
+DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec) {
+	throw system_error(ec);
 }
 
 DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
@@ -366,12 +355,21 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 	case E_FAIL:					throw UnspecifiedException();
 	case E_EXT_ThreadInterrupted:	throw thread_interrupted();
 	case E_EXT_InvalidCast:			throw bad_cast();
+	case E_EXT_IndexOutOfRange:
+#if UCFG_WDM
+		throw out_of_range("Out of range");
+#else
+		throw out_of_range(explicit_cast<string>(AfxProcessError(E_EXT_IndexOutOfRange)));
+#endif
 	case HRESULT_OF_WIN32(ERROR_STACK_OVERFLOW):	throw StackOverflowExc();
+
+/*!!!R
 	case HRESULT_OF_WIN32(ERROR_FILE_NOT_FOUND):
 		{
 			FileNotFoundException e;
 #if !UCFG_WDM
-			e.FileName = *Exception::t_LastStringArg;
+			if (Exception::t_LastStringArg)
+				e.FileName = *Exception::t_LastStringArg;
 #endif
 			throw e;
 		}
@@ -379,7 +377,8 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 		{
 			FileAlreadyExistsExc e;
 #if !UCFG_WDM
-			e.FileName = *Exception::t_LastStringArg;
+			if (Exception::t_LastStringArg)
+				e.FileName = *Exception::t_LastStringArg;
 #endif
 			throw e;
 		}
@@ -388,11 +387,13 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 			DirectoryNotFoundExc e;
 			throw e;
 		}		
+		*/
 	case HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND):
 		{
 			ProcNotFoundExc e;
 #if !UCFG_WDM
-			e.ProcName = *Exception::t_LastStringArg;
+			if (Exception::t_LastStringArg)
+				e.ProcName = *Exception::t_LastStringArg;
 #endif
 			throw e;
 		}
@@ -404,10 +405,17 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 #endif
 }
 
-DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr, const char *funname, int nLine) {
-	TRC(1, funname <<  "(Ln" << nLine << "): " << AfxProcessError(hr)); 
+DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
+#if UCFG_EH_SUPPORT_IGNORE
+	if (!CLocalIgnoreBase::ErrorCodeIsIgnored(ec)) {
+		TRC(1, funname <<  "(Ln" << nLine << "): " << ec.message());
+	}
+#endif
+	ThrowImp(ec);
+}
 
-	ThrowImp(hr);
+DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr, const char *funname, int nLine) {
+	ThrowImp(error_code(hr, hresult_category()));
 }
 
 typedef map<int, CExceptionFabric*> CExceptionFabrics; 
@@ -448,7 +456,7 @@ class CDebugStreambuf : public streambuf {
 #elif defined WDM_DRIVER
 		KdPrint(("%s", s));
 #else
-		printf("%s", s);
+		fprintf(stderr, "%s", s);
 #endif
 		m_buf.clear();
 	}
@@ -465,7 +473,74 @@ class CDebugStreambuf : public streambuf {
 	}
 };
 
+#if !UCFG_WDM && !UCFG_MINISTL
 
+String g_ExceptionMessage;
+
+#if UCFG_WIN32
+void AFXAPI ProcessExceptionInFilter(EXCEPTION_POINTERS *ep) {
+	ostringstream os;
+	os << "Code:\t" << hex << ep->ExceptionRecord->ExceptionCode << "\n"
+		<< "Address:\t" << ep->ExceptionRecord->ExceptionAddress << "\n";
+	g_ExceptionMessage = os.str();
+	TRC(0, g_ExceptionMessage);
+}
+
+void AFXAPI ProcessExceptionInExcept() {
+#if UCFG_GUI
+	MessageBox::Show(g_ExceptionMessage);
+#endif
+	::ExitProcess(ERR_UNHANDLED_EXCEPTION);
+}
+#endif
+
+void AFXAPI ProcessExceptionInCatch() {
+	try {
+		throw;
+	} catch (const Exception& ex) {
+		TRC(0, ex);
+		wcerr << ex.Message << endl;
+#if UCFG_GUI
+		if (!IsConsole())
+			MessageBox::Show(ex.Message);
+#endif
+#if !UCFG_CATCH_UNHANDLED_EXC
+		throw;
+#endif
+	} catch (std::exception& e) {
+		TRC(0, e.what());
+		cerr << e.what() << endl;
+#if UCFG_GUI
+	if (!IsConsole())
+		MessageBox::Show(e.what());
+#endif
+#if !UCFG_CATCH_UNHANDLED_EXC
+		throw;
+#endif
+	} catch (...) {
+		TRC(0, "Unknown C++ exception");
+		cerr << "Unknown C++ Exception" << endl;
+#if UCFG_GUI
+	if (!IsConsole())
+		MessageBox::Show("Unknown C++ Exception");
+#endif
+#if !UCFG_CATCH_UNHANDLED_EXC
+		throw;
+#endif
+	}
+#if UCFG_USE_POSIX
+	_exit(ERR_UNHANDLED_EXCEPTION);
+#else
+	//!!! Error in DLLS ::ExitProcess(ERR_UNHANDLED_EXCEPTION);	
+	Win32Check(::TerminateProcess(::GetCurrentProcess(), ERR_UNHANDLED_EXCEPTION));
+#endif
+}
+
+#endif // !UCFG_WDM && !UCFG_MINISTL
+
+String TruncPrettyFunction(const char *fn) {
+	return String(fn, strchr(fn, '(')-fn);
+}
 
 bool CTrace::s_bShowCategoryNames;
 static CDebugStreambuf s_debugStreambuf;
@@ -543,7 +618,7 @@ static int s_nThreadNumber;
 
 union TinyThreadInfo {
 	struct {
-		byte Counter[3];
+		byte Counter[3];		//!!!Endianess
 		byte TraceLocks;
 	};
 	void *P;
@@ -676,7 +751,7 @@ inline int AFXAPI GetThreadNumber() {
 #else
 	int r = (int)(DWORD_PTR)(void*)t_threadNumber.Value;
 	if (!(r & 0xFFFFFF))
-		t_threadNumber.Value = (void*)(DWORD_PTR)((r = ++s_nThreadNumber) | r);
+		t_threadNumber.Value = (void*)(DWORD_PTR)(r |= ++s_nThreadNumber);
 	return r & 0xFFFFFF;
 #endif
 }
@@ -704,7 +779,7 @@ void CTraceWriter::Init(const char* funname) {
 
 static InterlockedSingleton<mutex> s_pCs;
 
-CTraceWriter::~CTraceWriter() {
+CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
 		m_os << '\n';
 		string str = m_os.str();		
@@ -732,9 +807,12 @@ CTraceWriter::~CTraceWriter() {
 			if (traceBlocker.Trace)
 	#endif
 			{
-				m_pos->write(date_s.data(), date_s.size()).flush();
-				if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream)
-					pSecondStream->write(time_str.data(), time_str.size()).flush();
+				m_pos->write(date_s.data(), date_s.size());
+//				m_pos->flush();	//!!!?
+				if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
+					pSecondStream->write(time_str.data(), time_str.size());
+//!!!?					pSecondStream->flush();
+				}
 			}
 		}
 	}
