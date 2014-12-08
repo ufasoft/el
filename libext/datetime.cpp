@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -57,12 +49,14 @@ using namespace std;
 	const Int64 DateTime::FileTimeOffset = DateTime::DaysTo1601 * TimeSpan::TicksPerDay;
 #endif
 
-const TimeSpan TimeSpan::MaxValue = numeric_limits<Int64>::max();
+const TimeSpan TimeSpan::MaxValue(numeric_limits<Int64>::max());
+const DateTime DateTime::MaxValue(numeric_limits<Int64>::max());
 
-const DateTime DateTime::MaxValue = numeric_limits<Int64>::max();
+const Int64 DateTime::TimevalOffset(621355968000000000LL);
 
-const Int64 DateTime::TimevalOffset = 621355968000000000LL;
 
+const Int64 Unix_FileTime_Offset = 116444736000000000LL,
+               Unix_DateTime_Offset = DateTime::FileTimeOffset+Unix_FileTime_Offset;
 
 #if !UCFG_WDM
 
@@ -77,9 +71,6 @@ void TimeSpan::ToTimeval(timeval& tv) const {
 	tv.tv_sec = long(m_ticks/10000000);
 	tv.tv_usec = long((m_ticks % 10000000)/10);
 }
-
-static const Int64 Unix_FileTime_Offset = 116444736000000000LL,
-	               Unix_DateTime_Offset = DateTime::FileTimeOffset+Unix_FileTime_Offset;
 
 DateTime::DateTime(const timeval& tv) { 
 	m_ticks = Int64(tv.tv_sec)*10000000 + Unix_DateTime_Offset+tv.tv_usec*10;
@@ -178,8 +169,8 @@ DateTime AFXAPI DateTime::ParseExact(RCString s, RCString format) {
 		if (regex_match(s.c_str(), m, *s_reDateTimeFormat_8601)) {
 			DateTime dt(Convert::ToInt32(m[1]), Convert::ToInt32(m[2]), Convert::ToInt32(m[3]), Convert::ToInt32(m[4]), Convert::ToInt32(m[5]), Convert::ToInt32(m[6]));
 			if (m[7].matched) {
-				String s(m[7]);
-				int n = atoi(String(m[7]));
+				String si(m[7]);
+				int n = atoi(si);
 				for (ssize_t i=7-m[7].length(); i--;)
 					n *= 10;
 				dt += TimeSpan(n);
@@ -417,7 +408,7 @@ public:
 			AddToList();
 	}
 
-	Int64 GetTicks() override {
+	Int64 GetTicks() noexcept override {
 		return System.PerformanceCounter;
 	}
 
@@ -443,10 +434,10 @@ DateTime DateTime::UtcNow() noexcept {
 #if !UCFG_USE_POSIX
 	if (!s_cntDisablePreciseTime) {
 		if (CPreciseTimeBase *preciser = CPreciseTimeBase::s_pCurrent)		// get pointer to avoid Race Condition
-			return preciser->GetTime(&SimpleUtc);
+			return DateTime(preciser->GetTime(&SimpleUtc));
 	}
 #endif
-	return SimpleUtc();
+	return DateTime(SimpleUtc());
 }
 
 LocalDateTime DateTime::ToLocalTime() {
@@ -489,7 +480,7 @@ DATE DateTime::ToOADate() const {
 }
 
 DateTime DateTime::FromOADate(DATE date) {
-	return OADateOffset+Int64(date*TimeSpan::TicksPerDay);
+	return DateTime(OADateOffset + Int64(date*TimeSpan::TicksPerDay));
 }
 
 DateTime DateTime::Parse(RCString s, DWORD dwFlags, LCID lcid) {
@@ -606,7 +597,8 @@ DateTime::operator tm() const {
 	timeval tv;
 	ToTimeval(tv);
 	time_t tim = tv.tv_sec;
-	return *gmtime(&tim);
+	tm r;
+	return *gmtime_r(&tim, &r);
 }
 #endif
 
@@ -663,8 +655,7 @@ extern "C" {
 * Returns the difference between gmt and local time in seconds.
 * Use gmtime() and localtime() to keep things simple.
 */
-__int32 _cdecl
-	gmt2local(time_t t)
+__int32 _cdecl gmt2local(time_t t)
 {
 	register int dt, dir;
 	register struct tm *gmt, *loc;
@@ -692,14 +683,6 @@ __int32 _cdecl
 }
 
 
-
-int __stdcall gettimeofday(struct timeval *tp, void *) {
-	Ext::Int64 res = DateTime::UtcNow().Ticks-Unix_DateTime_Offset;	
-	tp->tv_sec = (long)(res/10000000);	//!!! can be overflow
-	tp->tv_usec = (long)(res % 10000000) / 10; // Micro Seconds
-	return 0;
-
-}
 
 #endif // UCFG_WIN32_FULL
 

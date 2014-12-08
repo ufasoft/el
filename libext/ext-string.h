@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 
@@ -31,11 +23,15 @@ public:
 	typedef String class_type;
 
 	typedef CBlobBufBase::Char Char;
+	typedef size_t size_type;
 	typedef Char value_type;
 	typedef std::char_traits<Char> traits_type;
 	typedef ssize_t difference_type;
+	typedef const value_type& const_reference;
 
-	class const_iterator {
+	static const size_t npos = size_t(-1);
+
+	class const_iterator : public std::iterator<std::random_access_iterator_tag, Char>, totally_ordered<const_iterator>  {
 	public:
 		typedef Char value_type;
 		typedef std::random_access_iterator_tag iterator_category;
@@ -61,9 +57,10 @@ public:
 		}
 
 		bool operator==(const_iterator it) const { return m_p == it.m_p; }
-		bool operator!=(const_iterator it) const { return !operator==(it); }
+		bool operator<(const_iterator it) const { return m_p < it.m_p; }
 
 		const_iterator operator+(difference_type diff) const { return const_iterator(m_p + diff); }
+		const_iterator operator-(difference_type diff) const { return const_iterator(m_p - diff); }
 		difference_type operator-(const_iterator it) const { return m_p - it.m_p; }
 	private:
 		const Char *m_p;
@@ -145,7 +142,7 @@ public:
 	}
 #endif
 
-	void swap(String& x) {
+	void swap(String& x) noexcept {
 		m_blob.swap(x.m_blob);
 	}
 
@@ -159,6 +156,9 @@ public:
 
 	const_iterator begin() const { return const_iterator(m_blob.m_pData ? (const Char*)m_blob.m_pData->GetBSTR() : 0); }
 	const_iterator end() const { return const_iterator(m_blob.m_pData ? (const Char*)m_blob.m_pData->GetBSTR()+Length : 0); }
+
+	const_reference front() const { return *begin(); }
+	const_reference back() const { return *(end()-1); }
 
 	EXT_API operator explicit_cast<std::string>() const;
 
@@ -209,18 +209,19 @@ public:
 	void CopyTo(Char *ar, size_t size) const;
 	int Compare(const String& s) const;
 	int CompareNoCase(const String& s) const;
-	bool IsEmpty() const noexcept;
-	bool empty() const { return IsEmpty(); }
-	void Empty();
-	int Find(Char c) const;
-	int LastIndexOf(Char c) const;
-	int Find(const String& s, int nStart = 0) const;
+	bool empty() const noexcept;
+	void clear();
+	size_type find(Char chm, size_type pos = 0) const;
+	size_type find(const Char *s, size_type pos, size_type count) const;
 
-	bool Contains(const String& s) const { return Find(s) != -1; }
+	size_type find(const String& s, size_type pos = 0) const { return find((const Char*)s, pos, s.size()); }
+
+	int LastIndexOf(Char c) const;
+
+	bool Contains(const String& s) const noexcept { return find(s) != npos; }
 
 	int FindOneOf(const String& sCharSet) const;
-	String Mid(int nFirst, int nCount = INT_MAX) const;
-	String Substring(int nFirst, int nCount = INT_MAX) const { return Mid(nFirst, nCount); }
+	String substr(size_type pos, size_type count = npos) const;
 	String Right(ssize_t nCount) const;
 	String Left(ssize_t nCount) const;
 	String TrimStart(RCString trimChars = nullptr) const;
@@ -250,11 +251,11 @@ public:
 
 	//!!!D  static String AFXAPI FromUTF8(const char *p, int len = -1);
 
-	size_t GetLength() const;
-	size_t get_Length() const { return GetLength(); }
+	size_t GetLength() const noexcept;
+	size_t get_Length() const noexcept { return GetLength(); }
 	DEFPROP_GET_CONST(size_t, Length);
 
-	size_t size() const { return Length; }
+	size_t size() const noexcept { return Length; }
 
 #if UCFG_USE_POSIX
 	std::string ToOsString() const {
@@ -284,17 +285,17 @@ private:
 
 	void Init(Encoding *enc, const char *lpch, ssize_t nLength);
 	void Init(const Char *lpch, ssize_t nLength);
-	void MakeDirty();
+	void MakeDirty() noexcept;
 
 	friend AFX_API String AFXAPI operator+(const String& string1, const String& string2);
 	friend AFX_API String AFXAPI operator+(const String& string, const char * lpsz);
 	friend AFX_API String AFXAPI operator+(const String& string, const Char * lpsz);
 	//!!!friend AFX_API String AFXAPI operator+(const String& string, TCHAR ch);
-	friend inline bool operator<(const String& s1, const String& s2);
-	friend inline bool AFXAPI operator==(const String& s1, const String& s2);
+	friend inline bool operator<(const String& s1, const String& s2) noexcept;
+	friend inline bool AFXAPI operator==(const String& s1, const String& s2) noexcept;
 };
 
-inline void swap(String& x, String& y) {
+inline void swap(String& x, String& y) noexcept {
 	x.swap(y);
 }
 
@@ -311,7 +312,7 @@ inline void swap(String& x, String& y) {
 
 typedef std::vector<String> CStringVector;
 
-inline bool operator<(const String& s1, const String& s2)  { //!!! can be intrinsic
+inline bool operator<(const String& s1, const String& s2) noexcept { //!!! can be intrinsic
 	//!!!  size_t count = (s1.m_blob.Size>>1)+1;
 	String::Char *p1 = (String::Char*)s1.m_blob.constData(),
 		*p2 = (String::Char*)s2.m_blob.constData();
@@ -321,7 +322,7 @@ inline bool operator<(const String& s1, const String& s2)  { //!!! can be intrin
 }
 
 
-inline bool AFXAPI operator==(const String& s1, const String& s2) { return s1.m_blob == s2.m_blob; }
+inline bool AFXAPI operator==(const String& s1, const String& s2) noexcept { return s1.m_blob == s2.m_blob; }
 AFX_API bool AFXAPI operator!=(const String& s1, const String& s2);
 AFX_API bool AFXAPI operator<=(const String& s1, const String& s2);
 AFX_API bool AFXAPI operator>=(const String& s1, const String& s2);
@@ -375,17 +376,22 @@ template <class A, class B, class C> String Concat(const A& a, const B& b, const
 
 
 
-AFX_API String AFXAPI AfxLoadString(UINT nIDS);
+AFX_API String AFXAPI AfxLoadString(UInt32 nIDS);
 
 struct CStringResEntry {
-	UINT ID;
+	UInt32 ID;
 	const char *Ptr;
 };
 
+inline String ToLower(RCString s) { return s.ToLower(); }
 
+inline char ToLowerChar(char ch) { return (char)::tolower(ch); }
 
-
-//EXPIMP_TEMPLATE template class AFX_TEMPL_CLASS /*!!!EXPIMP_CLASS*/ vector<String>;
+inline std::string ToLower(const std::string& s) {
+	std::string r = s;
+	std::transform(r.begin(), r.end(), r.begin(), ToLowerChar);
+	return r;
+}
 
 
 } // Ext::

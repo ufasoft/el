@@ -1,12 +1,6 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
-#define UCFG_DEFINE_OLD_NAMES 1
+#ifdef _MSC_VER
+#	define UCFG_DEFINE_OLD_NAMES 1
+#endif
 
 #include <el/ext.h>
 
@@ -19,14 +13,20 @@
 //#include <el/libext/ext-os-api.h>
 
 #ifdef _WIN32
-extern "C" {
-	int __cdecl API_close(int fh) {
-		return _close(fh);
-	}
-}
+
+#undef _open
+
+#if !UCFG_WDM
+
+#	if (!defined(_INC_IO) || !UCFG_STDSTL) && UCFG_CRT!='U'
+	extern "C" __declspec(dllimport) int __cdecl _open(const char *fn, int flags, ...);
+#	endif
+
+#endif // !UCFG_WDM
+
 #endif
 
-#if UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#if UCFG_ALLOCATOR=='T'
 
 #	ifndef _M_ARM
 #		define set_new_handler my_set_new_handler
@@ -38,8 +38,17 @@ extern "C" {
 #	define write _write
 
 
-#	pragma warning(disable: 4146 4244 4291 4295 4310 4130 4232 4242 4018 4057 4090 4101 4152 4245 4267 4505 4668 4700 4701 4716)
+#	pragma warning(disable: 4146 4244 4291 4295 4310 4130 4232 4242 4018 4057 4090 4101 4152 4245 4267 4459 4505 4668 4700 4701 4716)
 #	include "../el-std/tc_malloc.cpp"
+
+void NTAPI TCMalloc_on_tls_callback(PVOID dllHandle, DWORD reason, PVOID reserved) {
+	on_tls_callback((HINSTANCE)dllHandle, reason, reserved);
+}
+
+
+#pragma section(".CRT$XLC",long,read)
+ __declspec(allocate(".CRT$XLC")) PIMAGE_TLS_CALLBACK _xl_y  = TCMalloc_on_tls_callback;
+
 
 /*!!!
 extern "C" {
@@ -48,7 +57,7 @@ extern "C" {
 	void* __cdecl tc_realloc(void* old_ptr, size_t new_size);
 	size_t __cdecl tc_malloc_size(void* p);
 }*/
-#endif	// UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#endif	// UCFG_ALLOCATOR=='T'
 
 
 namespace Ext {
@@ -78,7 +87,7 @@ void *CAlloc::Malloc(size_t size) {
 #ifdef WDM_DRIVER
 	if (void *p = ExAllocatePoolWithTag(NonPagedPool, size, UCFG_POOL_TAG))
 		return p;
-#elif UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#elif UCFG_ALLOCATOR=='T'
 #	if UCFG_HEAP_CHECK
 	if (void *p = tc_malloc(size)) 
 #	else
@@ -92,12 +101,12 @@ void *CAlloc::Malloc(size_t size) {
 	Throw(E_OUTOFMEMORY);
 }
 
-void CAlloc::Free(void *p) noexcept {
+void CAlloc::Free(void *p) EXT_NOEXCEPT {
 #ifdef WDM_DRIVER
 	if (!p)
 		return;
 	ExFreePoolWithTag(p, UCFG_POOL_TAG);
-#elif UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#elif UCFG_ALLOCATOR=='T'
 #	if UCFG_HEAP_CHECK
 	tc_free(p);
 #	else
@@ -109,11 +118,11 @@ void CAlloc::Free(void *p) noexcept {
 }
 
 size_t CAlloc::MSize(void *p) {
-#if UCFG_WIN32 && (UCFG_ALLOCATOR == UCFG_ALLOCATOR_STD_MALLOC)
+#if UCFG_WIN32 && (UCFG_ALLOCATOR=='S')
 	size_t r = _msize(p);
 	CCheck(r != size_t(-1));
 	return r;
-#elif UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#elif UCFG_ALLOCATOR=='T'
 	return tc_malloc_size(p);
 #else
 	Throw (E_NOTIMPL);
@@ -122,7 +131,7 @@ size_t CAlloc::MSize(void *p) {
 
 void *CAlloc::Realloc(void *p, size_t size) {
 #ifndef WDM_DRIVER
-#if UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#if UCFG_ALLOCATOR=='T'
 	if (void *r = tc_realloc(p, size))
 		return r;
 #else
@@ -137,7 +146,7 @@ void *CAlloc::Realloc(void *p, size_t size) {
 
 #if !UCFG_MINISTL
 void *CAlloc::AlignedMalloc(size_t size, size_t align) {
-#if UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#if UCFG_ALLOCATOR=='T'
 	if (void *p = do_memalign(align, size)) 
 		return p;
 #elif UCFG_USE_POSIX
@@ -156,7 +165,7 @@ void *CAlloc::AlignedMalloc(size_t size, size_t align) {
 }
 
 void CAlloc::AlignedFree(void *p) {
-#if UCFG_ALLOCATOR == UCFG_ALLOCATOR_TC_MALLOC
+#if UCFG_ALLOCATOR=='T'
 	do_free(p);
 #elif UCFG_USE_POSIX
 	free(p);
@@ -168,70 +177,6 @@ void CAlloc::AlignedFree(void *p) {
 }
 #endif // !UCFG_MINISTL
 
-#if !defined(WDM_DRIVER) && !UCFG_MINISTL
-
-String g_ExceptionMessage;
-
-#if UCFG_WIN32
-void AFXAPI ProcessExceptionInFilter(EXCEPTION_POINTERS *ep) {
-	ostringstream os;
-	os << "Code:\t" << hex << ep->ExceptionRecord->ExceptionCode << "\n"
-		<< "Address:\t" << ep->ExceptionRecord->ExceptionAddress << "\n";
-	g_ExceptionMessage = os.str();
-	TRC(0, g_ExceptionMessage);
-}
-
-void AFXAPI ProcessExceptionInExcept() {
-#if UCFG_GUI
-	MessageBox::Show(g_ExceptionMessage);
-#endif
-	::ExitProcess(ERR_UNHANDLED_EXCEPTION);
-}
-#endif
-
-void AFXAPI ProcessExceptionInCatch() {
-	try {
-		throw;
-	} catch (const Exception& ex) {
-		TRC(0, ex);
-		wcerr << ex.Message << endl;
-#if UCFG_GUI
-		if (!IsConsole())
-			MessageBox::Show(ex.Message);
-#endif
-#if !UCFG_CATCH_UNHANDLED_EXC
-		throw;
-#endif
-	} catch (std::exception& e) {
-		TRC(0, e.what());
-		cerr << e.what() << endl;
-#if UCFG_GUI
-	if (!IsConsole())
-		MessageBox::Show(e.what());
-#endif
-#if !UCFG_CATCH_UNHANDLED_EXC
-		throw;
-#endif
-	} catch (...) {
-		TRC(0, "Unknown C++ exception");
-		cerr << "Unknown C++ Exception" << endl;
-#if UCFG_GUI
-	if (!IsConsole())
-		MessageBox::Show("Unknown C++ Exception");
-#endif
-#if !UCFG_CATCH_UNHANDLED_EXC
-		throw;
-#endif
-	}
-#if UCFG_USE_POSIX
-	_exit(ERR_UNHANDLED_EXCEPTION);
-#else
-	//!!! Error in DLLS ::ExitProcess(ERR_UNHANDLED_EXCEPTION);	
-	Win32Check(::TerminateProcess(::GetCurrentProcess(), ERR_UNHANDLED_EXCEPTION));
-#endif
-}
-
-#endif
 
 } // Ext::
 
@@ -259,11 +204,11 @@ void * __cdecl operator new[](size_t sz) {
 */
 
 #	if UCFG_STDSTL
-void __cdecl operator delete[](void *p, const std::nothrow_t& ) {
+void __cdecl operator delete[](void *p, const std::nothrow_t& ) noexcept {
 	operator delete(p);//!!!
 }	
 #else
-void __cdecl operator delete[](void *p, const ExtSTL::nothrow_t& ) {
+void __cdecl operator delete[](void *p, const ExtSTL::nothrow_t& ) noexcept {
 	operator delete(p);//!!!
 }	
 #	endif // UCFG_STDSTL
@@ -279,7 +224,7 @@ static void (__cdecl *s_pfnDeleteArray)(void*) = &operator delete[];
 
 extern "C" {
 
-BOOL __cdecl __crtIsWin8orLater(void) {
+bool __cdecl __crtIsWin8orLater(void) {
 	return false;
 }
 
@@ -290,11 +235,12 @@ LONG __cdecl __crtUnhandledException
 	Ext::ThrowImp(E_FAIL);
 }
 
-extern "C" void _cdecl API_terminate();
+extern "C" __declspec(noreturn) void _cdecl API_terminate();
+
 
 void __cdecl __crtTerminateProcess
 (
-    _In_ UINT uExitCode
+    _In_ UInt32 uExitCode
 ) {
 	API_terminate();
 }
@@ -315,16 +261,48 @@ void __cdecl __crtCapturePreviousContext
 
 }
 
-
-APIT_lldiv_t __cdecl API_lldiv(long long numer, long long denom) {
-	APIT_lldiv_t result = { numer / denom, numer % denom };
-	return result;
+#if UCFG_WDM
+extern "C" void* __cdecl API_malloc(size_t size) {
+	return CAlloc::Malloc(size);
 }
+
+extern "C" void* __cdecl malloc(size_t size) {
+	return CAlloc::Malloc(size);
+}
+
+extern "C" void __cdecl free(void *p) {
+	return CAlloc::Free(p);
+}
+
+int __cdecl _CrtDbgReportW(
+	_In_       int            _ReportType,
+	_In_opt_z_ wchar_t const* _FileName,
+	_In_       int            _LineNumber,
+	_In_opt_z_ wchar_t const* _ModuleName,
+	_In_opt_z_ wchar_t const* _Format,
+	...) {
+	return 0; //!!!TODO
+}
+
+
+#	pragma comment(linker, "/NODEFAULTLIB:oldnames.lib")
+
+#endif // UCFG_WDM
+
+
 
 
 } // "C"
 
+#if UCFG_WDM
+__declspec(noreturn) void __cdecl terminate(void) {
+	API_terminate();
+}
+#endif
+
+
 #endif // !UCFG_STDSTL
+
 
 
 

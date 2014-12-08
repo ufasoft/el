@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -20,9 +12,8 @@ using namespace std;
 
 DECLSPEC_NORETURN void AFXAPI ThrowWSALastError() {
 #ifdef WIN32
-	DWORD dw = WSAGetLastError();
-	if (dw)
-		Throw(HRESULT_FROM_WIN32(dw));
+	if (DWORD dw = WSAGetLastError())
+		Throw(error_code((int)dw, system_category()));
 	else
 		Throw(E_EXT_UnknownSocketsError);
 #else
@@ -150,7 +141,7 @@ String Uri::UnescapeDataString(RCString s) {
 	uc.lpszExtraInfo = query;
 	uc.dwExtraInfoLength = len;
 	Win32Check(::InternetCrackUrl("http://host/q?"+s, 0, ICU_ESCAPE, &uc));
-	return String(query).Mid(1);
+	return String(query).substr(1);
 #else
 	class CUriEscape : public CEscape {
 		void EscapeChar(ostream& os, char ch) {
@@ -181,4 +172,5 @@ String Uri::UnescapeDataString(RCString s) {
 
 
 } // Ext::
+
 

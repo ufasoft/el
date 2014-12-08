@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <el/libext/ext-net.h>
@@ -38,7 +30,7 @@ String CHttpHeader::ParseHeader(const vector<String>& ar, bool bIncludeFirstLine
 	for (; i<ar.size(); i++) {
 		String line = ar[i];
 		if (bEmailHeader && line.Length > 0 && isspace(line[0])) {
-			if (prev.IsEmpty())
+			if (prev.empty())
 				Throw(E_FAIL);
 			Headers[prev].back() += " "+line.TrimLeft();
 		} else {
@@ -81,7 +73,7 @@ void CHttpResponse::Parse(const vector<String>& ar) {
 }
 
 void CHttpRequest::ParseParams(RCString s) {
-	vector<String> pars = s.Mid(1).Split("&");
+	vector<String> pars = s.substr(1).Split("&");
 	for (int i=0; i<pars.size(); ++i) {
 		String par = pars[i];
 		vector<String> pp = par.Split("=");
