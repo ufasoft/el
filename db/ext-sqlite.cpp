@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -62,12 +69,12 @@ static struct CSqliteExceptionFabric : CExceptionFabric {
 	}
 
 	DECLSPEC_NORETURN void ThrowException(HRESULT hr, RCString msg) {
-		throw SqliteException(hr, msg);
+		throw SqliteException((uint16_t)hr, msg);
 	}
 } s_exceptionFabric(FACILITY_SQLITE);
 
-SqliteException::SqliteException(HRESULT hr, RCString s)
-	:	base(hr, "SQLite Error: "+s)
+SqliteException::SqliteException(int errval, RCString s)
+	:	base(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_SQLITE, errval), "SQLite Error: "+s)
 {
 }
 
@@ -83,8 +90,24 @@ int SqliteCheck(sqlite_db *db, int code) {
 #else
 	String s = db ? String((const Char16*)sqlite_(errmsg16)(db)) : String("SQLite Error") + Convert::ToString(code);
 #endif
-	throw SqliteException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_SQLITE, code), s);
+	throw SqliteException(code, s);
 }
+
+static class sqlite_error_category : public error_category {
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "SQLite"; }
+
+	string message(int errval) const override {
+		return sqlite3_errstr(errval);
+	}
+
+} s_sqliteErrorCategory;
+
+const error_category& sqlite_category() {
+	return s_sqliteErrorCategory;
+}
+
 
 bool SqliteIsComplete(const char *sql) {
 	switch (int rc = ::sqlite_complete(sql)) {
@@ -129,11 +152,11 @@ bool SqliteReader::Read() {
 	return SqliteCheck(m_cmd.m_con, ::sqlite_(step)(m_cmd)) == SQLITE_(ROW);
 }
 
-Int32 SqliteReader::GetInt32(int i) {
+int32_t SqliteReader::GetInt32(int i) {
 	return sqlite_(column_int)(m_cmd, i);
 }
 
-Int64 SqliteReader::GetInt64(int i) {
+int64_t SqliteReader::GetInt64(int i) {
 	return sqlite_(column_int64)(m_cmd, i);
 }
 
@@ -200,7 +223,7 @@ sqlite_(stmt) *SqliteCommand::Handle() {
 	if (!m_stmt) {
 #if UCFG_USE_SQLITE==3
 		const void *tail = 0;
-		SqliteCheck(m_con, ::sqlite3_prepare16_v2(m_con, (const String::Char*)CommandText, -1, &m_stmt, &tail));
+		SqliteCheck(m_con, ::sqlite3_prepare16_v2(m_con, (const String::value_type*)CommandText, -1, &m_stmt, &tail));
 #else
 		const char *tail = 0;
 		Blob utf = Encoding::UTF8.GetBytes(CommandText);
@@ -230,12 +253,12 @@ SqliteCommand& SqliteCommand::Bind(int column, std::nullptr_t) {
 	return _self;
 }
 
-SqliteCommand& SqliteCommand::Bind(int column, Int32 v) {
+SqliteCommand& SqliteCommand::Bind(int column, int32_t v) {
 	SqliteCheck(m_con, ::sqlite_(bind_int)(ResetHandle(), column, v));
 	return _self;
 }
 
-SqliteCommand& SqliteCommand::Bind(int column, Int64 v) {
+SqliteCommand& SqliteCommand::Bind(int column, int64_t v) {
 	SqliteCheck(m_con, ::sqlite_(bind_int64)(ResetHandle(), column, v));
 	return _self;
 }
@@ -252,7 +275,7 @@ SqliteCommand& SqliteCommand::Bind(int column, const ConstBuf& mb, bool bTransie
 
 SqliteCommand& SqliteCommand::Bind(int column, RCString s) {
 	const Char16 *p = (const Char16*)s;
-	SqliteCheck(m_con, p ? ::sqlite_(bind_text16)(ResetHandle(), column, p, s.Length*2, SQLITE_(TRANSIENT)) : ::sqlite_(bind_null)(ResetHandle(), column));
+	SqliteCheck(m_con, p ? ::sqlite_(bind_text16)(ResetHandle(), column, p, s.length()*2, SQLITE_(TRANSIENT)) : ::sqlite_(bind_null)(ResetHandle(), column));
 	return _self;
 }
 
@@ -260,11 +283,11 @@ SqliteCommand& SqliteCommand::Bind(RCString parname, std::nullptr_t v) {
 	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v);
 }
 
-SqliteCommand& SqliteCommand::Bind(RCString parname, Int32 v) {
+SqliteCommand& SqliteCommand::Bind(RCString parname, int32_t v) {
 	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
 }
 
-SqliteCommand& SqliteCommand::Bind(RCString parname, Int64 v) {
+SqliteCommand& SqliteCommand::Bind(RCString parname, int64_t v) {
 	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
 }
 
@@ -302,7 +325,7 @@ String SqliteCommand::ExecuteScalar() {
 	Throw(E_EXT_DB_NoRecord);
 }
 
-Int64 SqliteCommand::ExecuteInt64Scalar() {
+int64_t SqliteCommand::ExecuteInt64Scalar() {
 	if (SqliteCheck(m_con, ::sqlite_step(ResetHandle(true))) == SQLITE_ROW)
 		return ::sqlite_column_int64(m_stmt, 0);
 	Throw(E_EXT_DB_NoRecord);
@@ -314,7 +337,7 @@ ptr<IDbCommand> SqliteConnection::CreateCommand() {
 
 void SqliteConnection::ExecuteNonQuery(RCString sql) {
 	String s = sql.TrimEnd();
-	if (s.Length > 1 && s[s.Length-1] != ';')
+	if (s.length() > 1 && s[s.length()-1] != ';')
 		s += ";";
 
 #if UCFG_USE_SQLITE==3
@@ -331,7 +354,7 @@ void SqliteConnection::ExecuteNonQuery(RCString sql) {
 	}
 }
 
-Int64 SqliteConnection::get_LastInsertRowId() {
+int64_t SqliteConnection::get_LastInsertRowId() {
 	return sqlite_last_insert_rowid(m_db);
 }
 
@@ -362,7 +385,7 @@ void SqliteConnection::SetProgressHandler(int(*pfn)(void*), void*p, int n) {
 
 void SqliteConnection::Create(RCString file) {
 #if UCFG_USE_SQLITE==3
-	SqliteCheck(m_db, ::sqlite3_open16((const String::Char*)file, &m_db));
+	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)file, &m_db));
 	::sqlite_extended_result_codes(m_db, true);	//!!!? only Sqlite3?
 #else
 	Blob utf = Encoding::UTF8.GetBytes(file);

@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -16,14 +15,14 @@ namespace Ext { namespace DB {
 #define	P_LBTREE	5
 
 struct BTreeMainPage {
-	UInt64 Lsn;
-	UInt32 PgNo;
-	UInt32 Magic;
-	UInt32 Version;
-	UInt32 PageSize;
+	uint64_t Lsn;
+	uint32_t PgNo;
+	uint32_t Magic;
+	uint32_t Version;
+	uint32_t PageSize;
 	
-	UInt64 m_reserv;
-	UInt32 LastPage;
+	uint64_t m_reserv;
+	uint32_t LastPage;
 };
 
 
@@ -50,15 +49,15 @@ LAB_AGAIN:
 		if (!LoadNextPage(m_pgno+1))
 			return false;
 	}
-	int keyIdx = *((UInt16*)(m_curPage.data()+26)+m_idx*2),
-		valIdx = *((UInt16*)(m_curPage.data()+26)+m_idx*2+1);
+	int keyIdx = *((uint16_t*)(m_curPage.data()+26)+m_idx*2),
+		valIdx = *((uint16_t*)(m_curPage.data()+26)+m_idx*2+1);
 	if (keyIdx+3 > m_curPage.Size || valIdx+3 > m_curPage.Size) {
 		m_idx = m_entries;
 		goto LAB_AGAIN;
 	}
 	++m_idx;
-	int keyLen = *(UInt16*)(m_curPage.data()+keyIdx),
-		valLen = *(UInt16*)(m_curPage.data()+valIdx);
+	int keyLen = *(uint16_t*)(m_curPage.data()+keyIdx),
+		valLen = *(uint16_t*)(m_curPage.data()+valIdx);
 	if (keyIdx+keyLen > m_curPage.Size || valIdx+valLen > m_curPage.Size) {
 		m_idx = m_entries;
 		goto LAB_AGAIN;
@@ -84,7 +83,7 @@ bool BdbReader::LoadNextPage(int pgno) {
 		++pgno;
 	}
 	m_idx = 0;
-	m_entries = *(UInt16*)(m_curPage.data()+20);
+	m_entries = *(uint16_t*)(m_curPage.data()+20);
 	return true;
 }
 

@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 namespace Ext { namespace DB {
@@ -16,8 +23,8 @@ ENUM_CLASS(DbType) {
 } END_ENUM_CLASS(DbType);
 
 interface IDataRecord : public Object {
-	virtual Int32 GetInt32(int i) =0;
-	virtual Int64 GetInt64(int i) =0;
+	virtual int32_t GetInt32(int i) =0;
+	virtual int64_t GetInt64(int i) =0;
 	virtual double GetDouble(int i) =0;
 	virtual String GetString(int i) =0;
 	virtual ConstBuf GetBytes(int i) =0;
@@ -43,15 +50,15 @@ interface IDbCommand : public Object {
 	String CommandText;
 
 	virtual IDbCommand& Bind(int column, std::nullptr_t) =0;
-	virtual IDbCommand& Bind(int column, Int32 v) =0;
-	virtual IDbCommand& Bind(int column, Int64 v) =0;
+	virtual IDbCommand& Bind(int column, int32_t v) =0;
+	virtual IDbCommand& Bind(int column, int64_t v) =0;
 	virtual IDbCommand& Bind(int column, double v) =0;
 	virtual IDbCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(int column, RCString s) =0;
 
 	virtual IDbCommand& Bind(RCString parname, std::nullptr_t) =0;
-	virtual IDbCommand& Bind(RCString parname, Int32 v) =0;
-	virtual IDbCommand& Bind(RCString parname, Int64 v) =0;
+	virtual IDbCommand& Bind(RCString parname, int32_t v) =0;
+	virtual IDbCommand& Bind(RCString parname, int64_t v) =0;
 	virtual IDbCommand& Bind(RCString parname, double v) =0;
 	virtual IDbCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(RCString parname, RCString s) =0;
@@ -80,10 +87,7 @@ public:
 
 	~TransactionScope() {
 		if (!m_bCommitted) {
-			if (std::uncaught_exception())
-				m_db.Rollback();
-			else
-				m_db.Commit();
+			InException ? m_db.Rollback() : m_db.Commit();
 		}
 	}
 
@@ -92,6 +96,7 @@ public:
 		m_bCommitted = true;
 	}
 private:
+	CInException InException;
 	CBool m_bCommitted;
 };
 
@@ -109,8 +114,8 @@ public:
 		cmd->ExecuteNonQuery();
 	}
 	
-	virtual Int64 get_LastInsertRowId() =0;
-	DEFPROP_VIRTUAL_GET(Int64, LastInsertRowId);
+	virtual int64_t get_LastInsertRowId() =0;
+	DEFPROP_VIRTUAL_GET(int64_t, LastInsertRowId);
 
 	void Register(IDbCommand& cmd) { m_commands.insert(&cmd); }
 	void Unregister(IDbCommand& cmd) { m_commands.erase(&cmd); }

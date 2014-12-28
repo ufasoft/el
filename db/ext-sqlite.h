@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #include "db-itf.h"
@@ -31,14 +38,14 @@ struct sqlite_(vfs);
 
 namespace Ext { namespace DB { namespace sqlite_(NS) {
 
-
+const error_category& sqlite_category();
 
 int SqliteCheck(sqlite_db *db, int code);
 
 class SqliteException : public DbException {
 	typedef DbException base;
 public:
-	SqliteException(HRESULT hr, RCString s);
+	SqliteException(int errval, RCString s);
 };
 
 class SqliteConnection;
@@ -48,8 +55,8 @@ class SqliteReader : public IDataReader {
 public:
 	SqliteReader(SqliteCommand& cmd);
 	~SqliteReader();
-	Int32 GetInt32(int i) override;
-	Int64 GetInt64(int i) override;
+	int32_t GetInt32(int i) override;
+	int64_t GetInt64(int i) override;
 	double GetDouble(int i) override;
 	String GetString(int i) override;
 	ConstBuf GetBytes(int i) override;
@@ -68,8 +75,8 @@ public:
 	}
 
 	bool Read() { return m_pimpl->Read(); }
-	Int32 GetInt32(int i) { return m_pimpl->GetInt32(i); }
-	Int64 GetInt64(int i) { return m_pimpl->GetInt64(i); }
+	int32_t GetInt32(int i) { return m_pimpl->GetInt32(i); }
+	int64_t GetInt64(int i) { return m_pimpl->GetInt64(i); }
 	double GetDouble(int i) { return m_pimpl->GetDouble(i); }
 	String GetString(int i) { return m_pimpl->GetString(i); }
 	ConstBuf GetBytes(int i) { return m_pimpl->GetBytes(i); }
@@ -97,22 +104,22 @@ public:
 	void ClearBindings();
 
 	SqliteCommand& Bind(int column, std::nullptr_t) override;
-	SqliteCommand& Bind(int column, Int32 v) override;
-	SqliteCommand& Bind(int column, Int64 v) override;
+	SqliteCommand& Bind(int column, int32_t v) override;
+	SqliteCommand& Bind(int column, int64_t v) override;
 	SqliteCommand& Bind(int column, double v) override;
 	SqliteCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) override;
 	SqliteCommand& Bind(int column, RCString s) override;
 
 	SqliteCommand& Bind(RCString parname, std::nullptr_t) override;
-	SqliteCommand& Bind(RCString parname, Int32 v) override;
-	SqliteCommand& Bind(RCString parname, Int64 v) override;
+	SqliteCommand& Bind(RCString parname, int32_t v) override;
+	SqliteCommand& Bind(RCString parname, int64_t v) override;
 	SqliteCommand& Bind(RCString parname, double v) override;
 	SqliteCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) override;
 	SqliteCommand& Bind(RCString parname, RCString s) override;
 
 #if	UCFG_SEPARATE_LONG_TYPE
-	SqliteCommand& Bind(int column, long v) { return Bind(column, Int64(v)); }
-	SqliteCommand& Bind(RCString parname, long v) { return Bind(parname, Int64(v)); }
+	SqliteCommand& Bind(int column, long v) { return Bind(column, int64_t(v)); }
+	SqliteCommand& Bind(RCString parname, long v) { return Bind(parname, int64_t(v)); }
 #endif
 
 	void Dispose() override;
@@ -120,7 +127,7 @@ public:
 	DbDataReader ExecuteReader();
 	DbDataReader ExecuteVector();
 	String ExecuteScalar() override;
-	Int64 ExecuteInt64Scalar();
+	int64_t ExecuteInt64Scalar();
 private:
 	CPointer<sqlite_(stmt)> m_stmt;
 	CBool m_bNeedReset;
@@ -154,7 +161,7 @@ public:
 
 	ptr<IDbCommand> CreateCommand() override;
 	void ExecuteNonQuery(RCString sql) override;
-	Int64 get_LastInsertRowId() override;
+	int64_t get_LastInsertRowId() override;
 	int get_NumberOfChanges();
 	pair<int, int> Checkpoint(int eMode);
 
@@ -184,6 +191,7 @@ public:
 	MMappedSqliteVfs();
 
 };
+
 
 
 }}} // namespace Ext::DB::sqlite_(NS)::
