@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -13,19 +20,19 @@ namespace Ext {
 using namespace std;
 
 String::String(char ch, ssize_t nRepeat) {
-	Char wch;
+	value_type wch;
 #ifdef WDM_DRIVER
 	wch = ch;
 #else
 	Encoding& enc = Encoding::Default();
 	enc.GetChars(ConstBuf(&ch, 1), &wch, 1);
 #endif
-	m_blob.Size = nRepeat*sizeof(String::Char);
-	fill_n((Char*)m_blob.data(), nRepeat, wch);
+	m_blob.Size = nRepeat*sizeof(String::value_type);
+	fill_n((value_type*)m_blob.data(), nRepeat, wch);
 }
 
 void String::SetAt(size_t nIndex, char ch) {
-	Char wch;
+	value_type wch;
 #ifdef WDM_DRIVER
 	wch = ch;
 #else
@@ -60,37 +67,37 @@ String::String(const char *lpsz)
 
 #if defined(_NATIVE_WCHAR_T_DEFINED) && UCFG_STRING_CHAR/8 == __SIZEOF_WCHAR_T__
 
-String::String(const UInt16 *lpch, ssize_t nLength)
+String::String(const uint16_t *lpch, ssize_t nLength)
 	:	m_blob(nullptr)
 {
 	Init(lpch, nLength);
 }
 
-String::String(const UInt16 *lpsz)
+String::String(const uint16_t *lpsz)
 	:	m_blob(nullptr)
 {
 	int len = -1;
 	if (lpsz) {
 		len = 0;
-		for (const UInt16 *p=lpsz; *p; ++p)
+		for (const uint16_t *p=lpsz; *p; ++p)
 			++len;
 	}
-	Init((const Char*)nullptr, len);
+	Init((const value_type*)nullptr, len);
 	if (lpsz)
-		std::copy(lpsz, lpsz+len, (Char*)m_blob.data());
+		std::copy(lpsz, lpsz+len, (value_type*)m_blob.data());
 }
 
 void String::Init(unsigned short const *lpch, ssize_t nLength) {
-	Init((const Char*)nullptr, nLength);
-	std::copy(lpch, lpch+nLength, (Char*)m_blob.data());
+	Init((const value_type*)nullptr, nLength);
+	std::copy(lpch, lpch+nLength, (value_type*)m_blob.data());
 }
 #endif
 
-void String::Init(const Char *lpch, ssize_t nLength) {
+void String::Init(const value_type *lpch, ssize_t nLength) {
 	if (!lpch && nLength == -1)
 		m_blob.m_pData = 0; //!!! = new CStringBlobBuf;
 	else {
-		size_t bytes = nLength*sizeof(Char);
+		size_t bytes = nLength * sizeof(value_type);
 		m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
 		if (lpch)
 			memcpy(m_blob.data(), lpch, bytes);				//!!! was wcsncpy((BSTR)m_blob.get_Data(), lpch, nLength);
@@ -100,10 +107,10 @@ void String::Init(const Char *lpch, ssize_t nLength) {
 #if UCFG_STRING_CHAR/8 != __SIZEOF_WCHAR_T__
 String::String(const wchar_t *lpsz) {
 	size_t len = wcslen(lpsz);
-	Init((const Char*)0, len);				//!!! not correct for UTF-32
-	Char *p = (Char*)m_blob.data();
+	Init((const value_type*)0, len);				//!!! not correct for UTF-32
+	value_type *p = (value_type*)m_blob.data();
 	for (int i=0; i<len; ++i)
-		p[i] = Char(lpsz[i]);
+		p[i] = value_type(lpsz[i]);
 }
 #endif
 
@@ -120,10 +127,10 @@ String::String(const std::string& s)
 String::String(const std::wstring& s)
 	:	m_blob(nullptr)
 {
-	Init((const Char*)0, s.size());				//!!! not correct for UTF-32
-	Char *p = (Char*)m_blob.data();
+	Init((const value_type*)0, s.size());				//!!! not correct for UTF-32
+	value_type *p = (value_type*)m_blob.data();
 	for (size_t i=0; i<s.size(); ++i)
-		p[i] = Char(s[i]);
+		p[i] = value_type(s[i]);
 }
 
 #if UCFG_COM
@@ -146,15 +153,15 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 			if (enc) {
 				ConstBuf mb(lpch, nLength);
 				len = enc->GetCharCount(mb);
-				size_t bytes = len*sizeof(Char);
+				size_t bytes = len * sizeof(value_type);
 				m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
-				enc->GetChars(mb, (Char*)m_blob.data(), len);
+				enc->GetChars(mb, (value_type*)m_blob.data(), len);
 			} else {
-				Init((const Char *)nullptr, nLength);
-				std::copy(lpch, lpch+nLength, (Char*)m_blob.data());
+				Init((const value_type *)nullptr, nLength);
+				std::copy(lpch, lpch+nLength, (value_type*)m_blob.data());
 			}
 		} else {
-			size_t bytes = len*sizeof(Char);
+			size_t bytes = len * sizeof(value_type);
 			m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
 		}
 	}
@@ -165,10 +172,10 @@ const char *String::c_str() const {  //!!! optimize
 		char * volatile &pChar = pData->AsStringBlobBuf()->m_pChar;
 		if (!pChar) {
 			Encoding& enc = Encoding::Default();
-			for (size_t n=(pData->GetSize()/sizeof(Char))+1, len=n+1;; len<<=1) {
+			for (size_t n=(pData->GetSize()/sizeof(value_type))+1, len=n+1;; len<<=1) {
 				Array<char> p(len);
 				size_t r;
-				if ((r=enc.GetBytes((const Char*)pData->GetBSTR(), n, (byte*)p.get(), len)) < len) {
+				if ((r=enc.GetBytes((const value_type*)pData->GetBSTR(), n, (byte*)p.get(), len)) < len) {
 					char *pch = p.release();
 					pch[r] = 0; //!!!? R
 					if (Interlocked::CompareExchange(pChar, pch, (char*)nullptr))
@@ -199,35 +206,35 @@ void String::CopyTo(char *ar, size_t size) const {
 }
 
 int String::FindOneOf(RCString sCharSet) const {
-	Char ch;
-	for (const Char *pbeg=_self, *p=pbeg, *c=sCharSet; (ch=*p); ++p)
+	value_type ch;
+	for (const value_type *pbeg=_self, *p=pbeg, *c=sCharSet; (ch=*p); ++p)
 		if (StrChr(c, ch))
 			return int(p-pbeg);  //!!! shoul be ssize_t
 	return -1;
 }
 
 int String::Replace(RCString sOld, RCString sNew) {
-	const Char *p = _self,
-		*q = p+Length,
+	const value_type *p = _self,
+		*q = p + length(),
 		*r;
 	int nCount = 0,
-		nOldLen = (int)sOld.Length,
-		nReplLen = (int)sNew.Length;
+		nOldLen = (int)sOld.length(),
+		nReplLen = (int)sNew.length();
 	for (; p<q; p += traits_type::length(p)+1) {
-		while (r = StrStr<Char>(p, sOld)) {
+		while (r = StrStr<value_type>(p, sOld)) {
 			nCount++;
 			p = r+nOldLen;
 		}
 	}
 	if (nCount) {
-		int nLen = int(Length+(nReplLen-nOldLen)*nCount);
-		Char *pTarg = (Char*)alloca(nLen*sizeof(Char)),
+		int nLen = int(length() + (nReplLen-nOldLen)*nCount);
+		value_type *pTarg = (value_type*)alloca(nLen * sizeof(value_type)),
 			*z = pTarg;
 		for (p = _self; p<q;) {
-			if (StrNCmp<Char>(p, sOld, nOldLen))
+			if (StrNCmp<value_type>(p, sOld, nOldLen))
 				*z++ = *p++;
 			else {
-				memcpy(z, (const Char*)sNew, nReplLen*sizeof(Char));
+				memcpy(z, (const value_type*)sNew, nReplLen * sizeof(value_type));
 				p += nOldLen;
 				z += nReplLen;
 			}
@@ -238,12 +245,12 @@ int String::Replace(RCString sOld, RCString sNew) {
 }
 
 
-String::String(Char ch, ssize_t nRepeat) {
-	m_blob.Size = nRepeat*sizeof(Char);
-	fill_n((Char*)m_blob.data(), nRepeat, ch);
+String::String(value_type ch, ssize_t nRepeat) {
+	m_blob.Size = nRepeat * sizeof(value_type);
+	fill_n((value_type*)m_blob.data(), nRepeat, ch);
 }
 
-String::String(const Char *lpsz)
+String::String(const value_type *lpsz)
 	:	m_blob(nullptr)
 {
 	Init(lpsz, lpsz ? traits_type::length(lpsz) : -1);
@@ -257,7 +264,7 @@ const char *p = s.c_str();
 Init(p, strlen(p));  //!!! May be multibyte
 }*/
 
-String::String(const std::vector<Char>& vec)
+String::String(const std::vector<value_type>& vec)
 	:	m_blob(nullptr)
 {
 	Init(vec.empty() ? 0 : &vec[0], vec.size());
@@ -290,59 +297,11 @@ String::operator UNICODE_STRING*() const {
 }
 #endif
 
-String::Char String::operator[](int nIndex) const {
-		return (operator const Char*())[nIndex];
+String::value_type String::operator[](int nIndex) const {
+	return (operator const value_type*())[nIndex];
 }
 
-
-
-/*!!!D
-String String::FromUTF8(const char *p, int len)
-{
-vector<wchar_t> ar;
-if (len < 0)
-len = strlen(p);
-for (char c; len-->0 && (c = *p++);)
-{
-BYTE b = c;
-wchar_t wc;
-if (b < 0x80)
-wc = b;
-else if (b < 0xE0)
-{
-BYTE b2 = *p++;
-len--;
-if (!(b2 & 0x80))
-Throw(E_EXT_InvalidUTF8String);
-wc = ((b & 0x1F) << 6) | b2 & 0x3F;
-}
-else
-{
-BYTE b2 = *p++;
-len--;
-if (!(b2 & 0x80))
-Throw(E_EXT_InvalidUTF8String);
-BYTE b3 = *p++;
-len--;
-if (!(b3 & 0x80))
-Throw(E_EXT_InvalidUTF8String);
-wc = ((b & 0xF) << 12) | ((b2 & 0x3F) << 6) | b3 & 0x3F;
-}
-ar.push_back(wc);
-}
-return String(&ar[0], ar.size());
-}*/
-
-/*!!!D
-String String::ToOem() const
-{
-char *p = (char*)alloca(Length+1);
-Win32Check(::CharToOem(_self, p));
-return p;
-}
-*/
-
-void String::SetAt(size_t nIndex, Char ch) {
+void String::SetAt(size_t nIndex, value_type ch) {
 	MakeDirty();
 	m_blob.m_pData->GetBSTR()[nIndex] = ch;
 }
@@ -351,10 +310,10 @@ String& String::operator=(const char *lpsz) {
 	return operator=(String(lpsz));
 }
 
-String& String::operator=(const Char *lpsz) {
+String& String::operator=(const value_type *lpsz) {
 	MakeDirty();
 	if (lpsz) {
-		size_t len = traits_type::length(lpsz)*sizeof(Char);
+		size_t len = traits_type::length(lpsz)*sizeof(value_type);
 		if (!m_blob.m_pData)
 			m_blob.m_pData = new(len) CStringBlobBuf(len);
 		else
@@ -374,26 +333,19 @@ String& String::operator+=(const String& s) {
 	return _self;
 }
 
-void String::CopyTo(Char *ar, size_t size) const {
-	size_t len = std::min(size-1, (size_t)Length-1);
-	memcpy(ar, m_blob.constData(), len*sizeof(Char));
+void String::CopyTo(value_type *ar, size_t size) const {
+	size_t len = std::min(size-1, (size_t)length()-1);
+	memcpy(ar, m_blob.constData(), len*sizeof(value_type));
 	ar[len] = 0;
 }
 
-int String::Compare(const String& s) const {
-	Char *s1 = (Char*)m_blob.constData(),
-		*s2 = (Char*)s.m_blob.constData();
-	for (int len1=Length, len2=s.Length;; --len1, --len2) {
-		Char ch1=*s1++, ch2=*s2++;
-		if (ch1 < ch2)
-			return -1;
-		if (ch1 > ch2)
-			return 1;
-		if (!len1)
-			return len2 ? -1 : 0;
-		else if (!len2)
-			return 1;
-	}
+int String::compare(size_type p1, size_type c1, const value_type *s, size_type c2) const {
+	int r = traits_type::compare((const value_type*)m_blob.constData()+p1, s, (min)(c1, c2));
+	return r ? r : c1==c2 ? 0 : c1<c2 ? -1 : 1;
+}
+
+int String::compare(const String& s) const noexcept {
+	return compare(0, length(), (const value_type*)s.m_blob.constData(), s.length());
 }
 
 #if UCFG_WDM
@@ -414,16 +366,16 @@ static locale& UserLocale() {
 static locale& s_locale_not_used = UserLocale();	// initialize while one thread, don't use
 
 int String::CompareNoCase(const String& s) const {
-	Char *s1 = (Char*)m_blob.constData(),
-		*s2 = (Char*)s.m_blob.constData();
-	for (int len1=Length, len2=s.Length;; --len1, --len2) {
-		Char ch1=*s1++, ch2=*s2++;
+	value_type *s1 = (value_type*)m_blob.constData(),
+		*s2 = (value_type*)s.m_blob.constData();
+	for (size_t len1=length(), len2=s.length();; --len1, --len2) {
+		value_type ch1=*s1++, ch2=*s2++;
 #if UCFG_USE_POSIX
-		ch1 = (Char)tolower<wchar_t>(ch1, UserLocale());
-		ch2 = (Char)tolower<wchar_t>(ch2, UserLocale());
+		ch1 = (value_type)tolower<wchar_t>(ch1, UserLocale());
+		ch2 = (value_type)tolower<wchar_t>(ch2, UserLocale());
 #else
-		ch1 = (Char)tolower(ch1, UserLocale());
-		ch2 = (Char)tolower(ch2, UserLocale());
+		ch1 = (value_type)tolower(ch1, UserLocale());
+		ch2 = (value_type)tolower(ch2, UserLocale());
 #endif
 		if (ch1 < ch2)
 			return -1;
@@ -445,28 +397,28 @@ void String::clear() {		//  noexcept
 	MakeDirty();
 }
 
-String::size_type String::find(Char ch, size_type pos) const {
-	const Char *p = _self;
+String::size_type String::find(value_type ch, size_type pos) const noexcept {
+	const value_type *p = _self;
 	for (size_t i=pos, e=size(); i<e; ++i)
 		if (p[i] == ch)
 			return i;
 	return npos;
 }
 
-String::size_type String::find(const Char *s, size_type pos, size_type count) const {
-	size_t cbS = sizeof(Char) * count;
+String::size_type String::find(const value_type *s, size_type pos, size_type count) const {
+	size_t cbS = sizeof(value_type) * count;
 	if (count <= size()) {
-		const Char *p = _self,
+		const value_type *p = _self,
 			*q = s;
-		for (size_t i=pos, e=size()-count; i<e; ++i)
+		for (size_t i=pos, e=size()-count; i<=e; ++i)
 			if (!memcmp(p+i, q, cbS))
 				return i;
 	}
 	return npos;
 }
 
-int String::LastIndexOf(Char c) const {
-	for (size_t i=Length; i--;)
+int String::LastIndexOf(value_type c) const {
+	for (size_t i=length(); i--;)
 		if (_self[i] == c)
 			return (int)i;
 	return -1;
@@ -475,48 +427,48 @@ int String::LastIndexOf(Char c) const {
 String String::substr(size_type pos, size_type count) const {
 	if (pos > size())
 		Throw(E_EXT_IndexOutOfRange);
-	return !pos && count>=size() ? _self : String((const Char*)_self + pos, min(count, size()-pos));
+	return !pos && count>=size() ? _self : String((const value_type*)_self + pos, min(count, size()-pos));
 }
 
 String String::Right(ssize_t nCount) const {
 	if (nCount < 0)
 		nCount = 0;
-	if (nCount >= Length)
+	if (nCount >= length())
 		return _self;
 	String dest;
-	dest.m_blob.Size = nCount*sizeof(Char);
-	memcpy(dest.m_blob.data(), m_blob.constData()+(Length-nCount)*sizeof(Char), nCount*sizeof(Char));
+	dest.m_blob.Size = nCount * sizeof(value_type);
+	memcpy(dest.m_blob.data(), m_blob.constData()+(length() - nCount)*sizeof(value_type), nCount*sizeof(value_type));
 	return dest;
 }
 
 String String::Left(ssize_t nCount) const {
 	if (nCount < 0)
 		nCount = 0;
-	if (nCount >= Length)
+	if (nCount >= length())
 		return _self;
 	String dest;
-	dest.m_blob.Size = nCount*sizeof(Char);
-	memcpy(dest.m_blob.data(), m_blob.constData(), nCount*sizeof(Char));
+	dest.m_blob.Size = nCount * sizeof(value_type);
+	memcpy(dest.m_blob.data(), m_blob.constData(), nCount*sizeof(value_type));
 	return dest;
 }
 
 String String::TrimStart(RCString trimChars) const {
 	size_t i;
-	for (i=0; i<Length; i++) {
-		Char ch = _self[i];
+	for (i=0; i<length(); i++) {
+		value_type ch = _self[i];
 		if (!trimChars) {
 			if (!iswspace(ch)) //!!! must test wchar_t
 				break;
 		} else if (trimChars.find(ch) == npos)
 			break;
 	}
-	return Right(int(Length-i));
+	return Right(int(length() - i));
 }
 
 String String::TrimEnd(RCString trimChars) const {
 	ssize_t i;
-	for (i=Length; i--;) {
-		Char ch = _self[(size_t)i];
+	for (i=length(); i--;) {
+		value_type ch = _self[(size_t)i];
 		if (!trimChars) {
 			if (!iswspace(ch)) //!!! must test wchar_t
 				break;
@@ -529,9 +481,9 @@ String String::TrimEnd(RCString trimChars) const {
 vector<String> String::Split(RCString separator, size_t count) const {
 	String sep = separator.empty() ? " \t\n\r\v\f\b" : separator;
 	vector<String> ar;
-	for (const Char *p = _self; count-- && *p;) {
+	for (const value_type *p = _self; count-- && *p;) {
 		if (count) {
-			size_t n = StrCSpn<Char>(p, sep);
+			size_t n = StrCSpn<value_type>(p, sep);
 			ar.push_back(String(p, n));
 			if (*(p += n) && !*++p)
 				ar.push_back("");
@@ -550,33 +502,29 @@ String String::Join(RCString separator, const std::vector<String>& value) {
 
 void String::MakeUpper() {
 	MakeDirty();
-	for (Char *p=(Char*)m_blob.data(); *p; ++p) {
+	for (value_type *p=(value_type*)m_blob.data(); *p; ++p) {
 #if UCFG_USE_POSIX
-		*p = (Char)toupper<wchar_t>(*p, UserLocale());
+		*p = (value_type)toupper<wchar_t>(*p, UserLocale());
 #else
-		*p = (Char)toupper(*p, UserLocale());
+		*p = (value_type)toupper(*p, UserLocale());
 #endif
 	}
 }
 
 void String::MakeLower() {
 	MakeDirty();
-	for (Char *p=(Char*)m_blob.data(); *p; ++p) {
+	for (value_type *p=(value_type*)m_blob.data(); *p; ++p) {
 #if UCFG_USE_POSIX
-		*p = (Char)tolower<wchar_t>(*p, UserLocale());
+		*p = (value_type)tolower<wchar_t>(*p, UserLocale());
 #else
-		*p = (Char)tolower(*p, UserLocale());
+		*p = (value_type)tolower(*p, UserLocale());
 #endif
 	}
 }
 
 void String::Replace(int offset, int size, const String& s) {
 	MakeDirty();
-	m_blob.Replace(offset*sizeof(Char), size*sizeof(Char), s.m_blob);
-}
-
-size_t String::GetLength() const noexcept {
-	return m_blob.Size / sizeof(Char);
+	m_blob.Replace(offset*sizeof(value_type), size*sizeof(value_type), s.m_blob);
 }
 
 #if UCFG_COM
@@ -592,8 +540,8 @@ LPOLESTR String::AllocOleString() const {
 #endif
 
 String AFXAPI operator+(const String& string1, const String& string2) {
-	size_t len1 = string1.Length*sizeof(String::Char),
-		len2 = string2.Length*sizeof(String::Char);
+	size_t len1 = string1.length() * sizeof(String::value_type),
+		len2 = string2.length() * sizeof(String::value_type);
 	String s;
 	s.m_blob.Size = len1+len2;
 	memcpy(s.m_blob.data(), string1.m_blob.constData(), len1);
@@ -605,7 +553,7 @@ String AFXAPI operator+(const String& string, const char *lpsz) {
 	return operator+(string, String(lpsz));
 }
 
-String AFXAPI operator+(const String& string, const String::Char *lpsz) {
+String AFXAPI operator+(const String& string, const String::value_type *lpsz) {
 	return operator+(string, String(lpsz));
 }
 
@@ -613,7 +561,7 @@ String AFXAPI operator+(const String& string, char ch) {
 	return operator+(string, String(ch));
 }
 
-String AFXAPI operator+(const String& string, String::Char ch) {
+String AFXAPI operator+(const String& string, String::value_type ch) {
 	return operator+(string, String(ch));
 }
 
@@ -623,64 +571,36 @@ bool __fastcall operator<(const String& s1, const String& s2)
 return wcscmp((wchar_t*)s1.m_blob.Data, (wchar_t*)s2.m_blob.Data) < 0;
 }*/
 
-bool AFXAPI operator==(const String& s1, const char * s2)
-{ return s1==String(s2); }
-bool AFXAPI operator!=(const String& s1, const String& s2)
-{ return !(s1==s2); }
-bool AFXAPI operator>(const String& s1, const String& s2)
-{ return s1.Compare(s2) > 0; }
-bool AFXAPI operator<=(const String& s1, const String& s2)
-{ return s1.Compare(s2) <= 0; }
-bool AFXAPI operator>=(const String& s1, const String& s2)
-{ return s1.Compare(s2) >= 0; }
+bool AFXAPI operator==(const String& s1, const char * s2) { return s1 == String(s2); }
+bool AFXAPI operator!=(const String& s1, const String& s2) noexcept { return !(s1==s2); }
+bool AFXAPI operator>(const String& s1, const String& s2) noexcept { return s1.compare(s2) > 0; }
+bool AFXAPI operator<=(const String& s1, const String& s2) noexcept { return s1.compare(s2) <= 0; }
+bool AFXAPI operator>=(const String& s1, const String& s2) noexcept { return s1.compare(s2) >= 0; }
 
-bool AFXAPI operator==(const char * s1, const String& s2)
-{ return String(s1)==s2; }
-bool AFXAPI operator!=(const String& s1, const char * s2)
-{ return !(s1==s2); }
-bool AFXAPI operator!=(const char * s1, const String& s2)
-{ return !(s1==s2); }
-bool AFXAPI operator<(const String& s1, const char *s2)
-{ return s1.Compare(s2) < 0; }
-bool AFXAPI operator<(const char * s1, const String& s2)
-{ return s2.Compare(s1) > 0; }
-bool AFXAPI operator>(const String& s1, const char * s2)
-{ return s1.Compare(s2) > 0; }
-bool AFXAPI operator>(const char * s1, const String& s2)
-{ return s2.Compare(s1) < 0; }
-bool AFXAPI operator<=(const String& s1, const char * s2)
-{ return s1.Compare(s2) <= 0; }
-bool AFXAPI operator<=(const char * s1, const String& s2)
-{ return s2.Compare(s1) >= 0; }
-bool AFXAPI operator>=(const String& s1, const char * s2)
-{ return s1.Compare(s2) >= 0; }
-bool AFXAPI operator>=(const char * s1, const String& s2)
-{ return s2.Compare(s1) <= 0; }
+bool AFXAPI operator==(const char * s1, const String& s2) { return String(s1)==s2; }
+bool AFXAPI operator!=(const String& s1, const char * s2) { return !(s1==s2); }
+bool AFXAPI operator!=(const char * s1, const String& s2) { return !(s1==s2); }
+bool AFXAPI operator<(const String& s1, const char *s2) { return s1.compare(s2) < 0; }
+bool AFXAPI operator<(const char * s1, const String& s2) { return s2.compare(s1) > 0; }
+bool AFXAPI operator>(const String& s1, const char * s2) { return s1.compare(s2) > 0; }
+bool AFXAPI operator>(const char * s1, const String& s2) { return s2.compare(s1) < 0; }
+bool AFXAPI operator<=(const String& s1, const char * s2) { return s1.compare(s2) <= 0; }
+bool AFXAPI operator<=(const char * s1, const String& s2) { return s2.compare(s1) >= 0; }
+bool AFXAPI operator>=(const String& s1, const char * s2) { return s1.compare(s2) >= 0; }
+bool AFXAPI operator>=(const char * s1, const String& s2) { return s2.compare(s1) <= 0; }
 
-bool AFXAPI operator==(const String& s1, const String::Char *s2)
-{ return s1==String(s2); }
-bool AFXAPI operator==(const String::Char * s1, const String& s2)
-{ return String(s1)==s2; }
-bool AFXAPI operator!=(const String& s1, const String::Char *s2)
-{ return !(s1==s2); }
-bool AFXAPI operator!=(const String::Char * s1, const String& s2)
-{ return !(s1==s2); }
-bool AFXAPI operator<(const String& s1, const String::Char *s2)
-{ return s1.Compare(s2) < 0; }
-bool AFXAPI operator<(const String::Char * s1, const String& s2)
-{ return s2.Compare(s1) > 0; }
-bool AFXAPI operator>(const String& s1, const String::Char *s2)
-{ return s1.Compare(s2) > 0; }
-bool AFXAPI operator>(const String::Char * s1, const String& s2)
-{ return s2.Compare(s1) < 0; }
-bool AFXAPI operator<=(const String& s1, const String::Char *s2)
-{ return s1.Compare(s2) <= 0; }
-bool AFXAPI operator<=(const String::Char * s1, const String& s2)
-{ return s2.Compare(s1) >= 0; }
-bool AFXAPI operator>=(const String& s1, const String::Char *s2)
-{ return s1.Compare(s2) >= 0; }
-bool AFXAPI operator>=(const String::Char * s1, const String& s2)
-{ return s2.Compare(s1) <= 0; }
+bool AFXAPI operator==(const String& s1, const String::value_type *s2) { return s1==String(s2); }
+bool AFXAPI operator==(const String::value_type * s1, const String& s2) { return String(s1)==s2; }
+bool AFXAPI operator!=(const String& s1, const String::value_type *s2) { return !(s1==s2); }
+bool AFXAPI operator!=(const String::value_type * s1, const String& s2) { return !(s1==s2); }
+bool AFXAPI operator<(const String& s1, const String::value_type *s2) { return s1.compare(s2) < 0; }
+bool AFXAPI operator<(const String::value_type * s1, const String& s2) { return s2.compare(s1) > 0; }
+bool AFXAPI operator>(const String& s1, const String::value_type *s2) { return s1.compare(s2) > 0; }
+bool AFXAPI operator>(const String::value_type * s1, const String& s2) { return s2.compare(s1) < 0; }
+bool AFXAPI operator<=(const String& s1, const String::value_type *s2) { return s1.compare(s2) <= 0; }
+bool AFXAPI operator<=(const String::value_type * s1, const String& s2) { return s2.compare(s1) >= 0; }
+bool AFXAPI operator>=(const String& s1, const String::value_type *s2) { return s1.compare(s2) >= 0; }
+bool AFXAPI operator>=(const String::value_type * s1, const String& s2) { return s2.compare(s1) <= 0; }
 
 
 
@@ -753,11 +673,11 @@ static bool InitTreadStrings() {
 	return true;
 }
 
-extern "C" const char16_t * AFXAPI Utf8ToUtf16String(const char *utf8) {
+extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
 	static std::once_flag once;
 	std::call_once(once, &InitTreadStrings);
 
-	const char16_t *r = 0;
+	const unsigned short *r = 0;
 	EXT_LOCK (s_threadStrings->Mtx) {
 		if (s_threadStrings->Map.size() > 256) {
 			for (ThreadStrings::CThreadMap::iterator it=s_threadStrings->Map.begin(), e=s_threadStrings->Map.end(); it!=e;) {
@@ -769,7 +689,7 @@ extern "C" const char16_t * AFXAPI Utf8ToUtf16String(const char *utf8) {
 				}
 			}
 		}
-		r = (const char16_t*)(const wchar_t*)(s_threadStrings->Map[::GetCurrentThreadId()] = Ext::String(utf8));	
+		r = (const unsigned short*)(const wchar_t*)(s_threadStrings->Map[::GetCurrentThreadId()] = Ext::String(utf8));	
 	}
 	return r;
 }

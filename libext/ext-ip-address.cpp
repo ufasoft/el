@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -160,7 +167,7 @@ IPAddress::IPAddress()
 	CreateCommon();
 }
 
-IPAddress::IPAddress(UInt32 nboIp4)
+IPAddress::IPAddress(uint32_t nboIp4)
 	:	m_domainname(nullptr)
 {
 	CreateCommon();
@@ -205,13 +212,13 @@ IPAddress::IPAddress(const sockaddr& sa)
 }
 
 size_t IPAddress::GetHashCode() const {
-	size_t r = std::hash<UInt16>()((UInt16)get_AddressFamily());
+	size_t r = std::hash<uint16_t>()((uint16_t)get_AddressFamily());
 	switch ((int)get_AddressFamily()) {
 	case AF_DOMAIN_NAME:
 		r += std::hash<String>()(m_domainname);
 		break;
 	case AF_INET:
-		r += std::hash<UInt32>()(*(UInt32*)&m_sin.sin_addr);
+		r += std::hash<uint32_t>()(*(uint32_t*)&m_sin.sin_addr);
 		break;
 	case AF_INET6:
 		r += hash_value(ConstBuf(&m_sin6.sin6_addr, 16));		
@@ -291,7 +298,7 @@ String IPAddress::ToString() const {
 IPAddress& IPAddress::operator=(const IPAddress& ha) {
 	AddressFamily = ha.AddressFamily;
 	m_domainname = ha.m_domainname;
-	UInt16 port = m_sin.sin_port;
+	uint16_t port = m_sin.sin_port;
 	memcpy(&m_sin6, &ha.m_sin6, sizeof m_sin6);
 	switch ((int)get_AddressFamily()) {
 	case AF_DOMAIN_NAME:
@@ -325,7 +332,7 @@ bool IPAddress::operator==(const IPAddress& ha) const {
 	case AF_DOMAIN_NAME:
 		return m_domainname == ha.m_domainname;
 	case AF_INET:
-		return *(Int32*)&m_sin.sin_addr == *(Int32*)&ha.m_sin.sin_addr;
+		return *(int32_t*)&m_sin.sin_addr == *(int32_t*)&ha.m_sin.sin_addr;
 	case AF_INET6:
 		return !memcmp(&m_sin6.sin6_addr, &ha.m_sin6.sin6_addr, 16);
 	default:
@@ -347,8 +354,8 @@ Blob IPAddress::GetAddressBytes() const {
 	}
 }
 
-UInt32 IPAddress::GetIP() const {
-	UInt32 nhost;
+uint32_t IPAddress::GetIP() const {
+	uint32_t nhost;
 	switch ((int)get_AddressFamily()) {
 	case AF_DOMAIN_NAME:
 		if ((nhost = inet_addr(m_domainname)) != INADDR_NONE)
@@ -372,7 +379,7 @@ bool IPAddress::IsGlobal() const {
 	switch ((int)get_AddressFamily()) {
 	case AF_INET:
 		{
-			UInt32 hip = ntohl(m_sin.sin_addr.s_addr);
+			uint32_t hip = ntohl(m_sin.sin_addr.s_addr);
 			return hip != 0
 				&& (hip & 0xFF000000) != 0x7F000000		// 127.x.x.x
 				&& (hip & 0xFFFF0000) != 0xC0A80000		// 192.168.x.x
@@ -383,7 +390,7 @@ bool IPAddress::IsGlobal() const {
 		break;
 	case AF_INET6:
 		{
-			UInt16 fam = *(byte*)&m_sin6.sin6_addr;
+			uint16_t fam = *(byte*)&m_sin6.sin6_addr;
 			return fam > 0 && fam<0xFC;
 		}
 	case IPAddress::AF_DOMAIN_NAME:
@@ -400,7 +407,7 @@ bool IPAddress::get_IsIPv4MappedToIPv6() const {
 
 bool IPAddress::get_IsIPv6Teredo() const {
 	return (int)get_AddressFamily() == AF_INET6 &&
-		*(UInt32*)&m_sin6.sin6_addr == htonl(0x20010000);
+		*(uint32_t*)&m_sin6.sin6_addr == htonl(0x20010000);
 }
 
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPAddress& ha) {
@@ -448,7 +455,7 @@ const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPAddress& ha) {
 	return rd;
 }
 
-IPEndPoint::IPEndPoint(RCString s, UInt16 port) {
+IPEndPoint::IPEndPoint(RCString s, uint16_t port) {
 	const char *p = s;
 	const char *q = strchr(p, ':');
 	if (q) {
@@ -484,7 +491,7 @@ IPHostEntry::IPHostEntry(hostent *phost) {
 			IPAddress ip;
 			switch (phost->h_addrtype) {
 			case AF_INET:
-				ip = IPAddress(*(UInt32*)*p);
+				ip = IPAddress(*(uint32_t*)*p);
 				break;
 			case AF_INET6:
 				ip = IPAddress(ConstBuf(*p, 16));
@@ -508,7 +515,7 @@ IPHostEntry Dns::GetHostEntry(const IPAddress& address) {
 }
 
 IPHostEntry Dns::GetHostEntry(RCString hostNameOrAddress) {
-	UInt32 nhost = inet_addr(hostNameOrAddress);
+	uint32_t nhost = inet_addr(hostNameOrAddress);
 	if (nhost != INADDR_NONE)
 		return GetHostEntry(IPAddress(nhost));
 	if (hostent *phost = gethostbyname(hostNameOrAddress))

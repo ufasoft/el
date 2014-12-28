@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #pragma once
 
@@ -41,18 +40,18 @@ EXT_DEF_INTTYPE_HASH(unsigned long);
 #	endif
 
 #	if SIZE_MAX == _UI64_MAX
-	EXT_DEF_INTTYPE_HASH(Ext::UInt64);
-	EXT_DEF_INTTYPE_HASH(Ext::Int64);
+	EXT_DEF_INTTYPE_HASH(uint64_t);
+	EXT_DEF_INTTYPE_HASH(int64_t);
 #	else
 
-template <> class hash<Ext::UInt64> {
+template <> class hash<uint64_t> {
 public:
-	size_t operator()(Ext::UInt64 v) const { return size_t(v ^ (v>>32)); }
+	size_t operator()(uint64_t v) const { return size_t(v ^ (v>>32)); }
 };
 
-template <> class hash<Ext::Int64> {
+template <> class hash<int64_t> {
 public:
-	size_t operator()(Ext::Int64 v) const { return hash<Ext::UInt64>()((const Ext::UInt64&)v); }
+	size_t operator()(int64_t v) const { return hash<uint64_t>()((const uint64_t&)v); }
 };
 
 #	endif
@@ -60,7 +59,7 @@ public:
 
 template <> class hash<double> {
 public:
-	size_t operator()(const double& v) const { return hash<Ext::UInt64>()((const Ext::UInt64&)v); }
+	size_t operator()(const double& v) const { return hash<uint64_t>()((const uint64_t&)v); }
 };
 
 
@@ -72,9 +71,9 @@ public:
 /*!!!
 template <class T> struct hash {};
 
-template<> struct hash<UInt32>
+template<> struct hash<uint32_t>
 {
-size_t operator()(UInt32 dw) const { return dw ^ _HASH_SEED; }
+size_t operator()(uint32_t dw) const { return dw ^ _HASH_SEED; }
 };
 
 template<> struct hash<long>
@@ -89,12 +88,12 @@ size_t operator()(unsigned long dw) const { return dw ^ _HASH_SEED; }
 
 template<> struct hash<double>
 {
-size_t operator()(double d) const { return *(UInt32*)&d ^ *((UInt32*)&d+1); }
+size_t operator()(double d) const { return *(uint32_t*)&d ^ *((uint32_t*)&d+1); }
 };
 
-template<> struct hash<UInt16>
+template<> struct hash<uint16_t>
 {
-size_t operator()(UInt16 w) const { return w ^ _HASH_SEED; }
+size_t operator()(uint16_t w) const { return w ^ _HASH_SEED; }
 };
 
 */

@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -254,7 +261,7 @@ Version::Version(RCString s) {
 #if UCFG_WIN32
 
 Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
-	int ar[4] = { UInt16(ms>>16), UInt16(ms), UInt16(ls>>16), UInt16(ls) };
+	int ar[4] = { uint16_t(ms>>16), uint16_t(ms), uint16_t(ls>>16), uint16_t(ls) };
 	for (int i=4; i-- > fieldCount;)
 		ar[i] = -1;
 	return Version(ar[0], ar[1], ar[2], ar[3]);
@@ -359,8 +366,8 @@ String OperatingSystem::get_VersionName() const {
 }
 
 #if UCFG_WIN32
-Int32 AFXAPI Environment::TickCount() {
-	return (Int32)::GetTickCount();
+int32_t AFXAPI Environment::TickCount() {
+	return (int32_t)::GetTickCount();
 }
 #endif // UCFG_WIN32
 
@@ -377,7 +384,7 @@ Environment::CStringsKeeper::~CStringsKeeper() {
 	Win32Check(::FreeEnvironmentStrings(m_p));
 }
 
-UInt32 AFXAPI Environment::GetLastInputInfo() {
+uint32_t AFXAPI Environment::GetLastInputInfo() {
 	LASTINPUTINFO lii = { sizeof lii };
 	Win32Check(::GetLastInputInfo(&lii));
 	return lii.dwTime;
@@ -700,10 +707,10 @@ Blob Convert::FromBase64String(RCString s) {
 
 String Convert::ToBase64String(const ConstBuf& mb) {
 	//!!!R	CBase64Table::s_toBase64;
-	vector<String::Char> v;
+	vector<String::value_type> v;
 	const byte *p = mb.P;
 	for (size_t i=mb.Size/3; i--; p+=3) {
-		UInt32 dw = (p[0]<<16) | (p[1]<<8) | p[2];
+		uint32_t dw = (p[0]<<16) | (p[1]<<8) | p[2];
 		v.push_back(CBase64Table::s_toBase64[(dw>>18) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>12) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>6) & 0x3F]);
@@ -767,7 +774,7 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 				bs.Flush();
 				break;
 			}
-			if (UInt16(ch) >= 256)
+			if (uint16_t(ch) >= 256)
 				Throw(E_INVALIDARG);
 			bs.Write(5, valTable[ch]);
 		}
@@ -783,9 +790,9 @@ static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, co
 		mask = (1<<bitsInGroup) - 1;
 	for (size_t i=0; i<mb.Size;) {
 		int nbits = 0;
-		UInt64 val = 0;
+		uint64_t val = 0;
 		for (int j=bytesInGroup; j-- && i<mb.Size; nbits+=8)
-			val |= UInt64(mb.P[i++]) << (j*8);
+			val |= uint64_t(mb.P[i++]) << (j*8);
 		for (int j=charsInGroup; j--; nbits-=bitsInGroup)
 			os.put(nbits>0 ?table[(val >> (j*bitsInGroup)) & mask] : '=');
 	}
@@ -864,7 +871,7 @@ String Guid::ToString(RCString format) const {
 #endif
 	if ("B" == format)
 		return s;
-	s = s.substr(1, s.Length-2);
+	s = s.substr(1, s.length()-2);
 	if (format.empty() || "D"==format)
 		return s;
 	if ("N" == format)
@@ -886,7 +893,7 @@ CResID::CResID(const char *lpName)
 	_self = lpName;
 }
 
-CResID::CResID(const String::Char *lpName)
+CResID::CResID(const String::value_type *lpName)
 	:	m_resId(0)
 {
 	_self = lpName;
@@ -902,7 +909,7 @@ CResID& CResID::operator=(const char *resId) {
 	return _self;
 }
 
-CResID& CResID::operator=(const String::Char *resId) {
+CResID& CResID::operator=(const String::value_type *resId) {
 	m_name = "";
 	m_resId = 0;
 	if (HIWORD(resId))
@@ -925,9 +932,9 @@ CResID::operator const char *() const {
 		return m_name;
 }
 
-CResID::operator const String::Char *() const {
+CResID::operator const String::value_type *() const {
 	if (m_name.empty())
-		return (const String::Char *)m_resId;
+		return (const String::value_type *)m_resId;
 	else
 		return m_name;
 }
@@ -1009,8 +1016,8 @@ int AFXAPI Rand() {
 }
 
 
-UInt16 Random::NextWord() {
-	return UInt16((m_seed = m_seed * 214013L + 2531011L) >> 16);
+uint16_t Random::NextWord() {
+	return uint16_t((m_seed = m_seed * 214013L + 2531011L) >> 16);
 }
 
 void Random::NextBytes(const Buf& mb) {
@@ -1031,10 +1038,10 @@ int Random::Next(int maxValue) {
 double Random::NextDouble() {
 	STATIC_ASSERT(DBL_MANT_DIG < 64);
 
-	UInt64 n;
+	uint64_t n;
 	NextBytes(Buf((byte*)&n, sizeof n));
 
-	n = (n >> (64 - (DBL_MANT_DIG-1))) | (UInt64(1) << (DBL_MANT_DIG-1));
+	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
 	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
 }
 
@@ -1057,7 +1064,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 	W hash[8];
 	algo.InitHash(hash);
 	byte buf[16*sizeof(W)];
-	UInt64 len = 0, counter;
+	uint64_t len = 0, counter;
 	bool bLast = false;
 	while (true) {
 		ZeroStruct(buf);
@@ -1095,7 +1102,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 }
 
 hashval HashAlgorithm::ComputeHash(Stream& stm) {
-	return Is64Bit ? ComputeHashImp<UInt64>(_self, stm) : ComputeHashImp<UInt32>(_self, stm);
+	return Is64Bit ? ComputeHashImp<uint64_t>(_self, stm) : ComputeHashImp<uint32_t>(_self, stm);
 }
 
 hashval HashAlgorithm::ComputeHash(const ConstBuf& mb) {
@@ -1124,12 +1131,12 @@ hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text) {
 }
 
 
-static UInt32 s_crcTable[256];
+static uint32_t s_crcTable[256];
 
 static bool Crc32GenerateTable() {
-	UInt32 poly = 0xEDB88320;
-	for (UInt32 i = 0; i < 256; i++) {
-		UInt32 r = i;
+	uint32_t poly = 0xEDB88320;
+	for (uint32_t i = 0; i < 256; i++) {
+		uint32_t r = i;
 		for (int j = 0; j < 8; j++)
 			r = (r >> 1) ^ (poly & ~((r & 1) - 1));
 		s_crcTable[i] = r;
@@ -1141,7 +1148,7 @@ hashval Crc32::ComputeHash(Stream& stm) {
 	static once_flag once;
 	call_once(once, &Crc32GenerateTable);
 
-	UInt32 val = 0xFFFFFFFF;
+	uint32_t val = 0xFFFFFFFF;
 	for (int v; (v=stm.ReadByte())!=-1;)
 		val = s_crcTable[(val ^ v) & 0xFF] ^ (val >> 8);
 	val = ~val;
@@ -1154,7 +1161,7 @@ const DWORD //!!!E_EXT_BASE = 0x80040000 | 10000,
 	E_EXT_UPPER = E_EXT_BASE+0xFFFF;
 
 CMessageProcessor::CMessageProcessor() {
-	m_default.Init(0, UInt32(-1), System.ExeFilePath.stem());
+	m_default.Init(0, uint32_t(-1), System.get_ExeFilePath().stem());
 #ifdef X_AFXDLL	 //!!!
 	RegisterModule(E_EXT_BASE, E_EXT_UPPER, Path::GetFileName(AfxGetModuleState()->FileName));
 #endif
@@ -1168,33 +1175,33 @@ CMessageRange::~CMessageRange() {
 	g_messageProcessor.m_ranges.erase(std::remove(g_messageProcessor.m_ranges.begin(), g_messageProcessor.m_ranges.end(), this), g_messageProcessor.m_ranges.end());
 }
 
-void CMessageProcessor::CModuleInfo::Init(UInt32 lowerCode, UInt32 upperCode, const path& moduleName) {
+void CMessageProcessor::CModuleInfo::Init(uint32_t lowerCode, uint32_t upperCode, const path& moduleName) {
 	m_lowerCode = lowerCode;
 	m_upperCode = upperCode;
 	m_moduleName = moduleName;
 	if (!m_moduleName.has_extension()) {
 #if UCFG_USE_POSIX
-		m_moduleName /= ".cat";
+		m_moduleName += ".cat";
 #elif UCFG_WIN32
-		m_moduleName /= ".dll";
+		m_moduleName += ".dll";
 #endif
 	}
 }
 
 String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
-	if (UInt32(hr) < m_lowerCode || UInt32(hr) >= m_upperCode)
+	if (uint32_t(hr) < m_lowerCode || uint32_t(hr) >= m_upperCode)
 		return nullptr;
 #if UCFG_USE_POSIX
 	if (!m_mcat) {
 		if (exchange(m_bCheckedOpen, true))
 			return nullptr;
 		try {
-			m_mcat.Open(m_moduleName);
+			m_mcat.Open(m_moduleName.c_str());
 		} catch (RCExc) {
-			if (Path::GetDirectoryName(m_moduleName) != "")
+			if (!m_moduleName.parent_path().empty())
 				return nullptr;
 			try {
-				m_mcat.Open(Path::Combine(Path::GetDirectoryName(System.ExeFilePath), m_moduleName));
+				m_mcat.Open((System.get_ExeFilePath().parent_path() / m_moduleName).c_str());
 			} catch (RCExc) {
 				return nullptr;
 			}
@@ -1395,7 +1402,7 @@ Resource::Resource(const CResID& resID, const CResID& resType, HMODULE hModule) 
 	Win32Check(hRsrc != 0);
 	m_pimpl = new ResourceObj(hModule, hRsrc);
 #else
-	m_blob = File::ReadAllBytes(Path::Combine(Path::GetDirectoryName(System.ExeFilePath), resID.ToString()));
+	m_blob = File::ReadAllBytes(System.get_ExeFilePath().parent_path() / resID.ToString());
 #endif
 }
 
@@ -1606,7 +1613,7 @@ bool ProcessObj::Start() {
 	String cls = StartInfo.FileName;
 	if (!StartInfo.Arguments.empty())
 		cls += " "+StartInfo.Arguments;
-	size_t len = (cls.Length+1)*sizeof(TCHAR);
+	size_t len = (cls.length()+1)*sizeof(TCHAR);
 	TCHAR *cl = (TCHAR*)alloca(len);
 	memcpy(cl, (const TCHAR*)cls, len);
 	String fileName = StartInfo.FileName.empty() ? String(nullptr) : String(StartInfo.FileName);
@@ -1649,15 +1656,13 @@ String Process::get_ProcessName() {
 	char szModule[PATH_MAX];
 	memset(szModule, 0, sizeof szModule);
 	CCheck(::readlink(String(EXT_STR("/proc/" << get_ID() << "/exe")), szModule, sizeof(szModule)));
-	return Path::GetFileName(szModule);
+	return path(szModule).filename();
 #else
 	TCHAR buf[MAX_PATH];
 	Win32Check(::GetModuleBaseName(Handle(*m_pimpl), 0, buf, _countof(buf)));
-	String r = buf;
-	String ext = r.ToLower().Right(4);
-	if (ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd")
-		r = r.substr(0, r.Length-4);
-	return r;
+	path r = buf;
+	String ext = ToLower(r.extension());
+	return ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd" ? r.parent_path() / r.stem() : r;
 #endif
 }
 
@@ -1737,7 +1742,11 @@ HRESULT AFXAPI ToHResult(const system_error& ex) {
 	int ecode = ec.value();
 	if (cat == generic_category())
 		return HRESULT_FROM_C(ecode);
-	else if (cat == system_category())
+#if UCFG_WIN32
+	else if (cat == win32_category())
+		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_WIN32 << 16) | 0x80000000);
+#endif
+	else if (cat == system_category())														// == win32_category() on Windows
 		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_OS << 16) | 0x80000000);
 	else if (cat == hresult_category())
 		return ecode;

@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -49,7 +56,7 @@ Socket::~Socket() {
 	Close(true);
 }
 
-void Socket::Create(UInt16 nPort, int nSocketType, UInt32 host) {
+void Socket::Create(uint16_t nPort, int nSocketType, uint32_t host) {
 	Open(nSocketType, 0, AF_INET);
 	Bind(IPEndPoint(htonl(host), nPort));
 }
@@ -387,15 +394,11 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 		int nfds = 0;
 		if (loopS.m_bLive && loopS.m_bAccepts) {
 			FD_SET((SOCKET)loopS.m_hp, &readfds);
-#if UCFG_USE_POSIX
-			nfds = std::max(nfds, 1+(SOCKET)loopS.m_hp);
-#endif
+			nfds = std::max(nfds, int(1+(SOCKET)loopS.m_hp));
 		}
 		if (loopD.m_bLive && loopD.m_bAccepts) {
 			FD_SET((SOCKET)loopD.m_hp, &readfds);
-#if UCFG_USE_POSIX
-			nfds = std::max(nfds, 1+(SOCKET)loopD.m_hp);
-#endif
+			nfds = std::max(nfds, int(1+(SOCKET)loopD.m_hp));
 		}
 		TimeSpan span = GetTimeout();
 		timeval timeout,

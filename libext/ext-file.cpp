@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -15,6 +22,7 @@
 #	pragma comment(lib, "shlwapi")
 
 #	include <el/libext/win32/ext-full-win.h>
+#	include <el/win/nt.h>
 #endif
 
 namespace Ext {
@@ -60,35 +68,35 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 	sp.m_fname = fname;
 	sp.m_ext = ext;
 #else
-	int fn = path.LastIndexOf(DirectorySeparatorChar);
-	String sSnExt = path.Mid(fn+1);
+	int fn = path.LastIndexOf(path::preferred_separator);
+	String sSnExt = path.substr(fn+1);
 
 	int ext = sSnExt.LastIndexOf('.');
 	if (ext != -1)
-		sp.m_ext = sSnExt.Mid(ext);
+		sp.m_ext = sSnExt.substr(ext);
 	else
-		ext = sSnExt.Length;
+		ext = sSnExt.length();
 	sp.m_fname = sSnExt.Left(ext);
 	sp.m_dir = path.Left(fn+1);
 #endif
 	return sp;
 }
 
-pair<String, UINT> Path::GetTempFileName(RCString path, RCString prefix, UINT uUnique) {
+pair<String, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUnique) {
 #if UCFG_USE_POSIX
 	char buf[PATH_MAX+1];
 	ZeroStruct(buf);
-	int fd = CCheck(::mkstemp(strncpy(buf, Path::Combine(path, prefix+"XXXXXX"), _countof(buf)-1)));
+	int fd = CCheck(::mkstemp(strncpy(buf, (p / (prefix+"XXXXXX")).c_str(), _countof(buf)-1)));
 	close(fd);
 	return pair<String, UINT>(buf, 1);
 #else
 	TCHAR buf[MAX_PATH];
-	UINT r = Win32Check(::GetTempFileName(path, prefix, uUnique, buf));
+	UINT r = Win32Check(::GetTempFileName(p.native(), prefix, uUnique, buf));
 	return pair<String, UINT>(buf, r);
 #endif
 }
 
-String Path::GetPhysicalPath(RCString p) {
+String Path::GetPhysicalPath(const path& p) {
 	String path = p;
 #if UCFG_WIN32_FULL
 	while (true) {
@@ -106,10 +114,10 @@ String Path::GetPhysicalPath(RCString p) {
 static StaticWRegex s_reDosName("^\\\\\\\\\\?\\\\([A-Za-z]:.*)");   //  \\?\x:
 #endif
 
-String Path::GetTruePath(RCString p) {
+String Path::GetTruePath(const path& p) {
 #if UCFG_USE_POSIX	
 	char buf[PATH_MAX];
-	for (const char *psz = p;; psz = buf) {
+	for (const char *psz = p.native();; psz = buf) {
 		int len = ::readlink(psz, buf, sizeof(buf)-1);
 		if (len == -1) {
 			if (errno == EINVAL)
@@ -120,7 +128,7 @@ String Path::GetTruePath(RCString p) {
 	}
 #elif UCFG_WIN32_FULL
 	TCHAR buf[_MAX_PATH];
-	DWORD len = ::GetLongPathName(p, buf, _countof(buf)-1);
+	DWORD len = ::GetLongPathName(p.native(), buf, _countof(buf)-1);
 	Win32Check(len != 0);
 	buf[len] = 0;
 
@@ -166,7 +174,7 @@ File::~File() {
 
 void File::Open(const File::OpenInfo& oi) {
 #if UCFG_USE_POSIX
-	if (Directory::Exists(oi.Path))							// open() opens dirs, but we need not it
+	if (is_directory(oi.Path))							// open() opens dirs, but we need not it
 		Throw(E_ACCESSDENIED);
 
 	int oflag = 0;
@@ -198,7 +206,7 @@ void File::Open(const File::OpenInfo& oi) {
 	default:
 		Throw(E_INVALIDARG);
 	}
-	int fd = CCheck(::open(oi.Path, oflag, 0644));
+	int fd = CCheck(::open(oi.Path.c_str(), oflag, 0644));
 	Attach((HANDLE)(uintptr_t)fd);
 #else
 	DWORD dwAccess = 0;
@@ -227,8 +235,9 @@ void File::Open(const File::OpenInfo& oi) {
 	case FileMode::Open:
 		dwCreateFlag = OPEN_EXISTING;
 		break;
-	case FileMode::OpenOrCreate:
 	case FileMode::Append:
+		dwAccess = FILE_APPEND_DATA;
+	case FileMode::OpenOrCreate:
 		dwCreateFlag = OPEN_ALWAYS;
 		break;
 	case FileMode::Truncate:
@@ -237,11 +246,21 @@ void File::Open(const File::OpenInfo& oi) {
 	default:
 		Throw(E_INVALIDARG);
 	}
+
 	SECURITY_ATTRIBUTES sa = { sizeof sa };
 	sa.bInheritHandle = (int)oi.Share & (int)FileShare::Inheritable;
 	DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
 	dwFlagsAndAttributes |= oi.BufferingEnabled ? 0 : FILE_FLAG_NO_BUFFERING;
-	dwFlagsAndAttributes |= oi.RandomAccess ? FILE_FLAG_RANDOM_ACCESS : 0;
+
+	if (bool(oi.Options & FileOptions::RandomAccess))
+		dwFlagsAndAttributes |= FILE_FLAG_RANDOM_ACCESS;
+	if (bool(oi.Options & FileOptions::SequentialScan))
+		dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
+	if (bool(oi.Options & FileOptions::DeleteOnClose))
+		dwFlagsAndAttributes |= FILE_FLAG_DELETE_ON_CLOSE;
+	if (bool(oi.Options & FileOptions::WriteThrough))
+		dwFlagsAndAttributes |= FILE_FLAG_WRITE_THROUGH;
+
 	Attach(::CreateFile(ExcLastStringArgKeeper(oi.Path), dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlagsAndAttributes, NULL));
 	if (oi.Mode == FileMode::Append)
 		SeekToEnd(); 
@@ -257,9 +276,9 @@ void File::Open(const path& p, FileMode mode, FileAccess access, FileShare share
 	Open(oi);
 }
 
-Blob File::ReadAllBytes(RCString path) {
-	FileStream stm(path, FileMode::Open, FileAccess::Read);
-	UInt64 len = stm.Length;
+Blob File::ReadAllBytes(const path& p) {
+	FileStream stm(p, FileMode::Open, FileAccess::Read);
+	uint64_t len = stm.Length;
 	if (len > numeric_limits<size_t>::max())
 		Throw(E_OUTOFMEMORY);
 	Blob blob(0, (size_t)len);
@@ -267,16 +286,16 @@ Blob File::ReadAllBytes(RCString path) {
 	return blob;
 }
 
-void File::WriteAllBytes(RCString path, const ConstBuf& mb) {
-	FileStream(path, FileMode::Create, FileAccess::Write).WriteBuf(mb);
+void File::WriteAllBytes(const path& p, const ConstBuf& mb) {
+	FileStream(p, FileMode::Create, FileAccess::Write).WriteBuf(mb);
 }
 
-String File::ReadAllText(RCString path, Encoding *enc) {
-	return enc->GetChars(ReadAllBytes(path));
+String File::ReadAllText(const path& p, Encoding *enc) {
+	return enc->GetChars(ReadAllBytes(p));
 }
 
-void File::WriteAllText(RCString path, RCString contents, Encoding *enc) {
-	WriteAllBytes(path, enc->GetBytes(contents));
+void File::WriteAllText(const path& p, RCString contents, Encoding *enc) {
+	WriteAllBytes(p, enc->GetBytes(contents));
 }
 
 #if !UCFG_USE_POSIX
@@ -307,7 +326,7 @@ void File::CreateForMapping(LPCTSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
 	Create(lpFileName, dwDesiredAccess, dwShareMode, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile, lpsa);
 }
 
-bool File::Read(void *buf, UInt32 len, UInt32 *read, OVERLAPPED *pov) {
+bool File::Read(void *buf, uint32_t len, uint32_t *read, OVERLAPPED *pov) {
 	bool b = ::ReadFile(HandleAccess(_self), buf, len, (DWORD*)read, pov);
 	if (!b && ::GetLastError()==ERROR_BROKEN_PIPE) {
 		*read = 0;
@@ -316,7 +335,7 @@ bool File::Read(void *buf, UInt32 len, UInt32 *read, OVERLAPPED *pov) {
 	return CheckPending(b);
 }
 
-bool File::Write(const void *buf, UInt32 len, UInt32 *written, OVERLAPPED *pov) {
+bool File::Write(const void *buf, uint32_t len, uint32_t *written, OVERLAPPED *pov) {
 	return CheckPending(::WriteFile(HandleAccess(_self), buf, len, (DWORD*)written, pov));
 }
 
@@ -424,7 +443,7 @@ bool File::GetStatus(RCString lpszFileName, CFileStatus& rStatus) {
 	rStatus.m_attribute = (BYTE)
 		(findFileData.dwFileAttributes & ~FILE_ATTRIBUTE_NORMAL);
 
-	rStatus.m_size = findFileData.nFileSizeLow+((Int64)findFileData.nFileSizeHigh << 32);
+	rStatus.m_size = findFileData.nFileSizeLow+((int64_t)findFileData.nFileSizeHigh << 32);
 
 	// convert times as appropriate
 	rStatus.m_ctime = findFileData.ftCreationTime;
@@ -442,7 +461,7 @@ bool File::GetStatus(RCString lpszFileName, CFileStatus& rStatus) {
 
 #endif // !UCFG_USE_POSIX
 
-UInt32 File::Read(void *lpBuf, UInt32 nCount) {
+uint32_t File::Read(void *lpBuf, uint32_t nCount) {
 #if UCFG_USE_POSIX
 	return CCheck(::read((int)(LONG_PTR)(HANDLE)HandleAccess(_self), lpBuf, nCount));
 #else
@@ -452,7 +471,7 @@ UInt32 File::Read(void *lpBuf, UInt32 nCount) {
 #endif
 }
 
-void File::Write(const void *buf, size_t size, Int64 offset) {
+void File::Write(const void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
 	if (offset >= 0)
 		CCheck(::pwrite((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size, offset));
@@ -486,9 +505,9 @@ void File::Write(const void *buf, size_t size, Int64 offset) {
 #endif
 }
 
-void File::Lock(UInt64 pos, UInt64 len, bool bExclusive, bool bFailImmediately) {
+void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediately) {
 #if UCFG_USE_POSIX
-	Int64 prev = File::Seek(pos, SeekOrigin::Begin);
+	int64_t prev = File::Seek(pos, SeekOrigin::Begin);
 	int rc = ::lockf((int)(LONG_PTR)(HANDLE)HandleAccess(_self), F_LOCK, len);
 	File::Seek(prev, SeekOrigin::Begin);
 	CCheck(rc);
@@ -503,9 +522,9 @@ void File::Lock(UInt64 pos, UInt64 len, bool bExclusive, bool bFailImmediately) 
 #endif
 }
 
-void File::Unlock(UInt64 pos, UInt64 len) {
+void File::Unlock(uint64_t pos, uint64_t len) {
 #if UCFG_USE_POSIX
-	Int64 prev = File::Seek(pos, SeekOrigin::Begin);
+	int64_t prev = File::Seek(pos, SeekOrigin::Begin);
 	int rc = ::lockf((int)(LONG_PTR)(HANDLE)HandleAccess(_self), F_ULOCK, len);
 	File::Seek(prev, SeekOrigin::Begin);
 	CCheck(rc);
@@ -517,7 +536,21 @@ void File::Unlock(UInt64 pos, UInt64 len) {
 #endif
 }
 
-Int64 File::Seek(const Int64& off, SeekOrigin origin) {
+size_t File::PhysicalSectorSize() const {			// return 0 if not detected
+#if UCFG_WIN32_FULL
+	typedef NTSTATUS (NTAPI *PFN_ZwQueryVolumeInformationFile)(HANDLE, PIO_STATUS_BLOCK, PVOID, ULONG, NT::FS_INFORMATION_CLASS);
+	static DlProcWrap<PFN_ZwQueryVolumeInformationFile> pfnZwQueryVolumeInformationFile(::LoadLibrary(_T("NTDLL.DLL")), "ZwQueryVolumeInformationFile");
+	if (pfnZwQueryVolumeInformationFile) {
+		IO_STATUS_BLOCK io;
+		NT::FILE_FS_SECTOR_SIZE_INFORMATION outs;
+		if (!pfnZwQueryVolumeInformationFile(DangerousGetHandle(), &io, &outs, sizeof outs, NT::FileFsSectorSizeInformation))
+			return outs.PhysicalBytesPerSectorForPerformance;
+	}
+#endif
+	return 0;
+}
+
+int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 #if UCFG_USE_POSIX
 	return CCheck(::lseek((int)(LONG_PTR)(HANDLE)HandleAccess(_self), (long)off, (int)origin));
 #else
@@ -538,7 +571,7 @@ void File::Flush() {
 #endif
 }  
 
-UInt64 File::get_Length() const {
+uint64_t File::get_Length() const {
 #if UCFG_USE_POSIX
 	struct stat st;
 	CCheck(::fstat((int)(LONG_PTR)(HANDLE)HandleAccess(_self), &st));
@@ -552,16 +585,16 @@ UInt64 File::get_Length() const {
 #endif
 }
 
-void File::put_Length(UInt64 len) {
+void File::put_Length(uint64_t len) {
 #if UCFG_USE_POSIX
 	CCheck(::ftruncate((int)(LONG_PTR)(HANDLE)HandleAccess(_self), len));
 #else
-	Seek((Int64)len, SeekOrigin::Begin);
+	Seek((int64_t)len, SeekOrigin::Begin);
 	SetEndOfFile();
 #endif
 }
 
-void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share) {
+void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share, size_t bufferSize, FileOptions options) {
 	HANDLE h = File(p, mode, access, share).Detach();
 #if UCFG_WIN32_FULL
 	int flags = 0;
@@ -580,7 +613,7 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 	int fd = (int)(LONG_PTR)h;				// on POSIX our HANDLE used only as int
 #endif
 
-	char smode[10] = "";
+	char smode[20] = "";
 	if (access == FileAccess::Read || access == FileAccess::ReadWrite)
 		strcat(smode, "r");
 	switch (mode) {
@@ -604,8 +637,16 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 		strcpy(smode, "w+");
 		break;
 	}
+
 	if (!TextMode)
 		strcat(smode, "b");
+
+	if (bool(options & FileOptions::RandomAccess))
+		strcat(smode, "R");
+	if (bool(options & FileOptions::SequentialScan))
+		strcat(smode, "S");
+	if (bool(options & FileOptions::DeleteOnClose))
+		strcat(smode, "D");
 
 #if UCFG_WCE
 	m_fstm = _wfdopen(fd, String(smode));
@@ -617,26 +658,7 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 		CCheck(-1);
 #endif
 
-	/*!!!R
-#if UCFG_WCE
-	m_bUseFstream = true;
-	int m = ios::binary;
-	if (mode == FileMode::Append)
-		m |= ios::app;
-	switch (access)
-	{
-	case FileAccess::Read:		m |= ios::in;	break;
-	case FileAccess::Write:		m |= ios::out;	break;
-	case FileAccess::ReadWrite:	m |= ios::in|ios::out;	break;
-	default:
-		Throw(E_INVALIDARG);
-	}
-	m_fs.open(path, m);
-	if (!m_fs)
-		Throw(HRESULT_OF_WIN32(ERROR_FILE_NOT_FOUND));
-#else
-	File.Open(path, mode, access, share);
-#endif */
+	CCheck(setvbuf(m_fstm, 0, _IOFBF, bufferSize) ? -1 : 0);
 }
 
 HANDLE FileStream::get_Handle() const {
@@ -652,7 +674,7 @@ HANDLE FileStream::get_Handle() const {
 		Throw(E_FAIL);
 }
 
-UInt64 FileStream::get_Length() const {
+uint64_t FileStream::get_Length() const {
 	if (m_fstm) {
 		File file(Handle, false);
 		return file.Length;
@@ -684,7 +706,7 @@ size_t FileStream::Read(void *buf, size_t count) const {
 		
 #if UCFG_WIN32_FULL
 	if (m_ovl) {
-		UInt32 n;
+		uint32_t n;
 		Win32Check(::ResetEvent(m_ovl->hEvent));
 		if (!m_pFile->Read(buf, count, &n, m_ovl)) {
 			int r = ::WaitForSingleObjectEx(m_ovl->hEvent, INFINITE, TRUE);
@@ -722,7 +744,7 @@ void FileStream::ReadBuffer(void *buf, size_t count) const {
 	}
 
 	while (count) {
-		UInt32 n;
+		uint32_t n;
 #if UCFG_WIN32_FULL
 		if (m_ovl) {
 			Win32Check(::ResetEvent(m_ovl->hEvent));
@@ -756,7 +778,7 @@ void FileStream::WriteBuffer(const void *buf, size_t count) {
 		return;
 	}
 #if UCFG_WIN32_FULL
-	UInt32 n;
+	uint32_t n;
 	if (m_ovl) {
 		Win32Check(::ResetEvent(m_ovl->hEvent));
 		bool b = m_pFile->Write(buf, count, &n, m_ovl);

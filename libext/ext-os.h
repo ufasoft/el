@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 
@@ -64,6 +71,8 @@ public:
 #if UCFG_WIN32 || UCFG_USE_POSIX
 	static path AFXAPI get_ExeFilePath();
 	DEFPROP_GET(path, ExeFilePath);
+
+	static path AFXAPI GetExeDir();
 #endif
 
 #ifdef _WIN32
@@ -97,11 +106,11 @@ public:
 
 #endif
 
-	static Int64 AFXAPI get_PerformanceCounter();
-	DEFPROP_GET(Int64, PerformanceCounter);
+	static int64_t AFXAPI get_PerformanceCounter();
+	DEFPROP_GET(int64_t, PerformanceCounter);
 
-	static Int64 AFXAPI get_PerformanceFrequency();
-	DEFPROP_GET(Int64, PerformanceFrequency);
+	static int64_t AFXAPI get_PerformanceFrequency();
+	DEFPROP_GET(int64_t, PerformanceFrequency);
 };
 
 extern EXT_DATA COperatingSystem System;
@@ -132,8 +141,8 @@ public:
 
 	void Set();
 	void Reset();
-	bool Lock(UInt32 dwTimeout = INFINITE);
-	void Unlock();
+	bool lock(uint32_t dwTimeout = INFINITE) override;
+	void unlock() override;
 private:
 #if UCFG_USE_PTHREADS
 	pthread_cond_t m_cond;
@@ -188,7 +197,7 @@ public:
 	KMUTEX *Obj() { return (KMUTEX*)m_pObject; }
 #endif
 
-	void Unlock();
+	void unlock() override;
 private:
 #if UCFG_USE_PTHREADS
 #elif UCFG_WDM
@@ -218,7 +227,7 @@ public:
 #endif
 
 #if UCFG_USE_PTHREADS
-	bool Lock(DWORD dwTimeout = INFINITE) {
+	bool lock(DWORD dwTimeout = INFINITE) override {
 		while (true) {
 			int rc = ::sem_wait(m_psem);
 			if (!rc)
@@ -229,7 +238,7 @@ public:
 	}
 #endif
 
-	void Unlock();
+	void unlock() override;
 	LONG Unlock(LONG lCount);
 };
 

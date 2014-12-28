@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include <el/libext/win32/ext-win.h>
@@ -184,7 +191,7 @@ void CIStream::Write(const Blob& blob) {
 	OleCheck(m_stream->Write(blob.constData(), (UINT)blob.Size, 0));
 }*/
 
-Int64 CIStream::Seek(Int64 offset, SeekOrigin origin) const {
+int64_t CIStream::Seek(int64_t offset, SeekOrigin origin) const {
 	LARGE_INTEGER li;
 	li.QuadPart = offset;
 	ULARGE_INTEGER r;
@@ -616,17 +623,17 @@ void COleVariant::ChangeType(VARTYPE vartype, LPVARIANT pSrc) {
 	}
 }
 
-Int32 Convert::ToInt32(const VARIANT& v) {
+int32_t Convert::ToInt32(const VARIANT& v) {
 	COleVariant var;
 	var.ChangeType(VT_I4, &(VARIANT&)v);
 	return var.lVal; 
 }
 
-Int64 Convert::ToInt64(const VARIANT& v) {
+int64_t Convert::ToInt64(const VARIANT& v) {
 	COleVariant var;
 	var.ChangeType(VT_I8, &(VARIANT&)v);
 #if UCFG_WCE
-	return *(UInt64*)&v.lVal;		//!!!verify
+	return *(uint64_t*)&v.lVal;		//!!!verify
 #else
 	return var.llVal; 
 #endif
@@ -768,6 +775,11 @@ COleVariant::COleVariant(long lSrc, VARTYPE vtSrc) {
 	}
 }
 
+COleVariant::COleVariant(uint64_t v) {
+	vt = VT_UI8;
+	ullVal = v;
+}
+
 COleVariant::COleVariant(float fltSrc) {
 	vt = VT_R4;
 	fltVal = fltSrc;
@@ -814,6 +826,13 @@ const COleVariant& COleVariant::operator=(long lSrc) {
 	Clear();
 	vt = VT_I4;
 	lVal = lSrc;
+	return _self;
+}
+
+const COleVariant& COleVariant::operator=(uint64_t v) {
+	Clear();
+	vt = VT_UI8;
+	ullVal = v;
 	return _self;
 }
 

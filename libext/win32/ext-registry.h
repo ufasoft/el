@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 namespace Ext {
@@ -14,12 +21,12 @@ public:
 
 	Blob m_blob;
 	String m_name;
-	UInt32 m_type;
+	uint32_t m_type;
 
-	CRegistryValue(UInt32 typ, byte *p, int len);
+	CRegistryValue(uint32_t typ, byte *p, int len);
 	CRegistryValue(int v);
-	CRegistryValue(UInt32 v);
-	CRegistryValue(UInt64 v);
+	CRegistryValue(uint32_t v);
+	CRegistryValue(uint64_t v);
 	//!!!	CRegistryValue(LPCSTR s);
 	CRegistryValue(RCString s, bool bExpand = false);
 	CRegistryValue(const ConstBuf& mb);
@@ -28,17 +35,17 @@ public:
 	String get_Name() const;
 	DEFPROP_GET(String, Name);
 
-	operator UInt32() const;
+	operator uint32_t() const;
 
 #if	UCFG_SEPARATE_LONG_TYPE
 	CRegistryValue(unsigned long v);
-	operator unsigned long() const { return operator UInt32(); }
+	operator unsigned long() const { return operator uint32_t(); }
 #endif
 
-	operator UInt64() const;
+	operator uint64_t() const;
 	operator String() const;
 	operator Blob() const;
-	operator bool() const { return operator UInt64(); }
+	operator bool() const { return operator uint64_t(); }
 	EXT_API operator CStringVector() const;
 
 	CStringVector ToStrings() const { return operator CStringVector(); }

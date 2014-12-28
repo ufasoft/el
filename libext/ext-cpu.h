@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #pragma once
 
@@ -68,7 +67,7 @@ public:
 	DEFPROP_GET(SFamilyModelStepping, FamilyModelStepping);
 
 	bool get_ConstantTsc() {
-		if (UInt32(Cpuid(0x80000000).EAX) >= 0x80000007UL &&
+		if (uint32_t(Cpuid(0x80000000).EAX) >= 0x80000007UL &&
             (Cpuid(0x80000007).EDX & 0x100))
 			return true;
 		if (!strcmp(get_Vendor().Name, "GenuineIntel")) {
@@ -93,7 +92,7 @@ public:
 
 #	if UCFG_FRAMEWORK && !defined(_CRTBLD)
 	String get_Name() {
-		if (UInt32(Cpuid(0x80000000).EAX) < 0x80000004UL)
+		if (uint32_t(Cpuid(0x80000000).EAX) < 0x80000004UL)
 			return "Unknown";
     	int ar[13];
     	ZeroStruct(ar);

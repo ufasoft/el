@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32_FULL
@@ -13,7 +20,7 @@
 namespace Ext {
 using namespace std;
 
-CRegistryValue::CRegistryValue(UInt32 typ, byte *p, int len)
+CRegistryValue::CRegistryValue(uint32_t typ, byte *p, int len)
 	:	m_type(typ)
 	,	m_blob(p, len)
 {
@@ -25,7 +32,7 @@ CRegistryValue::CRegistryValue(int v)
 {
 }
 
-CRegistryValue::CRegistryValue(UInt32 v)
+CRegistryValue::CRegistryValue(uint32_t v)
 	:	m_type(REG_DWORD)
 	,	m_blob(&v, sizeof(v))
 {
@@ -39,7 +46,7 @@ CRegistryValue::CRegistryValue(unsigned long v)
 }
 #endif
 
-CRegistryValue::CRegistryValue(UInt64 v)
+CRegistryValue::CRegistryValue(uint64_t v)
 	:	m_type(REG_QWORD)
 	,	m_blob(&v, sizeof(v))
 {
@@ -56,7 +63,7 @@ m_blob = Blob(s, strlen(s)+1); //!!!
 
 CRegistryValue::CRegistryValue(RCString s, bool bExpand)
 	:	m_type(bExpand ? REG_EXPAND_SZ : REG_SZ)
-	,	m_blob((const TCHAR*)s, s != nullptr ? (s.Length+1)*sizeof(TCHAR) : 0)
+	,	m_blob((const TCHAR*)s, s != nullptr ? (s.length()+1)*sizeof(TCHAR) : 0)
 {
 }
 
@@ -71,7 +78,7 @@ void CRegistryValue::Init(const CStringVector& ar) {
 	size_t size = 1,
 		i;
 	for (i=0; i<ar.size(); i++)
-		size += ar[i].Length+1;
+		size += ar[i].length()+1;
 	m_blob.Size = size*sizeof(TCHAR);
 	TCHAR *p = (TCHAR*)m_blob.data();
 	for (i=0; i<ar.size(); i++) {
@@ -85,7 +92,7 @@ String CRegistryValue::get_Name() const {
 	return m_name;
 }
 
-CRegistryValue::operator UInt32() const {
+CRegistryValue::operator uint32_t() const {
 	if (m_type == REG_SZ)
 		return Convert::ToUInt32(operator String());
 	if (m_type != REG_DWORD)
@@ -93,13 +100,13 @@ CRegistryValue::operator UInt32() const {
 	return *(DWORD*)m_blob.constData();
 }
 
-CRegistryValue::operator UInt64() const {
+CRegistryValue::operator uint64_t() const {
 	if (m_type == REG_SZ)
 		return Convert::ToUInt32(operator String());
 	if (m_type == REG_DWORD)
 		return *(DWORD*)m_blob.constData();
 	if (m_type == REG_QWORD)
-		return *(UInt64*)m_blob.constData();
+		return *(uint64_t*)m_blob.constData();
 	Throw(E_EXT_REGISTRY);
 }
 
@@ -119,11 +126,10 @@ CRegistryValue::operator CStringVector() const {
 	if (m_type != REG_MULTI_SZ)
 		Throw(E_EXT_REGISTRY);
 	vector<String> vec;
-	TCHAR *p = (TCHAR*)m_blob.constData();
-	while (*p) {
+	for (TCHAR *p=(TCHAR*)m_blob.constData(); *p;) {
 		String s = p;
 		vec.push_back(s);
-		p += s.GetLength()+1;
+		p += s.length()+1;
 	}
 	return vec;
 }

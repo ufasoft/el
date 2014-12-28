@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #include <el/libext/ext-net.h>
@@ -22,7 +29,7 @@ class CInternetFile : public File { //!!!
 public:
 	~CInternetFile();
 	void Attach(HINTERNET hInternet);
-	UInt32 Read(void *lpBuf, UInt32 nCount) override;
+	uint32_t Read(void *lpBuf, uint32_t nCount) override;
 	String ReadString();
 	DWORD SetFilePointer(LONG offset, DWORD method);
 protected:
@@ -167,7 +174,7 @@ public:
 	{
 	}
 
-	WebProxy(RCString host, UInt16 port, ProxyType typ = ProxyType::Http)
+	WebProxy(RCString host, uint16_t port, ProxyType typ = ProxyType::Http)
 		:	Address("http://"+host+":"+Convert::ToString(port))					// http:// here only for Url conventions, because Proxy can be SOCKS
 		,	Type(typ)
 	{
@@ -345,7 +352,7 @@ public:
 	DEFPROP_GET(String, name);
 
 #if UCFG_USE_LIBCURL
-	Int64 get_ContentLength();
+	int64_t get_ContentLength();
 
 	String get_StatusDescription() {
 		return m_pImpl->m_statusDesc;
@@ -358,11 +365,11 @@ public:
 	DEF_STRING_PROP(StatusDescription,	HTTP_QUERY_STATUS_TEXT)
 	DEF_STRING_PROP(Server,				HTTP_QUERY_SERVER)
 
-	Int64 get_ContentLength() {
+	int64_t get_ContentLength() {
 		return Convert::ToInt64(GetString(HTTP_QUERY_CONTENT_LENGTH));
 	}	
 #endif
-	DEFPROP_GET(Int64, ContentLength);
+	DEFPROP_GET(int64_t, ContentLength);
 
 #pragma pop_macro("DEF_STRING_PROP") 
 
@@ -421,7 +428,7 @@ public:
 	WebHeaderCollection Headers;
 	WebHeaderCollection AdditionalHeaders;
 	bool KeepAlive;
-	CInt<Int64> ContentLength;
+	CInt<int64_t> ContentLength;
 	String ContentType, Referer;
 	RequestCacheLevel CacheLevel;
 

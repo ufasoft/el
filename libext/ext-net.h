@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_WIN32
@@ -29,10 +36,10 @@ class Socket;
 class CSocketHandleKeeper;
 
 
-__forceinline UInt32 Fast_ntohl(UInt32 v) { return be32toh(v); }
-__forceinline UInt16 Fast_ntohs(UInt16 v) { return be16toh(v); }
-__forceinline UInt32 Fast_htonl(UInt32 v) { return htobe32(v); }
-__forceinline UInt16 Fast_htons(UInt16 v) { return htobe16(v); }
+__forceinline uint32_t Fast_ntohl(uint32_t v) { return be32toh(v); }
+__forceinline uint16_t Fast_ntohs(uint16_t v) { return be16toh(v); }
+__forceinline uint32_t Fast_htonl(uint32_t v) { return htobe32(v); }
+__forceinline uint16_t Fast_htons(uint16_t v) { return htobe16(v); }
 
 #if UCFG_WIN32
 class AFX_CLASS CWSAEvent {
@@ -127,7 +134,7 @@ public:
 		operator=(ha);
 	}
 
-	explicit IPAddress(UInt32 nboIp4);		// Network byte order
+	explicit IPAddress(uint32_t nboIp4);		// Network byte order
 
 	IPAddress(const sockaddr& sa);
 
@@ -144,11 +151,11 @@ public:
 
 	Blob GetAddressBytes() const;
 	
-	UInt32 get_ScopeId() const { return m_sin6.sin6_scope_id; }
-	void put_ScopeId(UInt32 v) {  m_sin6.sin6_scope_id = v; }
-	DEFPROP_CONST(UInt32, ScopeId);
+	uint32_t get_ScopeId() const { return m_sin6.sin6_scope_id; }
+	void put_ScopeId(uint32_t v) {  m_sin6.sin6_scope_id = v; }
+	DEFPROP_CONST(uint32_t, ScopeId);
 
-	UInt32 GetIP() const;
+	uint32_t GetIP() const;
 	void Normalize();
 	static IPAddress AFXAPI Parse(RCString ipString);
 	static bool AFXAPI TryParse(RCString s, IPAddress& ip);
@@ -185,15 +192,15 @@ class IPEndPoint : public CPrintable {
 public:
 	IPAddress Address;
 
-	explicit IPEndPoint(UInt32 host = 0, UInt16 port = 0)
+	explicit IPEndPoint(uint32_t host = 0, uint16_t port = 0)
 		:	Address(host)
 	{
 		Port = port;
 	}
 
-	explicit IPEndPoint(RCString s, UInt16 port = 0);
+	explicit IPEndPoint(RCString s, uint16_t port = 0);
 
-	explicit IPEndPoint(const IPAddress& a, UInt16 port = 0)
+	explicit IPEndPoint(const IPAddress& a, uint16_t port = 0)
 		:	Address(a)
 	{
 		Port = port;
@@ -230,9 +237,9 @@ public:
 	Ext::AddressFamily get_AddressFamily() const { return Address.AddressFamily; }
 	DEFPROP_GET_CONST(Ext::AddressFamily, AddressFamily);
 
-	UInt16 get_Port() const { return ntohs(Address.m_sin.sin_port); }
-	void put_Port(UInt16 port) { Address.m_sin.sin_port = htons(port); }
-	DEFPROP_CONST(UInt16, Port);
+	uint16_t get_Port() const { return ntohs(Address.m_sin.sin_port); }
+	void put_Port(uint16_t port) { Address.m_sin.sin_port = htons(port); }
+	DEFPROP_CONST(uint16_t, Port);
 
 	const sockaddr *c_sockaddr() const;
 	size_t sockaddr_len() const;
@@ -255,13 +262,13 @@ public:
 }
 
 namespace EXT_HASH_VALUE_NS {
-inline size_t hash_value(const Ext::IPEndPoint& hp) { return hash_value(hp.Address) ^ std::hash<Ext::UInt16>()(hp.Port); }
+inline size_t hash_value(const Ext::IPEndPoint& hp) { return hash_value(hp.Address) ^ std::hash<uint16_t>()(hp.Port); }
 }
 
 EXT_DEF_HASH(Ext::IPEndPoint) namespace Ext {
 
 inline BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPEndPoint& hp) {
-	return wr << hp.Address << (UInt16)hp.Port;
+	return wr << hp.Address << (uint16_t)hp.Port;
 }
 
 inline const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPEndPoint& hp) {
@@ -354,7 +361,7 @@ public:
 	}
 
 	AFX_API static void AFXAPI ReleaseFromAPC();
-	void Create(UInt16 nPort = 0, int nSocketType = SOCK_STREAM, UInt32 host = 0);
+	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
 	EXT_API void Create(AddressFamily af, SocketType socktyp, ProtocolType prottyp);
 	virtual int Receive(void *buf, int len, int flags = 0);
 	virtual int Send(const void *buf, int len, int flags = 0);
@@ -367,8 +374,8 @@ public:
 	IPEndPoint get_RemoteEndPoint();
 	DEFPROP_GET(IPEndPoint, RemoteEndPoint);
 
-	bool Connect(DWORD host, UInt16 hostPort);
-	bool Connect(RCString hostAddress, UInt16 hostPort);
+	bool Connect(DWORD host, uint16_t hostPort);
+	bool Connect(RCString hostAddress, uint16_t hostPort);
 
 	bool Connect(const IPEndPoint& hp) { return ConnectHelper(hp); }
 
@@ -437,7 +444,7 @@ public:
 	DEFPROP(LingerOption, LingerState);
 
 	bool get_ReuseAddress() {
-		UInt32 v;
+		uint32_t v;
 		socklen_t size = sizeof v;
 		GetSocketOption(SOL_SOCKET, SO_REUSEADDR, &v, size);
 		if (size != sizeof v)
@@ -445,7 +452,7 @@ public:
 		return v;
 	}
 	void put_ReuseAddress(bool b) {
-		UInt32 v = b;
+		uint32_t v = b;
 		SetSocketOption(SOL_SOCKET, SO_REUSEADDR, ConstBuf(&v, sizeof v));
 	}
 	DEFPROP(bool, ReuseAddress);

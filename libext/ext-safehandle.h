@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_WIN32
@@ -16,7 +23,7 @@ class Exception;
 
 class CHandleBaseBase {
 public:
-	mutable volatile Int32 m_nInUse;
+	mutable volatile int32_t m_nInUse;
 
 	CHandleBaseBase()
 		:	m_bClosed(true)
@@ -32,7 +39,7 @@ public:
 		std::swap(m_bClosed, r.m_bClosed);
 	}
 protected:
-	volatile Int32 m_bClosed;					// Int32 because we need Interlocked operations, but sizeof(bool)==1
+	volatile int32_t m_bClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
 };
 
 template <class T>
@@ -95,8 +102,8 @@ public:
 		return _self;
 	}
 
-	operator T*() const { return (T*)get_Value(); }
-	T* operator->() const { return operator T*(); }
+	operator T*() const noexcept { return (T*)get_Value(); }
+	T* operator->() const noexcept { return operator T*(); }
 };
 
 class CDestructibleTls : public CTls {
@@ -109,8 +116,8 @@ public:
 	virtual void OnThreadDetach(void *p) {}
 };
 
-#if UCFG_USE_DECLSPEC_THREAD
-#	define EXT_THREAD_PTR(typ) __declspec(thread) typ*
+#if UCFG_CPP11_THREAD_LOCAL || UCFG_USE_DECLSPEC_THREAD
+#	define EXT_THREAD_PTR(typ) THREAD_LOCAL typ*
 #else
 #	define EXT_THREAD_PTR(typ) Ext::single_tls_ptr<typ>
 #endif
@@ -297,7 +304,7 @@ public:
 #endif
 
 	HANDLE Detach();
-	void Duplicate(HANDLE h, UInt32 dwOptions = 0);
+	void Duplicate(HANDLE h, uint32_t dwOptions = 0);
 	virtual bool Valid() const;
 
 	class HandleAccess : public CHandleKeeper<SafeHandle> {

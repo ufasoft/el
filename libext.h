@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #include <el/inc/ext_config.h>
@@ -428,13 +435,6 @@ typedef unsigned long u_long;
 	namespace Ext {
 #endif
 
-typedef int16_t Int16;
-typedef uint16_t UInt16;
-typedef int32_t Int32;
-typedef uint32_t UInt32;
-typedef int64_t Int64;
-typedef uint64_t UInt64;
-
 #define INFINITE            0xFFFFFFFF  // Infinite timeout
 
 #if UCFG_GNUC
@@ -442,8 +442,8 @@ typedef uint64_t UInt64;
 #	define __success(a)
 
 #	if	defined(__SIZEOF_SHORT__) && (__SIZEOF_SHORT__ == 2) || (__SHRT_MAX__ == 32767) 
-//!!!R		typedef short Int16;
-//!!!R		typedef unsigned short UInt16;
+//!!!R		typedef short int16_t;
+//!!!R		typedef unsigned short uint16_t;
 #	endif
 
 #	if	defined(__SIZEOF_LONG_LONG__) && (__SIZEOF_LONG_LONG__ == 8) || (__LONG_LONG_MAX__ == 9223372036854775807LL) 
@@ -455,28 +455,28 @@ typedef uint64_t UInt64;
 #	elif	defined(__SIZEOF_LONG__) && (__SIZEOF_LONG__ == 4) || (__LONG_MAX__ == 2147483647) 
 #		define UCFG_SEPARATE_INT_TYPE 0
 #		define UCFG_SEPARATE_LONG_TYPE 1
-//!!!R		typedef unsigned long UInt32;
+//!!!R		typedef unsigned long uint32_t;
 #	elif defined(__SIZEOF_INT__) && (__SIZEOF_INT__ == 4) || (__INT_MAX__ == 2147483647) 
 #		define UCFG_SEPARATE_INT_TYPE 0
 #		define UCFG_SEPARATE_LONG_TYPE 1
-//!!!R		typedef int Int32;
-//!!!R		typedef unsigned int UInt32;
+//!!!R		typedef int int32_t;
+//!!!R		typedef unsigned int uint32_t;
 #	endif
 
 
 		typedef byte UCHAR;
-		typedef UInt16 WORD;	
-		typedef UInt32 UINT32;
-		//!!!	typedef Int32 LONG;
-		typedef UInt32 ULONG;
-		typedef UInt32 UINT;
+		typedef uint16_t WORD;	
+		typedef uint32_t UINT32;
+		//!!!	typedef int32_t LONG;
+		typedef uint32_t ULONG;
+		typedef uint32_t UINT;
 		typedef wchar_t *BSTR;
 		typedef void *HANDLE;
 		typedef int SOCKET;
 		typedef long LONG_PTR;
 		typedef unsigned long DWORD_PTR;
-		typedef Int64 INT64;
-		typedef UInt64 UINT64;
+		typedef int64_t INT64;
+		typedef uint64_t UINT64;
 #	define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
 
 #	define LANG_USER_DEFAULT 0
@@ -488,12 +488,12 @@ typedef uint64_t UInt64;
 #else
 #		define UCFG_SEPARATE_INT_TYPE 0
 #		define UCFG_SEPARATE_LONG_TYPE 1
-//!!!R		typedef __int16 Int16;
-//!!!R		typedef unsigned __int16 UInt16;
-//!!!R		typedef long Int32;
-//!!!R		typedef unsigned long UInt32;
-//!!!R		typedef __int64 Int64;
-//!!!R		typedef unsigned __int64 UInt64;
+//!!!R		typedef __int16 int16_t;
+//!!!R		typedef unsigned __int16 uint16_t;
+//!!!R		typedef long int32_t;
+//!!!R		typedef unsigned long uint32_t;
+//!!!R		typedef __int64 int64_t;
+//!!!R		typedef unsigned __int64 uint64_t;
 
 #	ifndef PASCAL
 #		define PASCAL __stdcall
@@ -502,14 +502,14 @@ typedef uint64_t UInt64;
 #endif // __GNUC__
 
 typedef byte guint8;
-typedef UInt16 guint16;
-typedef UInt32 guint32;
+typedef uint16_t guint16;
+typedef uint32_t guint32;
 
 
 #ifdef __cplusplus
 
 #if __SIZEOF_WCHAR_T__ > 2 || !defined(_NATIVE_WCHAR_T_DEFINED)
-	typedef UInt16 Char16;
+	typedef uint16_t Char16;
 #else
 	typedef wchar_t Char16;
 #endif
@@ -929,7 +929,7 @@ namespace std {
 	class error_code;
 }
 
-	namespace Ext {
+namespace Ext {
 
 /*!!!AFX_API*/ DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(HRESULT hr);
 DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const std::error_code& ec);
@@ -943,13 +943,8 @@ DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const std::error_code& ec, const c
 #if UCFG_DEFINE_THROW
 #	define Throw(arg) do { Ext::ThrowImp(arg, __FUNCTION__, __LINE__); } while (false)
 #else
-	DECLSPEC_NORETURN __forceinline void Throw(HRESULT hr) {
-		ThrowImp(hr);
-	}
-
-	DECLSPEC_NORETURN __forceinline void Throw(const std::error_code& ec) {
-		ThrowImp(ec);
-	}
+	DECLSPEC_NORETURN __forceinline void Throw(HRESULT hr) { ThrowImp(hr); }
+	DECLSPEC_NORETURN __forceinline void Throw(const std::error_code& ec) { ThrowImp(ec); }
 #endif
 
 #	define THROW_UNK() Throw(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_LINE_NUMBER, __LINE__))
@@ -1417,7 +1412,7 @@ EXT_API int * __cdecl API_sys_nerr();
 	IMPEXP_API DECLSPEC_NORETURN void _cdecl My_longjmp(jmp_buf buf, int val);
 #endif
 
-const char16_t * AFXAPI Utf8ToUtf16String(const char *utf8);
+const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8);			//!!! changed from char16_t due .C compilation problems
 
 #if UCFG_USE_MASM
 	void* __cdecl MemcpyAligned32(void *d, const void *s, size_t size);
@@ -1425,6 +1420,10 @@ const char16_t * AFXAPI Utf8ToUtf16String(const char *utf8);
 #	define MemcpyAligned32 memcpy
 #endif // UCFG_USE_MASM
 
+#if UCFG_WDM
+long __cdecl strtol(const char *str, char **endptr, int base);
+long long __cdecl _strtoi64(const char *str, char **endptr, int base);
+#endif
 
 __END_DECLS
 

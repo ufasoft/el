@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 
@@ -17,7 +24,7 @@ class Stream;
 class DirectoryInfo;
 
 
-typedef UInt32 (*AFX_THREADPROC)(void *);
+typedef uint32_t (*AFX_THREADPROC)(void *);
 
 bool AFXAPI GetSilentUI();
 void AFXAPI SetSilentUI(bool b);
@@ -27,12 +34,12 @@ class CResID : public CPersistent, public CPrintable {
 public:
 	AFX_API CResID(UINT nResId = 0);
 	AFX_API CResID(const char *lpName);
-	AFX_API CResID(const String::Char *lpName);
+	AFX_API CResID(const String::value_type *lpName);
 	AFX_API CResID& operator=(const char *resId);
-	AFX_API CResID& operator=(const String::Char *resId);
+	AFX_API CResID& operator=(const String::value_type *resId);
 	AFX_API CResID& operator=(RCString resId);
 	AFX_API operator const char *() const;
-	AFX_API operator const String::Char *() const;
+	AFX_API operator const String::value_type *() const;
 	AFX_API operator UINT() const;
 
 	bool operator==(const CResID& resId) const {
@@ -50,7 +57,7 @@ public:
 
 }
 namespace EXT_HASH_VALUE_NS {
-	inline size_t hash_value(const Ext::CResID& resId) { return std::hash<Ext::UInt64>()((Ext::UInt64)resId.m_resId) + std::hash<Ext::String>()(resId.m_name); }
+	inline size_t hash_value(const Ext::CResID& resId) { return std::hash<uint64_t>()((uint64_t)resId.m_resId) + std::hash<Ext::String>()(resId.m_name); }
 }
 EXT_DEF_HASH(Ext::CResID) namespace Ext {
 
@@ -233,7 +240,7 @@ struct CFileStatus {
 	DateTime m_ctime;          // creation date/time of file
 	DateTime m_mtime;          // last modification date/time of file
 	DateTime m_atime;          // last access date/time of file
-	Int64 m_size;            // logical size of file in bytes
+	int64_t m_size;            // logical size of file in bytes
 	byte m_attribute;       // logical OR of File::Attribute enum values
 	byte _m_padding;        // pad the structure to a WORD
 	TCHAR m_szFullName[_MAX_PATH]; // absolute path name
@@ -263,6 +270,16 @@ ENUM_CLASS(FileShare) {
 	Delete = 4,
 	Inheritable = 8
 } END_ENUM_CLASS(FileShare);
+
+ENUM_CLASS(FileOptions) {
+	None = 0,
+	Asynchronous = 1,
+	DeleteOnClose = 2,
+	Encrypted = 4,
+	RandomAccess = 8,
+	SequentialScan = 16,
+	WriteThrough = 32
+} END_ENUM_CLASS(FileOptions);
 
 class AFX_CLASS File : public SafeHandle {
 public:
@@ -294,26 +311,27 @@ public:
 
 	~File();
 
-	static Blob AFXAPI ReadAllBytes(RCString path);
-	static void AFXAPI WriteAllBytes(RCString path, const ConstBuf& mb);
+	static Blob AFXAPI ReadAllBytes(const path& p);
+	static void AFXAPI WriteAllBytes(const path& p, const ConstBuf& mb);
 	
-	static String AFXAPI ReadAllText(RCString path, Encoding *enc = &Encoding::UTF8);
-	static void AFXAPI WriteAllText(RCString path, RCString contents, Encoding *enc = &Encoding::UTF8);
+	static String AFXAPI ReadAllText(const path& p, Encoding *enc = &Encoding::UTF8);
+	static void AFXAPI WriteAllText(const path& p, RCString contents, Encoding *enc = &Encoding::UTF8);
 
 	struct OpenInfo {
 		path Path;
 		FileMode Mode;
 		FileAccess Access;
 		FileShare Share;
-		bool BufferingEnabled, RandomAccess;
+		FileOptions Options;
+		bool BufferingEnabled;
 
-		OpenInfo(RCString path = nullptr)
-			:	Path(path)
+		OpenInfo(const path& p = path())
+			:	Path(p)
 			,	Mode(FileMode::Open)
 			,	Access(FileAccess::ReadWrite)
 			,	Share(FileShare::None)
+			,	Options(FileOptions::None)
 			,	BufferingEnabled(true)
-			,	RandomAccess(false)
 		{}
 	};
 
@@ -325,27 +343,28 @@ public:
 	DWORD GetOverlappedResult(OVERLAPPED& ov, bool bWait = true);
 	bool GetStatus(CFileStatus& rStatus) const;
 	static bool AFXAPI GetStatus(RCString lpszFileName, CFileStatus& rStatus);
-	bool Read(void *buf, UInt32 len, UInt32 *read, OVERLAPPED *pov);			// no default args to eleminate ambiguosness
-	bool Write(const void *buf, UInt32 len, UInt32 *written, OVERLAPPED *pov);	// no default args to eleminate ambiguosness
+	bool Read(void *buf, uint32_t len, uint32_t *read, OVERLAPPED *pov);			// no default args to eleminate ambiguosness
+	bool Write(const void *buf, uint32_t len, uint32_t *written, OVERLAPPED *pov);	// no default args to eleminate ambiguosness
 	bool DeviceIoControl(int code, LPCVOID bufIn, size_t nIn, LPVOID bufOut, size_t nOut, LPDWORD pdw, LPOVERLAPPED pov = 0);
 	DWORD DeviceIoControlAndWait(int code, LPCVOID bufIn = 0, size_t nIn = 0, LPVOID bufOut = 0, size_t nOut = 0);
 	void CancelIo();
 #endif
-	EXT_API Int64 Seek(const Int64& off, SeekOrigin origin = SeekOrigin::Begin);
-	Int64 SeekToEnd() { return Seek(0, SeekOrigin::End); }
+	EXT_API int64_t Seek(const int64_t& off, SeekOrigin origin = SeekOrigin::Begin);
+	int64_t SeekToEnd() { return Seek(0, SeekOrigin::End); }
 	void Flush();
 	void SetEndOfFile();
 
-	UInt64 get_Length() const;
-	void put_Length(UInt64 len);
-	DEFPROP_CONST(UInt64, Length);
+	uint64_t get_Length() const;
+	void put_Length(uint64_t len);
+	DEFPROP_CONST(uint64_t, Length);
 
-	static const Int64 CURRENT_OFFSET = -2;
+	static const int64_t CURRENT_OFFSET = -2;
 
-	virtual UInt32 Read(void *lpBuf, UInt32 nCount);
-	virtual void Write(const void *buf, size_t size, Int64 offset = CURRENT_OFFSET);
-	void Lock(UInt64 pos, UInt64 len, bool bExclusive = true, bool bFailImmediately = false);
-	void Unlock(UInt64 pos, UInt64 len);
+	virtual uint32_t Read(void *lpBuf, uint32_t nCount);
+	virtual void Write(const void *buf, size_t size, int64_t offset = CURRENT_OFFSET);
+	void Lock(uint64_t pos, uint64_t len, bool bExclusive = true, bool bFailImmediately = false);
+	void Unlock(uint64_t pos, uint64_t len);
+	size_t PhysicalSectorSize() const;			// return 0 if not detected
 
 	//!!!  static void Remove(LPCTSTR lpszFileName);
 	//!!!  static void Rename(LPCTSTR oldName, LPCTSTR newName);
@@ -396,7 +415,7 @@ class MemoryMappedFile ;
 
 class MemoryMappedView {
 public:
-	UInt64 Offset;
+	uint64_t Offset;
 	void *Address;
 	size_t Size;
 	MemoryMappedFileAccess Access;
@@ -433,7 +452,7 @@ public:
 	}
 
 	MemoryMappedView& operator=(EXT_RV_REF(MemoryMappedView) rv);
-	void Map(MemoryMappedFile& file, UInt64 offset, size_t size, void *desiredAddress = 0);
+	void Map(MemoryMappedFile& file, uint64_t offset, size_t size, void *desiredAddress = 0);
 	void Unmap();
 	void Flush();	
 
@@ -469,10 +488,10 @@ public:
 	HANDLE GetHandle() { return m_hMapFile.DangerousGetHandle(); }
 #endif
 
-	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, UInt64 capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
-	static MemoryMappedFile AFXAPI CreateFromFile(RCString path, FileMode mode = FileMode::Open, RCString mapName = nullptr, UInt64 capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	static MemoryMappedFile AFXAPI CreateFromFile(RCString path, FileMode mode = FileMode::Open, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI OpenExisting(RCString mapName, MemoryMappedFileRights rights = MemoryMappedFileRights::ReadWrite, HandleInheritability inheritability = HandleInheritability::None);
-	MemoryMappedView CreateView(UInt64 offset, size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	MemoryMappedView CreateView(uint64_t offset, size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 };
 
 
@@ -506,10 +525,10 @@ public:
 	{
 	}
 
-	FileStream(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read)
+	FileStream(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read, size_t bufferSize = 4096, FileOptions options = FileOptions::None)
 		:	m_fstm(0)
 	{
-		Open(p, mode, access, share);
+		Open(p, mode, access, share, bufferSize, options);
 	}
 
 	~FileStream() {
@@ -517,7 +536,7 @@ public:
 			Close();
 	}
 
-	EXT_API void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
+	EXT_API void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None, size_t bufferSize = 4096, FileOptions options = FileOptions::None);
 	size_t Read(void *buf, size_t count) const override;
 	void ReadBuffer(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
@@ -527,7 +546,7 @@ public:
 	HANDLE get_Handle() const;
 	DEFPROP_GET(HANDLE, Handle);
 
-	UInt64 get_Position() const override{
+	uint64_t get_Position() const override{
 		if (m_fstm) {
 			fpos_t r;
 			CFileCheck(fgetpos(m_fstm, &r));
@@ -542,7 +561,7 @@ public:
 			Throw(E_FAIL);
 	}
 
-	void put_Position(UInt64 pos) const override {
+	void put_Position(uint64_t pos) const override {
 		if (m_fstm) {
 			fpos_t fpos;
 #if defined(_WIN32) || defined(__FreeBSD__)
@@ -558,7 +577,7 @@ public:
 			Throw(E_FAIL);
 	}
 
-	Int64 Seek(Int64 offset, SeekOrigin origin) const override { 
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override { 
 		if (m_fstm) {
 			CCheck(fseek(m_fstm, (long)offset, (int)origin));	//!!!
 			return Position;
@@ -568,7 +587,7 @@ public:
 			Throw(E_FAIL);
 	}
 
-	UInt64 get_Length() const override;
+	uint64_t get_Length() const override;
 	bool Eof() const override;
 };
 
@@ -671,7 +690,7 @@ AFX_API int AFXAPI Rand();
 
 class EXTAPI Random {
 public:
-	Int32 m_seed;
+	int32_t m_seed;
 
 	explicit Random(int seed = Rand())
 		:	m_seed(seed)
@@ -682,7 +701,7 @@ public:
 	int Next(int maxValue);
 	double NextDouble();
 private:
-	UInt16 NextWord();
+	uint16_t NextWord();
 };
 
 struct IAnnoy {
@@ -762,13 +781,13 @@ public:
 	static const char PathSeparator = ':';
 #endif
 
-	EXT_API static std::pair<String, UINT> AFXAPI GetTempFileName(RCString path, RCString prefix, UINT uUnique = 0);
+	EXT_API static std::pair<String, UINT> AFXAPI GetTempFileName(const path& p, RCString prefix, UINT uUnique = 0);
 	EXT_API static String AFXAPI GetTempFileName() { return GetTempFileName(temp_directory_path(), "tmp").first; }
 
 	static CSplitPath AFXAPI SplitPath(RCString path);
 
-	static String AFXAPI GetPhysicalPath(RCString p);
-	static String AFXAPI GetTruePath(RCString p);
+	static String AFXAPI GetPhysicalPath(const path& p);
+	static String AFXAPI GetTruePath(const path& p);
 };
 
 path AFXAPI AddDirSeparator(const path& p);
@@ -951,7 +970,7 @@ public:
 	EXT_DATA static const OperatingSystem OSVersion;
 
 #if UCFG_WIN32
-	static Int32 AFXAPI TickCount();
+	static int32_t AFXAPI TickCount();
 #endif
 
 #if UCFG_WIN32_FULL
@@ -963,7 +982,7 @@ public:
 		~CStringsKeeper();
 	};
 
-	static UInt32 AFXAPI GetLastInputInfo();
+	static uint32_t AFXAPI GetLastInputInfo();
 #endif
 
 	static String AFXAPI CommandLine();
@@ -1065,7 +1084,7 @@ public:
 	virtual hashval ComputeHash(const ConstBuf& mb);
 
 	virtual void InitHash(void *dst) noexcept {}
-	virtual void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {}
+	virtual void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {}
 protected:
 	CBool Is64Bit;
 };
@@ -1124,13 +1143,13 @@ public:
 
 class EXTAPI CMessageProcessor : noncopyable {
 	struct CModuleInfo {
-		UInt32 m_lowerCode, m_upperCode;
+		uint32_t m_lowerCode, m_upperCode;
 		path m_moduleName;
 #if UCFG_USE_POSIX
 		MessageCatalog m_mcat;
 		CBool m_bCheckedOpen;
 #endif
-		void Init(UInt32 lowerCode, UInt32 upperCode, const path& moduleName);
+		void Init(uint32_t lowerCode, uint32_t upperCode, const path& moduleName);
 		String GetMessage(HRESULT hr);
 	};
 
@@ -1181,7 +1200,7 @@ public:
 	virtual VarValue operator[](int idx) const =0;
 	virtual VarValue operator[](RCString key) const =0;
 	virtual String ToString() const =0;
-	virtual Int64 ToInt64() const =0;
+	virtual int64_t ToInt64() const =0;
 	virtual bool ToBool() const =0;
 	virtual double ToDouble() const =0;
 	virtual void Set(int idx, const VarValue& v) =0;
@@ -1199,7 +1218,7 @@ public:
 
 	VarValue(std::nullptr_t) {}
 
-	VarValue(Int64 v);
+	VarValue(int64_t v);
 	VarValue(int v);
 	VarValue(double v);
 	explicit VarValue(bool v);
@@ -1222,7 +1241,7 @@ public:
 	VarValue operator[](int idx)  const { return Impl().operator[](idx); }
 	VarValue operator[](RCString key) const { return Impl().operator[](key); }
 	String ToString() const { return Impl().ToString(); }
-	Int64 ToInt64() const { return Impl().ToInt64(); }
+	int64_t ToInt64() const { return Impl().ToInt64(); }
 	bool ToBool() const { return Impl().ToBool(); }
 	double ToDouble() const { return Impl().ToDouble(); }
 	void Set(int idx, const VarValue& v);

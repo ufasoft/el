@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include <windows.h>
@@ -139,12 +146,12 @@ static String ToDosPath(RCString lpath) {
 	vector<String> lds = System.LogicalDriveStrings;
 	for (size_t i=0; i<lds.size(); ++i) {
 		String ld = lds[i];
-		String dd = ld.Right(1)=="\\" ? ld.Left(ld.Length-1) : ld;
+		String dd = ld.Right(1)=="\\" ? ld.Left(ld.length()-1) : ld;
 		vector<String> v = System.QueryDosDevice(dd);
 		if (v.size()) {
 			String lp = v[0];
-			if (lp.Length < lpath.Length && !lp.CompareNoCase(lpath.Left(lp.Length))) {
-				return ((ld.Right(1) == "\\" && lpath[0] == '\\') ? dd : ld) + lpath.substr(lp.Length);
+			if (lp.length() < lpath.length() && !lp.CompareNoCase(lpath.Left(lp.length()))) {
+				return ((ld.Right(1) == "\\" && lpath[0] == '\\') ? dd : ld) + lpath.substr(lp.length());
 			}
 		}
 	}
@@ -344,9 +351,9 @@ void AFXAPI AfxWinInit(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lp
 	}
 }
 
-
+/*!!!R
 void CSingleLock::Lock(DWORD dwTimeOut) {
-	m_pObject->Lock(dwTimeOut);
+	m_pObject->lock(dwTimeOut);
 	m_bAcquired = true;
 }
 
@@ -356,6 +363,7 @@ void CSingleLock::Unlock() {
 		m_bAcquired = false;
 	}
 }
+*/
 
 BOOL CWinApp::InitInstance() {
 	return TRUE;
@@ -641,7 +649,7 @@ AFX_MAINTAIN_STATE2::~AFX_MAINTAIN_STATE2() {
 }
 
 struct Win32CodeErrc {
-	UInt16 Code;
+	uint16_t Code;
 	errc Errc;
 };
 
@@ -650,6 +658,7 @@ static const Win32CodeErrc s_win32code2errc[] ={
 	ERROR_PATH_NOT_FOUND,		errc::no_such_file_or_directory,
 	ERROR_ACCESS_DENIED,		errc::permission_denied,
 	ERROR_INVALID_HANDLE,		errc::bad_file_descriptor,
+	ERROR_OUTOFMEMORY,			errc::not_enough_memory,
 	ERROR_NOT_ENOUGH_MEMORY,	errc::not_enough_memory,
 	ERROR_NOT_SUPPORTED,		errc::not_supported,
 	ERROR_INVALID_PARAMETER,	errc::invalid_argument,
@@ -665,6 +674,7 @@ static const Win32CodeErrc s_win32code2errc[] ={
 	ERROR_BAD_FORMAT,			errc::executable_format_error,
 	ERROR_DIR_NOT_EMPTY,		errc::directory_not_empty,
 	ERROR_DISK_FULL,			errc::no_space_on_device,
+	ERROR_INVALID_ADDRESS,		errc::bad_address,
 	ERROR_TIMEOUT,				errc::timed_out,
 	ERROR_IO_PENDING,			errc::resource_unavailable_try_again,
 	ERROR_NOT_SAME_DEVICE,		errc::cross_device_link,
@@ -694,6 +704,7 @@ static const Win32CodeErrc s_win32code2errc[] ={
 	WSAENETUNREACH,				errc::network_unreachable,
 	WSAENETRESET,				errc::network_reset,
 	WSAECONNABORTED,			errc::connection_aborted,
+	WSAECONNRESET,				errc::connection_reset,
 	WSAEISCONN,					errc::already_connected,
 	WSAENOTCONN,				errc::not_connected,
 	WSAETIMEDOUT,				errc::timed_out,

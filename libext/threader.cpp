@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -122,7 +129,7 @@ ThreadBase::ThreadBase(thread_group *ownRef)
 	,	m_dwCoInit(COINIT_APARTMENTTHREADED)
 #endif
 {
-	ASSERT(1000 < std::abs(Int32((byte*)&ownRef - (byte*)this)));		// Thread cannot be in stack
+	ASSERT(1000 < std::abs(int32_t((byte*)&ownRef - (byte*)this)));		// Thread cannot be in stack
 }
 
 ThreadBase::~ThreadBase() {
@@ -649,13 +656,13 @@ void ThreadBase::OnEndThread(bool bDelete) {
 	AfxTermThread();
 }
 
-UInt32 ThreadBase::CppThreadThunk() {
+uint32_t ThreadBase::CppThreadThunk() {
 	SetCurrentThread();
 #if UCFG_USE_POSIX
 	m_ptid = ::pthread_self();
 	m_tid = thread::id(m_ptid);
 #endif
-	UInt32 exitCode = (UINT)E_FAIL; //!!!
+	uint32_t exitCode = (UINT)E_FAIL; //!!!
 	alloca(StackOffset);							// to prevent cache line aliasing 
 	try {
 #ifdef X_CPPRTTI
@@ -1094,7 +1101,7 @@ ptr<WorkItem> ThreadPool::QueueUserWorkItem(WorkItem *wi) {
 	EXT_LOCK (ThreadPool::I->m_cs) {
 		ThreadPool::I->m_queue.push(wi);
 		if (ThreadPool::I->m_queue.size() < UCFG_POOL_THREADS)
-			ThreadPool::I->m_sem.Unlock();
+			ThreadPool::I->m_sem.unlock();
 	}
 	return wi;
 }

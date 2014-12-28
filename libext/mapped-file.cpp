@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -67,7 +66,7 @@ MemoryMappedView& MemoryMappedView::operator=(EXT_RV_REF(MemoryMappedView) rv) {
 	return *this;
 }
 
-void MemoryMappedView::Map(MemoryMappedFile& file, UInt64 offset, size_t size, void *desiredAddress) {
+void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size, void *desiredAddress) {
 	if (Address)
 		Throw(E_EXT_AlreadyOpened);
 	Offset = offset;
@@ -128,25 +127,25 @@ void AFXAPI MemoryMappedView::Protect(void *p, size_t size, MemoryMappedFileAcce
 #endif
 }
 
-MemoryMappedView MemoryMappedFile::CreateView(UInt64 offset, size_t size, MemoryMappedFileAccess access) {
+MemoryMappedView MemoryMappedFile::CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access) {
 	MemoryMappedView r;
 	r.Access = access;
 	r.Map(_self, offset, size);
 	return std::move(r);
 }
 
-MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, UInt64 capacity, MemoryMappedFileAccess access) {
+MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
 	int prot = MemoryMappedFileAccessToInt(access);
 	MemoryMappedFile r;
 #if UCFG_WIN32	
-	r.m_hMapFile.Attach(::CreateFileMapping(file.DangerousGetHandle(), 0, prot, UInt32(capacity>>32), UInt32(capacity), mapName));	
+	r.m_hMapFile.Attach(::CreateFileMapping(file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));	
 #else
 	Throw(E_NOTIMPL);
 #endif
 	return std::move(r);
 }
 
-MemoryMappedFile MemoryMappedFile::CreateFromFile(RCString path, FileMode mode, RCString mapName, UInt64 capacity, MemoryMappedFileAccess access) {
+MemoryMappedFile MemoryMappedFile::CreateFromFile(RCString path, FileMode mode, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
 	File file;
 	file.Open(path, mode);
 	return CreateFromFile(file, mapName, capacity, access);

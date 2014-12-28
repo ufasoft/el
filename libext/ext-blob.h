@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_COM
@@ -24,7 +31,7 @@ class COleVariant;
 
 class CBlobBufBase {
 public:
-	volatile Int32 m_dwRef;
+	volatile int32_t m_dwRef;
 
 #if UCFG_STRING_CHAR == 16
 	typedef Char16 Char;
@@ -67,9 +74,9 @@ public:
 #endif
 	char * volatile m_pChar;
 #ifdef _WIN64  //!!!
-	UInt32 m_pad;
+	uint32_t m_pad;
 #endif
-	UInt32 m_size;
+	uint32_t m_size;
 
 	CStringBlobBuf(size_t len = 0);
 	CStringBlobBuf(const void *p, size_t len);
@@ -95,7 +102,7 @@ public:
 	static CStringBlobBuf* AFXAPI RefEmptyBlobBuf();
 
 #if !UCFG_BLOB_POLYMORPHIC
-	void Release() {
+	void Release() noexcept {
 		if (!Interlocked::Decrement(m_dwRef))
 			delete this;
 	}
@@ -117,7 +124,7 @@ public:
 		return m_bstr;
 	}
 
-	size_t GetSize() { return *((UInt32*)GetBSTR()-1); }
+	size_t GetSize() { return *((uint32_t*)GetBSTR()-1); }
 
 	CBlobBufBase *Clone();
 	CBlobBufBase *SetSize(size_t size);
@@ -200,6 +207,8 @@ public:
 	size_t get_Size() const noexcept { return m_pData->GetSize(); }
 	void put_Size(size_t size);
 	DEFPROP_CONST(size_t, Size);
+
+	size_t max_size() const noexcept { return SIZE_MAX - 2; }
 
 	// we don't use property feature to explicit call constData() for efficiency
 	byte *data();

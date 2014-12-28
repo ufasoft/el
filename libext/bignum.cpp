@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 using namespace std;
@@ -24,7 +31,7 @@ BigInteger::BigInteger()
 #endif
 }
 
-BigInteger::BigInteger(UInt32 n)
+BigInteger::BigInteger(uint32_t n)
 #if UCFG_BIGNUM=='A'
 	:	m_blob(nullptr)
 #endif
@@ -36,11 +43,11 @@ BigInteger::BigInteger(UInt32 n)
 		return;
 	}
 #endif
-	Int64 v = n;
+	int64_t v = n;
 	Init((byte*)&v, sizeof(v));			//!!!LE
 }
 
-BigInteger::BigInteger(Int64 n)
+BigInteger::BigInteger(int64_t n)
 #if UCFG_BIGNUM=='N'
 	:	m_zz(ZZFromSignedBytes((byte*)&n, sizeof(n)))
 #elif UCFG_BIGNUM=='A'
@@ -78,6 +85,25 @@ size_t BigInteger::GetBaseWords() const {
 
 
 #endif
+
+#if UCFG_BIGNUM=='A'
+#	if INTPTR_MAX > 0x7fffffff
+BigInteger::BigInteger(int n)
+	:	m_blob(nullptr)
+	,	m_count(1)
+{
+	m_data[0] = n;
+}
+#	else
+BigInteger::BigInteger(S_BASEWORD n)
+	:	m_blob(nullptr)
+	,	m_count(1)
+{
+	m_data[0] = n;
+}
+#	endif
+#endif
+
 
 #if UCFG_BIGNUM=='G'
 BigInteger::BigInteger(int n)
@@ -154,17 +180,17 @@ BigInteger::BigInteger(RCString s, int bas)
 	Init(&zero, 1);
 #endif
 
-	if (s.Length == 0)
+	if (s.empty())
 		Throw(E_FAIL);
 	bool bMinus = false;
 	size_t i=0;
 	if (s[0] == '-') {
 		bMinus = true;
 		++i;
-		if (s.Length == 1)
+		if (s.length() == 1)
 			Throw(E_FAIL);
 	}	
-	for (; i<s.Length; ++i) {
+	for (; i<s.length(); ++i) {
 		wchar_t ch = s[i];
 		int n;
 		if (ch>='0' && ch <='9')
@@ -223,7 +249,7 @@ String BigInteger::ToString(int bas) const {
 	if (bas < 2 || bas > 36)
 		Throw(E_INVALIDARG);
 	size_t size = Length+2;
-	String::Char *e = (String::Char*)alloca(size*sizeof(String::Char)) + size,									// to avoid char -> String::Char conversion
+	String::value_type *e = (String::value_type*)alloca(size * sizeof(String::value_type)) + size,									// to avoid char -> String::Char conversion
 			*q = e;
 	bool bMinusP = Sign(_self)<0;
 	BigInteger v = bMinusP ? -_self : _self,
@@ -265,19 +291,19 @@ size_t NumBytes(const mpz_class& z) {
 }
 #endif //  UCFG_BIGNUM=='G'
 
-bool BigInteger::AsInt64(Int64& n) const {
+bool BigInteger::AsInt64(int64_t& n) const {
 #if UCFG_BIGNUM!='A'
 	int count = NumBytes(m_zz);
-	if (count > sizeof(Int64))
+	if (count > sizeof(int64_t))
 		return false;
-	ToBytes((byte*)&n, sizeof(Int64));
+	ToBytes((byte*)&n, sizeof(int64_t));
 	return true;
 #else
 	if (m_count > 64/BASEWORD_BITS)
 		return false;
 	memcpy(&n, Data, m_count*sizeof(BASEWORD));
 	if (m_count < 64/BASEWORD_BITS)
-		n = Int64(((UInt64)n) << 32) >> 32;
+		n = int64_t(((uint64_t)n) << 32) >> 32;
 	return true;
 #endif
 }
@@ -579,14 +605,14 @@ bool BigInteger::AsBaseWord(S_BASEWORD& n) const {
 double BigInteger::AsDouble() const {
 	int len = Length;
 	if (len < DBL_MANT_DIG) {
-		Int64 i;
+		int64_t i;
 		if (!AsInt64(i))
 			Throw(E_FAIL);
 		return (double)i;
 	} else {
 		int exp = len-DBL_MANT_DIG;
 		BigInteger n = _self >> exp;
-		Int64 i;
+		int64_t i;
 		if (!n.AsInt64(i))
 			Throw(E_FAIL);
 		return ::ldexp((double)i, exp);
@@ -796,7 +822,7 @@ void ImpShld(const BASEWORD *s, BASEWORD *d, size_t siz, size_t amt) {
 	BASEWORD prev = 0;
 	for (int i=0; i<siz; i++) {
 		BASEWORD w = s[i];
-		*d++ = BASEWORD(((Ext::UInt64(w) << BASEWORD_BITS) | exchange(prev, w)) >> off);
+		*d++ = BASEWORD(((Ext::uint64_t(w) << BASEWORD_BITS) | exchange(prev, w)) >> off);
 	}
 	*d = S_BASEWORD(prev) >> min(off, int(BASEWORD_BITS-1));
 }
@@ -806,13 +832,13 @@ void ImpShld(const BASEWORD *s, BASEWORD *d, size_t siz, size_t amt) {
 
 
 /*!!!
-Int64 BigInteger::ToInt64() const
+int64_t BigInteger::ToInt64() const
 {
 	if (_self < BigInteger(LLONG_MIN) || _self > BigInteger(LLONG_MAX))
 		Throw(E_EXT_BigNumConversion);
 	BigInteger v = _self;
 	v.Extend(2);
-	return *(Int64*)v.m_p;
+	return *(int64_t*)v.m_p;
 }
 */
 

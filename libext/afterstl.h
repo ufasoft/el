@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(list)
@@ -438,7 +445,7 @@ public:
 		insert(end(), v);
 	}
 
-	void erase(const_iterator it) {
+	void erase(const_iterator it) noexcept {
 		T *n = it->Next, *p = it->Prev;
 		p->Next = n;
 		n->Prev = p;
@@ -635,6 +642,47 @@ T RoundUpToMultiple(const T& x, const T& mul) {
 	return (x + mul - 1) / mul * mul;
 }
 
+class CInException : noncopyable{
+public:
+	CInException() noexcept
+		:	m_nUncauight(std::uncaught_exceptions())
+	{}
+
+	EXPLICIT_OPERATOR_BOOL() const noexcept {
+		return std::uncaught_exceptions() > m_nUncauight ? EXT_CONVERTIBLE_TO_TRUE : 0;
+	}
+private:
+	int m_nUncauight;
+};
+
+#if !UCFG_WDM
+template <class T>
+class CThreadTxRef : noncopyable {
+public:
+	static EXT_THREAD_PTR(T) t_pTx;
+
+	template <class U>
+	CThreadTxRef(U& u) {
+		if (!(m_p = t_pTx)) {
+			t_pTx = m_p = new(m_placeTx) T(u);
+			m_bOwn = true;
+		}
+	}
+
+	~CThreadTxRef() {
+		if (m_bOwn) {
+			t_pTx = nullptr;
+			reinterpret_cast<T*>(m_placeTx)->~T();
+		}
+	}
+
+	operator T&() { return *m_p; }
+private:
+	T *m_p;
+	byte m_placeTx[sizeof(T)];
+	CBool m_bOwn;
+};
+#endif // !UCFG_WDM
 
 } // Ext::
 

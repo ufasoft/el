@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -89,7 +96,7 @@ Encoding::Encoding(int codePage)
 		}
 		Name = String(name, 0, strlen(name), nullptr);
 
-		const char *unicodeCP = sizeof(String::Char)==4 ? "UTF-32" : "UTF-16";
+		const char *unicodeCP = sizeof(String::value_type)==4 ? "UTF-32" : "UTF-16";
 		m_iconvTo = ::iconv_open(name, unicodeCP);
 		CCheck((LONG_PTR)m_iconvTo == -1 ? -1 : 0);
 		m_iconvFrom = ::iconv_open(unicodeCP, name);
@@ -158,7 +165,7 @@ size_t Encoding::GetCharCount(const ConstBuf& mb) {
 		size_t dlen = sizeof(buf);
 		CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE*)&sp, &slen, &dp, &dlen), E2BIG);
 		len = mb.Size-(sp-(const char*)mb.P);
-		r += (sizeof(buf)-dlen)/sizeof(String::Char);
+		r += (sizeof(buf)-dlen)/sizeof(String::value_type);
 	}
 	return r;
 #elif !UCFG_WDM
@@ -171,14 +178,14 @@ size_t Encoding::GetCharCount(const ConstBuf& mb) {
 #endif
 }
 
-size_t Encoding::GetChars(const ConstBuf& mb, String::Char *chars, size_t charCount) {
+size_t Encoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
 #if UCFG_USE_POSIX
 	const char *sp = (char*)mb.P;
 	size_t len = mb.Size;
 	char *dp = (char*)chars;
-	size_t dlen = charCount*sizeof(String::Char);
+	size_t dlen = charCount*sizeof(String::value_type);
 	CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE*)&sp, &len, &dp, &dlen));
-	return (charCount*sizeof(String::Char)-dlen)/sizeof(String::Char);
+	return (charCount*sizeof(String::value_type)-dlen)/sizeof(String::value_type);
 #elif defined(WIN32)
 	::SetLastError(0);
 	int r = ::MultiByteToWideChar(CodePage, 0, (LPCSTR)mb.P, mb.Size, chars, charCount);
@@ -189,8 +196,8 @@ size_t Encoding::GetChars(const ConstBuf& mb, String::Char *chars, size_t charCo
 #endif
 }
 
-vector<String::Char> Encoding::GetChars(const ConstBuf& mb) {
-	vector<String::Char> vec(GetCharCount(mb));
+vector<String::value_type> Encoding::GetChars(const ConstBuf& mb) {
+	vector<String::value_type> vec(GetCharCount(mb));
 	if (vec.size()) {
 		size_t n = GetChars(mb, &vec[0], vec.size());
 		ASSERT(n == vec.size());
@@ -198,13 +205,13 @@ vector<String::Char> Encoding::GetChars(const ConstBuf& mb) {
 	return vec;
 }
 
-size_t Encoding::GetByteCount(const String::Char *chars, size_t charCount) {
+size_t Encoding::GetByteCount(const String::value_type *chars, size_t charCount) {
 	if (0 == charCount)
 		return 0;
 #if UCFG_USE_POSIX
 	const char *sp = (char*)chars;
 	int r = 0;	
-	for (size_t len=charCount*sizeof(String::Char); len;) {
+	for (size_t len=charCount*sizeof(String::value_type); len;) {
 		char buf[40];
 		char *dp = buf;
 		size_t dlen = sizeof(buf);
@@ -222,10 +229,10 @@ size_t Encoding::GetByteCount(const String::Char *chars, size_t charCount) {
 #endif
 }
 
-size_t Encoding::GetBytes(const String::Char *chars, size_t charCount, byte *bytes, size_t byteCount) {
+size_t Encoding::GetBytes(const String::value_type *chars, size_t charCount, byte *bytes, size_t byteCount) {
 #if UCFG_USE_POSIX
 	const char *sp = (char*)chars;
-	size_t len = charCount*sizeof(String::Char);
+	size_t len = charCount*sizeof(String::value_type);
 	char *dp = (char*)bytes;
 	size_t dlen = byteCount;
 	CCheck(::iconv(m_iconvTo, (ICONV_SECOND_TYPE*)&sp, &len, &dp, &dlen));
@@ -242,12 +249,12 @@ size_t Encoding::GetBytes(const String::Char *chars, size_t charCount, byte *byt
 
 Blob Encoding::GetBytes(RCString s) {
 	Blob blob(0, GetByteCount(s));
-	size_t n = GetBytes(s, s.Length, blob.data(), blob.Size);
+	size_t n = GetBytes(s, s.length(), blob.data(), blob.Size);
 	ASSERT(n == blob.Size);
 	return blob;
 }
 
-void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::Char, bool>& visitor) {
+void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bool>& visitor) {
 	size_t len = mb.Size;
 	for (const byte *p=mb.P; len--;) {
 		byte b = *p++;
@@ -274,7 +281,7 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::Char, bool>& v
 			n = 1;
 			b = '?';			
 		}
-		String::Char wc = String::Char(b & ((1<<(7-n))-1));
+		String::value_type wc = String::value_type(b & ((1<<(7-n))-1));
 		while (n--) {
 			if (!len--) {
 				if (!t_IgnoreIncorrectChars)
@@ -297,10 +304,10 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::Char, bool>& v
 	}
 }
 
-void UTF8Encoding::PassToBytes(const String::Char* pch, size_t nCh, UnaryFunction<byte, bool>& visitor) {
+void UTF8Encoding::PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<byte, bool>& visitor) {
 	for (size_t i=0; i<nCh; i++) {
-		String::Char wch = pch[i];
-		UInt32 ch = wch; 					// may be 32-bit chars in the future
+		String::value_type wch = pch[i];
+		uint32_t ch = wch; 					// may be 32-bit chars in the future
 		if (ch < 0x80) {
 			if (!visitor(byte(ch)))
 				break;
@@ -347,11 +354,11 @@ Blob UTF8Encoding::GetBytes(RCString s) {
 			return true;
 		}
 	} v;
-	PassToBytes(s, s.Length, v);
+	PassToBytes(s, s.length(), v);
 	return v.ms.Blob;
 }
 
-size_t UTF8Encoding::GetBytes(const String::Char *chars, size_t charCount, byte *bytes, size_t byteCount) {
+size_t UTF8Encoding::GetBytes(const String::value_type *chars, size_t charCount, byte *bytes, size_t byteCount) {
 	struct Visitor : UnaryFunction<byte, bool> {
 		size_t m_count;
 		byte *m_p;
@@ -377,11 +384,11 @@ size_t UTF8Encoding::GetCharCount(const ConstBuf& mb) {
 	return (size_t)m_cvt.length(s, (const char*)mb.P, (const char*)mb.P+mb.Size, INT_MAX);
 }
 
-std::vector<String::Char> UTF8Encoding::GetChars(const ConstBuf& mb) {
-	struct Visitor : UnaryFunction<String::Char, bool> {
-		vector<String::Char> ar;
+std::vector<String::value_type> UTF8Encoding::GetChars(const ConstBuf& mb) {
+	struct Visitor : UnaryFunction<String::value_type, bool> {
+		vector<String::value_type> ar;
 
-		bool operator()(String::Char ch) {
+		bool operator()(String::value_type ch) {
 			ar.push_back(ch);
 			return true;
 		}
@@ -390,12 +397,12 @@ std::vector<String::Char> UTF8Encoding::GetChars(const ConstBuf& mb) {
 	return v.ar;
 }
 
-size_t UTF8Encoding::GetChars(const ConstBuf& mb, String::Char *chars, size_t charCount) {
-	struct Visitor : UnaryFunction<String::Char, bool> {
+size_t UTF8Encoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
+	struct Visitor : UnaryFunction<String::value_type, bool> {
 		size_t m_count;
-		String::Char *m_p;
+		String::value_type *m_p;
 
-		bool operator()(String::Char ch) {
+		bool operator()(String::value_type ch) {
 			if (m_count <= 0)
 				return false;
 			*m_p++ = ch;
@@ -411,13 +418,13 @@ size_t UTF8Encoding::GetChars(const ConstBuf& mb, String::Char *chars, size_t ch
 
 
 Blob ASCIIEncoding::GetBytes(RCString s) {
-	Blob blob(nullptr, s.Length);
-	for (size_t i=0; i<s.Length; ++i)
+	Blob blob(nullptr, s.length());
+	for (size_t i=0; i<s.length(); ++i)
 		blob.data()[i] = (byte)s[i];
 	return blob;
 }
 
-size_t ASCIIEncoding::GetBytes(const String::Char *chars, size_t charCount, byte *bytes, size_t byteCount) {
+size_t ASCIIEncoding::GetBytes(const String::value_type *chars, size_t charCount, byte *bytes, size_t byteCount) {
 	size_t r = std::min(charCount, byteCount);
 	for (size_t i=0; i<r; ++i)
 		bytes[i] = (byte)chars[i];
@@ -428,14 +435,14 @@ size_t ASCIIEncoding::GetCharCount(const ConstBuf& mb) {
 	return mb.Size;
 }
 
-std::vector<String::Char> ASCIIEncoding::GetChars(const ConstBuf& mb) {
-	vector<String::Char> r(mb.Size);
+std::vector<String::value_type> ASCIIEncoding::GetChars(const ConstBuf& mb) {
+	vector<String::value_type> r(mb.Size);
 	for (size_t i=0; i<mb.Size; ++i)
 		r[i] = mb.P[i];
 	return r;
 }
 
-size_t ASCIIEncoding::GetChars(const ConstBuf& mb, String::Char *chars, size_t charCount) {
+size_t ASCIIEncoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
 	size_t r = std::min(charCount, mb.Size);
 	for (size_t i=0; i<r; ++i)
 		chars[i] = mb.P[i];

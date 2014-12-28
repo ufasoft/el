@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #pragma once
 
@@ -86,38 +85,38 @@ public:
 		return *this;
 	} 
 
-	Int16 ReadInt16() const {
-		Int16 r;
+	int16_t ReadInt16() const {
+		int16_t r;
 		ReadType(r, std::true_type());
 		return r;
 	}
 
-	UInt16 ReadUInt16() const {
-		UInt16 r;
+	uint16_t ReadUInt16() const {
+		uint16_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	Int32 ReadInt32() const {
-		Int32 r;
+	int32_t ReadInt32() const {
+		int32_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	UInt32 ReadUInt32() const {
-		UInt32 r;
+	uint32_t ReadUInt32() const {
+		uint32_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	Int64 ReadInt64() const {
-		Int64 r;
+	int64_t ReadInt64() const {
+		int64_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	UInt64 ReadUInt64() const {
-		UInt64 r;
+	uint64_t ReadUInt64() const {
+		uint64_t r;
 		ReadType(r, true_type());
 		return r;
 	}
@@ -134,10 +133,10 @@ public:
 		return r;
 	}
 
-	UInt64 Read7BitEncoded() const;
+	uint64_t Read7BitEncoded() const;
 	
 	size_t ReadSize() const {
-		UInt64 v = Read7BitEncoded();
+		uint64_t v = Read7BitEncoded();
 		if (v > (std::numeric_limits<size_t>::max)())
 			Throw(HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW));
 		return (size_t)v;
@@ -149,7 +148,7 @@ public:
 	void Read(std::map<K, T, P, A>& m) const {
 		m.clear();
 		size_t count = ReadSize();
-		for (int i=0; i<count; i++) {
+		for (size_t i=0; i<count; ++i) {
 			std::pair<K, T> pp;
 			*this >> pp;
 			m.insert(pp);
@@ -160,7 +159,7 @@ public:
 	void Read(std::unordered_map<K, T, H, E>& m) const {
 		m.clear();
 		size_t count = ReadSize();
-		for (int i=0; i<count; i++) {
+		for (size_t i=0; i<count; ++i) {
 			std::pair<K, T> pp;
 			*this >> pp;
 			m.insert(pp);
@@ -171,7 +170,7 @@ public:
 	void Read(std::set<T, P, A>& s) const {
 		s.clear();
 		size_t count = ReadSize();
-		for (int i=0; i<count; i++) {
+		for (size_t i=0; i<count; ++i) {
 			T el;
 			*this >> el;
 			s.insert(el);
@@ -182,7 +181,7 @@ public:
 	void Read(std::unordered_set<T, H, E>& s) const {
 		s.clear();
 		size_t count = ReadSize();
-		for (int i=0; i<count; i++) {
+		for (size_t i=0; i<count; ++i) {
 			T el;
 			*this >> el;
 			s.insert(el);
@@ -231,7 +230,7 @@ public:
 	template <typename T> void Read(std::vector<T>& ar) const {
 		size_t count = ReadSize();
 		ar.resize(count);
-		for (int i=0; i<count; i++)
+		for (size_t i=0; i<count; ++i)
 			*this >> ar[i];
 	}
 protected:
@@ -241,10 +240,10 @@ protected:
 	Stream& operator>>(char& v) { return Read(&v, sizeof v); }
 	Stream& operator>>(byte& v) { return Read(&v, sizeof v); }
 	Stream& operator>>(short& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(UInt16& v) { return Read(&v, sizeof v); }
+	Stream& operator>>(uint16_t& v) { return Read(&v, sizeof v); }
 	Stream& operator>>(int& v) { return Read(&v, sizeof v); }
 	Stream& operator>>(LONG& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(UInt32& v) { return Read(&v, sizeof v); }
+	Stream& operator>>(uint32_t& v) { return Read(&v, sizeof v); }
 	Stream& operator>>(unsigned long v) { return Read(&v, sizeof v); }
 
 	//!!!  Stream& operator>>(size_t& v) { return Read(&v, sizeof v); }
@@ -291,7 +290,7 @@ public:
 	template <typename T> void Write(const std::vector<T>& ar) {
 		size_t count = ar.size();
 		WriteSize(count);
-		for (int i=0; i<count; i++)
+		for (size_t i=0; i<count; ++i)
 			*this << ar[i];
 	}
 
@@ -321,7 +320,7 @@ public:
 		Write(&v, 1);
 	}
 
-	void Write7BitEncoded(UInt64 v);
+	void Write7BitEncoded(uint64_t v);
 	void WriteSize(size_t size) { Write7BitEncoded(size); }
 
 	template <class T> BinaryWriter& WriteStruct(const T& t) {
@@ -353,10 +352,10 @@ protected:
 __forceinline Stream& operator<<(const char& v)     { return Write(&v, sizeof v); }
 __forceinline Stream& operator<<(const byte& v)     { return Write(&v, sizeof v); }
 __forceinline Stream& operator<<(const short& v)    { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const UInt16& v)     { return Write(&v, sizeof v); }
+__forceinline Stream& operator<<(const uint16_t& v)     { return Write(&v, sizeof v); }
 __forceinline Stream& operator<<(const int& v)      { return Write(&v, sizeof v); }
 __forceinline Stream& operator<<(const LONG& v)     { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const UInt32& v)    { return Write(&v, sizeof v); }
+__forceinline Stream& operator<<(const uint32_t& v)    { return Write(&v, sizeof v); }
 //!!!	__forceinline Stream& operator<<(size_t v)			{ return Write(&v, sizeof v); }
 
 

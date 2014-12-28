@@ -1,10 +1,9 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -38,19 +37,19 @@ void CInternetFile::Attach(HINTERNET hInternet) {
 CInternetFile::~CInternetFile() {
 }
 
-UInt32 CInternetFile::Read(void *lpBuf, UInt32 nCount) {
+uint32_t CInternetFile::Read(void *lpBuf, uint32_t nCount) {
 	DWORD dw;
 	Win32Check(InternetReadFile(m_hInternet, lpBuf, nCount, &dw));
 	return dw;
 }
 
-const int INTERNET_BUF_SIZE = 4096;
+const int INTERNET_BUF_SIZE = 8192;
 
 String CInternetFile::ReadString() {
-	char buf[INTERNET_BUF_SIZE];
+	Blob buf(0, INTERNET_BUF_SIZE);
 	DWORD dw;
-	Win32Check(::InternetReadFile(m_hInternet, buf, sizeof(buf), &dw));
-	return buf;
+	Win32Check(::InternetReadFile(m_hInternet, buf.data(), buf.Size, &dw));
+	return String((const char*)buf.data(), dw);
 }
 
 DWORD CInternetFile::SetFilePointer(LONG offset, DWORD method) {

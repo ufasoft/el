@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include <el/libext/ext-net.h>
@@ -5,15 +12,15 @@
 namespace Ext {
 using namespace std;
 
-UInt16 AFXAPI CalculateWordSum(const ConstBuf& mb, UInt32 sum, bool bComplement) {
-	UInt16 *p = (UInt16*)mb.P;
+uint16_t AFXAPI CalculateWordSum(const ConstBuf& mb, uint32_t sum, bool bComplement) {
+	uint16_t *p = (uint16_t*)mb.P;
 	for (size_t count=mb.Size>>1; count--;)
 		sum += *p++;
 	if (mb.Size & 1)
 		sum += *(byte*)p;
-	for (UInt32 w; w=sum>>16;)
+	for (uint32_t w; w=sum>>16;)
 		sum = (sum & 0xFFFF)+w;
-	return UInt16(bComplement ? ~sum : sum);
+	return uint16_t(bComplement ? ~sum : sum);
 }
 
 String CHttpHeader::ParseHeader(const vector<String>& ar, bool bIncludeFirstLine, bool bEmailHeader) {
@@ -29,7 +36,7 @@ String CHttpHeader::ParseHeader(const vector<String>& ar, bool bIncludeFirstLine
 	String prev;
 	for (; i<ar.size(); i++) {
 		String line = ar[i];
-		if (bEmailHeader && line.Length > 0 && isspace(line[0])) {
+		if (bEmailHeader && line.length() > 0 && isspace(line[0])) {
 			if (prev.empty())
 				Throw(E_FAIL);
 			Headers[prev].back() += " "+line.TrimLeft();
@@ -92,7 +99,7 @@ NameValueCollection& CHttpRequest::get_Params() {
 
 		String query = Uri("http://host"+RequestUri).Query;
 		if (!!query) {
-			if (query.Length > 1 && query[0]=='?')
+			if (query.length() > 1 && query[0]=='?')
 				ParseParams(query);
 			else if (Method == "POST")
 				ParseParams(Encoding::UTF8.GetChars(Data));			

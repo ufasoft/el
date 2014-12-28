@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 typedef uintptr_t BASEWORD;
@@ -79,7 +86,7 @@ extern "C" bool __stdcall ImpMulSubBignums(const BASEWORD *u, const BASEWORD *v,
 namespace Ext {
 
 template <typename T, typename U> T int_cast(const U& x) { Throw(E_NOTIMPL); };
-template <> inline Ext::UInt32 int_cast<Ext::UInt32, Ext::UInt64>(const Ext::UInt64& x) { return (Ext::UInt32)x; }
+template <> inline uint32_t int_cast<uint32_t, uint64_t>(const uint64_t& x) { return (uint32_t)x; }
 
 
 class BigInteger;
@@ -88,16 +95,16 @@ class BigInteger;
 #if UCFG_PLATFORM_X64
 
 	struct CUInt128 {
-		UInt64 Low;
-		UInt64 High;
+		uint64_t Low;
+		uint64_t High;
 
-		CUInt128(UInt64 low = 0, UInt64 high = 0)
+		CUInt128(uint64_t low = 0, uint64_t high = 0)
 			:	Low(low)
 			,	High(high)
 		{}
 
 		CUInt128 operator<<(int off) const {
-			UInt64 a[3], r[3];
+			uint64_t a[3], r[3];
 			ImpShld(&Low, a, 2, off>>1);
 			ImpShld(a, r, 2, (off>>1) | (off&1));
 			return CUInt128(r[0], r[1]);
@@ -107,28 +114,28 @@ class BigInteger;
 			return CUInt128(Low|v.Low, High|v.High);
 		}
 
-		CUInt128 operator+(UInt64 x) const {
+		CUInt128 operator+(uint64_t x) const {
 			CUInt128 x128(x), r;
 			BASEWORD d[3];
 			ImpAddBignums(&Low, &x128.Low, d, 2);
 			return CUInt128(d[0], d[1]);			// d[2] can contain significant bits.
 		}
 
-		UInt64 operator/(UInt64 q) const {		//!!! only when q>High
-			UInt64 u[2] = { Low, High };
-			UInt64 r;
+		uint64_t operator/(uint64_t q) const {		//!!! only when q>High
+			uint64_t u[2] = { Low, High };
+			uint64_t r;
 			ImpShortDiv(u, &r, 1, q);
 			return r;
 		}
 
-		UInt64 operator%(UInt64 q) const {			//!!! only when q>High
-			UInt64 u[2] = { Low, High };
-			UInt64 r;
+		uint64_t operator%(uint64_t q) const {			//!!! only when q>High
+			uint64_t u[2] = { Low, High };
+			uint64_t r;
 			return ImpShortDiv(u, &r, 1, q);
 		}
 
-		CUInt128 operator*(UInt64 x) const {		//!!! only if rusult id 128-bit
-			UInt64 d[3];
+		CUInt128 operator*(uint64_t x) const {		//!!! only if rusult id 128-bit
+			uint64_t d[3];
 			ImpMulBignums(&Low, 2, &x, 1, d);
 			return CUInt128(d[0], d[1]);
 		}
@@ -142,7 +149,7 @@ class BigInteger;
 		}
 	};
 
-	template <> inline UInt64 int_cast<UInt64, CUInt128>(const CUInt128& u128) { return u128.Low; }
+	template <> inline uint64_t int_cast<uint64_t, CUInt128>(const CUInt128& u128) { return u128.Low; }
 
 
 #	if defined(_M_IA64)
@@ -151,7 +158,7 @@ class BigInteger;
 	typedef CUInt128 D_BASEWORD;
 #	endif
 #else
-	typedef Ext::UInt64 D_BASEWORD;
+	typedef uint64_t D_BASEWORD;
 #endif
 
 
@@ -182,8 +189,8 @@ public:
 	operator=(v);
 	}*/
 
-	explicit BigInteger(UInt32 n);
-	BigInteger(Int64 n);
+	explicit BigInteger(uint32_t n);
+	BigInteger(int64_t n);
 
 	explicit BigInteger(RCString s, int bas = 10);
 	BigInteger(const byte *p, size_t count);
@@ -228,26 +235,16 @@ public:
 	}
 
 #	if INTPTR_MAX > 0x7fffffff
-	BigInteger(int n)
-		:	m_blob(nullptr)
-		,	m_count(1)
-	{
-		m_data[0] = n;
-	}
+	BigInteger(int n);
 #	else
-	BigInteger(S_BASEWORD n)
-		:	m_blob(nullptr)
-		,	m_count(1)
-	{
-		m_data[0] = n;
-	}
+	BigInteger(S_BASEWORD n);
 #	endif
 
 #	if UCFG_SEPARATE_LONG_TYPE && LONG_MAX==0x7fffffff
 	explicit BigInteger(unsigned long n)
 		:	m_blob(nullptr)
 	{
-		Int64 v = n;
+		int64_t v = n;
 		Init((byte*)&v, sizeof(v));
 	}
 #	endif
@@ -277,32 +274,32 @@ public:
 #endif
 	bool AsBaseWord(S_BASEWORD& n) const;
 
-	bool AsInt64(Int64& n) const;
+	bool AsInt64(int64_t& n) const;
 	double AsDouble() const;
 
-	operator explicit_cast<Int64>() const {
-		Int64 r;
+	operator explicit_cast<int64_t>() const {
+		int64_t r;
 		if (!AsInt64(r))
 			Throw(E_FAIL);
 		return r;
 	}
 
 	operator explicit_cast<int>() const {
-		Int64 r;
+		int64_t r;
 		if (!AsInt64(r) || r<LONG_MIN || r>LONG_MAX)
 			Throw(E_FAIL);
 		return (long)r;
 	}
 
 	operator explicit_cast<unsigned int>() const {
-		Int64 r;
+		int64_t r;
 		if (!AsInt64(r) || r<0 || r>UINT_MAX)
 			Throw(E_FAIL);
 		return (unsigned int)r;
 	}
 
 	operator explicit_cast<byte>() const {
-		Int64 r;
+		int64_t r;
 		if (!AsInt64(r) || r<0 || r>255)
 			Throw(E_FAIL);
 		return (byte)r;
@@ -314,7 +311,7 @@ public:
 		swapHelper(*this, x);
 	}
 
-	//!!!	Int64 ToInt64() const;
+	//!!!	int64_t ToInt64() const;
 	//!!!BigInteger& operator=(const BigInteger& v);
 	bool operator==(const BigInteger& v) const;
 
@@ -329,7 +326,7 @@ public:
 
 	friend int AFXAPI Sign(const BigInteger& v);
 	friend EXT_API std::pair<BigInteger, BigInteger> AFXAPI div(const BigInteger& x, const BigInteger& y);
-	UInt32 NMod(unsigned int d) const;
+	uint32_t NMod(unsigned int d) const;
 	friend BigInteger AFXAPI operator>>(const BigInteger& x, size_t v);
 	friend BigInteger AFXAPI operator<<(const BigInteger& x, size_t v);
 	friend BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const BigInteger& n);

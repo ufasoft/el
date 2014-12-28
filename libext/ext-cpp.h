@@ -1,3 +1,10 @@
+/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
+#                                                                                                                                                                                                                                            #
+# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
+# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
+############################################################################################################################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_STDSTL
@@ -95,7 +102,11 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 	}
 #endif
 
+#if !UCFG_CPP14_NOEXCEPT
+#	define noexcept throw()
+#endif
 
+extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 
 //!!!R #ifndef _CRTBLD
 #	include "cpp-old.h"
@@ -103,6 +114,10 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 
 #if UCFG_STDSTL
 #	include <cstddef>			// to define std::nullptr_t in GCC
+#endif
+
+#if UCFG_WDM
+extern "C" void __cdecl free(void *p);
 #endif
 
 namespace Ext {
@@ -144,9 +159,6 @@ AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, i
 #	endif
 #endif
 
-#if !UCFG_CPP14_NOEXCEPT
-#	define noexcept throw()
-#endif
 #	include "interlocked.h"
 #undef noexcept
 
@@ -229,9 +241,6 @@ AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, i
 
 #endif //  UCFG_STL
 
-#if !UCFG_CPP14_NOEXCEPT
-#	define noexcept throw()
-#endif
 
 
 #include "exthelpers.h"		// uses std::swap() from <utility>
@@ -300,6 +309,10 @@ typename enable_if<Ext::is_movable<T>::value, Ext::rv<T>&>::type move(T& x) {
 
 #endif // UCFG_CPP11_RVALUE
 
+#if !UCFG_CPP14_NOEXCEPT
+#	define noexcept throw()		//!!! repeated because somewhere undefined
+#endif
+
 #include "ext-ptr.h"
 
 #if !UCFG_MINISTL
@@ -351,6 +364,8 @@ public:
 		return CAlloc::Malloc(size);
 #endif
 	}
+
+
 
 	/*!!!
 	inline void __fastcall Free(void *p) noexcept {
@@ -517,7 +532,7 @@ public:
 } // Ext::
 
 
-inline Ext::Int64 abs(const Ext::Int64& v) {
+inline int64_t abs(const int64_t& v) {
 	return v>=0 ? v : -v;
 }
 
@@ -1021,29 +1036,29 @@ struct int_presentation {
 };
 
 template <> struct int_presentation<4> {
-	typedef Int32 type;
+	typedef int32_t type;
 };
 
 template <> struct int_presentation<8> {
-	typedef Int64 type;
+	typedef int64_t type;
 };
 
 /*!!!
 template<> struct type_presentation<int> {
 #if INT_MAX == 2147483647
-	typedef Int32 type;
+	typedef int32_t type;
 #endif
 };
 
 template<> struct type_presentation<long> {
 #if LONG_MAX == 2147483647
-	typedef Int32 type;
+	typedef int32_t type;
 #endif
 };
 
 template<> struct type_presentation<unsigned long> {
 #if ULONG_MAX == 0xffffffffUL
-	typedef UInt32 type;
+	typedef uint32_t type;
 #endif
 };
 */
@@ -1183,14 +1198,14 @@ private:
 #endif
 
 
-inline int BitScanReverse(UInt32 v) {
+inline int BitScanReverse(uint32_t v) {
 	unsigned long idx;
 	bool b = ::_BitScanReverse(&idx, v);
 	return int(idx | -!b);
 }
 
 #ifdef _M_X64
-inline int BitScanReverse64(UInt64 v) {
+inline int BitScanReverse64(uint64_t v) {
 	unsigned long idx;
 	bool b = ::_BitScanReverse64(&idx, v);
 	return int(idx | -!b);
@@ -1199,6 +1214,7 @@ inline int BitScanReverse64(UInt64 v) {
 
 
 } // Ext::
+
 
 #define EXT_STR(expr) (static_cast<std::ostringstream&>(static_cast<std::ostringstream EXT_REF>(std::ostringstream()) << expr)).str()
 #define EXT_BIN(expr) ConstBuf(static_cast<Ext::StreamToBlob&>(StreamToBlob().Ref() << expr))
@@ -1236,7 +1252,22 @@ inline void * __cdecl operator new[](size_t size, int id, const char *file, int 
 #	else
 #		pragma detect_mismatch("UCFG_EXTENDED", "0")
 #	endif
-#endif // _MSC_VER
+#	if UCFG_WIN_MSG
+#		pragma detect_mismatch("UCFG_WIN_MSG", "1")
+#	else
+#		pragma detect_mismatch("UCFG_WIN_MSG", "0")
+#	endif
+#	if UCFG_GUI
+#		pragma detect_mismatch("UCFG_GUI", "1")
+#	else
+#		pragma detect_mismatch("UCFG_GUI", "0")
+#	endif
+#	if UCFG_OLE
+#		pragma detect_mismatch("UCFG_OLE", "1")
+#	else
+#		pragma detect_mismatch("UCFG_OLE", "0")
+#	endif
+#endif // UCFG_DETECT_MISMATCH
 
 
 
