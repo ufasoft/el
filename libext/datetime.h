@@ -7,18 +7,19 @@ struct timeval;
 namespace Ext {
 using namespace std::chrono;
 using std::ratio;
+using std::ratio_multiply;
 
 enum Microseconds {
 };
 
-extern const Int64 Unix_FileTime_Offset, Unix_DateTime_Offset;
+extern const int64_t Unix_FileTime_Offset, Unix_DateTime_Offset;
 
 
 class DateTimeBase {
 	typedef DateTimeBase class_type;
 public:
-	Int64 get_Ticks() const { return m_ticks; }
-	DEFPROP_GET_CONST(Int64, Ticks);
+	int64_t get_Ticks() const { return m_ticks; }
+	DEFPROP_GET_CONST(int64_t, Ticks);
 
 	void Write(BinaryWriter& wr) const {
 		wr << m_ticks;
@@ -28,42 +29,44 @@ public:
 		m_ticks = rd.ReadInt64();
 	}
 protected:
-	Int64 m_ticks;	
+	int64_t m_ticks;	
 
-	DateTimeBase(Int64 ticks = 0)
+	DateTimeBase(int64_t ticks = 0)
 		:	m_ticks(ticks)
 	{}
 
 	friend BinaryReader& AFXAPI operator>>(BinaryReader& rd, DateTimeBase& dt);
 };
 
-class TimeSpan : public DateTimeBase {
-	typedef DateTimeBase base;	
+typedef duration<int, ratio<3600 * 24>> Days;
+
+class TimeSpan : public duration<int64_t, ratio<1, 10000000>> {					//!!!R	: public DateTimeBase {
+	typedef duration<int64_t, ratio<1, 10000000>> base;
 public:
 	typedef TimeSpan class_type;
 
 #if UCFG_WCE
-	static const EXT_DATA Int64 TicksPerMillisecond;
-	static const EXT_DATA Int64 TicksPerSecond;
-	static const EXT_DATA Int64 TicksPerMinute;
-	static const EXT_DATA Int64 TicksPerHour;
-	static const EXT_DATA Int64 TicksPerDay;
+	static const EXT_DATA int64_t TicksPerMillisecond;
+	static const EXT_DATA int64_t TicksPerSecond;
+	static const EXT_DATA int64_t TicksPerMinute;
+	static const EXT_DATA int64_t TicksPerHour;
+	static const EXT_DATA int64_t TicksPerDay;
 #else
-	static const Int64 TicksPerMillisecond = 10000;
-	static const Int64 TicksPerSecond = TicksPerMillisecond * 1000;
-	static const Int64 TicksPerMinute = TicksPerSecond * 60;
-	static const Int64 TicksPerHour = TicksPerMinute * 60;
-	static const Int64 TicksPerDay = TicksPerHour * 24;
+	static const int64_t TicksPerMillisecond = 10000;
+	static const int64_t TicksPerSecond = TicksPerMillisecond * 1000;
+	static const int64_t TicksPerMinute = TicksPerSecond * 60;
+	static const int64_t TicksPerHour = TicksPerMinute * 60;
+	static const int64_t TicksPerDay = TicksPerHour * 24;
 #endif
 
 	static const EXT_DATA TimeSpan MaxValue;
 
-	explicit TimeSpan(Int64 ticks = 0)
+	explicit TimeSpan(int64_t ticks = 0)
 		:	base(ticks)
 	{}
 
 	TimeSpan(const TimeSpan& span)
-		:	base(span.Ticks)
+		:	base(span)
 	{}
 
 	TimeSpan(int days, int hours, int minutes, int seconds)
@@ -72,7 +75,7 @@ public:
 
 #if UCFG_WIN32
 	TimeSpan(const FILETIME& ft)
-		:	base((Int64&)ft)
+		:	base((int64_t&)ft)
 	{}
 #endif
 
@@ -83,27 +86,37 @@ public:
 
 #if UCFG_USE_POSIX
 	TimeSpan(const timespec& ts)
-		:	base(Int64(ts.tv_sec)*10000000+ts.tv_nsec/100)
+		:	base(int64_t(ts.tv_sec)*10000000+ts.tv_nsec/100)
 	{
 	}
 #endif
 
-	TimeSpan operator+(const TimeSpan& span) const { return TimeSpan(m_ticks + span.Ticks); }
+	void Write(BinaryWriter& wr) const {
+		wr << count();
+	}
+
+	void Read(const BinaryReader& rd) {
+		base::operator=(base(rd.ReadInt64()));
+	}
+
+	TimeSpan operator+(const TimeSpan& span) const {
+		return TimeSpan(count() + span.count());
+	}
+
+	/*
+
 	TimeSpan& operator+=(const TimeSpan& span) { m_ticks+=span.Ticks; return *this;}
 
 	TimeSpan operator-(const TimeSpan& span) const { return TimeSpan(m_ticks - span.m_ticks); }
 	TimeSpan& operator-=(const TimeSpan& span) { m_ticks-=span.Ticks; return *this;}
 
 	TimeSpan operator*(double v) const {
-		return TimeSpan(Int64(m_ticks * v));
+		return TimeSpan(int64_t(m_ticks * v));
 	}
 
 	TimeSpan operator/(double v) const {
-		return TimeSpan(Int64(m_ticks / v));
+		return TimeSpan(int64_t(m_ticks / v));
 	}
-
-	double get_TotalMilliseconds() const { return double(m_ticks)/10000; }
-	DEFPROP_GET_CONST(double, TotalMilliseconds);
 
 	double get_TotalSeconds() const { return double(m_ticks)/10000000; }
 	DEFPROP_GET_CONST(double, TotalSeconds);
@@ -114,25 +127,29 @@ public:
 	double get_TotalHours() const { return double(m_ticks)/(60LL*60*10000000); }
 	DEFPROP_GET_CONST(double, TotalHours);
 
-	int get_Days() const { return int(TotalSeconds/(3600*24)); }
+	int get_Days() const { return int(TotalSeconds / (3600 * 24)); }
 	DEFPROP_GET_CONST(int, Days);
 
-	int get_Hours() const { return int(Ticks/(3600LL*10000000)%24); }
-	DEFPROP_GET(int, Hours);
 
-	int get_Minutes() const { return int(Ticks/(60LL*10000000)%60); }
-	DEFPROP_GET(int, Minutes);
 
-	int get_Seconds() const { return int(Ticks/10000000%60); }
-	DEFPROP_GET(int, Seconds);
 
 	int get_Milliseconds() const { return int(Ticks/10000%1000); }
 	DEFPROP_GET(int, Milliseconds);
+	*/
+
+	int get_Hours() const { return duration_cast<hours>(*this % Ext::Days(1)).count(); }
+	DEFPROP_GET(int, Hours);
+
+	int get_Minutes() const { return duration_cast<minutes>(*this % hours(1)).count(); }
+	DEFPROP_GET(int, Minutes);
+
+	int get_Seconds() const { return (int)duration_cast<seconds>(*this % minutes(1)).count(); }
+	DEFPROP_GET(int, Seconds);
 
 	String ToString(int w = 0) const;
 
-	static TimeSpan AFXAPI FromMilliseconds(double value) { return TimeSpan(Int64(value * 10000)); }		//!!! behavior from .NET, where value rounds to milliseconds
-	static TimeSpan AFXAPI FromSeconds(double value)	{ return TimeSpan(Int64(value * 10000000)); }
+	static TimeSpan AFXAPI FromMilliseconds(double value) { return TimeSpan(int64_t(value * 10000)); }		//!!! behavior from .NET, where value rounds to milliseconds
+	static TimeSpan AFXAPI FromSeconds(double value)	{ return TimeSpan(int64_t(value * 10000000)); }
 	static TimeSpan AFXAPI FromMinutes(double value)	{ return FromSeconds(value * 60); }
 	static TimeSpan AFXAPI FromHours(double value)		{ return FromSeconds(value * 3600); }
 	static TimeSpan AFXAPI FromDays(double value)		{ return FromSeconds(value * 3600*24); }
@@ -140,12 +157,13 @@ public:
 	friend class DateTime;
 };
 
-inline bool AFXAPI operator==(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks == span2.Ticks; }
+/*inline bool AFXAPI operator==(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks == span2.Ticks; }
 inline bool AFXAPI operator!=(const TimeSpan& span1, const TimeSpan& span2) { return !(span1 == span2); }
 inline bool AFXAPI operator<(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks < span2.Ticks; }
 inline bool AFXAPI operator>(const TimeSpan& span1, const TimeSpan& span2) { return span2 < span1; }
 inline bool AFXAPI operator<=(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks <= span2.Ticks; }
 inline bool AFXAPI operator>=(const TimeSpan& span1, const TimeSpan& span2) { return span2 <= span1; }
+*/
 
 class DateTime;
 
@@ -164,7 +182,7 @@ class DateTime : public DateTimeBase {
 public:
 	typedef DateTime class_type;
 
-	static const Int64 s_span1600 = ((Int64)10000000*3600*24)*(365*1600+388); //!!!+day/4; //!!! between 0 C.E. to 1600 C.E. as MS calculates  
+	static const int64_t s_span1600 = ((int64_t)10000000*3600*24)*(365*1600+388); //!!!+day/4; //!!! between 0 C.E. to 1600 C.E. as MS calculates  
 
 	static const EXT_DATA DateTime MaxValue;
 
@@ -175,7 +193,7 @@ public:
 		:	base(dt.m_ticks)
 	{}
 
-	explicit DateTime(Int64 ticks)
+	explicit DateTime(int64_t ticks)
 		:	base(ticks)
 	{}
 
@@ -186,7 +204,7 @@ public:
 	}
 
 	DateTime(const FILETIME& ft)
-		:	base((Int64&)ft + FileTimeOffset)
+		:	base((int64_t&)ft + FileTimeOffset)
 	{
 	}
 
@@ -200,7 +218,7 @@ public:
 
 #endif
 
-	typedef std::chrono::duration<Int64, ratio<1, 10000000>> duration;
+	typedef std::chrono::duration<int64_t, ratio<1, 10000000>> duration;
 	typedef std::chrono::time_point<system_clock, duration> time_point;
 
 	operator time_point() const {
@@ -210,15 +228,15 @@ public:
 	void ToTimeval(timeval& tv)  const;
 	operator tm() const;
 
-	static Int64 AFXAPI SimpleUtc();
-	static DateTime AFXAPI from_time_t(Int64 epoch);
+	static int64_t AFXAPI SimpleUtc();
+	static DateTime AFXAPI from_time_t(int64_t epoch);
 	static DateTime AFXAPI FromAsctime(RCString s);
 
 	int get_Hour() const { 
 #ifdef WIN32
 		return SYSTEMTIME(*this).wHour;
 #else
-		return int(m_ticks/(Int64(10000)*1000*3600) % 24);
+		return int(m_ticks/(int64_t(10000)*1000*3600) % 24);
 #endif
 	}
 	DEFPROP_GET(int, Hour);
@@ -256,7 +274,7 @@ public:
 	explicit DateTime(const COleVariant& v);
 
 	FILETIME ToFileTime() const {
-		Int64 n = m_ticks - FileTimeOffset;
+		int64_t n = m_ticks - FileTimeOffset;
 		return (FILETIME&)n;
 	}
 
@@ -275,10 +293,10 @@ public:
 	DateTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int ms = 0);
 	DateTime(const tm& t);
 
-	DateTime operator+(const TimeSpan& span) const { return DateTime(m_ticks + span.m_ticks); }
+	DateTime operator+(const TimeSpan& span) const { return DateTime(m_ticks + span.count()); }
 	DateTime& operator+=(const TimeSpan& span) { return *this = *this + span; }
 
-	DateTime operator-(const TimeSpan& span) const { return DateTime(m_ticks - span.m_ticks); }
+	DateTime operator-(const TimeSpan& span) const { return DateTime(m_ticks - span.count()); }
 	DateTime& operator-=(const TimeSpan& span) { return *this = *this - span; }
 
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
@@ -366,7 +384,7 @@ public:
 	// Number of days in 400 years
 	static const int DaysPer400Years;
 	static const int DaysTo1601;
-	static const Int64 FileTimeOffset;
+	static const int64_t FileTimeOffset;
 #else
 	static const int DaysPerYear = 365;
 	// Number of days in 4 years
@@ -376,15 +394,15 @@ public:
 	// Number of days in 400 years
 	static const int DaysPer400Years = DaysPer100Years * 4 + 1;
 	static const int DaysTo1601 = DaysPer400Years * 4;
-	static const Int64 FileTimeOffset = DaysTo1601 * TimeSpan::TicksPerDay;
+	static const int64_t FileTimeOffset = DaysTo1601 * TimeSpan::TicksPerDay;
 #endif	
 
 private:
-	static const Int64 TimevalOffset;
-	static const Int64 OADateOffset;
+	static const int64_t TimevalOffset;
+	static const int64_t OADateOffset;
 
 //!!!R	static void PreciseSync();
-//!!!R	static DateTime PreciseCorrect(Int64 ticks);
+//!!!R	static DateTime PreciseCorrect(int64_t ticks);
 };
 
 inline bool AFXAPI operator<(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks < dt2.Ticks; }
@@ -436,17 +454,17 @@ public:
 	TimeSpan BaseUtcOffset;
 };
 
-typedef Int64 (AFXAPI *PFNSimpleUtc)();
+typedef int64_t (AFXAPI *PFNSimpleUtc)();
 
 class CPreciseTimeBase {
 public:
 	static CPreciseTimeBase *s_pCurrent;
-	Int64 m_mask;
-	volatile Int32 m_mul;
+	int64_t m_mask;
+	volatile int32_t m_mul;
 	volatile int m_shift;
 
 	virtual ~CPreciseTimeBase() {}
-	Int64 GetTime(PFNSimpleUtc pfnSimpleUtc = &DateTime::SimpleUtc);
+	int64_t GetTime(PFNSimpleUtc pfnSimpleUtc = &DateTime::SimpleUtc);
 
 	void Reset() {
 		m_period = 200000;			// 0.02 s
@@ -460,30 +478,30 @@ public:
 		ResetBounds();
 	}
 protected:
-	volatile Int32 m_mtx32Calibrate;
+	atomic_flag m_afCalibrate;
 
-	const Int64 MAX_PERIOD,
+	const int64_t MAX_PERIOD,
 				CORRECTION_PRECISION,
 				MAX_FREQ_INSTABILITY;
 
-	volatile Int64 m_stBase, m_tscBase, m_stPrev;
-	volatile Int64 m_period;
+	volatile int64_t m_stBase, m_tscBase, m_stPrev;
+	volatile int64_t m_period;
 	CPreciseTimeBase *m_pNext;
-	Int64 m_minFreq, m_maxFreq;
+	int64_t m_minFreq, m_maxFreq;
 
 	CPreciseTimeBase();
 
 	void ResetBounds() {
 		m_mul = 0;
-		m_minFreq = (std::numeric_limits<Int64>::max)();
+		m_minFreq = (std::numeric_limits<int64_t>::max)();
 		m_maxFreq = 0;
 	}
 
-	static inline Int64 MyAbs(Int64 v) {
+	static inline int64_t MyAbs(int64_t v) {
 		return v<0 ? -v : v;
 	}
 
-	static inline int BitLen(UInt64 n) {
+	static inline int BitLen(uint64_t n) {
 		int r = 0;
 		for (; n; ++r)
 			n >>= 1;
@@ -492,10 +510,10 @@ protected:
 
 	void AddToList();
 
-	bool Recalibrate(Int64 st, Int64 tsc, Int64 stPeriod, Int64 tscPeriod, bool bResetBase);
+	bool Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, int64_t tscPeriod, bool bResetBase);
 
-	virtual Int64 GetTicks() noexcept =0;
-	virtual Int64 GetFrequency(Int64 stPeriod, Int64 tscPeriod);
+	virtual int64_t GetTicks() noexcept =0;
+	virtual int64_t GetFrequency(int64_t stPeriod, int64_t tscPeriod);
 };
 
 class MeasureTime {
@@ -517,7 +535,17 @@ public:
 	}
 };
 
-Int64 AFXAPI to_time_t(const DateTime& dt);
+int64_t AFXAPI to_time_t(const DateTime& dt);
+
+struct Clock {
+	static const bool is_steady = false;
+
+	typedef TimeSpan duration;
+	typedef	DateTime time_point;
+
+	static time_point AFXAPI now() noexcept;
+};
+
 
 
 
