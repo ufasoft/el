@@ -35,45 +35,46 @@ namespace Ext {
 using namespace std;
 
 #if UCFG_WCE
-	const Int64 TimeSpan::TicksPerMillisecond = 10000;
-	const Int64 TimeSpan::TicksPerSecond = TimeSpan::TicksPerMillisecond * 1000;
-	const Int64 TimeSpan::TicksPerMinute = TimeSpan::TicksPerSecond * 60;
-	const Int64 TimeSpan::TicksPerHour = TimeSpan::TicksPerMinute * 60;
-	const Int64 TimeSpan::TicksPerDay = TimeSpan::TicksPerHour * 24;
+	const int64_t TimeSpan::TicksPerMillisecond = 10000;
+	const int64_t TimeSpan::TicksPerSecond = TimeSpan::TicksPerMillisecond * 1000;
+	const int64_t TimeSpan::TicksPerMinute = TimeSpan::TicksPerSecond * 60;
+	const int64_t TimeSpan::TicksPerHour = TimeSpan::TicksPerMinute * 60;
+	const int64_t TimeSpan::TicksPerDay = TimeSpan::TicksPerHour * 24;
 
 	const int DateTime::DaysPerYear = 365;
 	const int DateTime::DaysPer4Years = DateTime::DaysPerYear * 4 + 1;
 	const int DateTime::DaysPer100Years = DateTime::DaysPer4Years * 25 - 1;
 	const int DateTime::DaysPer400Years = DateTime::DaysPer100Years * 4 + 1;
 	const int DateTime::DaysTo1601 = DateTime::DaysPer400Years * 4;
-	const Int64 DateTime::FileTimeOffset = DateTime::DaysTo1601 * TimeSpan::TicksPerDay;
+	const int64_t DateTime::FileTimeOffset = DateTime::DaysTo1601 * TimeSpan::TicksPerDay;
 #endif
 
-const TimeSpan TimeSpan::MaxValue(numeric_limits<Int64>::max());
-const DateTime DateTime::MaxValue(numeric_limits<Int64>::max());
+const TimeSpan TimeSpan::MaxValue(numeric_limits<int64_t>::max());
+const DateTime DateTime::MaxValue(numeric_limits<int64_t>::max());
 
-const Int64 DateTime::TimevalOffset(621355968000000000LL);
+const int64_t DateTime::TimevalOffset(621355968000000000LL);
 
 
-const Int64 Unix_FileTime_Offset = 116444736000000000LL,
+const int64_t Unix_FileTime_Offset = 116444736000000000LL,
                Unix_DateTime_Offset = DateTime::FileTimeOffset+Unix_FileTime_Offset;
 
 #if !UCFG_WDM
 
-const Int64 DateTime::OADateOffset = DateTime(1899, 12, 30).Ticks;
+const int64_t DateTime::OADateOffset = DateTime(1899, 12, 30).Ticks;
 
 TimeSpan::TimeSpan(const timeval& tv)
-	:	DateTimeBase(tv.tv_sec*10000000+tv.tv_usec*10)
+	:	base(tv.tv_sec*10000000+tv.tv_usec*10)
 {
 }
 
 void TimeSpan::ToTimeval(timeval& tv) const {
-	tv.tv_sec = long(m_ticks/10000000);
-	tv.tv_usec = long((m_ticks % 10000000)/10);
+	int64_t cnt = count();
+	tv.tv_sec = long(cnt /10000000);
+	tv.tv_usec = long((cnt % 10000000)/10);
 }
 
 DateTime::DateTime(const timeval& tv) { 
-	m_ticks = Int64(tv.tv_sec)*10000000 + Unix_DateTime_Offset+tv.tv_usec*10;
+	m_ticks = int64_t(tv.tv_sec)*10000000 + Unix_DateTime_Offset+tv.tv_usec*10;
 }
 
 DateTime::DateTime(int year, int month, int day, int hour, int minute, int second, int ms) {
@@ -98,16 +99,17 @@ DateTime::DateTime(const SYSTEMTIME& st) {
 #endif
 }
 
-DateTime DateTime::from_time_t(Int64 epoch) {
+DateTime DateTime::from_time_t(int64_t epoch) {
 	return DateTime(epoch*10000000 + Unix_DateTime_Offset);
 }
 
 String TimeSpan::ToString(int w) const {
 	ostringstream os;
-	if (Days)
-		os << Days << ".";
+	Days days = duration_cast<Days>(*this);
+	if (days.count())
+		os << days.count() << ".";
 	os << setw(2) << setfill('0') << Hours << ":" << setw(2) << setfill('0') << Minutes << ":" << setw(2) << setfill('0') << Seconds;
-	int fraction = int(Ticks % 10000000L);
+	int fraction = int(count() % 10000000L);
 	if (w || fraction) {
 		int full = 10000000;
 		os << ".";
@@ -167,7 +169,7 @@ DateTime AFXAPI DateTime::ParseExact(RCString s, RCString format) {
 	cmatch m;
 	if (format == nullptr) {
 		if (regex_match(s.c_str(), m, *s_reDateTimeFormat_8601)) {
-			DateTime dt(Convert::ToInt32(m[1]), Convert::ToInt32(m[2]), Convert::ToInt32(m[3]), Convert::ToInt32(m[4]), Convert::ToInt32(m[5]), Convert::ToInt32(m[6]));
+			DateTime dt(stoi(string(m[1])), stoi(string(m[2])), stoi(string(m[3])), stoi(string(m[4])), stoi(string(m[5])), stoi(string(m[6])));
 			if (m[7].matched) {
 				String si(m[7]);
 				int n = atoi(si);
@@ -179,9 +181,9 @@ DateTime AFXAPI DateTime::ParseExact(RCString s, RCString format) {
 		}
 	} else if (format == "u") {
 		if (regex_match(s.c_str(), m, *s_reDateTimeFormat_u))
-			return DateTime(Convert::ToInt32(m[1]), Convert::ToInt32(m[2]), Convert::ToInt32(m[3]), Convert::ToInt32(m[4]), Convert::ToInt32(m[5]), Convert::ToInt32(m[6]));
+			return DateTime(stoi(string(m[1])), stoi(string(m[2])), stoi(string(m[3])), stoi(string(m[4])), stoi(string(m[5])), stoi(string(m[6])));
 	}
-	Throw(E_INVALIDARG);
+	Throw(errc::invalid_argument);
 }
 #	endif // UCFG_USE_REGEX
 
@@ -202,7 +204,7 @@ DateTime DateTime::FromAsctime(RCString s) {
 #endif
 }
 
-Int64 DateTime::SimpleUtc() {
+int64_t DateTime::SimpleUtc() {
 #if UCFG_USE_POSIX
 	timespec ts;
 	CCheck(::clock_gettime(CLOCK_REALTIME, &ts));
@@ -226,7 +228,7 @@ Int64 DateTime::SimpleUtc() {
 	::GetSystemTimeAsFileTime(&ft);
 #	endif
 
-	return (Int64&)ft + s_span1600;
+	return (int64_t&)ft + s_span1600;
 #endif
 }
 
@@ -237,6 +239,7 @@ CPreciseTimeBase::CPreciseTimeBase()
 	,	CORRECTION_PRECISION(500000)	// .05 s
 	,	MAX_FREQ_INSTABILITY(10)		// 10 %
 {
+	m_afCalibrate.clear();
 	Reset();
 }
 
@@ -247,24 +250,25 @@ void CPreciseTimeBase::AddToList() {
 	*pPlace = this;
 }
 
-Int64 CPreciseTimeBase::GetFrequency(Int64 stPeriod, Int64 tscPeriod) {
-	return tscPeriod > numeric_limits<Int64>::max()/10000000 || 0==stPeriod ? 0 : tscPeriod*10000000/stPeriod;
+int64_t CPreciseTimeBase::GetFrequency(int64_t stPeriod, int64_t tscPeriod) {
+	return tscPeriod > numeric_limits<int64_t>::max()/10000000 || 0==stPeriod ? 0 : tscPeriod*10000000/stPeriod;
 }
 
-bool CPreciseTimeBase::Recalibrate(Int64 st, Int64 tsc, Int64 stPeriod, Int64 tscPeriod, bool bResetBase) {
-
-	InterlockedSemaphore lck(m_mtx32Calibrate);
-	if (m_period && lck.TryLock()) {		// Inited
+bool CPreciseTimeBase::Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, int64_t tscPeriod, bool bResetBase) {
+	if (!m_period)
+		return false;
+	atomic_flag_lock lk(m_afCalibrate, try_to_lock);
+	if (lk) {													// Inited
 		if (bResetBase)
 			ResetBounds();
 
-		Int64 cntPeriod = tscPeriod & m_mask;
-		Int64 freq;
+		int64_t cntPeriod = tscPeriod & m_mask;
+		int64_t freq;
 		if (stPeriod > 0 && cntPeriod > 0 && (freq = GetFrequency(stPeriod, cntPeriod))) {
-			Int64 prevMul = Int64(m_mul) << (32-m_shift);
+			int64_t prevMul = int64_t(m_mul) << (32-m_shift);
 			
-			int shift = std::min(int(m_shift), BitLen((UInt64)freq));
-			Int32 mul = Int32((10000000LL << shift)/freq);
+			int shift = std::min(int(m_shift), BitLen((uint64_t)freq));
+			int32_t mul = int32_t((10000000LL << shift)/freq);
 			m_shift = shift;
 			m_mul = mul;
 
@@ -282,7 +286,7 @@ bool CPreciseTimeBase::Recalibrate(Int64 st, Int64 tsc, Int64 stPeriod, Int64 ts
 			}
 
 			if (bResetBase)
-				m_period = std::min(Int64(m_period)*2, MAX_PERIOD);
+				m_period = std::min(int64_t(m_period)*2, MAX_PERIOD);
 
 		} else if (stPeriod < 0 || cntPeriod < 0) {
 			TRC(5, "Some period is Negative");
@@ -297,9 +301,9 @@ bool CPreciseTimeBase::Recalibrate(Int64 st, Int64 tsc, Int64 stPeriod, Int64 ts
 }
 
 #if UCFG_USE_DECLSPEC_THREAD
-__declspec(thread) int s_cntDisablePreciseTime;
+THREAD_LOCAL int s_cntDisablePreciseTime;
 #else
-static volatile Int32 s_cntDisablePreciseTime;
+static atomic<int> s_cntDisablePreciseTime;
 #endif
 
 class CDisablePreciseTimeKeeper {
@@ -308,7 +312,7 @@ public:
 #if UCFG_USE_DECLSPEC_THREAD
 		++s_cntDisablePreciseTime;
 #else
-		Interlocked::Increment(s_cntDisablePreciseTime);
+		++s_cntDisablePreciseTime;
 #endif
 	}
 
@@ -316,27 +320,27 @@ public:
 #if UCFG_USE_DECLSPEC_THREAD
 		--s_cntDisablePreciseTime;
 #else
-		Interlocked::Decrement(s_cntDisablePreciseTime);
+		--s_cntDisablePreciseTime;
 #endif
 	}
 };
 
 
-Int64 CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
-	Int64 tsc = GetTicks(),
+int64_t CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
+	int64_t tsc = GetTicks(),
 			st = pfnSimpleUtc();
 #if UCFG_TRC
-	Int64 tscAfter = GetTicks();
+	int64_t tscAfter = GetTicks();
 #endif
 
 	CDisablePreciseTimeKeeper disablePreciseTimeKeeper;
 
-	Int64 r = st;
+	int64_t r = st;
 	bool bSwitch = false;
 	if (m_stBase) {
-		Int64 stPeriod = st-m_stBase,
+		int64_t stPeriod = st-m_stBase,
 			tscPeriod = tsc-m_tscBase;
-		Int64 ct = m_stBase+(((tscPeriod & m_mask)*m_mul)>>m_shift);
+		int64_t ct = m_stBase+(((tscPeriod & m_mask)*m_mul)>>m_shift);
 		bool bResetBase = MyAbs(stPeriod) > m_period;
 		if (!bResetBase && MyAbs(st-ct) < CORRECTION_PRECISION)
 			r = ct;		
@@ -352,7 +356,7 @@ Int64 CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
 		if (s_pCurrent)
 			r = s_pCurrent->GetTime(pfnSimpleUtc);
 	} else if (r < m_stPrev) {
-		Int64 stPrev = m_stPrev;
+		int64_t stPrev = m_stPrev;
 		if (stPrev-r > 10*10000000) {
 			TRC(6, "Time Anomaly: " << r-m_stPrev << "  stPrev = " << hex << stPrev << " r=" << hex << r);
 
@@ -374,7 +378,7 @@ public:
 			AddToList();
 	}
 
-	Int64 GetTicks() noexcept override {
+	int64_t GetTicks() noexcept override {
 		return __rdtsc();
 	}
 } s_tscPreciseTime;
@@ -384,7 +388,7 @@ __declspec(dllexport) void __cdecl Debug_ResetTsc() {
 	return s_tscPreciseTime.Reset();
 }
 
-__declspec(dllexport) Int32 __cdecl Debug_GetTscMul() {
+__declspec(dllexport) int32_t __cdecl Debug_GetTscMul() {
 	return s_tscPreciseTime.m_mul;
 }
 #endif // _DEBUG && defined(_MSC_VER)
@@ -408,12 +412,12 @@ public:
 			AddToList();
 	}
 
-	Int64 GetTicks() noexcept override {
+	int64_t GetTicks() noexcept override {
 		return System.PerformanceCounter;
 	}
 
-	Int64 GetFrequency(Int64 stPeriod, Int64 tscPeriod) override {
-		Int64 freq = System.PerformanceFrequency;
+	int64_t GetFrequency(int64_t stPeriod, int64_t tscPeriod) override {
+		int64_t freq = System.PerformanceFrequency;
 		TRC(6, "Declared Freq: " << freq << " Hz");
 //!!!?not accurate		return freq;
 		return base::GetFrequency(stPeriod, tscPeriod);
@@ -424,7 +428,7 @@ public:
 #endif // _WIN32
 
 /*!!!R
-inline DateTime DateTime::PreciseCorrect(Int64 ticks) {
+inline DateTime DateTime::PreciseCorrect(int64_t ticks) {
 	if (CPreciseTimeBase *preciser = CPreciseTimeBase::s_pCurrent)		// get pointer to avoid Race Condition
 		return preciser->GetTime(ticks);
 	return ticks;
@@ -447,7 +451,7 @@ LocalDateTime DateTime::ToLocalTime() {
 	tm g = *gmtime(&tv.tv_sec);
 	g.tm_isdst = 0;
 	time_t t2 = mktime(&g);
-	return LocalDateTime(DateTime(Ticks+Int64(tv.tv_sec-t2)*10000000));
+	return LocalDateTime(DateTime(Ticks+int64_t(tv.tv_sec-t2)*10000000));
 #elif UCFG_WDM
 	LARGE_INTEGER st, lt;
 	st.QuadPart = Ticks-FileTimeOffset;
@@ -480,7 +484,7 @@ DATE DateTime::ToOADate() const {
 }
 
 DateTime DateTime::FromOADate(DATE date) {
-	return DateTime(OADateOffset + Int64(date*TimeSpan::TicksPerDay));
+	return DateTime(OADateOffset + int64_t(date*TimeSpan::TicksPerDay));
 }
 
 DateTime DateTime::Parse(RCString s, DWORD dwFlags, LCID lcid) {
@@ -508,9 +512,9 @@ DateTime::DateTime(const COleVariant& v) {
 String DateTime::ToString() const
 {
   FILETIME ft;
-  (Int64&)ft = m_ticks-s_span1600;
-	if ((Int64&)ft < 0)
-		(Int64&)ft = 0; //!!!
+  (int64_t&)ft = m_ticks-s_span1600;
+	if ((int64_t&)ft < 0)
+		(int64_t&)ft = 0; //!!!
 	ATL::COleDateTime odt(ft);
   return odt.Format();
 }
@@ -521,15 +525,15 @@ String DateTime::ToString() const
 static timeval FileTimeToTimeval(const FILETIME & ft)
 {
   timeval tv;
-  tv.tv_sec = long(((Int64&)ft - 116444736000000000) / 10000000);
-  tv.tv_usec = long(((Int64&)ft % 10000000)/10);
+  tv.tv_sec = long(((int64_t&)ft - 116444736000000000) / 10000000);
+  tv.tv_usec = long(((int64_t&)ft % 10000000)/10);
   return tv;
 }
 */
 
 #if defined(_WIN32) && defined(_M_IX86)
 
-__declspec(naked) int __fastcall UnsafeDiv64by32(Int64 n, int d, int& r) {
+__declspec(naked) int __fastcall UnsafeDiv64by32(int64_t n, int d, int& r) {
 	__asm {
 		push	EDX
 		mov		EAX, [ESP+8]
@@ -574,7 +578,7 @@ DateTime::operator timespec() const {
 #	if UCFG_USE_PTHREADS
 
 DateTime::operator timespec() const {
-	Int64 t = Ticks-TimevalOffset;
+	int64_t t = Ticks-TimevalOffset;
 	timespec tv;
 	tv.tv_sec = long(t/10000000);
 	tv.tv_nsec = long((t % 10000000)*100);
@@ -584,7 +588,7 @@ DateTime::operator timespec() const {
 
 #	if UCFG_WIN32 || UCFG_USE_PTHREADS
 void DateTime::ToTimeval(timeval& tv) const {
-	Int64 t = Ticks-TimevalOffset;
+	int64_t t = Ticks-TimevalOffset;
 	tv.tv_sec = long(t/10000000);
 	tv.tv_usec = long((t % 10000000)/10);
 }
@@ -609,7 +613,7 @@ DateTime LocalDateTime::ToUniversalTime() {
 	tm g = *gmtime(&tv.tv_sec);
 	g.tm_isdst = 0;
 	time_t t2 = mktime(&g);
-	return DateTime(Ticks-Int64(tv.tv_sec-t2)*10000000);
+	return DateTime(Ticks-int64_t(tv.tv_sec-t2)*10000000);
 #elif UCFG_WDM
 	LARGE_INTEGER st, lt;
 	lt.QuadPart = Ticks-FileTimeOffset;
@@ -628,20 +632,25 @@ DateTime LocalDateTime::ToUniversalTime() {
 TimeZoneInfo TimeZoneInfo::Local() {
 	TimeZoneInfo tzi;
 #if UCFG_USE_POSIX
-	tzi.BaseUtcOffset = TimeSpan(Int64(timezone)*10000000);
+	tzi.BaseUtcOffset = TimeSpan(int64_t(timezone)*10000000);
 #else
 	TIME_ZONE_INFORMATION info;
 	Win32Check(TIME_ZONE_ID_INVALID != ::GetTimeZoneInformation(&info));
-	tzi.BaseUtcOffset = TimeSpan(-Int64(info.Bias) * 60*10000000);
+	tzi.BaseUtcOffset = TimeSpan(-int64_t(info.Bias) * 60*10000000);
 #endif
 	return tzi;
 }
 
 #endif // !UCFG_WDM
 
-Int64 AFXAPI to_time_t(const DateTime& dt) {
+int64_t AFXAPI to_time_t(const DateTime& dt) {
 	return (dt.Ticks - Unix_DateTime_Offset) / 10000000;
 }
+
+time_point AFXAPI Clock::now() noexcept {
+	return DateTime::UtcNow();
+}
+
 
 } // Ext::
 
