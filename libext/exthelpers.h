@@ -30,8 +30,8 @@ namespace Ext {
 
 class NonInterlockedPolicy {
 public:
-	template <class T> static T Increment(T& v) { return v = v + 1; }
-	template <class T> static T Decrement(T& v) { return v = v - 1; }
+	template <class T> static T Increment(T& v) { int r = v + 1; v = r; return r; }
+	template <class T> static T Decrement(T& v) { int r = v - 1; v = r; return r; }
 };
 
 class InterlockedPolicy {
