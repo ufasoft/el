@@ -22,7 +22,11 @@
 
 #include <el/inc/inc_configs.h>
 
-#include <manufacturer.h>
+#ifndef UCFG_MANUFACTURER
+#	define UCFG_MANUFACTURER "Ufasoft"
+#endif
+
+//!!!R #include <manufacturer.h>
 
 
 
