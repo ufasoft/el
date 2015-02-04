@@ -129,7 +129,7 @@ NTSTATUS SafeHandle::InitFromHandle(HANDLE h, ACCESS_MASK DesiredAccess, POBJECT
 
 void SafeHandle::ReleaseHandle(HANDLE h) const {
 #if UCFG_USE_POSIX
-	CCheck(::close((int)(LONG_PTR)h));
+	CCheck(::close((int)(intptr_t)h));
 #elif UCFG_WIN32
 	Win32Check(::CloseHandle(h));
 #else
