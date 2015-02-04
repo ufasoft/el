@@ -4,19 +4,32 @@
 #include EXT_HEADER_SYSTEM_ERROR
 
 namespace Ext {
+	using std::size;
 	using std::vector;
 	using std::map;
+	using std::errc;
 	using std::error_code;
 	using std::error_condition;
 	using std::system_error;
 	using std::error_category;
-
+	using std::observer_ptr;
+	using std::atomic;
+	using std::try_to_lock_t;
 
 class CCriticalSection;
 class Exception;
 
 typedef const std::exception& RCExc;
 
+
+inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v) { ThrowImp(make_error_code(v)); }
+inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v, const char *funname, int nLine) { ThrowImp(make_error_code(v), funname, nLine); }
+
+#if !UCFG_DEFINE_THROW
+	DECLSPEC_NORETURN __forceinline void AFXAPI Throw(errc v) { ThrowImp(v); }
+	DECLSPEC_NORETURN __forceinline void AFXAPI Throw(errc v, const char *funname, int nLine) { ThrowImp(v, funname, nLine); }
+#endif
+	
 class CPrintable {
 public:
 	virtual ~CPrintable() {}
@@ -30,7 +43,7 @@ public:
 	EXT_DATA static bool Use;
 
 	int AddrSize;
-	vector<UInt64> Frames;
+	vector<uint64_t> Frames;
 
 	CStackTrace()
 		:	AddrSize(sizeof(void*))
@@ -59,6 +72,7 @@ public:
 	CDataMap Data;
 
 	explicit Exception(HRESULT hr = 0, RCString message = "");
+	explicit Exception(const error_code& ec, RCString message = "");
 	~Exception() noexcept {}		//!!! necessary for GCC 4.6
 	String ToString() const;
 
@@ -115,7 +129,7 @@ public:
 #endif
 	}
 
-	operator const String::Char *() const {
+	operator const String::value_type *() const {
 #if !UCFG_WDM
 		String *ps = Exception::t_LastStringArg;
 		if (!ps)
@@ -237,7 +251,8 @@ public:
 
 
 intptr_t __stdcall AfxApiNotFound();
-#define DEF_DELAYLOAD_THROW static FARPROC WINAPI DliFailedHook(unsigned dliNotify, PDelayLoadInfo  pdli) { return &AfxApiNotFound; } static struct InitDliFailureHook {  InitDliFailureHook() { __pfnDliFailureHook2 = &DliFailedHook; } } s_initDliFailedHook;
+#define DEF_DELAYLOAD_THROW static FARPROC WINAPI DliFailedHook(unsigned dliNotify, PDelayLoadInfo  pdli) { return &AfxApiNotFound; } \
+							static struct InitDliFailureHook {  InitDliFailureHook() { __pfnDliFailureHook2 = &DliFailedHook; } } s_initDliFailedHook;
 
 extern "C" AFX_API void _cdecl AfxTestEHsStub(void *prevFrame);
 
@@ -316,7 +331,7 @@ public:
 
 	~ResourceWrapper() {
 		if (Valid()) {
-			if (!std::uncaught_exception())
+			if (!InException)
 				traits_type::ResourceRelease(m_h);
 			else {
 				try {
@@ -365,7 +380,8 @@ public:
 			m_h = traits_type::Retain(res.m_h);
 		return *this;
 	}
-
+private:
+	CInException InException;
 };
 
 
