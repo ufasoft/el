@@ -917,7 +917,11 @@ typedef WCHAR *BSTR;
 #	endif
 
 namespace std {
+#ifdef _LIBCPP_TYPE_VIS		// for libc++
+	class _LIBCPP_TYPE_VIS error_code;
+#else
 	class error_code;
+#endif
 }
 
 namespace Ext {
