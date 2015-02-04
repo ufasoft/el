@@ -758,7 +758,11 @@ inline size_t hash_value(const Ext::ConstBuf& mb) {
 }
 
 #ifndef _GLIBCXX_USE_NOEXCEPT		//!!!?
-#	define _GLIBCXX_USE_NOEXCEPT
+#	ifdef _LIBCPP_VERSIONS
+#		define _GLIBCXX_USE_NOEXCEPT noexcept
+#	else
+#		define _GLIBCXX_USE_NOEXCEPT
+#	endif
 #endif
 
 //!!! #if UCFG_WDM
