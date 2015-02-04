@@ -612,7 +612,7 @@ inline int64_t abs(const int64_t& v) {
 #	endif
 #endif
 
-#if UCFG_MSC_VERSION <= 1700
+#if UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1700
 namespace std {
 template <> struct is_scalar<std::nullptr_t> { //!!! bug in VC
 	typedef true_type type;
