@@ -492,9 +492,9 @@ public:
 
 	virtual ~Encoding() {
 #if UCFG_USE_POSIX
-		if ((LONG_PTR)m_iconvTo != -1)
+		if ((intptr_t)m_iconvTo != -1)
 			CCheck(::iconv_close(m_iconvTo));
-		if ((LONG_PTR)m_iconvFrom != -1)
+		if ((intptr_t)m_iconvFrom != -1)
 			CCheck(::iconv_close(m_iconvFrom));
 #endif
 	}
