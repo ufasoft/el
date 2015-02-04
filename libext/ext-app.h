@@ -3,13 +3,7 @@
 namespace Ext {
 
 class CCommandLineInfo : public Object { //!!!
-	void ParseParamFlag(RCString pszParam);
-	void ParseParamNotFlag(RCString pszParam);
-	void ParseLast(bool bLast);
 public:
-	bool m_bShowSplash;
-	bool m_bRunEmbedded;
-	bool m_bRunAutomated;
 	enum { FileNew, FileOpen, FilePrint, FilePrintTo, FileDDE, AppRegister,
 		AppUnregister, FileNothing = -1 } m_nShellCommand;
 
@@ -21,9 +15,17 @@ public:
 	String m_strDriverName;
 	String m_strPortName;
 
+	bool m_bShowSplash;
+	bool m_bRunEmbedded;
+	bool m_bRunAutomated;
+
 	CCommandLineInfo();
 	virtual ~CCommandLineInfo() {}
 	virtual void ParseParam(RCString pszParam, bool bFlag, bool bLast);
+private:
+	void ParseParamFlag(RCString pszParam);
+	void ParseParamNotFlag(RCString pszParam);
+	void ParseLast(bool bLast);
 };
 
 #if UCFG_ARGV_UNICODE
@@ -43,7 +45,7 @@ public:
 
 	vector<String> m_argv;
 	int Argc;
-	CPointer<argv_char_t *> Argv;
+	observer_ptr<argv_char_t *> Argv;
 	vector<argv_char_t*> m_argvp;
 
 	bool m_bPrintLogo;
@@ -108,7 +110,7 @@ public:
 protected:
 	void ProcessArgv(int argc, argv_char_t *argv[]);
 #if !UCFG_ARGV_UNICODE
-	void ProcessArgv(int argc, String::Char *argv[]);
+	void ProcessArgv(int argc, String::value_type *argv[]);
 #endif
 
 	String m_internalName;
@@ -173,7 +175,7 @@ public:
 	String m_strSectionName,
 		m_strEntryFormat;
 	String m_strOriginal;      // original menu item contents
-	std::vector<String> m_arrNames;
+	std::vector<path> m_arrNames;
 
 	CRecentFileList(UINT nStart, LPCTSTR lpszSection, LPCTSTR lpszEntryFormat, int nSize, int nMaxDispLen = AFX_ABBREV_FILENAME_LEN);
 	virtual ~CRecentFileList() {}
@@ -181,7 +183,7 @@ public:
 	virtual void UpdateMenu(CCmdUI *pCmdUI);
 	virtual void ReadList();    // reads from registry or ini file
 	virtual void WriteList();   // writes to registry or ini file
-	virtual void Add(LPCTSTR pathName);
+	virtual void Add(const path& p);
 	virtual void Remove(int nIndex);
 };
 
@@ -233,7 +235,7 @@ public:
 	virtual void AddToRecentFileList(RCString pathName);  // add to MRU
 #	endif
 #	if UCFG_WIN32_FULL
-	virtual CDocument* OpenDocumentFile(RCString lpszFileName);
+	virtual CDocument* OpenDocumentFile(const path& p);
 #	endif
 	virtual bool Register();
 	virtual bool Unregister();
