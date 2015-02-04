@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_STDSTL
@@ -27,6 +20,7 @@
 
 #define EXT_HEADER_CONDITION_VARIABLE EXT_HEADER(condition_variable)
 #define EXT_HEADER_FUTURE EXT_HEADER(future)
+#define EXT_HEADER_ATOMIC EXT_HEADER(atomic)
 
 #if UCFG_STD_SHARED_MUTEX
 #	define EXT_HEADER_SHARED_MUTEX EXT_HEADER(shared_mutex)
@@ -106,6 +100,12 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 #	define noexcept throw()
 #endif
 
+#ifdef _MSC_VER
+#	define EXT_FAST_NOEXCEPT				//	noexcept prevents inline expansion in VC
+#else
+#	define EXT_FAST_NOEXCEPT	noexcept
+#endif
+
 extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 
 //!!!R #ifndef _CRTBLD
@@ -121,6 +121,8 @@ extern "C" void __cdecl free(void *p);
 #endif
 
 namespace Ext {
+
+
 AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, int nLine);
 }
 
@@ -241,7 +243,22 @@ AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, i
 
 #endif //  UCFG_STL
 
+namespace Ext {
+	class noncopyable {
+	protected:
+		noncopyable() {}
+	private:
+		noncopyable(const noncopyable&);
+		noncopyable& operator=(const noncopyable&);
+	};
+}
 
+#include EXT_HEADER_ATOMIC
+
+namespace Ext {
+	using std::atomic;
+	using std::atomic_flag;
+}
 
 #include "exthelpers.h"		// uses std::swap() from <utility>
 
@@ -318,6 +335,21 @@ typename enable_if<Ext::is_movable<T>::value, Ext::rv<T>&>::type move(T& x) {
 #if !UCFG_MINISTL
 #	include "ext-meta.h"
 #endif
+
+namespace Ext {
+class CInException : noncopyable {
+public:
+	CInException() noexcept
+		:	m_nUncauight(std::uncaught_exceptions()) {
+	}
+
+	EXPLICIT_OPERATOR_BOOL() const noexcept {
+		return std::uncaught_exceptions() > m_nUncauight ? EXT_CONVERTIBLE_TO_TRUE : 0;
+	}
+private:
+	int m_nUncauight;
+};
+}
 
 #if UCFG_FRAMEWORK && !defined(_CRTBLD) //!!! || (UCFG_CRT=='U')
 #	include "ext-safehandle.h"
@@ -418,12 +450,26 @@ public:
 
 class AlignedMem {
 public:
-	AlignedMem(size_t size, size_t align)
-		:	m_p(AlignedMalloc(size, align))
-	{}
+	AlignedMem(size_t size = 0, size_t align = 0)
+		:	m_p(0)
+	{
+		if (size)
+			Alloc(size, align);
+	}
 	
 	~AlignedMem() {
+		Free();
+	}
+
+	void Alloc(size_t size, size_t align) {
+		if (m_p)
+			Throw(E_FAIL);
+		m_p = AlignedMalloc(size, align);
+	}
+
+	void Free() {
 		AlignedFree(m_p);
+		m_p = 0;
 	}
 
 	void* get() { return m_p; }
@@ -1268,8 +1314,6 @@ inline void * __cdecl operator new[](size_t size, int id, const char *file, int 
 #		pragma detect_mismatch("UCFG_OLE", "0")
 #	endif
 #endif // UCFG_DETECT_MISMATCH
-
-
 
 #if UCFG_STL && !UCFG_STDSTL && !defined(_CRTBLD) && UCFG_FRAMEWORK && _HAS_EXCEPTIONS
 #	include EXT_HEADER_FUTURE			// uses AutoResetEvent
