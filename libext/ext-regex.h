@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 namespace Ext {
@@ -49,7 +41,7 @@ namespace std {
 
 template<> class sub_match<Ext::String::const_iterator> : public std::pair<Ext::String::const_iterator, Ext::String::const_iterator> {
 public:
-	typedef Ext::String::Char value_type;
+	typedef Ext::String::value_type value_type;
 	typedef Ext::String::difference_type difference_type;
 	typedef Ext::String::const_iterator iterator;
 	typedef Ext::String string_type;
@@ -66,8 +58,8 @@ public:
 
 	operator string_type() const { return str(); }
 
-	int compare(const value_type *p) const { return str().Compare(p); }
-	int compare(const string_type& x) const { return str().Compare(x); }
+	int compare(const value_type *p) const { return str().compare(p); }
+	int compare(const string_type& x) const { return str().compare(x); }
 	int compare(const sub_match& x) const { return compare(x.str()); }
 
 	bool operator==(const sub_match& sm) const { return !compare(sm); }
@@ -87,7 +79,7 @@ template<> class match_results<Ext::String::const_iterator> : protected vector<S
 public:
 	typedef Ssub_match value_type;
 	typedef const value_type& const_reference;
-	typedef Ext::String::Char char_type;
+	typedef Ext::String::value_type char_type;
 	typedef Ext::String string_type;
 
 	using base::allocator_type;
