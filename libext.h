@@ -6,8 +6,6 @@
 #	define memmove t_memmove
 #endif
 
-#include <manufacturer.h>
-
 #ifdef _MSC_VER
 #	include "vc/vc-warnings.h"
 #elif defined(__clang__)
