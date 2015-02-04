@@ -61,6 +61,10 @@ namespace std {
 #	define override
 #endif
 
+#if !UCFG_CPP11_CONSTEXPR
+#	define constexpr
+#endif
+
 #if	UCFG_CPP11_THREAD_LOCAL
 #	define THREAD_LOCAL thread_local
 #else
@@ -79,6 +83,17 @@ namespace std {
 #endif
 
 namespace std {
+
+
+#ifndef _CONVERTIBLE_TO_TRUE
+#	define _CONVERTIBLE_TO_TRUE	(&std:: _Bool_struct::_Member)
+
+	struct _Bool_struct {	// define member just for its address
+		int _Member;
+	};
+
+	typedef int _Bool_struct::* _Bool_type;
+#endif /* _CONVERTIBLE_TO_TRUE */
 
 #if !UCFG_CPP11_BEGIN
 
@@ -112,8 +127,25 @@ inline T *end(T (&ar)[size]) {
 	return ar+size;
 }
 
+#endif // !UCFG_CPP11_BEGIN
 
-#endif // UCFG_CPP11_BEGIN
+#if !UCFG_STD_SIZE
+
+template <class C>
+inline typename C::size_type size(const C& c) {
+	return c.size();
+}
+
+template <class T, size_t sz>
+char(*EXT__countof_helper(UNALIGNED T(&ar)[sz]))[sz];		// constexpr emulation
+
+
+template <class T, size_t sz>
+constexpr inline size_t size(T (&ar)[sz]) {
+	return sz;
+}
+
+#endif // !UCFG_STD_SIZE
 
 #if !UCFG_HAVE_STATIC_ASSERT
 #	ifndef NDEBUG
@@ -195,6 +227,55 @@ inline T exchange(T& obj, U EXT_REF new_val) {
 
 
 #endif // !UCFG_STD_EXCHANGE
+
+#if !UCFG_STD_UNCAUGHT_EXCEPTIONS
+inline int __cdecl uncaught_exceptions() noexcept {
+	return API_uncaught_exceptions();
+}
+#endif // !UCFG_STD_UNCAUGHT_EXCEPTIONS
+
+#if !UCFG_STD_OBSERVER_PTR
+
+template <class T>
+class observer_ptr {
+public:
+	typedef T element_type;
+	typedef T *pointer;
+	typedef T &reference;
+
+	observer_ptr() noexcept
+		: m_p(0) {
+	}
+
+	observer_ptr(nullptr_t) noexcept
+		: m_p(0) {
+	}
+
+	observer_ptr(const observer_ptr& p) noexcept
+		: m_p(p.m_p) {
+	}
+
+	explicit observer_ptr(T *p) noexcept
+		: m_p(p) {
+	}
+
+	T *get() const noexcept { return m_p; }
+
+	EXT_OPERATOR_BOOL() const noexcept { return m_p ? _CONVERTIBLE_TO_TRUE : 0; }
+
+	T *operator->() const noexcept { return get(); }
+	T& operator*() const noexcept { return *m_p; }
+	operator pointer() const noexcept { return m_p; }
+	bool operator==(T *p) const noexcept { return m_p == p; }
+	bool operator<(T *p) const noexcept { return m_p < p; }
+	pointer release() noexcept { return exchange(m_p, nullptr); }
+	void reset(pointer p) { m_p = p; }										//!!!TODO  = nullptr
+private:
+	T *m_p;
+};
+
+#endif // !UCFG_STD_OBSERVER_PTR
+
 
 
 } // std::
