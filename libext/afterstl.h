@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #include EXT_HEADER(list)
@@ -81,37 +74,6 @@ Ostream(streambuf *sb)
 
 #if !defined(_MSC_VER) || _MSC_VER > 1400 
 
-/*!!!R
-template <class T>
-class AutoPtr : public std::auto_ptr<T> {
-	typedef std::auto_ptr<T> base;
-public:
-	AutoPtr()  // only this non-explicit constructor different from auto_ptr
-		:	base()
-	{}
-
-	AutoPtr(const AutoPtr& ap) //!!!
-		:	base((AutoPtr&)ap)
-	{
-	}
-
-	AutoPtr(T *p)
-		:	base(p)
-	{}
-
-	AutoPtr& operator=(const AutoPtr& ap) {
-		base::operator=((AutoPtr&)ap);
-		return _self;
-	}
-
-	AutoPtr& operator=(T *p) {
-		base::reset(p);
-		return _self;
-	}
-
-private:
-	operator T*() const;		// dangerous, set<AutoPtr> is very undetectable bug
-};  */
 
 //!!!R #define AutoPtr std::unique_ptr
 /*!!!R
@@ -580,8 +542,11 @@ public:
 	T *operator->() {
 		if (!s_p) {
 			T *p = new T;
-			if (Interlocked::CompareExchange(s_p, p, (T*)nullptr))
-				delete p;
+			for (T *prev=0; !s_p.compare_exchange_weak(prev, p);)
+				if (prev) {
+					delete p;
+					break;
+				}
 		}
 		return s_p;
 	}
@@ -589,7 +554,7 @@ public:
 	T *get() { return operator->(); }
 	T& operator*() { return *operator->(); }
 private:
-	T * volatile s_p;
+	atomic<T*> s_p;
 
 	InterlockedSingleton(const InterlockedSingleton&);
 };
@@ -597,26 +562,29 @@ private:
 template <class T, class TR, class A, class B>
 class DelayedStatic2 {
 public:
-	 mutable T * volatile m_p;
-	 A m_a;
-	 B m_b;
+	mutable atomic<T*> m_p;
+	A m_a;
+	B m_b;
 
-	 DelayedStatic2(const A& a, const B& b = TR::DefaultB)
-		 :	m_p(0)
-		 ,	m_a(a)
-		 ,	m_b(b)
-	 {}
+	DelayedStatic2(const A& a, const B& b = TR::DefaultB)
+		: m_p(0)
+		, m_a(a)
+		, m_b(b) {
+	}
 
 	~DelayedStatic2() {
-		delete exchange(m_p, nullptr);
+		delete m_p.exchange(nullptr);
 	}
 
 	const T& operator*() const {
 		if (!m_p) {
 			T *p = new T(m_a, m_b);
 			CAlloc::DbgIgnoreObject(p);
-			if (Interlocked::CompareExchange(m_p, p, (T*)0))
-				delete p;
+			for (T *prev=0; !m_p.compare_exchange_weak(prev, p);)
+				if (prev) {
+					delete p;
+					break;
+				}
 		}
 		return *m_p;
 	}
@@ -625,7 +593,6 @@ public:
 		return operator*();
 	}
 };
-
 
 template <typename T, class L>
 T clamp(const T& v, const T& lo, const T& hi, L pred) {
@@ -641,19 +608,6 @@ template <typename T>
 T RoundUpToMultiple(const T& x, const T& mul) {
 	return (x + mul - 1) / mul * mul;
 }
-
-class CInException : noncopyable{
-public:
-	CInException() noexcept
-		:	m_nUncauight(std::uncaught_exceptions())
-	{}
-
-	EXPLICIT_OPERATOR_BOOL() const noexcept {
-		return std::uncaught_exceptions() > m_nUncauight ? EXT_CONVERTIBLE_TO_TRUE : 0;
-	}
-private:
-	int m_nUncauight;
-};
 
 #if !UCFG_WDM
 template <class T>
