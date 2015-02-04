@@ -7,7 +7,7 @@ namespace Ext {
 
 template <typename T> class SelfCountPtr {
 	T *m_p;
-	RefCounter *m_pRef;
+	atomic<int> *m_pRef;
 
 	void Destroy() {
 		if (m_pRef && !--m_pRef) {
@@ -56,12 +56,12 @@ public:
 
 template <class T, class L> class CCounterIncDec {
 public:
-	static RefCounter __fastcall AddRef(T *p) {
-		return L::Increment(p->m_dwRef);
+	static int __fastcall AddRef(T *p) noexcept {
+		return L::Increment(p->m_aRef);
 	}
 
-	static RefCounter __fastcall Release(T *p) {
-		RefCounter r = L::Decrement(p->m_dwRef);
+	static int __fastcall Release(T *p) {
+		int r = L::Decrement(p->m_aRef);
 		if (!r)
 			delete p;
 		return r;
@@ -70,11 +70,11 @@ public:
 
 template <class T> class CAddRefIncDec {
 public:
-	static RefCounter AddRef(T *p) {
+	static int AddRef(T *p) {
 		return p->AddRef();
 	}
 
-	static RefCounter Release(T *p) {
+	static int Release(T *p) {
 		return p->Release();
 	}
 };
@@ -87,8 +87,12 @@ public:
 		:	m_p(p)
 	{}
 
-	T *get() const noexcept { return m_p; }
-	T *operator->() const noexcept { return m_p; }
+	inline T *get() const noexcept { return m_p; }
+	inline T *operator->() const noexcept { return m_p; }
+
+	T *release() noexcept {
+		return exchange(m_p, nullptr);
+	}
 
 	void swap(PtrBase& p) noexcept {
 		std::swap(m_p, p.m_p);
@@ -135,6 +139,11 @@ public:
 			m_p = p.m_p;
 			AddRef();
 		}
+		return *this;
+	}
+
+	RefPtr& operator=(EXT_RV_REF(RefPtr) rv) {
+		std::swap(m_p, rv.m_p);
 		return *this;
 	}
 
@@ -210,6 +219,11 @@ public:
 		return *this;
 	}
 
+	ptr& operator=(EXT_RV_REF(ptr) rv) {
+		base::operator=(static_cast<EXT_RV_REF(base)>(rv));
+		return *this;
+	}
+
 	template <class U>
 	ptr& operator=(const ptr<U>& pu) {
 		base::operator=(pu.get());
@@ -220,14 +234,9 @@ public:
 		return operator=(class_type(np));
 	}
 
-/*!!!R
-	T *get_P() const { return (T*)*this; }
-	DEFPROP_GET(T*, P);
-	*/
-
 	ptr *This() { return this; }
 
-	RefCounter use_count() const { return m_p ? m_p->m_dwRef : 0; }
+	int use_count() const { return m_p ? m_p->m_aRef : 0; }
 protected:
 	using base::m_p;
 };
@@ -308,14 +317,18 @@ class AFX_CLASS CRefCounted {
 public:
 	class AFX_CLASS CRefCountedData : public T {
 	public:
-		RefCounter m_dwRef;
+		atomic<int> m_aRef;
+
+		CRefCountedData()
+			:	m_aRef(0)
+		{}
 
 		void AddRef() noexcept {
-			Interlocked::Increment(m_dwRef);
+			++m_aRef;
 		}
 
 		void Release() {
-			if (!Interlocked::Decrement(m_dwRef))
+			if (!--m_aRef)
 				delete this;
 		}
 	};
@@ -325,7 +338,7 @@ public:
 	CRefCounted()
 		:	m_pData(new CRefCountedData)
 	{
-		m_pData->m_dwRef = 1;
+		m_pData->m_aRef = 1;
 	}
 
 	CRefCounted(const CRefCounted& rc)
@@ -337,7 +350,7 @@ public:
 	CRefCounted(CRefCountedData *p)
 		:	m_pData(p)
 	{
-		m_pData->m_dwRef = 1;
+		m_pData->m_aRef = 1;
 	}
 
 	~CRefCounted() {
