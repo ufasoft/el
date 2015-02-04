@@ -757,13 +757,14 @@ inline size_t hash_value(const Ext::ConstBuf& mb) {
 }
 }
 
-#ifndef _GLIBCXX_USE_NOEXCEPT		//!!!?
-#	ifdef _LIBCPP_VERSIONS
-#		define _GLIBCXX_USE_NOEXCEPT noexcept
-#	else
-#		define _GLIBCXX_USE_NOEXCEPT
-#	endif
+#ifdef _LIBCPP_VERSIONS
+#	define EXT_LIBCXX_NOEXCEPT noexcept
+#elif defined(_GLIBCXX_USE_NOEXCEPT)
+#	define EXT_LIBCXX_NOEXCEPT _GLIBCXX_USE_NOEXCEPT
+#else
+#	define EXT_LIBCXX_NOEXCEPT
 #endif
+
 
 //!!! #if UCFG_WDM
 
@@ -788,8 +789,8 @@ inline void * __cdecl operator new[](size_t sz) {
 #else
 
 void * __cdecl operator new(size_t sz);
-void __cdecl operator delete(void *p) _GLIBCXX_USE_NOEXCEPT;
-void __cdecl operator delete[](void* p) _GLIBCXX_USE_NOEXCEPT;
+void __cdecl operator delete(void *p) EXT_LIBCXX_NOEXCEPT;
+void __cdecl operator delete[](void* p) EXT_LIBCXX_NOEXCEPT;
 void * __cdecl operator new[](size_t sz);
 
 #endif // UCFG_DEFINE_NEW
