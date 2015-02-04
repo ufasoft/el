@@ -12,6 +12,10 @@
 #	define EXT_HEADER_DECIMAL <el/stl/decimal>
 #endif
 
+#ifndef UCFG_CPP11_HAVE_CODECVT
+#	define UCFG_CPP11_HAVE_CODECVT (UCFG_LIBCPP_VERSION >= 1100 || UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1800)
+#endif
+
 #if UCFG_CPP11_HAVE_CODECVT
 #	define EXT_HEADER_CODECVT EXT_HEADER(codecvt)
 #else
@@ -757,7 +761,7 @@ inline size_t hash_value(const Ext::ConstBuf& mb) {
 }
 }
 
-#ifdef _LIBCPP_VERSIONS
+#ifdef _LIBCPP_VERSION
 #	define EXT_LIBCXX_NOEXCEPT noexcept
 #elif defined(_GLIBCXX_USE_NOEXCEPT)
 #	define EXT_LIBCXX_NOEXCEPT _GLIBCXX_USE_NOEXCEPT

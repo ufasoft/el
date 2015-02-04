@@ -916,13 +916,15 @@ typedef WCHAR *BSTR;
 			inline void operator delete(void *, void *) {}
 #	endif
 
-#ifndef _LIBCPP_VERSION
+#if !UCFG_MSC_VERSION
 #	include <ciso646>
 #endif
 
 #ifdef _LIBCPP_VERSION
+#	define UCFG_LIBCPP_VERSION _LIBCPP_VERSION
 #	include <system_error>
 #else
+#	define UCFG_LIBCPP_VERSION 0
 	namespace std { class error_code; }
 #endif
 
