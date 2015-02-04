@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_WIN32
@@ -23,11 +16,11 @@ class Exception;
 
 class CHandleBaseBase {
 public:
-	mutable volatile int32_t m_nInUse;
+	mutable atomic<int> m_aInUse;
 
 	CHandleBaseBase()
-		:	m_bClosed(true)
-		,	m_nInUse(0)
+		: m_abClosed(true)
+		,	m_aInUse(0)
 	{
 	}
 
@@ -35,23 +28,30 @@ public:
 	bool Close(bool bFromDtor = false);
 	
 	void swap(CHandleBaseBase& r) {
-		std::swap(m_nInUse, r.m_nInUse);
-		std::swap(m_bClosed, r.m_bClosed);
+		int t = m_aInUse;
+		m_aInUse = r.m_aInUse.load();
+		r.m_aInUse = t;
+
+		bool tb = m_abClosed;
+		m_abClosed = r.m_abClosed.load();
+		r.m_abClosed = tb;
 	}
 protected:
-	volatile int32_t m_bClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
+	atomic<bool> m_abClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
+	CInException InException;
 };
 
 template <class T>
 class CHandleBase : public CHandleBaseBase {
 public:
 	bool Release() const override {
-		Interlocked::Decrement(m_nInUse);
-		if (!Interlocked::CompareExchange(m_nInUse, 0x80000000L, 0L)) {
-			static_cast<const T*>(this)->InternalReleaseHandle();
-			return true;
+		--m_aInUse;
+		for (int prev=0; !m_aInUse.compare_exchange_weak(prev, 0x80000000L);) {
+			if (prev)
+				return false;
 		}
-		return false;
+		static_cast<const T*>(this)->InternalReleaseHandle();
+		return true;
 	}
 
 template <class U> friend class CHandleKeeper;
@@ -196,9 +196,9 @@ public:
 	}
 
 	void AddRef() {
-		if (!m_hp->m_bClosed) {
-			Interlocked::Increment(m_hp->m_nInUse);
-			if (m_hp->m_bClosed)
+		if (!m_hp->m_abClosed) {
+			++(m_hp->m_aInUse);
+			if (m_hp->m_abClosed)
 				m_hp->Release();
 			else
 				m_bIncremented = true;
@@ -229,13 +229,13 @@ public:
 #endif
 
 	SafeHandle()
-		:	m_handle(-1)
+		:	m_aHandle(-1)
 		,	m_invalidHandleValue(-1)
 		,	m_bOwn(true)
 	{}
 
 	SafeHandle(HANDLE invalidHandle, bool)
-		:	m_handle((intptr_t)invalidHandle)
+		:	m_aHandle((intptr_t)invalidHandle)
 		,	m_invalidHandleValue((intptr_t)invalidHandle)
 		,	m_bOwn(true)
 #if UCFG_WDM
@@ -247,31 +247,31 @@ public:
 	virtual ~SafeHandle();
 
 	SafeHandle(EXT_RV_REF(SafeHandle) rv)
-		:	m_handle(rv.m_handle)
-		,	m_invalidHandleValue(rv.m_invalidHandleValue)
+		:	m_invalidHandleValue(rv.m_invalidHandleValue)
 		,	m_bOwn(rv.m_bOwn)
 	{
-		m_nInUse = rv.m_nInUse;
-		m_bClosed = rv.m_bClosed;
+		m_aHandle = rv.m_aHandle.load();
+		m_aInUse = rv.m_aInUse.load();
+		m_abClosed = rv.m_abClosed.load();
 
-		rv.m_handle = rv.m_invalidHandleValue;
+		rv.m_aHandle = rv.m_invalidHandleValue;
 		rv.m_bOwn = true;
-		rv.m_nInUse = 0;
-		rv.m_bClosed = true;
+		rv.m_aInUse = 0;
+		rv.m_abClosed = true;
 	}
 
 	SafeHandle& operator=(EXT_RV_REF(SafeHandle) rv) {
 		InternalReleaseHandle();
 
-		m_handle = rv.m_handle;
+		m_aHandle = rv.m_aHandle.load();
 		m_bOwn = rv.m_bOwn;
-		m_nInUse = rv.m_nInUse;
-		m_bClosed = rv.m_bClosed;
+		m_aInUse = rv.m_aInUse.load();
+		m_abClosed = rv.m_abClosed.load();
 
-		rv.m_handle = rv.m_invalidHandleValue;
+		rv.m_aHandle = rv.m_invalidHandleValue;
 		rv.m_bOwn = true;
-		rv.m_nInUse = 0;
-		rv.m_bClosed = true;
+		rv.m_aInUse = 0;
+		rv.m_abClosed = true;
 
 		return *this;
 	}
@@ -280,6 +280,7 @@ public:
 	//!!!  void CloseHandle();
 	HANDLE DangerousGetHandle() const;
 	void Attach(HANDLE handle, bool bOwn = true);
+	void ThreadSafeAttach(HANDLE handle, bool bOwn = true);
 
 	EXPLICIT_OPERATOR_BOOL() const {
 		return Valid() ? EXT_CONVERTIBLE_TO_TRUE : 0;
@@ -287,8 +288,11 @@ public:
 
 	void swap(SafeHandle& r) {
 		base::swap(r);
-		std::swap(m_handle, r.m_handle);
 		std::swap(m_bOwn, r.m_bOwn);
+
+		intptr_t t = m_aHandle;
+		m_aHandle = r.m_aHandle.load();
+		r.m_aHandle = t;
 	}
 
 #if UCFG_WDM
@@ -339,14 +343,17 @@ public:
 	};
 
 	void InternalReleaseHandle() const;
-	HANDLE DangerousGetHandleEx() const { return (HANDLE)m_handle; }
+	HANDLE DangerousGetHandleEx() const { return (HANDLE)m_aHandle.load(); }
 protected:
-	void ReplaceHandle(HANDLE h) { m_handle = (intptr_t)h; }
+	const intptr_t m_invalidHandleValue;
+
+	void ReplaceHandle(HANDLE h) { m_aHandle = (intptr_t)h; }
 	virtual void ReleaseHandle(HANDLE h) const;	
 private:
-	mutable volatile intptr_t m_handle;
-	const intptr_t m_invalidHandleValue;
-	CBool m_bOwn;	
+	mutable atomic<intptr_t> m_aHandle;
+	CBool m_bOwn;
+
+	void AfterAttach(bool bOwn);
 
 	template <class T> friend class CHandleKeeper;
 };
