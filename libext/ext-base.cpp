@@ -705,13 +705,13 @@ CFunTrace::CFunTrace(const char *funName, int trclevel)
 	:   m_trclevel(trclevel)
 	,	m_funName(funName)
 {
-    LONG_PTR level = (LONG_PTR)(void*)s_level.Value;
+    intptr_t level = (intptr_t)(void*)s_level.Value;
     TRC(m_trclevel, String(' ', level*2)+">"+m_funName);
     s_level.Value = (void*)(level+1);
 }
 
 CFunTrace::~CFunTrace() {
-    LONG_PTR level = (LONG_PTR)(void*)s_level.Value-1;
+    intptr_t level = (intptr_t)(void*)s_level.Value-1;
     s_level.Value = (void*)level;
     TRC(m_trclevel, String(' ', level*2)+"<"+m_funName);
 }

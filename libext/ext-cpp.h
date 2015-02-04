@@ -1271,7 +1271,7 @@ inline int BitScanReverse64(uint64_t v) {
 } // Ext::
 
 
-#define EXT_STR(expr) (static_cast<std::ostringstream&>(static_cast<std::ostringstream EXT_REF>(std::ostringstream()) << expr)).str()
+#define EXT_STR(expr) (static_cast<std::ostringstream&>(const_cast<std::ostringstream &>(static_cast<const std::ostringstream &>(std::ostringstream())) << expr)).str()
 #define EXT_BIN(expr) ConstBuf(static_cast<Ext::StreamToBlob&>(StreamToBlob().Ref() << expr))
 
 
