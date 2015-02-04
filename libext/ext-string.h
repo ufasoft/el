@@ -22,22 +22,22 @@ class EXTCLASS String {
 public:
 	typedef String class_type;
 
-	typedef CBlobBufBase::Char Char;
+//!!!R	typedef  Char;
 	typedef size_t size_type;
-	typedef Char value_type;
-	typedef std::char_traits<Char> traits_type;
+	typedef CBlobBufBase::Char value_type;
+	typedef std::char_traits<value_type> traits_type;
 	typedef ssize_t difference_type;
 	typedef const value_type& const_reference;
 
 	static const size_t npos = size_t(-1);
 
-	class const_iterator : public std::iterator<std::random_access_iterator_tag, Char>, totally_ordered<const_iterator>  {
+	class const_iterator : public std::iterator<std::random_access_iterator_tag, value_type>, totally_ordered<const_iterator>  {
 	public:
-		typedef Char value_type;
+		typedef String::value_type value_type;
 		typedef std::random_access_iterator_tag iterator_category;
 		typedef String::difference_type difference_type;
-		typedef const Char *pointer;
-		typedef const Char& reference;
+		typedef const value_type *pointer;
+		typedef const value_type& reference;
 
 		const_iterator()
 			:	m_p(0)
@@ -63,9 +63,9 @@ public:
 		const_iterator operator-(difference_type diff) const { return const_iterator(m_p - diff); }
 		difference_type operator-(const_iterator it) const { return m_p - it.m_p; }
 	private:
-		const Char *m_p;
+		const value_type *m_p;
 
-		explicit const_iterator(const Char* p)
+		explicit const_iterator(const value_type* p)
 			:	m_p(p)
 		{}
 
@@ -82,9 +82,9 @@ public:
 
 	String(const char *lpch, ssize_t nLength);
 #if defined(_NATIVE_WCHAR_T_DEFINED) && UCFG_STRING_CHAR/8 == __SIZEOF_WCHAR_T__
-	String(const UInt16 *lpch, ssize_t nLength);
-	String(const UInt16 *lpsz);
-//	void Init(const UInt16 *lpch, ssize_t nLength);
+	String(const uint16_t *lpch, ssize_t nLength);
+	String(const uint16_t *lpsz);
+//	void Init(const uint16_t *lpch, ssize_t nLength);
 	void Init(const unsigned short *lpch, ssize_t nLength);
 #endif
 
@@ -94,7 +94,7 @@ public:
 		Init(enc, lpch+start, nLength);
 	}
 
-	String(const Char *lpch, ssize_t nLength)
+	String(const value_type *lpch, ssize_t nLength)
 		:	m_blob(nullptr)
 	{
 		Init(lpch, nLength);
@@ -107,16 +107,16 @@ public:
 	}
 
 	explicit String(char ch, ssize_t nRepeat = 1);
-	explicit String(Char ch, ssize_t nRepeat = 1);
+	explicit String(value_type ch, ssize_t nRepeat = 1);
 	String(const char *lpsz);
-	String(const Char *lpsz);
+	String(const value_type *lpsz);
 #if UCFG_STRING_CHAR/8 != __SIZEOF_WCHAR_T__
 	String(const wchar_t *lpsz);
 #endif
 	EXT_API String(const std::string& s);
 	EXT_API String(const std::wstring& s);
 
-	EXT_API String(const std::vector<Char>& vec);
+	EXT_API String(const std::vector<value_type>& vec);
 
 	String (std::nullptr_t p)
 		:	m_blob(p)
@@ -152,10 +152,10 @@ public:
 
 	const char *c_str() const;
 	operator const char *() const { return c_str(); }
-	operator const Char *() const { return m_blob.m_pData ? (const Char*)m_blob.m_pData->GetBSTR() : 0; }
+	operator const value_type *() const { return m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() : 0; }
 
-	const_iterator begin() const { return const_iterator(m_blob.m_pData ? (const Char*)m_blob.m_pData->GetBSTR() : 0); }
-	const_iterator end() const { return const_iterator(m_blob.m_pData ? (const Char*)m_blob.m_pData->GetBSTR()+Length : 0); }
+	const_iterator begin() const { return const_iterator(m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() : 0); }
+	const_iterator end() const { return const_iterator(m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() + length() : 0); }
 
 	const_reference front() const { return *begin(); }
 	const_reference back() const { return *(end()-1); }
@@ -163,8 +163,8 @@ public:
 	EXT_API operator explicit_cast<std::string>() const;
 
 	operator explicit_cast<std::wstring>() const {
-		const Char *p = *this,
-			       *e = p+Length;
+		const value_type *p = *this,
+			       *e = p + length();
 		return std::wstring(p, e);
 	}
 
@@ -179,13 +179,13 @@ public:
 	}
 #endif
 
-	Char operator[](int nIndex) const;
-	Char operator[](size_t nIndex) const { return operator[]((int)nIndex); }
+	value_type operator[](int nIndex) const;
+	value_type operator[](size_t nIndex) const { return operator[]((int)nIndex); }
 	//!!!D  String ToOem() const;
-	Char GetAt(size_t idx) const { return (*this)[idx]; }
+	value_type GetAt(size_t idx) const { return (*this)[idx]; }
 	void SetAt(size_t nIndex, char c);
 	void SetAt(size_t nIndex, unsigned char c) { SetAt(nIndex, (char)c); }
-	void SetAt(size_t nIndex, Char ch);
+	void SetAt(size_t nIndex, value_type ch);
 
 	String& operator=(const String& stringSrc) {
 		m_blob = stringSrc.m_blob;
@@ -193,11 +193,11 @@ public:
 	}
 
 	String& operator=(std::nullptr_t p) {
-		return operator=((const Char*)0);
+		return operator=((const value_type*)0);
 	}
 
 	String& operator=(const char * lpsz);
-	String& operator=(const Char * lpsz);
+	String& operator=(const value_type * lpsz);
 
 	String& operator=(EXT_RV_REF(String) rv) {
 		swap(rv);
@@ -206,17 +206,20 @@ public:
 
 	String& operator+=(const String& s);
 	void CopyTo(char *ar, size_t size) const;
-	void CopyTo(Char *ar, size_t size) const;
-	int Compare(const String& s) const;
+	void CopyTo(value_type *ar, size_t size) const;
+	
+	int compare(size_type p1, size_type c1, const value_type *s, size_type c2) const;
+	int compare(const String& s) const noexcept;
+	
 	int CompareNoCase(const String& s) const;
 	bool empty() const noexcept;
 	void clear();
-	size_type find(Char chm, size_type pos = 0) const;
-	size_type find(const Char *s, size_type pos, size_type count) const;
+	size_type find(value_type chm, size_type pos = 0) const noexcept;
+	size_type find(const value_type *s, size_type pos, size_type count) const;
 
-	size_type find(const String& s, size_type pos = 0) const { return find((const Char*)s, pos, s.size()); }
+	size_type find(const String& s, size_type pos = 0) const { return find((const value_type*)s, pos, s.size()); }
 
-	int LastIndexOf(Char c) const;
+	int LastIndexOf(value_type c) const;
 
 	bool Contains(const String& s) const noexcept { return find(s) != npos; }
 
@@ -249,13 +252,11 @@ public:
 	void Replace(int offset, int size, const String& s);
 	int Replace(RCString sOld, RCString sNew);
 
-	//!!!D  static String AFXAPI FromUTF8(const char *p, int len = -1);
+	size_t length() const noexcept { return m_blob.Size / sizeof(value_type); }
 
-	size_t GetLength() const noexcept;
-	size_t get_Length() const noexcept { return GetLength(); }
-	DEFPROP_GET_CONST(size_t, Length);
+	size_t size() const noexcept { return length(); }
 
-	size_t size() const noexcept { return Length; }
+	size_t max_size() const noexcept { return m_blob.max_size() / sizeof(value_type); }
 
 #if UCFG_USE_POSIX
 	std::string ToOsString() const {
@@ -284,12 +285,12 @@ private:
 	Blob m_blob;
 
 	void Init(Encoding *enc, const char *lpch, ssize_t nLength);
-	void Init(const Char *lpch, ssize_t nLength);
+	void Init(const value_type *lpch, ssize_t nLength);
 	void MakeDirty() noexcept;
 
 	friend AFX_API String AFXAPI operator+(const String& string1, const String& string2);
 	friend AFX_API String AFXAPI operator+(const String& string, const char * lpsz);
-	friend AFX_API String AFXAPI operator+(const String& string, const Char * lpsz);
+	friend AFX_API String AFXAPI operator+(const String& string, const value_type * lpsz);
 	//!!!friend AFX_API String AFXAPI operator+(const String& string, TCHAR ch);
 	friend inline bool operator<(const String& s1, const String& s2) noexcept;
 	friend inline bool AFXAPI operator==(const String& s1, const String& s2) noexcept;
@@ -312,20 +313,12 @@ inline void swap(String& x, String& y) noexcept {
 
 typedef std::vector<String> CStringVector;
 
-inline bool operator<(const String& s1, const String& s2) noexcept { //!!! can be intrinsic
-	//!!!  size_t count = (s1.m_blob.Size>>1)+1;
-	String::Char *p1 = (String::Char*)s1.m_blob.constData(),
-		*p2 = (String::Char*)s2.m_blob.constData();
-	//!!!  MacFastWcscmp(count, p1, p2);
-	//!!!  return FastWcscmp((s1.m_blob.Size>>1)+1, (wchar_t*)s1.m_blob.Data, (wchar_t*)s2.m_blob.Data);
-	return StrCmp(p1, p2) < 0;
-}
-
+inline bool operator<(const String& s1, const String& s2) noexcept { return s1.compare(s2) < 0; }
 
 inline bool AFXAPI operator==(const String& s1, const String& s2) noexcept { return s1.m_blob == s2.m_blob; }
-AFX_API bool AFXAPI operator!=(const String& s1, const String& s2);
-AFX_API bool AFXAPI operator<=(const String& s1, const String& s2);
-AFX_API bool AFXAPI operator>=(const String& s1, const String& s2);
+AFX_API bool AFXAPI operator!=(const String& s1, const String& s2) noexcept;
+AFX_API bool AFXAPI operator<=(const String& s1, const String& s2) noexcept;
+AFX_API bool AFXAPI operator>=(const String& s1, const String& s2) noexcept;
 
 AFX_API bool AFXAPI operator==(const String& s1, const char * s2);
 AFX_API bool AFXAPI operator==(const char * s1, const String& s2);
@@ -340,25 +333,25 @@ AFX_API bool AFXAPI operator<=(const char * s1, const String& s2);
 AFX_API bool AFXAPI operator>=(const String& s1, const char * s2);
 AFX_API bool AFXAPI operator>=(const char * s1, const String& s2);
 
-AFX_API bool AFXAPI operator==(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator==(const String::Char * s1, const String& s2);
-AFX_API bool AFXAPI operator!=(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator!=(const String::Char * s1, const String& s2);
-AFX_API bool AFXAPI operator<(const String::Char * s1, const String& s2);
-AFX_API bool AFXAPI operator<(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator>(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator>(const String::Char * s1, const String& s2);
-AFX_API bool AFXAPI operator<=(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator<=(const String::Char * s1, const String& s2);
-AFX_API bool AFXAPI operator>=(const String& s1, const String::Char * s2);
-AFX_API bool AFXAPI operator>=(const String::Char * s1, const String& s2);
+AFX_API bool AFXAPI operator==(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator==(const String::value_type * s1, const String& s2);
+AFX_API bool AFXAPI operator!=(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator!=(const String::value_type * s1, const String& s2);
+AFX_API bool AFXAPI operator<(const String::value_type * s1, const String& s2);
+AFX_API bool AFXAPI operator<(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator>(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator>(const String::value_type * s1, const String& s2);
+AFX_API bool AFXAPI operator<=(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator<=(const String::value_type * s1, const String& s2);
+AFX_API bool AFXAPI operator>=(const String& s1, const String::value_type * s2);
+AFX_API bool AFXAPI operator>=(const String::value_type * s1, const String& s2);
 
 inline bool AFXAPI operator!=(const String& s1, std::nullptr_t) {
-	return s1 != (const String::Char*)0;
+	return s1 != (const String::value_type*)0;
 }
 
 inline bool AFXAPI operator==(const String& s1, std::nullptr_t) {
-	return s1 == (const String::Char*)0;
+	return s1 == (const String::value_type*)0;
 }
 
 
@@ -376,14 +369,15 @@ template <class A, class B, class C> String Concat(const A& a, const B& b, const
 
 
 
-AFX_API String AFXAPI AfxLoadString(UInt32 nIDS);
+AFX_API String AFXAPI AfxLoadString(uint32_t nIDS);
 
 struct CStringResEntry {
-	UInt32 ID;
+	uint32_t ID;
 	const char *Ptr;
 };
 
 inline String ToLower(RCString s) { return s.ToLower(); }
+inline String ToUpper(RCString s) { return s.ToUpper(); }
 
 inline char ToLowerChar(char ch) { return (char)::tolower(ch); }
 
@@ -398,7 +392,7 @@ inline std::string ToLower(const std::string& s) {
 
 namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::String& s) {
-	return Ext::hash_value((const Ext::String::Char*)s, (s.Length*sizeof(Ext::String::Char)));
+	return Ext::hash_value((const Ext::String::value_type*)s, (s.length() * sizeof(Ext::String::value_type)));
 }
 }
 
