@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 
@@ -243,7 +236,7 @@ struct CFileStatus {
 	int64_t m_size;            // logical size of file in bytes
 	byte m_attribute;       // logical OR of File::Attribute enum values
 	byte _m_padding;        // pad the structure to a WORD
-	TCHAR m_szFullName[_MAX_PATH]; // absolute path name
+	path AbsolutePath; // absolute path name
 };
 #endif
 
@@ -341,8 +334,7 @@ public:
 	void Create(RCString fileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
 	void CreateForMapping(LPCTSTR lpFileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
 	DWORD GetOverlappedResult(OVERLAPPED& ov, bool bWait = true);
-	bool GetStatus(CFileStatus& rStatus) const;
-	static bool AFXAPI GetStatus(RCString lpszFileName, CFileStatus& rStatus);
+//!!!R	static bool AFXAPI GetStatus(RCString lpszFileName, CFileStatus& rStatus);
 	bool Read(void *buf, uint32_t len, uint32_t *read, OVERLAPPED *pov);			// no default args to eleminate ambiguosness
 	bool Write(const void *buf, uint32_t len, uint32_t *written, OVERLAPPED *pov);	// no default args to eleminate ambiguosness
 	bool DeviceIoControl(int code, LPCVOID bufIn, size_t nIn, LPVOID bufOut, size_t nOut, LPDWORD pdw, LPOVERLAPPED pov = 0);
@@ -360,8 +352,8 @@ public:
 
 	static const int64_t CURRENT_OFFSET = -2;
 
-	virtual uint32_t Read(void *lpBuf, uint32_t nCount);
 	virtual void Write(const void *buf, size_t size, int64_t offset = CURRENT_OFFSET);
+	virtual uint32_t Read(void *buf, size_t size, int64_t offset = CURRENT_OFFSET);
 	void Lock(uint64_t pos, uint64_t len, bool bExclusive = true, bool bFailImmediately = false);
 	void Unlock(uint64_t pos, uint64_t len);
 	size_t PhysicalSectorSize() const;			// return 0 if not detected
@@ -375,12 +367,13 @@ protected:
 private:
 #ifdef WIN32
 	bool CheckPending(BOOL b);
+	OVERLAPPED *SetOffsetForFileOp(OVERLAPPED& ov, int64_t offset);
 #endif
 };
 
 class AFX_CLASS CStdioFile : public File {
 public:
-	bool ReadString(String& rString);
+//!!!R	bool ReadString(String& rString);
 };
 
 ENUM_CLASS(MemoryMappedFileAccess) {
@@ -410,6 +403,36 @@ ENUM_CLASS(MemoryMappedFileRights) {
 	AccessSystemSecurity 	= 0x1000000
 } END_ENUM_CLASS(MemoryMappedFileRights);
 
+class VirtualMem : noncopyable {
+public:
+	VirtualMem(size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePage = false)
+		: m_address(0)
+		, m_size(0) {
+		if (size)
+			Alloc(size, access, bLargePage);
+	}
+
+	~VirtualMem() {
+		Free();
+	}
+
+	void Alloc(size_t size, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePage = false);
+	void Free();
+
+	void *get() { return m_address; }
+	size_t size() { return m_size; }
+	void *Detach() { return exchange(m_address, nullptr); }
+
+	void Attach(void *a, size_t size) {
+		if (m_address)
+			Throw(E_FAIL);
+		m_address = a;
+		m_size = size;
+	}
+private:
+	void *m_address;
+	size_t m_size;
+};
 
 class MemoryMappedFile ;
 
@@ -494,17 +517,16 @@ public:
 	MemoryMappedView CreateView(uint64_t offset, size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 };
 
-
 class FileStream : public Stream {
 	typedef FileStream class_type;
 public:
 //!!!	mutable File m_ownFile;
-	CPointer<File> m_pFile;
+	observer_ptr<File> m_pFile;
 	mutable FILE *m_fstm;
 	CBool TextMode;
 
 #if UCFG_WIN32_FULL
-	CPointer<OVERLAPPED> m_ovl;
+	observer_ptr<OVERLAPPED> m_ovl;
 #endif
 
 	FileStream()
@@ -720,7 +742,7 @@ public:
 protected:
 	virtual void OnAnnoy();
 private:
-	CPointer<IAnnoy> m_iAnnoy;
+	observer_ptr<IAnnoy> m_iAnnoy;
 
 	DateTime m_prev;
 	TimeSpan m_period;
@@ -762,7 +784,7 @@ private:
 
 #endif // !UCFG_WCE
 
-class /*!!!R EXTCLASS*/ Path {
+class Path {
 public:
 	struct CSplitPath {
 		String m_drive,
@@ -786,8 +808,8 @@ public:
 
 	static CSplitPath AFXAPI SplitPath(RCString path);
 
-	static String AFXAPI GetPhysicalPath(const path& p);
-	static String AFXAPI GetTruePath(const path& p);
+	static path AFXAPI GetPhysicalPath(const path& p);
+	static path AFXAPI GetTruePath(const path& p);
 };
 
 path AFXAPI AddDirSeparator(const path& p);
@@ -1166,7 +1188,6 @@ public:
 	static HRESULT AFXAPI Process(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif
 	String ProcessInst(HRESULT hr);
-	static String AFXAPI Process(HRESULT hr);
 
 	thread_specific_ptr<String> m_param;
 
@@ -1175,7 +1196,7 @@ public:
 
 extern CMessageProcessor g_messageProcessor;
 
-AFX_API String AFXAPI AfxProcessError(HRESULT hr);
+AFX_API String AFXAPI HResultToMessage(HRESULT hr);
 #if UCFG_COM
 AFX_API HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif
@@ -1425,7 +1446,7 @@ struct ProcessStartInfo {
 class ProcessObj : public SafeHandle { //!!!
 	typedef SafeHandle base;
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
 	ProcessStartInfo StartInfo;
 
