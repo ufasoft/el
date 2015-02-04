@@ -10,6 +10,7 @@
 
 #ifndef _WIN32
 
+typedef byte BYTE;
 typedef char TCHAR;
 typedef long LONG;
 typedef unsigned short WCHAR;
