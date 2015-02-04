@@ -916,13 +916,11 @@ typedef WCHAR *BSTR;
 			inline void operator delete(void *, void *) {}
 #	endif
 
-namespace std {
-#ifdef _LIBCPP_TYPE_VIS		// for libc++
-	class _LIBCPP_TYPE_VIS error_code;
+#ifdef _LIBCPP_VERSION
+#	include <system_error>
 #else
-	class error_code;
+	namespace std { class error_code; }
 #endif
-}
 
 namespace Ext {
 
