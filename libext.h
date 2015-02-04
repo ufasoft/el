@@ -916,6 +916,10 @@ typedef WCHAR *BSTR;
 			inline void operator delete(void *, void *) {}
 #	endif
 
+#ifndef _LIBCPP_VERSION
+#	include <ciso646>
+#endif
+
 #ifdef _LIBCPP_VERSION
 #	include <system_error>
 #else
