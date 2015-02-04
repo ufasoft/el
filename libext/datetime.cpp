@@ -647,7 +647,7 @@ int64_t AFXAPI to_time_t(const DateTime& dt) {
 	return (dt.Ticks - Unix_DateTime_Offset) / 10000000;
 }
 
-time_point AFXAPI Clock::now() noexcept {
+Clock::time_point AFXAPI Clock::now() noexcept {
 	return DateTime::UtcNow();
 }
 
