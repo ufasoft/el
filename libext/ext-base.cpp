@@ -23,69 +23,37 @@ bool AFXAPI operator==(const ConstBuf& x, const ConstBuf& y) {
 		(x.P==y.P || !memcmp(x.P, y.P, x.Size));
 }
 
-bool CRuntimeClass::IsDerivedFrom(const CRuntimeClass *pBaseClass) const {
-	const CRuntimeClass *pClassThis = this;
-	while (pClassThis) {
-		if (pClassThis == pBaseClass)
-			return true;
-#ifdef _AFXDLL
-		if (pClassThis->m_pfnGetBaseClass == NULL)
-			break;
-		pClassThis = (*pClassThis->m_pfnGetBaseClass)();
-#else
-		pClassThis = pClassThis->m_pBaseClass;
-#endif
-	}
-	return false;       // walked to the top, no match
-}
-
-bool Object::IsKindOf(const CRuntimeClass *pClass) const {
-	CRuntimeClass *pClassThis = GetRuntimeClass();
-	return pClassThis->IsDerivedFrom(pClass);
-}
-
-Object * AFXAPI AfxDynamicDownCast(CRuntimeClass* pClass, Object* pObject) {
-	return pObject && pObject->IsKindOf(pClass) ? pObject : 0;
-}
-
-
 const class CRuntimeClass Object::classObject =
 	{ "Object", sizeof(Object), 0xffff, NULL, 0, NULL };
 
-CRuntimeClass *Object::GetRuntimeClass() const {
+/*!!!R CRuntimeClass *Object::GetRuntimeClass() const {
 	return RUNTIME_CLASS(Object);
-}
+}*/
 
 #ifdef _AFXDLL
-	CRuntimeClass* PASCAL Object::_GetBaseClass()
-	{
+	CRuntimeClass* PASCAL Object::_GetBaseClass() {
 		return NULL;
 	}
-	CRuntimeClass* PASCAL Object::GetThisClass()
-	{
+	CRuntimeClass* PASCAL Object::GetThisClass() {
 		return _RUNTIME_CLASS(Object);
 	}
 #endif
 
 bool CHandleBaseBase::Close(bool bFromDtor) {
-	if (!Interlocked::CompareExchange(m_bClosed, 1L, 0L)) {
-		bool r = false;
+	bool r = false;
+	bool prev = false;
+	if (m_abClosed.compare_exchange_strong(prev, true)) {
 #if !defined(_MSC_VER) || defined(_CPPUNWIND)
-		if (!bFromDtor || !std::uncaught_exception())
-			r = Release();
-		else {
+		if (bFromDtor && InException) {
 			try {
 				r = Release();
 			} catch (RCExc) {
-//!!!					TRC(0, e);
 			}
-		}
-#else
-		r = Release();
+		} else
 #endif
-		return r;
+			r = Release();
 	}
-	return false;
+	return r;
 }
 
 
@@ -108,14 +76,14 @@ SafeHandle::HandleAccess::~HandleAccess() {
 
 
 SafeHandle::SafeHandle(HANDLE handle)
-	:	m_handle((intptr_t)handle)
+	:	m_aHandle((intptr_t)handle)
 	,	m_invalidHandleValue(-1)
 #ifdef WDM_DRIVER
 	,	m_pObject(nullptr)
 #endif
 {
-	m_bClosed = false;
-	m_nInUse = 1;
+	m_abClosed = false;
+	m_aInUse = 1;
 
 #ifdef WIN32
 	Win32Check(Valid());
@@ -127,8 +95,8 @@ SafeHandle::~SafeHandle() {
 }
 
 void SafeHandle::InternalReleaseHandle() const {
-	intptr_t h = m_handle;
-	if (h!=m_invalidHandleValue && (void*)h==Interlocked::CompareExchange((void * volatile&)m_handle, (void*)m_invalidHandleValue, (void*)h)) {
+	intptr_t h = m_aHandle.exchange(m_invalidHandleValue);
+	if (h != m_invalidHandleValue) {
 		if (m_bOwn) //!!!
 			ReleaseHandle((HANDLE)h);
 	}
@@ -159,14 +127,6 @@ NTSTATUS SafeHandle::InitFromHandle(HANDLE h, ACCESS_MASK DesiredAccess, POBJECT
 
 #endif
 
-/*!!!R
-void SafeHandle::Release() const {
-	if (Interlocked::Decrement(m_nInUse))
-		return;
-	InternalReleaseHandle();
-}
-*/
-
 void SafeHandle::ReleaseHandle(HANDLE h) const {
 #if UCFG_USE_POSIX
 	CCheck(::close((int)(LONG_PTR)h));
@@ -184,21 +144,18 @@ Win32Check(::CloseHandle(exchange(m_handle, (HANDLE)0)));
 }*/
 
 HANDLE SafeHandle::DangerousGetHandle() const {
-	if (!m_nInUse)
+	if (!m_aInUse)
 		Throw(E_EXT_ObjectDisposed);
-	return (HANDLE)m_handle;
+	return (HANDLE)m_aHandle.load();
 }
 
-void SafeHandle::Attach(HANDLE handle, bool bOwn) {
-	if (Valid())
-		Throw(E_EXT_AlreadyOpened);
-	m_handle = (intptr_t)handle;
+void SafeHandle::AfterAttach(bool bOwn) {
 	if (Valid()) {
-		m_nInUse = 1;
-		m_bClosed = false;
-		m_bOwn = bOwn;	
+		m_aInUse = 1;
+		m_abClosed = false;
+		m_bOwn = bOwn;
 	} else {
-		m_handle = m_invalidHandleValue;
+		m_aHandle = m_invalidHandleValue;
 #if UCFG_USE_POSIX
 		CCheck(-1);
 #elif UCFG_WIN32
@@ -207,27 +164,44 @@ void SafeHandle::Attach(HANDLE handle, bool bOwn) {
 	}
 }
 
-HANDLE SafeHandle::Detach() { //!!!
-	m_bClosed = true;
-	m_nInUse = 0;
-	m_bOwn = false;
-	return (HANDLE)exchange(m_handle, m_invalidHandleValue);
+void SafeHandle::ThreadSafeAttach(HANDLE handle, bool bOwn) {
+	intptr_t prev = m_invalidHandleValue;
+	if (m_aHandle.compare_exchange_strong(prev, intptr_t(handle)))
+		AfterAttach(bOwn);
+	else
+		ReleaseHandle(handle);		
 }
 
-void SafeHandle::Duplicate(HANDLE h, UInt32 dwOptions) {
+void SafeHandle::Attach(HANDLE handle, bool bOwn) {
+	if (Valid())
+		Throw(E_EXT_AlreadyOpened);
+	m_aHandle = (intptr_t)handle;
+	AfterAttach(bOwn);
+}
+
+HANDLE SafeHandle::Detach() { //!!!
+	m_abClosed = true;
+	m_aInUse = 0;
+	m_bOwn = false;
+	return (HANDLE)m_aHandle.exchange(m_invalidHandleValue);
+}
+
+void SafeHandle::Duplicate(HANDLE h, uint32_t dwOptions) {
 #if UCFG_WIN32
 	if (Valid())
 		Throw(E_EXT_AlreadyOpened);
-	Win32Check(::DuplicateHandle(GetCurrentProcess(), h, GetCurrentProcess(), (HANDLE*)&m_handle, 0, FALSE, dwOptions));
-	m_nInUse = 1;
-	m_bClosed = false;
+	HANDLE hMy;
+	Win32Check(::DuplicateHandle(GetCurrentProcess(), h, GetCurrentProcess(), &hMy, 0, FALSE, dwOptions));
+	m_aHandle = intptr_t(hMy);
+	m_aInUse = 1;
+	m_abClosed = false;
 #else
 	Throw(E_NOTIMPL);
 #endif
 }
 
 bool SafeHandle::Valid() const {
-	return m_handle != 0 && m_handle != m_invalidHandleValue;
+	return m_aHandle != 0 && m_aHandle != m_invalidHandleValue;
 }
 
 SafeHandle::BlockingHandleAccess::BlockingHandleAccess(const SafeHandle& h)
@@ -269,10 +243,16 @@ thread_specific_ptr<String> Exception::t_LastStringArg;
 
 String Exception::get_Message() const {
 #if UCFG_WDM
+	return !m_message.empty() ? m_message : (m_message = (String(code().category().name()) + String(": ")  + String(code().message())));
+#else
+	return !m_message.empty() ? m_message : (m_message = EXT_STR("Error " << setw(8) << hex << ToHResult(_self) << ": " << code().category().name() << ": " << code().message()));
+#endif
+/*!!!R
+#if UCFG_WDM
 	return m_message;
 #else
-	return m_message.empty() ? AfxProcessError(code().value()) : m_message;
-#endif
+	return m_message.empty() ? AfxProcessError(ToHResult(_self)) : m_message;
+#endif*/
 }
 
 const char *Exception::what() const noexcept {
@@ -287,7 +267,7 @@ String Exception::ToString() const {
 		r += "\n  "+i->first+": "+i->second;
 #if !UCFG_WCE
 	if (CStackTrace::Use)
-		r += "\n  "+StackTrace.ToString();
+		r += "\n  " + StackTrace.ToString();
 #endif
 	return r;
 }
@@ -302,24 +282,27 @@ static class HResultCategory : public error_category {		// outside function to e
 #if UCFG_WDM
 		return "Error";		//!!!
 #else
-		return explicit_cast<string>(AfxProcessError(eval));
+		return explicit_cast<string>(HResultToMessage(eval));
 #endif
 	}
 
 	bool equivalent(int errval, const error_condition& c) const noexcept override {
-		if (HRESULT_FACILITY(errval) == FACILITY_WIN32)
-			return win32_category().equivalent(errval & 0xFFFF, c);
-		else if (HRESULT_FACILITY(errval) == FACILITY_C)
+		switch (HRESULT_FACILITY(errval)) {
+		case FACILITY_C:
 			return generic_category().equivalent(errval & 0xFFFF, c);
-		else
+#if UCFG_WIN32
+		case FACILITY_WIN32:
+			return win32_category().equivalent(errval & 0xFFFF, c);
+#endif
+		default:
 			return base::equivalent(errval, c);
+		}
 	}
 
 	bool equivalent(const error_code& ec, int errval) const noexcept override { return base::equivalent(ec, errval); }
 } s_hresultCategory;
 
 const error_category& hresult_category() {
-
 	return s_hresultCategory;
 }
 
@@ -333,18 +316,27 @@ Exception::Exception(HRESULT hr, RCString message)
 #endif
 }
 
+Exception::Exception(const error_code& ec, RCString message)
+	:	base(ec, message.empty() ? string() : string(explicit_cast<string>(message)))
+	, m_message(message)
+{
+#if !UCFG_WCE
+	if (CStackTrace::Use)
+		StackTrace = CStackTrace::FromCurrentThread();
+#endif
+}
+
 intptr_t __stdcall AfxApiNotFound() {
 	Throw(HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND));
 }
 
 DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec) {
-	throw system_error(ec);
-}
-
-DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
+	HRESULT hr = ec.value();
 #if UCFG_WDM && !_HAS_EXCEPTIONS
 	KeBugCheck(hr);
 #else
+	if (ec.category() != hresult_category())
+		throw Exception(ec);
 	switch (hr) {
 	case E_ACCESSDENIED:			throw AccessDeniedException();
 	case E_OUTOFMEMORY:				throw bad_alloc();
@@ -359,7 +351,7 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 #if UCFG_WDM
 		throw out_of_range("Out of range");
 #else
-		throw out_of_range(explicit_cast<string>(AfxProcessError(E_EXT_IndexOutOfRange)));
+		throw out_of_range(explicit_cast<string>(HResultToMessage(E_EXT_IndexOutOfRange)));
 #endif
 	case HRESULT_OF_WIN32(ERROR_STACK_OVERFLOW):	throw StackOverflowExc();
 
@@ -400,9 +392,13 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 //!!!R	case HRESULT_OF_WIN32(ERROR_INVALID_HANDLE):
 //!!!R		::MessageBox(0, _T(" aa"), _T(" aa"), MB_OK); //!!!D
 	default:
-		throw Exception(hr);
+		throw Exception(ec);
 	}	
 #endif
+}
+
+DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
+	ThrowImp(error_code(hr, hresult_category()));
 }
 
 DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
@@ -415,7 +411,7 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname
 }
 
 DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr, const char *funname, int nLine) {
-	ThrowImp(error_code(hr, hresult_category()));
+	ThrowImp(error_code(hr, hresult_category()), funname, nLine);
 }
 
 typedef map<int, CExceptionFabric*> CExceptionFabrics; 
@@ -808,10 +804,10 @@ CTraceWriter::~CTraceWriter() noexcept {
 	#endif
 			{
 				m_pos->write(date_s.data(), date_s.size());
-//				m_pos->flush();	//!!!?
+				m_pos->flush();	
 				if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
 					pSecondStream->write(time_str.data(), time_str.size());
-//!!!?					pSecondStream->flush();
+					pSecondStream->flush();
 				}
 			}
 		}
