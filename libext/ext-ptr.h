@@ -23,7 +23,7 @@ public:
 
 	SelfCountPtr(T *p)
 		:	m_p(p)
-		,	m_pRef(new RefCounter(1))
+		,	m_pRef(new atomic<int>(1))
 	{}
 
 	SelfCountPtr(const SelfCountPtr& p)
