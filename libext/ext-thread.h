@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #include EXT_HEADER(queue)
@@ -24,7 +17,7 @@ HRESULT AFXAPI HResultInCatch(RCExc);
 
 class PoolThread;
 template <> struct ptr_traits<PoolThread> {
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 };
 
 class AFX_MODULE_STATE;
@@ -43,11 +36,11 @@ class EXTAPI ThreadBase :
 	typedef SafeHandle base;
 #endif
 public:
-	using base::m_dwRef;
-	typedef Interlocked interlocked_policy;
+	using base::m_aRef;
+	typedef InterlockedPolicy interlocked_policy;
 
 #if UCFG_WIN32
-	CPointer<_AFX_THREAD_STATE> m_pAfxThreadState;
+	observer_ptr<_AFX_THREAD_STATE> m_pAfxThreadState;
 
 	_AFX_THREAD_STATE& AfxThreadState();
 
@@ -75,7 +68,7 @@ public:
 
 	EXT_DATA static size_t DefaultStackSize;
 
-	CPointer<thread_group> m_owner;
+	observer_ptr<thread_group> m_owner;
 	size_t StackSize;
 	size_t StackOffset;
 	String m_name;
@@ -84,8 +77,8 @@ public:
 	DWORD m_dwCoInit;
 #endif
 private:
-	CPointer<thread_group> m_threadRef;
-	CPointer<AFX_MODULE_STATE> m_pModuleStateForThread;
+	observer_ptr<thread_group> m_threadRef;
+	observer_ptr<AFX_MODULE_STATE> m_pModuleStateForThread;
 protected:
 #if !UCFG_WIN32 || !UCFG_STDSTL //!!!?
 	mutable std::thread::id m_tid;
@@ -279,13 +272,12 @@ class thread_group : noncopyable {
 public:
 	CEvent m_evFinal;
 	//!!!         m_evFinish;
-	volatile int32_t m_dwRef;
-	volatile int32_t RefCountActiveThreads;
+	atomic<int32_t> aRefCountActiveThreads;
 
 	thread_group(bool bSync = true)
-		:	m_dwRef(0)
+		:	m_aRef(0)
 		,	m_bSync(bSync)
-		,	RefCountActiveThreads(0)
+		,	aRefCountActiveThreads(0)
 	{}
 
 	virtual ~thread_group();	
@@ -293,9 +285,9 @@ public:
 	void add_thread(ThreadBase *t);
 	void remove_thread(ThreadBase *t);
 
-	void ExternalAddRef() { Interlocked::Increment(m_dwRef);}
+	void ExternalAddRef() { ++m_aRef;}
 	void ExternalRelease() {
-		if (!Interlocked::Decrement(m_dwRef))
+		if (!--m_aRef)
 			OnFinalRelease();      
 	}
 
@@ -311,6 +303,8 @@ protected:
 	mutable CCriticalSection m_cs;				// Often locked from static ctr/dtor, which not allowed by VC std::mutex implementation
 	typedef std::unordered_set<ptr<ThreadBase> > CThreadColl;
 	CThreadColl m_threads;
+private:
+	atomic<int32_t> m_aRef;
 public:
 	bool m_bSync;
 };
@@ -418,8 +412,8 @@ AFX_API void AFXAPI ProcessExceptionInCatch();
 
 class CWinThread : public ThreadBase {
 public:
-	CPointer<CWnd> m_pMainWnd;
-	CPointer<CWnd> m_pActiveWnd;     // active main window (may not be m_pMainWnd)
+	observer_ptr<CWnd> m_pMainWnd;
+	observer_ptr<CWnd> m_pActiveWnd;     // active main window (may not be m_pMainWnd)
 	LPVOID m_pThreadParams;
 	AFX_THREADPROC m_pfnThreadProc;
 	void (*m_lpfnOleTermOrFreeLib)();
@@ -498,7 +492,7 @@ public:
 
 class WorkItem : public Object {
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
 	ptr<PoolThread> ExecutingThread;
 	HRESULT HResult;
