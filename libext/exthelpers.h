@@ -28,10 +28,23 @@ inline long exchange(long& obj, long new_val) {
 
 namespace Ext {
 
-	template <typename T>
-	struct ptr_traits {
-		typedef typename T::interlocked_policy interlocked_policy;
-	};
+class NonInterlockedPolicy {
+public:
+	template <class T> static T Increment(T& v) { return v = v + 1; }
+	template <class T> static T Decrement(T& v) { return v = v - 1; }
+};
+
+class InterlockedPolicy {
+public:
+	template <class T> static T Increment(atomic<T>& a) { return ++a; }
+	template <class T> static T Decrement(atomic<T>& a) { return --a; }
+};
+
+template <typename T>
+struct ptr_traits {
+	typedef typename T::interlocked_policy interlocked_policy;
+};
+
 
 	/*!!!
 #if UCFG_USE_BOOST
@@ -96,14 +109,6 @@ public:
 	T operator++(int) { return m_v++; }	
 private:
 	T m_v;
-};
-
-class noncopyable {
-protected:
-	noncopyable() {}
-private:
-	noncopyable(const noncopyable&);	
-	noncopyable& operator=(const noncopyable&);
 };
 
 template <typename T>
@@ -317,56 +322,20 @@ template <class T> inline void ZeroStruct(T& s) {
 
 #endif // _MSC_VER
 
-template <class T> class CPointer {
-protected:
-	T *m_p;
-
-	typedef T *PT;
-public:
-	typedef CPointer class_type;
-
-	CPointer()
-		:	m_p(0)
-	{}
-
-	CPointer(const CPointer& p)
-		:	m_p(p.m_p)
-	{}
-
-	CPointer(T *p)
-		:	m_p(p)
-	{}
-
-	T *get() const {return m_p;}
-
-	T *get_P() const { return get(); }
-	DEFPROP_GET(T*, P);
-	//!!!	__declspec(property(get=get_P)) T *P;
-
-	T *operator->() const {return get();}
-	CPointer& operator=(T *p) {m_p = p; return *this;}
-	T& operator*() const {return *m_p;}
-	T **operator&() { return &m_p; }
-	operator PT() const {return m_p;}
-	bool operator==(T *p) const {return m_p == p;}
-	bool operator<(T *p) const {return m_p < p;}
-	void Release() { m_p = 0; }
-	void reset() { delete m_p; Release(); }
-};
-
 template <class T> class CPointerKeeper {
 public:
-	CPointerKeeper(CPointer<T>& p, T *q)
+	CPointerKeeper(std::observer_ptr<T>& p, T *q)
 		:	m_p(p)
 	{
-		m_old = exchange(p, q);
+		m_old = p.get();
+		p.reset(q);
 	}
 
 	~CPointerKeeper() {
-		m_p = m_old;
+		m_p.reset(m_old);
 	}
 private:
-	CPointer<T>& m_p;
+	std::observer_ptr<T>& m_p;
 	T *m_old;
 };
 
@@ -384,8 +353,6 @@ struct Buf {
 
 size_t AFXAPI hash_value(const void *key, size_t len);
 
-typedef volatile Int32 RefCounter;
-
 #undef AFX_DATA //!!!
 #define AFX_DATA AFX_CORE_DATA
 
@@ -396,29 +363,33 @@ class CRuntimeClass;
 
 class Object {
 public:
-	typedef NonInterlocked interlocked_policy;
+	typedef NonInterlockedPolicy interlocked_policy;
 
 	static const AFX_DATA CRuntimeClass classObject;
-	mutable RefCounter m_dwRef;
+	mutable atomic<int> m_aRef;
 
 	Object()
-		:	m_dwRef(0)
+		:	m_aRef(0)
 	{
 	}
 
 	Object(const Object& ob)
-		:	m_dwRef(0)
+		: m_aRef(0)
 	{
+	}
+
+	Object& operator=(const Object& ob) {
+		m_aRef = 0;
+		return *this;
 	}
 
 	virtual ~Object() {
 	}
 
-	bool IsHeaped() const { return m_dwRef < (10000); }			//!!! should be replaced to some num limits
-	void InitInStack() { m_dwRef = 20000; }
+	bool IsHeaped() const { return m_aRef < (10000); }			//!!! should be replaced to some num limits
+	void InitInStack() { m_aRef = 20000; }
 
-	virtual CRuntimeClass *GetRuntimeClass() const;
-	bool IsKindOf(const CRuntimeClass *pClass) const;
+//!!!R	virtual CRuntimeClass *GetRuntimeClass() const;
 
 #ifdef _AFXDLL
 	static CRuntimeClass* PASCAL _GetBaseClass();
@@ -441,7 +412,7 @@ public:
 	public:
 		const char *m_lpszClassName;
 		int m_nObjectSize;
-		UInt32 m_wSchema; // schema number of the loaded class
+		uint32_t m_wSchema; // schema number of the loaded class
 		Object* (PASCAL* m_pfnCreateObject)(); // NULL => abstract class
 #ifdef _AFXDLL
 		CRuntimeClass* (PASCAL* m_pfnGetBaseClass)();
@@ -691,27 +662,6 @@ public:
 private:
 	T m_v;
 	volatile bool m_bInitialized;
-};
-
-class InterlockedSemaphore {
-public:
-	InterlockedSemaphore(volatile Int32& sem)
-		:	m_sem(sem)
-		,	m_bLocked(false)
-	{
-	}
-
-	~InterlockedSemaphore() {
-		if (m_bLocked)
-			m_sem = 0;
-	}
-
-	bool TryLock() {
-		return m_bLocked =  0 == Interlocked::CompareExchange(m_sem, 1, 0);
-	}
-private:
-	volatile Int32& m_sem;
-	bool m_bLocked;
 };
 
 
