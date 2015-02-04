@@ -271,13 +271,8 @@
 #endif
 
 #ifndef UCFG_USE_RTTI
-#	define UCFG_USE_RTTI (!UCFG_EXTENDED)
+#	define UCFG_USE_RTTI 1
 #endif
-
-//#if !UCFG_USE_RTTI && defined _CPPRTTI
-//#	error ExtLib requires /GR- compiler option
-//#endif
-
 
 #ifndef UCFG_DELAYLOAD_THROW
 #	define UCFG_DELAYLOAD_THROW (UCFG_EXTENDED && !UCFG_WCE)
@@ -296,7 +291,7 @@
 #endif
 
 #ifndef UCFG_OLE
-#	define UCFG_OLE (UCFG_COM && UCFG_EXTENDED)
+#	define UCFG_OLE UCFG_WIN32 //!!!? (UCFG_COM && UCFG_EXTENDED)
 #endif
 
 #ifndef UCFG_OCC
@@ -321,7 +316,17 @@
 #endif
 
 #ifndef UCFG_USE_PCRE
-#	define UCFG_USE_PCRE (UCFG_USE_REGEX && (!UCFG_STDSTL || !UCFG_CPP11))
+#	if UCFG_USE_REGEX
+#		if UCFG_MSC_VERSION && UCFG_STDSTL && UCFG_CPP11
+#			define UCFG_USE_PCRE 0
+#		elif defined(HAVE_PCRE2)
+#			define UCFG_USE_PCRE 2
+#		else
+#			define UCFG_USE_PCRE 1
+#		endif
+#	else
+#		define UCFG_USE_PCRE 0
+#	endif
 #endif
 
 #ifndef UCFG_USELISP
@@ -507,5 +512,9 @@
 
 #ifndef UCFG_DEFINE_INTRIN
 #	define UCFG_DEFINE_INTRIN 1
+#endif
+
+#ifndef UCFG_MANUFACTURER
+#	define UCFG_MANUFACTURER "Ufasoft"
 #endif
 
