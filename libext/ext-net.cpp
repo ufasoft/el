@@ -28,6 +28,11 @@ int AFXAPI SocketCheck(int code) {
 	return code;
 }
 
+void AFXAPI SocketCodeCheck(int code) {
+	if (code)
+		Throw(error_code(code, system_category()));
+}
+
 #if UCFG_USE_REGEX
 
 #if UCFG_WIN32
@@ -67,22 +72,22 @@ void Uri::EnsureAnalyzed() {
 		URL_COMPONENTS uc = { sizeof uc };
 
 		uc.lpszScheme = scheme;
-		uc.dwSchemeLength = _countof(scheme);
+		uc.dwSchemeLength = size(scheme);
 	
 		uc.lpszHostName = host;
-		uc.dwHostNameLength = _countof(host);
+		uc.dwHostNameLength = size(host);
 		
 		uc.lpszUserName = username;
-		uc.dwUserNameLength = _countof(username);
+		uc.dwUserNameLength = size(username);
 
 		uc.lpszPassword = password;
-		uc.dwPasswordLength = _countof(password);
+		uc.dwPasswordLength = size(password);
 
 		uc.lpszUrlPath = path;
-		uc.dwUrlPathLength = _countof(path);
+		uc.dwUrlPathLength = size(path);
 		
 		uc.lpszExtraInfo = extra;	
-		uc.dwExtraInfoLength = _countof(extra);
+		uc.dwExtraInfoLength = size(extra);
 
 		Win32Check(::InternetCrackUrl(uri, 0, ICU_ESCAPE, &uc));
 
@@ -105,7 +110,7 @@ void Uri::EnsureAnalyzed() {
 		m_path = m[6];
 		m_extra = m[7];
 		if (m[5].matched)
-			m_port = Convert::ToUInt16(String(m[5]).Substring(1));
+			m_port = Convert::ToUInt16(String(m[5]).substr(1));
 		else
 			m_port = -1;
 		
@@ -131,7 +136,7 @@ void Uri::EnsureAnalyzed() {
 
 String Uri::UnescapeDataString(RCString s) {
 #if UCFG_EXTENDED //!!!D
-	int len = s.Length+3;
+	int len = s.length() + 3;
 	TCHAR *path = (TCHAR*)alloca(len*sizeof(TCHAR)),
 		*query = (TCHAR*)alloca(len*sizeof(TCHAR));
 

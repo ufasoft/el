@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_WIN32
@@ -295,6 +288,14 @@ public:
 	AFX_API static std::vector<IPAddress> GetHostAddresses(RCString hostNameOrAddress) { return GetHostEntry(hostNameOrAddress).AddressList; }
 };
 
+class IPAddrInfo : noncopyable {
+public:
+	IPAddrInfo();
+	~IPAddrInfo();
+	vector<IPAddress> GetIPAddresses() const;
+private:
+	addrinfo *m_ai;
+};
 
 template <class C, class B> class SafeHandleAdapter : public B {
 public:
@@ -303,7 +304,7 @@ public:
 	{}
 
 	operator typename C::handle_type() {
-		return (typename C::handle_type)(LONG_PTR)(B::operator HANDLE());
+		return (typename C::handle_type)(intptr_t)(B::operator HANDLE());
 	}
 };
 
@@ -345,6 +346,10 @@ public:
 	Socket()
 		:	m_bBlocking(true)
 	{
+	}
+
+	Socket(AddressFamily af, SocketType sockType, ProtocolType protoType) {
+		Open((int)sockType, (int)protoType, (int)af);
 	}
 
 	virtual ~Socket();
@@ -580,7 +585,7 @@ protected:
 class SocketThread : public SocketThreadWrap<Thread> {
 public:
 	SocketThread(thread_group *tr) {
-		m_owner = tr;
+		m_owner.reset(tr);
 	}
 };
 
@@ -611,6 +616,7 @@ public:
 };
 
 AFX_API int AFXAPI SocketCheck(int code);
+AFX_API void AFXAPI SocketCodeCheck(int code);
 //!!!R AFX_API DWORD AFXAPI NameToHost(const String& name);
 AFX_API String AFXAPI HostToStr(DWORD host);
 DECLSPEC_NORETURN AFX_API void AFXAPI ThrowWSALastError();
