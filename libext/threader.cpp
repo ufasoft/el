@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -16,6 +9,9 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
+#ifndef UCFG_THREAD_SUSPEND_ON_START
+#	define UCFG_THREAD_SUSPEND_ON_START 0
+#endif
 
 #if UCFG_EXTENDED && UCFG_GUI
 #	include <el/gui/controls.h>
@@ -147,7 +143,7 @@ ThreadBase::~ThreadBase() {
 
 _AFX_THREAD_STATE& ThreadBase::AfxThreadState() {
 	if (!m_pAfxThreadState)
-		m_pAfxThreadState = new _AFX_THREAD_STATE;
+		m_pAfxThreadState.reset(new _AFX_THREAD_STATE);
 	return *m_pAfxThreadState;
 }
 
@@ -173,7 +169,7 @@ public:
 	ThreadBase* operator->() const { return operator ThreadBase*(); }
 
 	void OnThreadDetach(void *p) override {
-		CCounterIncDec<ThreadBase, Interlocked>::Release((ThreadBase*)p);
+		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release((ThreadBase*)p);
 	}
 } t_pCurThread;
 
@@ -223,8 +219,27 @@ void ThreadBase::ReleaseHandle(HANDLE h) const {
 
 #endif
 
+#if UCFG_WIN32
+HANDLE GetRealThreadHandle() {
+	HANDLE r;
+	Win32Check(::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentThread(), ::GetCurrentProcess(), &r, 0, FALSE, DUPLICATE_SAME_ACCESS));
+	return r;
+}
+#endif //  UCFG_WIN32
+
 void ThreadBase::Attach(HANDLE h, DWORD id, bool bOwn) {
+#if UCFG_THREAD_SUSPEND_ON_START
 	SafeHandle::Attach(h, bOwn);
+#else
+	if (h == 0 || h == HANDLE(m_invalidHandleValue)) {
+#if UCFG_USE_POSIX
+		CCheck(-1);
+#elif UCFG_WIN32
+		Win32Check(false);
+#endif
+	}
+	ThreadSafeAttach(h, bOwn);
+#endif
 #if UCFG_WIN32
 	m_nThreadID = id;
 #endif
@@ -237,7 +252,7 @@ void ThreadBase::AttachSelf() {
 	if (!TryGetCurrentThread())
 		SetCurrentThread();
 #if UCFG_WIN32
-	Attach(GetCurrentThread(), ::GetCurrentThreadId(), false);
+	Attach(GetRealThreadHandle(), ::GetCurrentThreadId());
 #	if !UCFG_STDSTL
 	m_tid = std::this_thread::get_id();
 #	endif
@@ -249,7 +264,7 @@ void ThreadBase::AttachSelf() {
 
 thread_group& ThreadBase::GetThreadRef() {
 	if (!m_threadRef)
-		m_threadRef = new thread_group;
+		m_threadRef.reset(new thread_group);
 	return *m_threadRef;
 }
 
@@ -661,6 +676,10 @@ uint32_t ThreadBase::CppThreadThunk() {
 #if UCFG_USE_POSIX
 	m_ptid = ::pthread_self();
 	m_tid = thread::id(m_ptid);
+#else
+#	if !UCFG_THREAD_SUSPEND_ON_START
+	Attach(GetRealThreadHandle(), ::GetCurrentThreadId());
+#	endif
 #endif
 	uint32_t exitCode = (UINT)E_FAIL; //!!!
 	alloca(StackOffset);							// to prevent cache line aliasing 
@@ -677,12 +696,12 @@ uint32_t ThreadBase::CppThreadThunk() {
 					:	m_tr(tr)
 				{
 					if (m_tr)
-						Interlocked::Increment(m_tr->RefCountActiveThreads);
+						++(m_tr->aRefCountActiveThreads);
 				}
 
 				~ActiveThreadKeeper() {
 					if (m_tr)
-						Interlocked::Decrement(m_tr->RefCountActiveThreads);
+						--(m_tr->aRefCountActiveThreads);
 				}
 			} actveThreadKeeper(m_owner);
 
@@ -701,7 +720,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 		ProcessExceptionInCatch();
 		OnEndThread(true);
 	}
-	CCounterIncDec<ThreadBase, Interlocked>::Release(this);
+	CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 	return exitCode;
 }
 
@@ -719,7 +738,6 @@ UINT ThreadBase::ThreaderFunction(LPVOID pParam) {
 	t_pCurThread = nullptr;
 	return r;
 }
-
 
 #else
 
@@ -762,9 +780,9 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 	ASSERT(!Valid());
 
 #ifdef WIN32
-	m_pModuleStateForThread = AfxGetModuleState();
+	m_pModuleStateForThread.reset(AfxGetModuleState());
 #endif
-	Interlocked::Increment(base::m_dwRef);	// Trunned thread decrements m_dwRef;
+	++base::m_aRef;	// Trunned thread decrements m_aRef;
 	ptr<ThreadBase> tThis = this;			// if keep this object live if the fread exits quickly
 #if UCFG_USE_PTHREADS
 	CAttr attr;
@@ -772,25 +790,28 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 		attr.StackSize = nStackSize;
 	int rc = ::pthread_create(&m_ptid, attr, &ThreaderFunction, this);
 	if (rc) {
-		CCounterIncDec<ThreadBase, Interlocked>::Release(this);
+		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 		PthreadCheck(rc);
 	}
 	m_tid = thread::id(m_ptid);
 #else
 	HANDLE h;
 	DWORD threadID = 0;
+	DWORD flCreate = dwCreateFlags | (UCFG_THREAD_SUSPEND_ON_START ? CREATE_SUSPENDED : 0);										// CREATE_SUSPENDED is necessary to sync access to SafeHandle
 #	if UCFG_WCE
-		h = ::CreateThread(lpSecurityAttrs, nStackSize, (LPTHREAD_START_ROUTINE)&ThreaderFunction, this, dwCreateFlags|CREATE_SUSPENDED, &threadID);		// CREATE_SUSPENDED is necessary to sync access to SafeHandle
+		h = ::CreateThread(lpSecurityAttrs, nStackSize, (LPTHREAD_START_ROUTINE)&ThreaderFunction, this, flCreate, &threadID);
 #	else
-		h = (HANDLE)_beginthreadex(lpSecurityAttrs, (UINT)nStackSize, &ThreaderFunction, this, dwCreateFlags|CREATE_SUSPENDED, (UINT*)&threadID);			//!!!	CREATE_SUSPENDED is necessary to sync access to SafeHandle
+		h = (HANDLE)_beginthreadex(lpSecurityAttrs, (UINT)nStackSize, &ThreaderFunction, this, flCreate, (UINT*)&threadID);
 #	endif
 	if (!h || h==(HANDLE)-1) {
-		CCounterIncDec<ThreadBase, Interlocked>::Release(this);
+		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 	}
 	Attach(h, threadID);
+#	if UCFG_THREAD_SUSPEND_ON_START
 	if (!(dwCreateFlags & CREATE_SUSPENDED))
 		Resume();
-#endif
+#	endif
+#endif	// !UCFG_USE_PTHREADS
 }
 
 void ThreadBase::Start(DWORD flags) {
@@ -835,7 +856,7 @@ restore_interruption::restore_interruption(disable_interruption& di)
 {}
 
 void AFXAPI sleep_for(const TimeSpan& span) {
-	DWORD ms = clamp(DWORD(span.TotalMilliseconds), (DWORD)0, (DWORD)INFINITE);
+	DWORD ms = clamp((DWORD)duration_cast<milliseconds>(span).count(), (DWORD)0, (DWORD)INFINITE);
 	ThreadBase::get_CurrentThread()->Sleep(ms);
 }
 
