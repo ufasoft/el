@@ -69,7 +69,7 @@ typedef struct _GUID {
 
 #define _WINERROR_
 
-typedef __success(return >= 0) long HRESULT;
+typedef __success(return >= 0) int32_t HRESULT;
 
 #define _HRESULT_TYPEDEF_(_sc) ((HRESULT)_sc)
 

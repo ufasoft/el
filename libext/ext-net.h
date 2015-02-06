@@ -599,6 +599,7 @@ public:
 	static const int BUF_SIZE = 8192;		// default SO_RCVBUF
 
 	bool m_bDoShutdown;
+	CBool NoSignal;
 
 	CSocketLooper()
 		:	m_bDoShutdown(true)
@@ -625,6 +626,7 @@ DECLSPEC_NORETURN AFX_API void AFXAPI ThrowWSALastError();
 class NetworkStream : public Stream {
 public:
 	Socket& m_sock;
+	CBool NoSignal;
 
 	NetworkStream(Socket& sock)
 		:	m_sock(sock)

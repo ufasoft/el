@@ -287,7 +287,7 @@ size_t NetworkStream::Read(void *buf, size_t count) const {
 
 void NetworkStream::WriteBuffer(const void *buf, size_t count) {
 	while (count) {
-		if (int n = m_sock.Send(buf, (int)count)) {
+		if (int n = m_sock.Send(buf, (int)count, NoSignal ? MSG_NOSIGNAL : 0)) {
 			if (n < 0)
 				Throw(E_FAIL);
 			count -= n;
@@ -307,6 +307,7 @@ void NetworkStream::Close() const {
 
 void CSocketLooper::Send(Socket& sock, const ConstBuf& mb) {
 	NetworkStream stm(sock);
+	stm.NoSignal = NoSignal;
 	stm.WriteBuffer(mb.P, (int)mb.Size);
 }
 
@@ -335,7 +336,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 
 		bool Process(fd_set *fdset) {
 			if (FD_ISSET(m_hp, fdset)) {
-				BYTE buf[BUF_SIZE];
+				byte buf[BUF_SIZE];
 				int r = m_sock.Receive(buf, sizeof buf);
 				if (m_bLive = r) {
 					bool bDisconnectAfterData = false;
