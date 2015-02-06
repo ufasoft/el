@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #include <el/libext/ext-net.h>
@@ -29,7 +22,7 @@ class CInternetFile : public File { //!!!
 public:
 	~CInternetFile();
 	void Attach(HINTERNET hInternet);
-	uint32_t Read(void *lpBuf, uint32_t nCount) override;
+	uint32_t Read(void *lpBuf, size_t nCount, int64_t offset) override;
 	String ReadString();
 	DWORD SetFilePointer(LONG offset, DWORD method);
 protected:
@@ -101,7 +94,7 @@ void CurlCheck(CURLcode rc);
 
 class CurlSession : public Object {
 public:
-	typedef Interlocked interlocked_policy; //!!!
+	typedef InterlockedPolicy interlocked_policy; //!!!
 
 	IPEndPoint EndPoint;
 	CURL *m_h;
@@ -160,7 +153,7 @@ ENUM_CLASS(ProxyType) {
 
 class WebProxy : public Object {
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 	Uri Address;
 	Ext::ProxyType Type;
 
@@ -286,7 +279,7 @@ public:
 
 	void Attach(ptr<CurlSession> curl);
 #else
-	CPointer<CInternetConnection> m_pConnection;
+	observer_ptr<CInternetConnection> m_pConnection;
 #endif
 	void *m_pResponseImpl;
 
@@ -460,7 +453,7 @@ public:
 	void ReleaseFromAPC();
 
 #if UCFG_USE_LIBCURL
-	CPointer<curl_slist> m_headers;
+	observer_ptr<curl_slist> m_headers;
 
 	void AddHeader(CURL *curl, RCString name, RCString val);
 	ptr<CurlSession> Connect() override;
@@ -494,7 +487,7 @@ public:
 	String UserAgent;
 	WebHeaderCollection Headers;
 	HttpWebRequest *CurrentRequest;
-	CPointer<Ext::Encoding> Encoding;
+	observer_ptr<Ext::Encoding> Encoding;
 	RequestCacheLevel CacheLevel;
 
 	WebClient();
