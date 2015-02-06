@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 
@@ -29,7 +22,7 @@ using namespace std;
 int WSAGetLastError() {
 	return errno;
 }
-#endif
+#endif // !UCFG_WIN32
 
 
 namespace Ext {
@@ -304,20 +297,6 @@ void NetworkStream::WriteBuffer(const void *buf, size_t count) {
 	}
 }
 
-/*!!!R
-int NetworkStream::ReadByte() const {
-	DBG_LOCAL_IGNORE_NAME(E_EXT_EndOfStream, E_EXT_EndOfStream);
-	try {
-		byte a;
-		ReadBuffer(&a, 1);
-		return a;
-	} catch (RCExc e) {
-		if (e.HResult == E_EXT_EndOfStream)
-			return -1;
-		throw;
-	}
-}*/
-
 bool NetworkStream::Eof() const {
 	return m_bEof;
 }
@@ -332,9 +311,9 @@ void CSocketLooper::Send(Socket& sock, const ConstBuf& mb) {
 }
 
 void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
-	FUN_TRACE_2
+	TRC(3, "");
 
-	DBG_LOCAL_IGNORE_WIN32(WSA(ECONNRESET));		//!!!C
+	DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
 
 	class CLoopKeeper {
 	public:
@@ -403,7 +382,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 		TimeSpan span = GetTimeout();
 		timeval timeout,
 			*pTimeout = 0;
-		if (span.Ticks != -1) {
+		if (span.count() != -1) {
 			pTimeout = &timeout;
 			span.ToTimeval(timeout);
 		}
