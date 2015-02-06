@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -96,7 +89,7 @@ pair<String, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uU
 #endif
 }
 
-String Path::GetPhysicalPath(const path& p) {
+path Path::GetPhysicalPath(const path& p) {
 	String path = p;
 #if UCFG_WIN32_FULL
 	while (true) {
@@ -114,7 +107,7 @@ String Path::GetPhysicalPath(const path& p) {
 static StaticWRegex s_reDosName("^\\\\\\\\\\?\\\\([A-Za-z]:.*)");   //  \\?\x:
 #endif
 
-String Path::GetTruePath(const path& p) {
+path Path::GetTruePath(const path& p) {
 #if UCFG_USE_POSIX	
 	char buf[PATH_MAX];
 	for (const char *psz = p.native();; psz = buf) {
@@ -128,7 +121,7 @@ String Path::GetTruePath(const path& p) {
 	}
 #elif UCFG_WIN32_FULL
 	TCHAR buf[_MAX_PATH];
-	DWORD len = ::GetLongPathName(p.native(), buf, _countof(buf)-1);
+	DWORD len = ::GetLongPathName(p.native(), buf, size(buf)-1);
 	Win32Check(len != 0);
 	buf[len] = 0;
 
@@ -140,7 +133,7 @@ String Path::GetTruePath(const path& p) {
 	TCHAR buf2[_MAX_PATH];
 	File file;
 	file.Attach(::CreateFile(buf, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0));
-	len = pfn(Handle(file), buf2, _countof(buf2)-1, 0);
+	len = pfn(Handle(file), buf2, size(buf2)-1, 0);
 	Win32Check(len != 0);
 	buf2[len] = 0;	
 #if UCFG_USE_REGEX
@@ -248,18 +241,15 @@ void File::Open(const File::OpenInfo& oi) {
 	}
 
 	SECURITY_ATTRIBUTES sa = { sizeof sa };
-	sa.bInheritHandle = (int)oi.Share & (int)FileShare::Inheritable;
-	DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
-	dwFlagsAndAttributes |= oi.BufferingEnabled ? 0 : FILE_FLAG_NO_BUFFERING;
-
-	if (bool(oi.Options & FileOptions::RandomAccess))
-		dwFlagsAndAttributes |= FILE_FLAG_RANDOM_ACCESS;
-	if (bool(oi.Options & FileOptions::SequentialScan))
-		dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
-	if (bool(oi.Options & FileOptions::DeleteOnClose))
-		dwFlagsAndAttributes |= FILE_FLAG_DELETE_ON_CLOSE;
-	if (bool(oi.Options & FileOptions::WriteThrough))
-		dwFlagsAndAttributes |= FILE_FLAG_WRITE_THROUGH;
+	sa.bInheritHandle = bool(oi.Share & FileShare::Inheritable);
+	
+	DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL
+		| (oi.BufferingEnabled ? 0 : FILE_FLAG_NO_BUFFERING)
+		| (bool(oi.Options & FileOptions::Asynchronous) ? FILE_FLAG_OVERLAPPED : 0)
+		| (bool(oi.Options & FileOptions::RandomAccess) ? FILE_FLAG_RANDOM_ACCESS : 0)
+		| (bool(oi.Options & FileOptions::SequentialScan) ? FILE_FLAG_SEQUENTIAL_SCAN : 0)
+		| (bool(oi.Options & FileOptions::DeleteOnClose) ? FILE_FLAG_DELETE_ON_CLOSE : 0)
+		| (bool(oi.Options & FileOptions::WriteThrough) ? FILE_FLAG_WRITE_THROUGH : 0);		
 
 	Attach(::CreateFile(ExcLastStringArgKeeper(oi.Path), dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlagsAndAttributes, NULL));
 	if (oi.Mode == FileMode::Append)
@@ -358,129 +348,22 @@ bool File::CheckPending(BOOL b) {
 	return false;
 }
 
-void File::SetEndOfFile() {
-	Win32Check(::SetEndOfFile(HandleAccess(_self)));
-}
-
-
-#if !UCFG_WCE
-String AFXAPI AfxGetRoot(LPCTSTR lpszPath) {
-	ASSERT(lpszPath != NULL);
-
-	TCHAR buf[_MAX_PATH];
-	lstrcpyn(buf, lpszPath, _MAX_PATH);
-	buf[_MAX_PATH-1] = 0;
-	Win32Check(::PathStripToRoot(buf));
-	return buf;
-}
-
-// turn a file, relative path or other into an absolute path
-bool AFXAPI AfxFullPath(LPTSTR lpszPathOut, LPCTSTR lpszFileIn)
-	// lpszPathOut = buffer of _MAX_PATH
-	// lpszFileIn = file, relative path or absolute path
-	// (both in ANSI character set)
-{
-	ASSERT(AfxIsValidAddress(lpszPathOut, _MAX_PATH));
-
-	// first, fully qualify the path name
-	LPTSTR lpszFilePart;
-	if (!GetFullPathName(lpszFileIn, _MAX_PATH, lpszPathOut, &lpszFilePart))
-	{
-#ifdef _DEBUG
-		//!!!		if (lpszFileIn[0] != '\0')
-		//!!!			TRACE1("Warning: could not parse the path '%s'.\n", lpszFileIn);
-#endif
-		lstrcpyn(lpszPathOut, lpszFileIn, _MAX_PATH); // take it literally
-		return FALSE;
-	}
-
-	String strRoot = AfxGetRoot(lpszPathOut);
-	if (!::PathIsUNC( strRoot ))
-	{
-		// get file system information for the volume
-		DWORD dwFlags, dwDummy;
-		if (!GetVolumeInformation(strRoot, NULL, 0, NULL, &dwDummy, &dwFlags,
-			NULL, 0))
-		{
-			//!!!	TRACE1("Warning: could not get volume information '%s'.\n", (LPCTSTR)strRoot);
-			return FALSE;   // preserving case may not be correct
-		}
-
-		// not all characters have complete uppercase/lowercase
-		if (!(dwFlags & FS_CASE_IS_PRESERVED))
-			CharUpper(lpszPathOut);
-
-		// assume non-UNICODE file systems, use OEM character set
-		if (!(dwFlags & FS_UNICODE_STORED_ON_DISK))
-		{
-			WIN32_FIND_DATA data;
-			HANDLE h = FindFirstFile(lpszFileIn, &data);
-			if (h != INVALID_HANDLE_VALUE)
-			{
-				FindClose(h);
-				lstrcpy(lpszFilePart, data.cFileName);
-			}
-		}
-	}
-	return TRUE;
-}
-
-
-bool File::GetStatus(RCString lpszFileName, CFileStatus& rStatus) {
-	// attempt to fully qualify path first
-	if (!AfxFullPath(rStatus.m_szFullName, lpszFileName)) {
-		rStatus.m_szFullName[0] = '\0';
-		return false;
-	}
-
-	WIN32_FIND_DATA findFileData;
-	HANDLE hFind = FindFirstFile(lpszFileName, &findFileData);
-	if (hFind == INVALID_HANDLE_VALUE)
-		return FALSE;
-	Win32Check(FindClose(hFind));
-
-	// strip attribute of NORMAL bit, our API doesn't have a "normal" bit.
-	rStatus.m_attribute = (BYTE)
-		(findFileData.dwFileAttributes & ~FILE_ATTRIBUTE_NORMAL);
-
-	rStatus.m_size = findFileData.nFileSizeLow+((int64_t)findFileData.nFileSizeHigh << 32);
-
-	// convert times as appropriate
-	rStatus.m_ctime = findFileData.ftCreationTime;
-	rStatus.m_atime = findFileData.ftLastAccessTime;
-	rStatus.m_mtime = findFileData.ftLastWriteTime;
-
-	if (!rStatus.m_ctime.Ticks)
-		rStatus.m_ctime = rStatus.m_mtime;
-
-	if (!rStatus.m_atime.Ticks)
-		rStatus.m_atime = rStatus.m_mtime;
-	return true;
-}
-#endif
-
 #endif // !UCFG_USE_POSIX
 
-uint32_t File::Read(void *lpBuf, uint32_t nCount) {
+void File::SetEndOfFile() {
 #if UCFG_USE_POSIX
-	return CCheck(::read((int)(LONG_PTR)(HANDLE)HandleAccess(_self), lpBuf, nCount));
+	CCheck(::ftruncate((int)(LONG_PTR)(HANDLE)HandleAccess(_self), Seek(0, SeekOrigin::Current)));
 #else
-	DWORD dwRead;
-	Win32Check(::ReadFile(HandleAccess(_self), lpBuf, nCount, &dwRead, 0), ERROR_BROKEN_PIPE);
-	return dwRead;
+	Win32Check(::SetEndOfFile(HandleAccess(_self)));
 #endif
 }
 
-void File::Write(const void *buf, size_t size, int64_t offset) {
-#if UCFG_USE_POSIX
-	if (offset >= 0)
-		CCheck(::pwrite((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size, offset));
-	else
-		CCheck(::write((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size));
-#else
-	OVERLAPPED ov, *pov = 0;
+
+#ifdef WIN32
+OVERLAPPED *File::SetOffsetForFileOp(OVERLAPPED& ov, int64_t offset) {
+	OVERLAPPED *pov = 0;
 #	if UCFG_WCE
-	switch (offset) {
+	switch (offset) {				//!!! Thread-unsafe
 	case -1:
 		SeekToEnd();
 	case CURRENT_OFFSET:
@@ -492,6 +375,22 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 	if (offset != CURRENT_OFFSET)
 		ZeroStruct(*(pov = &ov));
 #	endif
+	if (pov) {
+		ov.Offset = DWORD(offset);
+		ov.OffsetHigh = DWORD(offset >> 32);
+	}
+	return pov;
+}
+#endif // WIN32
+
+void File::Write(const void *buf, size_t size, int64_t offset) {
+#if UCFG_USE_POSIX
+	if (offset >= 0)
+		CCheck(::pwrite((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size, offset));
+	else
+		CCheck(::write((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size));
+#else
+	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nWritten;
 	for (const byte *p = (const byte*)buf; size; size -= nWritten, p += nWritten) {
 		if (pov) {
@@ -499,16 +398,29 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 			ov.OffsetHigh = DWORD(offset >> 32);
 		}
 		Win32Check(::WriteFile(HandleAccess(_self), p, std::min(size, (size_t)0xFFFFFFFF), &nWritten, pov));
-		if (offset != -1)
+		if (offset >= 0)
 			offset += nWritten;
 	}
+#endif
+}
+
+uint32_t File::Read(void *buf, size_t size, int64_t offset) {
+#if UCFG_USE_POSIX
+	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)(HANDLE)HandleAccess(_self), buf, size, offset) : ::read((int)(LONG_PTR)(HANDLE)HandleAccess(_self), buf, size);
+	CCheck(r>=0 ? 0 : -1);
+	return r;
+#else
+	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
+	DWORD nRead;
+	Win32Check(::ReadFile(HandleAccess(_self), buf, std::min(size, (size_t)0xFFFFFFFF), &nRead, pov), ERROR_BROKEN_PIPE);
+	return nRead;
 #endif
 }
 
 void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediately) {
 #if UCFG_USE_POSIX
 	int64_t prev = File::Seek(pos, SeekOrigin::Begin);
-	int rc = ::lockf((int)(LONG_PTR)(HANDLE)HandleAccess(_self), F_LOCK, len);
+	int rc = ::lockf((int)(intptr_t)(HANDLE)HandleAccess(_self), F_LOCK, len);
 	File::Seek(prev, SeekOrigin::Begin);
 	CCheck(rc);
 #else
@@ -552,7 +464,7 @@ size_t File::PhysicalSectorSize() const {			// return 0 if not detected
 
 int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 #if UCFG_USE_POSIX
-	return CCheck(::lseek((int)(LONG_PTR)(HANDLE)HandleAccess(_self), (long)off, (int)origin));
+	return CCheck(::lseek((int)(intptr_t)(HANDLE)HandleAccess(_self), (long)off, (int)origin));
 #else
 	ULARGE_INTEGER uli;
 	uli.QuadPart = (ULONGLONG)off;
