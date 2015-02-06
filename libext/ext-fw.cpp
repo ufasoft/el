@@ -1247,7 +1247,7 @@ void CMessageProcessor::RegisterModule(DWORD lowerCode, DWORD upperCode, RCStrin
 String CMessageProcessor::ProcessInst(HRESULT hr) {
 	CheckStandard();
 	char hex[30];
-	sprintf(hex, "Error %8.8lX", hr);
+	sprintf(hex, "Error %8.8X", hr);
 	TCHAR buf[256];
 	char *ar[5] = {0, 0, 0, 0, 0};
 	char **p = 0;
