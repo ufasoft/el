@@ -91,9 +91,9 @@ Encoding::Encoding(int codePage)
 
 		const char *unicodeCP = sizeof(String::value_type)==4 ? "UTF-32" : "UTF-16";
 		m_iconvTo = ::iconv_open(name, unicodeCP);
-		CCheck((LONG_PTR)m_iconvTo == -1 ? -1 : 0);
+		CCheck((intptr_t)m_iconvTo == -1 ? -1 : 0);
 		m_iconvFrom = ::iconv_open(unicodeCP, name);
-		CCheck((LONG_PTR)m_iconvFrom == -1 ? -1 : 0);
+		CCheck((intptr_t)m_iconvFrom == -1 ? -1 : 0);
 
 		GetCharCount(ConstBuf("ABC", 3));			// to skip encoding prefixes;
 	}
