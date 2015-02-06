@@ -750,7 +750,9 @@ private:
 	const char *m_funName;
 };
 
-inline HRESULT HResult(HRESULT err) { return err; }
+#ifdef _MSC_VER
+	inline HRESULT HResult(HRESULT err) { return err; }
+#endif
 inline HRESULT HResult(unsigned int err) { return (HRESULT)err; }
 inline HRESULT HResult(unsigned long err) { return (HRESULT)err; }
 
