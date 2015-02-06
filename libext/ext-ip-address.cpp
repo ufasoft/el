@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -71,7 +64,7 @@ extern "C" const char * __cdecl API_inet_ntop(int af, const void *src, char *dst
 	s_usingSockets.EnsureInit();
 
 	TCHAR buf[256];
-	DWORD len = _countof(buf);
+	DWORD len = std::size(buf);
 	int rc;
 	switch (af) {
 	case AF_INET:
@@ -526,7 +519,7 @@ IPHostEntry Dns::GetHostEntry(RCString hostNameOrAddress) {
 
 String Dns::GetHostName() {
 	char buf[256] = "";
-	SocketCheck(gethostname(buf, _countof(buf)));
+	SocketCheck(gethostname(buf, size(buf)));
 	return buf;
 }
 
@@ -535,7 +528,7 @@ String COperatingSystem::get_ComputerName() {
 	return Dns::GetHostName();
 #else
 	TCHAR buf[MAX_COMPUTERNAME_LENGTH+1];
-	DWORD len = _countof(buf);
+	DWORD len = size(buf);
 	Win32Check(::GetComputerName(buf, &len));
 	return String(buf, len);
 #endif
@@ -600,3 +593,28 @@ extern "C" const char *inet_ntop(int af, const void *src, char *dst, size_t size
 
 #endif
 */
+
+#if UCFG_WIN32
+#	undef NTDDI_VERSION
+#	define NTDDI_VERSION NTDDI_WINXP
+#	include <ws2tcpip.h>
+#endif
+
+namespace Ext {
+
+IPAddrInfo::IPAddrInfo() {
+	SocketCodeCheck(::getaddrinfo(Dns::GetHostName(), 0, 0, &m_ai));
+}
+
+IPAddrInfo::~IPAddrInfo() {
+	::freeaddrinfo(m_ai);
+}
+
+vector<IPAddress> IPAddrInfo::GetIPAddresses() const {
+	vector<IPAddress> r;
+	for (addrinfo *ai = m_ai; ai; ai = ai->ai_next)
+		r.push_back(IPAddress(*ai->ai_addr));
+	return r;
+}
+
+} // Ext::
