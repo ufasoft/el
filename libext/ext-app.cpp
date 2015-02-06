@@ -98,7 +98,7 @@ CAppBase::CAppBase()
 }
 
 String CAppBase::GetCompanyName() {
-	String companyName = MANUFACTURER;
+	String companyName = UCFG_MANUFACTURER;
 	DWORD dw;
 	try {
 		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName.native(), &dw)) //!!!
@@ -130,7 +130,7 @@ RegistryKey& CAppBase::get_KeyCU() {
 
 path COperatingSystem::get_WindowsDirectory() {
 	TCHAR szPath[_MAX_PATH];
-	Win32Check(::GetWindowsDirectory(szPath , _countof(szPath)));
+	Win32Check(::GetWindowsDirectory(szPath , size(szPath)));
 	return szPath;
 }
 
@@ -153,7 +153,7 @@ path AFXAPI GetAppDataManufacturerFolder() {
 #if UCFG_COMPLEX_WINAPP
 	r /= AfxGetApp()->GetCompanyName();
 #else
-	r /= MANUFACTURER;
+	r /= UCFG_MANUFACTURER;
 #endif
 	create_directory(r);
 	return r;
@@ -203,12 +203,12 @@ void CAppBase::ProcessArgv(int argc, argv_char_t *argv[]) {
 		Argv = &m_argvp[0];
 	}
 #else
-	Argv = argv;
+	Argv.reset(argv);
 #endif
 }
 
 #if !UCFG_ARGV_UNICODE
-void CAppBase::ProcessArgv(int argc, String::Char *argv[]) {
+void CAppBase::ProcessArgv(int argc, String::value_type *argv[]) {
 	Argc = argc;
 	if (argv) {
 		for (int i=0; i<=argc; ++i) {
@@ -220,7 +220,7 @@ void CAppBase::ProcessArgv(int argc, String::Char *argv[]) {
 			m_argv.push_back(arg);
 			m_argvp.push_back((argv_char_t*)(const argv_char_t*)m_argv[i]);
 		}
-		Argv = &m_argvp[0];
+		Argv.reset(&m_argvp[0]);
 	}
 }
 #endif // !UCFG_ARGV_UNICODE
@@ -361,6 +361,11 @@ CConApp::CConApp() {
 CConApp *CConApp::s_pApp;
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
+	if (const char *slevel = getenv("UCFG_TRC")) {
+		CTrace::s_pOstream = &cerr;
+		CTrace::s_nLevel = atoi(slevel);
+	}
+
 #if UCFG_USE_POSIX
 	cerr << " \b";		// mix of std::cerr && std::wcerr requires this hack
 #endif
@@ -388,9 +393,9 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 		case 1:
 			Usage();
 		case 0:
-		case E_EXT_NormalExit:
+		case int(E_EXT_NormalExit):
 			break;
-		case E_EXT_SignalBreak:
+		case int(E_EXT_SignalBreak):
 			Environment::ExitCode = 1;
 			break;
 		case 3:
