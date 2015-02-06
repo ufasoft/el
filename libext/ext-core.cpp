@@ -11,24 +11,18 @@ using namespace Ext;
 
 namespace Ext { 
 
-int __cdecl PopCount(UInt32 v) {
+int __cdecl PopCount(uint32_t v) {
 	return BitOps::PopCount(v);
 }
 
-int __cdecl PopCount(UInt64 v) {
-	return BitOps::PopCount(UInt64(v));
+int __cdecl PopCount(uint64_t v) {
+	return BitOps::PopCount(uint64_t(v));
 }
 
 const unsigned char *ConstBuf::Find(const ConstBuf& mb) const {
-	for (const unsigned char *p=P, *e=p+(Size-mb.Size); p <= e;) {
-		if (const unsigned char *q = (const unsigned char*)memchr(p, mb.P[0], e-p+1)) {
-			if (mb.Size==1 || !memcmp(q+1, mb.P+1, mb.Size-1))
-				return q;
-			else
-				p = q+1;
-		} else
-			break;
-	}
+	for (const unsigned char *p=P, *e=p+(Size-mb.Size), *q; (p <= e) && (q = (const unsigned char*)memchr(p, mb.P[0], e-p+1)); p = q+1)
+		if (mb.Size==1 || !memcmp(q+1, mb.P+1, mb.Size-1))
+			return q;
 	return 0;
 }
 
@@ -44,7 +38,7 @@ Blob Convert::ToAnsiBytes(wchar_t ch) {
 
 #endif
 
-static void ImpIntToStr(char *buf, UInt64 v, int base) {
+static void ImpIntToStr(char *buf, uint64_t v, int base) {
 	char *q = buf;
 	do {
 		int d = int(v % base);
@@ -55,7 +49,7 @@ static void ImpIntToStr(char *buf, UInt64 v, int base) {
 	reverse(buf, q);
 }
 
-String Convert::ToString(Int64 v, int base) {
+String Convert::ToString(int64_t v, int base) {
 	char buf[66];
 	char *p = buf;
 	if (v < 0) {
@@ -66,13 +60,13 @@ String Convert::ToString(Int64 v, int base) {
 	return buf;
 }
 
-String Convert::ToString(UInt64 v, int base) {
+String Convert::ToString(uint64_t v, int base) {
 	char buf[66];
 	ImpIntToStr(buf, v, base);
 	return buf;
 }
 
-String Convert::ToString(Int64 v, const char *format) {
+String Convert::ToString(int64_t v, const char *format) {
 	char buf[100];
 	char sformat[100];
 	char typ = *format;
@@ -93,10 +87,10 @@ String Convert::ToString(Int64 v, const char *format) {
 	}
 }
 
-UInt64 Convert::ToUInt64(RCString s, int fromBase) {
-	UInt64 r = 0;
-	const String::Char *p=s;
-	for (String::Char ch; (ch = *p); ++p) {
+uint64_t Convert::ToUInt64(RCString s, int fromBase) {
+	uint64_t r = 0;
+	const String::value_type *p=s;
+	for (String::value_type ch; (ch = *p); ++p) {
 		int n;
 		if (ch>='0' && ch<='9')
 			n = ch-'0';
@@ -113,38 +107,45 @@ UInt64 Convert::ToUInt64(RCString s, int fromBase) {
 	return r;
 }
 
-Int64 Convert::ToInt64(RCString s, int fromBase) {
-	return s[0] == '-' ? -(Int64)ToUInt64(s.substr(1), fromBase) : ToUInt64(s, fromBase);
+int64_t Convert::ToInt64(RCString s, int fromBase) {
+	size_t siz;
+	int64_t r = stoll(s, &siz, fromBase);
+	if (siz != s.length())
+		Throw(errc::invalid_argument);
+	return r;
 }
 
 template <typename T>
-T CheckBounds(Int64 v) {
+T CheckBounds(int64_t v) {
 	if (v > numeric_limits<T>::max() || v < numeric_limits<T>::min())
 		Throw(E_EXT_Overflow);
 	return (T)v;
 }
 
 template <typename T>
-T CheckBounds(UInt64 v) {
+T CheckBounds(uint64_t v) {
 	if (v > numeric_limits<T>::max())
-		Throw(E_EXT_Overflow);
+		throw out_of_range("integer bounds violated");
 	return (T)v;
 }
 
-UInt32 Convert::ToUInt32(RCString s, int fromBase) {
-	return CheckBounds<UInt32>(ToUInt64(s, fromBase));
+template <typename T>
+T CheckBounds(int v) {
+	if (v > numeric_limits<T>::max())
+		throw out_of_range("integer bounds violated");
+	return (T)v;
 }
 
-UInt16 Convert::ToUInt16(RCString s, int fromBase) {
-	return CheckBounds<UInt16>(ToUInt64(s, fromBase));
+uint32_t Convert::ToUInt32(RCString s, int fromBase) {
+	return CheckBounds<uint32_t>(ToUInt64(s, fromBase));
+}
+
+uint16_t Convert::ToUInt16(RCString s, int fromBase) {
+	return CheckBounds<uint16_t>(stoi(s, 0, fromBase));
 }
 
 byte Convert::ToByte(RCString s, int fromBase) {
-	return CheckBounds<byte>(ToUInt64(s, fromBase));
-}
-
-Int32 Convert::ToInt32(RCString s, int fromBase) {
-	return CheckBounds<Int32>(ToInt64(s, fromBase));
+	return CheckBounds<byte>(stoi(s, 0, fromBase));
 }
 
 #if !UCFG_WDM
@@ -230,23 +231,23 @@ void StreamWriter::WriteLine(RCString line) {
 	m_stm.WriteBuf(blob);
 }
 
-UInt64 ToUInt64AtBytePos(const dynamic_bitset<byte>& bs, size_t pos) {
+uint64_t ToUInt64AtBytePos(const dynamic_bitset<byte>& bs, size_t pos) {
 	ASSERT(!(pos & 7));
 
-	UInt64 r = 0;
+	uint64_t r = 0;
 #if UCFG_STDSTL
 	for (size_t i=0, e=min(size_t(64), size_t(bs.size()-pos)); i<e; ++i)
-		r |= UInt64(bs[pos+i]) << i;
+		r |= uint64_t(bs[pos+i]) << i;
 #else
 	size_t idx = pos/bs.bits_per_block;
 	const byte *pb = (const byte*)&bs.m_data[idx];
 	ssize_t outRangeBits = max(ssize_t(pos + 64 - bs.size()), (ssize_t)0);
 	if (0 == outRangeBits)
-		return *(UInt64*)pb;
+		return *(uint64_t*)pb;
 	size_t n = std::min(size_t(8), (bs.num_blocks()-idx)*bs.bits_per_block/8);
 	for (size_t i=0; i<n; ++i)
 		((byte*)&r)[i] = pb[i];
-	r &= UInt64(-1) >> outRangeBits;
+	r &= uint64_t(-1) >> outRangeBits;
 #endif
 	return r;
 }
