@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -180,22 +172,20 @@ Blob BinaryReader::ReadToEnd() const {
 	return ms.Blob;
 }
 
-UInt64 AFXAPI Read7BitEncoded(const byte *&p) {
-	UInt64 r = *p++;										// optimization for 1-byte records
-	if (!((byte)r & 0x80))
-		return r;
-	r &= 0x7F;
-	int shift = 7;
-	do {
-		byte b = *p++;
-		r |= UInt64(b & 0x7F) << shift;
-		if (!(b & 0x80))
-			return r;
-	} while ((shift+=7) < 64);
-	Throw(E_FAIL);
+uint64_t AFXAPI Read7BitEncoded(const byte *&p) {
+	const byte *q = p;										//O local pointer is faster
+	byte b = *q++;
+	uint64_t r = b & 0x7F;									//O for 1-byte records
+	for (int shift=7; b & 0x80;) {
+		r |= uint64_t((b = *q++) & 0x7F) << shift;
+		if ((shift+=7) >= 64)
+			Throw(E_FAIL);
+	}
+	p = q;
+	return r;
 }
 
-void AFXAPI Write7BitEncoded(byte *&p, UInt64 v) {
+void AFXAPI Write7BitEncoded(byte *&p, uint64_t v) {
 	do {
 		byte b = v & 0x7F;
 		if (v >>= 7)
@@ -204,17 +194,17 @@ void AFXAPI Write7BitEncoded(byte *&p, UInt64 v) {
 	} while (v);
 }
 
-void BinaryWriter::Write7BitEncoded(UInt64 v) {
+void BinaryWriter::Write7BitEncoded(uint64_t v) {
 	byte buf[10], *p = buf;
 	Ext::Write7BitEncoded(p, v);
 	Write(buf, p-buf);
 }
 
-UInt64 BinaryReader::Read7BitEncoded() const {
-	UInt64 r = 0;
+uint64_t BinaryReader::Read7BitEncoded() const {
+	uint64_t r = 0;
 	for (int shift=0; shift<64; shift+=7) {
 		byte b = ReadByte();
-		r |= UInt64(b & 0x7F) << shift;
+		r |= uint64_t(b & 0x7F) << shift;
 		if (!(b & 0x80))
 			return r;
 	}
