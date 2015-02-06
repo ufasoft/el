@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -169,8 +162,8 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 
 const char *String::c_str() const {  //!!! optimize
 	if (Blob::impl_class *pData = m_blob.m_pData) {
-		char * volatile &pChar = pData->AsStringBlobBuf()->m_pChar;
-		if (!pChar) {
+		atomic<char*> &apChar = pData->AsStringBlobBuf()->m_apChar;
+		if (!apChar) {
 			Encoding& enc = Encoding::Default();
 			for (size_t n=(pData->GetSize()/sizeof(value_type))+1, len=n+1;; len<<=1) {
 				Array<char> p(len);
@@ -178,13 +171,16 @@ const char *String::c_str() const {  //!!! optimize
 				if ((r=enc.GetBytes((const value_type*)pData->GetBSTR(), n, (byte*)p.get(), len)) < len) {
 					char *pch = p.release();
 					pch[r] = 0; //!!!? R
-					if (Interlocked::CompareExchange(pChar, pch, (char*)nullptr))
-						free(pch);
+					for (char *prev=0; !apChar.compare_exchange_weak(prev, pch);)
+						if (prev) {
+							free(pch);
+							break;
+						}						
 					break;
 				}
 			}
 		}
-		return pChar;
+		return apChar;
 	}
 	return 0;
 }
@@ -272,8 +268,7 @@ String::String(const std::vector<value_type>& vec)
 
 void String::MakeDirty() noexcept {
 	if (m_blob.m_pData)
-		if (char * volatile &p = m_blob.m_pData->AsStringBlobBuf()->m_pChar)
-			free(exchange(p, (char*)0));
+		free(m_blob.m_pData->AsStringBlobBuf()->m_apChar.exchange(0));
 }
 
 #if UCFG_WDM
