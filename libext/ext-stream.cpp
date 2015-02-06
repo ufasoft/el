@@ -16,8 +16,6 @@ bool Stream::Eof() const {
 }
 
 int Stream::ReadByte() const {
-	//!!!R	if (Eof())
-	//!!!	return -1;
 	byte b;
 	return Read(&b, 1) ? int(b) : -1;
 }
@@ -39,7 +37,7 @@ void Stream::CopyTo(Stream& dest, size_t bufsize) const {
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
 	size_t capacity = Capacity;
 	if (capacity-m_pos < count) {
-		m_blob.Size = (size_t)max(max(Int64(32), Int64(capacity*2)), Int64(m_pos+count));
+		m_blob.Size = (size_t)max(max(int64_t(32), int64_t(capacity*2)), int64_t(m_pos+count));
 	}
 	memcpy(m_blob.data()+m_pos, buf, count);
 	m_pos += count;
