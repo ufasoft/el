@@ -240,7 +240,7 @@ extern "C" __declspec(noreturn) void _cdecl API_terminate();
 
 void __cdecl __crtTerminateProcess
 (
-    _In_ UInt32 uExitCode
+    _In_ uint32_t uExitCode
 ) {
 	API_terminate();
 }
@@ -303,6 +303,21 @@ __declspec(noreturn) void __cdecl terminate(void) {
 
 #endif // !UCFG_STDSTL
 
+__BEGIN_DECLS
+
+#ifndef _MSC_VER
+struct __cxa_eh_globals {
+	void *m_dummy;
+	int ProcessingThrow;
+};
+__cxa_eh_globals *__cxa_get_globals() noexcept;
+
+int _cdecl API_uncaught_exceptions() noexcept {		// VC version in the ext-os-api.cpp
+	return __cxa_get_globals()->ProcessingThrow;
+}
+#endif // !_MSC_VER
+
+__END_DECLS
 
 
 
