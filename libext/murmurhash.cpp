@@ -16,7 +16,7 @@ __forceinline uint32_t fmix32(uint32_t h) {
 
 #define MIX(h,k,m) { k *= m; k ^= k >> r; k *= m; h *= m; h ^= k; }
 
-unsigned int MurmurHashAligned2(const ConstBuf& cbuf, UInt32 seed) {
+unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed) {
 	const unsigned int m = 0x5bd1e995;
 	const int r = 24;
 	size_t len = cbuf.Size;
@@ -25,7 +25,7 @@ unsigned int MurmurHashAligned2(const ConstBuf& cbuf, UInt32 seed) {
 
 	unsigned int h = seed ^ len;
 
-	const size_t align = (int)(UInt64)data & 3;
+	const size_t align = (int)(uint64_t)data & 3;
 
 	if (align && (len >= 4)) {
 		// Pre-load the temp registers
@@ -132,14 +132,14 @@ unsigned int MurmurHashAligned2(const ConstBuf& cbuf, UInt32 seed) {
 	}
 }
 
-UInt32 MurmurHash3_x86_32(const ConstBuf& cbuf, UInt32 seed) {
+uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed) {
 	const byte *data = cbuf.P;
 	size_t len = cbuf.Size,
 		nblocks = len / 4;
-	UInt32 h1 = seed;
-	const UInt32 c1 = 0xcc9e2d51,
+	uint32_t h1 = seed;
+	const uint32_t c1 = 0xcc9e2d51,
 			c2 = 0x1b873593,
-			*blocks = (const UInt32 *)(data + nblocks*4);
+			*blocks = (const uint32_t *)(data + nblocks*4);
 
 	for (int i = -int(nblocks); i; i++) {
 		uint32_t k1 = GetLeUInt32(blocks + i);
@@ -152,7 +152,7 @@ UInt32 MurmurHash3_x86_32(const ConstBuf& cbuf, UInt32 seed) {
 	}
 
 	data += nblocks*4;
-	UInt32 k1 = 0;
+	uint32_t k1 = 0;
 	switch(len & 3) {
 	case 3: k1 ^= data[2] << 16;
 	case 2: k1 ^= data[1] << 8;
