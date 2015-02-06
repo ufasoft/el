@@ -571,7 +571,7 @@ public:
 		}
 	}
 protected:
-	void OnAPC() {
+	void OnAPC() override {
 //		FUN_TRACE;
 
 		Socket::ReleaseFromAPC();
