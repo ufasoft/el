@@ -330,29 +330,39 @@
 #	endif
 #endif
 
-#ifndef UCFG_STD_SHARED_MUTEX
-#	define UCFG_STD_SHARED_MUTEX (UCFG_CPP14 && !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305))
-#endif
-
 #ifndef UCFG_STD_DYNAMIC_BITSET
 #	define UCFG_STD_DYNAMIC_BITSET (UCFG_CPP14 && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1800) && !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305))
 #endif
 
-#ifndef UCFG_CPP11_HAVE_REGEX
-#	define UCFG_CPP11_HAVE_REGEX (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1600)
-#endif
+#ifdef __cplusplus
+#	if !UCFG_MSC_VERSION
+#		include <ciso646>
+#	endif
+
+#	ifdef _LIBCPP_VERSION
+#		define UCFG_LIBCPP_VERSION _LIBCPP_VERSION
+#	else
+#		define UCFG_LIBCPP_VERSION 0
+#	endif
+
+#	ifndef UCFG_STD_SHARED_MUTEX
+#		define UCFG_STD_SHARED_MUTEX (UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305)))
+#	endif
+
+#	ifndef UCFG_CPP11_HAVE_REGEX
+#		define UCFG_CPP11_HAVE_REGEX (UCFG_LIBCPP_VERSION >= 1100 || UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 1600)
+#	endif
+
+#	ifndef UCFG_CPP11_HAVE_THREAD
+#		define UCFG_CPP11_HAVE_THREAD (UCFG_LIBCPP_VERSION >= 1100 || UCFG_GNUC_VERSION >= 400 || UCFG_MSC_VERSION >= 1700)
+#	endif
+#endif // __cplusplus
+
 
 #ifndef UCFG_HAVE_STATIC_ASSERT
 #	define UCFG_HAVE_STATIC_ASSERT UCFG_CPP11
 #endif
 
-#ifndef UCFG_CPP11_HAVE_THREAD
-#	if (!defined(_MSC_VER) || _MSC_VER>=1700) && (!defined(__clang_major__) || __clang_major__>3 || __clang_major__==3 && __clang_minor__>0)
-#		define UCFG_CPP11_HAVE_THREAD 1
-#	else
-#		define UCFG_CPP11_HAVE_THREAD 0
-#	endif
-#endif
 
 #ifndef UCFG_STD_DECIMAL
 #	define UCFG_STD_DECIMAL (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 2000)
