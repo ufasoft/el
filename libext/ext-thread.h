@@ -222,7 +222,7 @@ protected:
 #if UCFG_USE_PTHREADS
 	mutable pthread_t m_ptid;
 	mutable CBool m_bJoined;
-	void ReleaseHandle(HANDLE h) const;
+	void ReleaseHandle(HANDLE h) const override;
 #endif
 
 	virtual void BeforeStart() {}

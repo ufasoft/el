@@ -39,7 +39,7 @@ public:
 		return m_resId==resId.m_resId && m_name==resId.m_name;
 	}
 
-	String ToString() const;
+	String ToString() const override;
 //!!!private:
 	DWORD_PTR m_resId;
 	String m_name;
