@@ -60,13 +60,12 @@ Encoding& AFXAPI Encoding::Default() {
 		s_Default = new UTF8Encoding;
 #else
 #	if UCFG_CODEPAGE_UTF8
-		static UTF8Encoding s_defaultEncoding;
+		s_Default = new UTF8Encoding;			// never destroy because used in static dtors
 #	elif UCFG_WDM
-		static AnsiPageEncoding s_defaultEncoding;
+		s_Default = new AnsiPageEncoding;
 #	else
-		static CodePageEncoding s_defaultEncoding(CP_ACP);
+		s_Default = new CodePageEncoding(CP_ACP);
 #	endif
-		s_Default = &s_defaultEncoding;
 #endif
 	}
 	return *s_Default;
