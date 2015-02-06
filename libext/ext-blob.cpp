@@ -19,17 +19,17 @@ CBlobBufBase::Char *CBlobBufBase::Detach() {
 #endif
 
 CStringBlobBuf::CStringBlobBuf(size_t len)
-	:	m_pChar(0)
+	:	m_apChar(0)
 #ifdef _WIN64
 	,	m_pad(0)
 #endif
 	,	m_size(len)
 {
-	*(UNALIGNED String::Char*)((byte*)(this+1)+len) = 0;
+	*(UNALIGNED String::value_type*)((byte*)(this+1)+len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
-	:	m_pChar(0)
+	:	m_apChar(0)
 #ifdef _WIN64
 	,	m_pad(0)
 #endif
@@ -39,28 +39,28 @@ CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
 		memcpy(this+1, p, len);
 	else
 		memset(this+1, 0, len);
-	*(UNALIGNED String::Char*)((byte*)(this+1)+len) = 0;
+	*(UNALIGNED String::value_type*)((byte*)(this+1)+len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(size_t len, const void *buf, size_t copyLen)
-	:	m_pChar(0)
+	:	m_apChar(0)
 #ifdef _WIN64
 	,	m_pad(0)
 #endif
 	,	m_size(len)
 {
 	memcpy(this+1, buf, copyLen);
-	memset((byte*)(this+1)+copyLen, 0, len-copyLen+sizeof(String::Char));
+	memset((byte*)(this+1)+copyLen, 0, len-copyLen+sizeof(String::value_type));
 }
 
 void * AFXAPI CStringBlobBuf::operator new(size_t sz) {
-	return Malloc(sz + sizeof(String::Char));
+	return Malloc(sz + sizeof(String::value_type));
 }
 
 void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len) {
 	if ((ssize_t)len < 0)
 		Throw(E_INVALIDARG);
-	return Malloc(sz + len + sizeof(String::Char));
+	return Malloc(sz + len + sizeof(String::value_type));
 }
 
 CStringBlobBuf *CStringBlobBuf::Clone() {
@@ -70,18 +70,18 @@ CStringBlobBuf *CStringBlobBuf::Clone() {
 CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 	CStringBlobBuf *d;
 	size_t copyLen = min(size, size_t(m_size));
-	if (m_dwRef == 1) {
-		if (m_pChar)
-			free(exchange(m_pChar, nullptr));
+	if (m_aRef == 1) {
+		if (m_apChar)
+			free(m_apChar.exchange(nullptr));
 #if UCFG_HAS_REALLOC
-		d = (CStringBlobBuf*)Realloc(this, size+sizeof(CStringBlobBuf)+sizeof(String::Char));
+		d = (CStringBlobBuf*)Realloc(this, size+sizeof(CStringBlobBuf)+sizeof(String::value_type));
 #else
-		d = (CStringBlobBuf*)Malloc(size+sizeof(CStringBlobBuf)+sizeof(String::Char));
-		memcpy(d, this, std::min((size_t)d->m_size+sizeof(CStringBlobBuf)+sizeof(String::Char), size+sizeof(CStringBlobBuf)+sizeof(String::Char)));
-		Free(this);
+		d = (CStringBlobBuf*)Malloc(size+sizeof(CStringBlobBuf)+sizeof(String::value_type));
+		memcpy(d, this, std::min((size_t)d->m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), size+sizeof(CStringBlobBuf)+sizeof(String::value_type)));
+		free(this);
 #endif
 		d->m_size = size;	
-		memset((byte*)(d+1)+copyLen, 0, size-copyLen+sizeof(String::Char));
+		memset((byte*)(d+1)+copyLen, 0, size-copyLen+sizeof(String::value_type));
 		return d;
 	} else {
 		d = new(size) CStringBlobBuf(size, this+1, copyLen);
@@ -202,7 +202,7 @@ bool Blob::operator<(const Blob& blob) const noexcept {
 }
 
 void Blob::Cow() {
-	if (m_pData->m_dwRef > 1)
+	if (m_pData->m_aRef > 1)
 		exchange(m_pData, m_pData->Clone())->Release();
 }
 
@@ -212,7 +212,7 @@ byte *Blob::data() {
 }
 
 Blob Blob::FromHexString(RCString s) {
-	int len = s.Length/2;
+	int len = s.length() / 2;
 	Blob blob(0, len);
 	for (int i=0; i<len; ++i)
 		blob.data()[i] = Convert::ToByte(s.substr(i*2, 2), 16);

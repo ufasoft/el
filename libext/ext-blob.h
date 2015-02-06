@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #if UCFG_COM
@@ -23,7 +16,7 @@
 
 namespace Ext {
 
-
+using std::atomic;
 
 class CStringBlobBuf;
 
@@ -31,7 +24,7 @@ class COleVariant;
 
 class CBlobBufBase {
 public:
-	volatile int32_t m_dwRef;
+	atomic<int> m_aRef;
 
 #if UCFG_STRING_CHAR == 16
 	typedef Char16 Char;
@@ -42,11 +35,11 @@ public:
 #endif	
 
 	CBlobBufBase()
-		:	m_dwRef(1)
+		: m_aRef(1)
 	{}
 
 	void AddRef() noexcept {
-		Interlocked::Increment(m_dwRef);
+		++m_aRef;
 	}
 
 #if UCFG_BLOB_POLYMORPHIC
@@ -61,7 +54,7 @@ public:
 	virtual Char *Detach(); //!!!was BSTR
 
 	void Release() {
-		if (!Interlocked::Decrement(m_dwRef))			// Allowed only of destrucotr is virtual
+		if (!--m_aRef)			// Allowed only of destrucotr is virtual
 			delete this;
 	}
 #endif
@@ -72,7 +65,7 @@ public:
 #ifdef WDM_DRIVER
 	UNICODE_STRING m_us;
 #endif
-	char * volatile m_pChar;
+	atomic<char*> m_apChar;
 #ifdef _WIN64  //!!!
 	uint32_t m_pad;
 #endif
@@ -83,8 +76,8 @@ public:
 	CStringBlobBuf(size_t len, const void *buf, size_t copyLen);
 
 	~CStringBlobBuf() noexcept {
-		if (m_pChar)
-			free(m_pChar);
+		if (m_apChar)
+			free(m_apChar);
 	}
 
 	void * AFXAPI operator new(size_t sz);
@@ -103,7 +96,7 @@ public:
 
 #if !UCFG_BLOB_POLYMORPHIC
 	void Release() noexcept {
-		if (!Interlocked::Decrement(m_dwRef))
+		if (!--m_aRef)
 			delete this;
 	}
 #endif
@@ -144,7 +137,7 @@ public:
 	typedef CStringBlobBuf impl_class;
 #endif
 
-	impl_class *m_pData;
+	impl_class * volatile m_pData;				// atomic only for some rare operations
 
 	Blob()
 		:	m_pData(CStringBlobBuf::RefEmptyBlobBuf())
