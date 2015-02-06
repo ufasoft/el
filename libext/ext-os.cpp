@@ -1,5 +1,6 @@
 #include <el/ext.h>
 
+
 #pragma warning(disable: 4073)
 #pragma init_seg(lib)				// for AutoEventPool
 
@@ -16,44 +17,11 @@
 namespace Ext {
 using namespace std;
 
-static class Ntos_error_catogory : public error_category {
-	typedef error_category base;
-
-	const char *name() const noexcept override { return "ntos"; }
-	
-	string message(int errval) const override {
-		return "Unknow error"; //!!!TODO
-	}
-
-	error_condition default_error_condition(int errval) const noexcept override {
-		errc e;
-		switch (errval) {
-		case STATUS_NO_MEMORY:				e = errc::not_enough_memory;			break;
-		case STATUS_ACCESS_VIOLATION:		e = errc::permission_denied;		break;
-		default:
-			return base::default_error_condition(errval);
-		}
-		return e;
-	}
-
-} s_ntosErrorCategory;
-
-const error_category& ntos_category() { return s_ntosErrorCategory; }
-
-#ifdef _WIN32
-NTSTATUS AFXAPI NtCheck(NTSTATUS status, NTSTATUS allowableError) {
-	if (status < 0 && status != allowableError)
-		Throw(status);
-	return status;
-}
-#endif
-
 COperatingSystem System;
 
 #if UCFG_WIN32 || UCFG_USE_POSIX
 
 //!!! use locale class instead of global change, because it changes fstream locale  static char *s_initLocale = ::setlocale(LC_CTYPE, "");   // only LC_CTYPE because List requires standard float
-
 
 path COperatingSystem::get_ExeFilePath() {
 #ifdef __FreeBSD__
@@ -78,11 +46,15 @@ path COperatingSystem::get_ExeFilePath() {
 	return szModule;
 }
 
-#endif
+path COperatingSystem::GetExeDir() {
+	return get_ExeFilePath().parent_path();
+}
+
+#endif // UCFG_WIN32 || UCFG_USE_POSIX
 
 #ifdef _WIN32
 
-Int64 COperatingSystem::get_PerformanceCounter() {
+int64_t COperatingSystem::get_PerformanceCounter() {
 	LARGE_INTEGER li;
 #if UCFG_WDM
 	li = ::KeQueryPerformanceCounter(nullptr);
@@ -92,7 +64,7 @@ Int64 COperatingSystem::get_PerformanceCounter() {
 	return li.QuadPart;
 }
 
-Int64 COperatingSystem::get_PerformanceFrequency() {
+int64_t COperatingSystem::get_PerformanceFrequency() {
 	LARGE_INTEGER li;
 #if UCFG_WDM
 	::KeQueryPerformanceCounter(&li);
@@ -111,14 +83,14 @@ CSyncObject::CSyncObject(RCString pstrName)
 }
 
 #ifdef WDM_DRIVER
-bool CSyncObject::LockEx(UInt32 dwTimeout, KPROCESSOR_MODE mode, bool bAlertable) {
+bool CSyncObject::LockEx(uint32_t dwTimeout, KPROCESSOR_MODE mode, bool bAlertable) {
 	LARGE_INTEGER timeout, *pto = dwTimeout==INFINITE ? NULL : &timeout;
 	timeout.QuadPart = -(int)dwTimeout*10000;
 	return STATUS_SUCCESS == KeWaitForSingleObject(m_pObject, Executive, mode, bAlertable, pto);
 }
 #endif
 
-bool CSyncObject::Lock(UInt32 dwTimeout) {
+bool CSyncObject::lock(uint32_t dwTimeout) {
 #if UCFG_USE_POSIX
 	Throw(E_NOTIMPL);
 #endif
@@ -142,7 +114,7 @@ bool CSyncObject::Lock(UInt32 dwTimeout) {
 #endif
 }
 
-void CSyncObject::Unlock(Int32 lCount, Int32 *lprevCount) {
+void CSyncObject::Unlock(int32_t lCount, int32_t *lprevCount) {
 }
 
 
@@ -214,7 +186,7 @@ void CCriticalSection::Init() {
 #endif
 }
 
-bool CCriticalSection::Lock(UInt32 dwTimeout) {
+bool CCriticalSection::lock(uint32_t dwTimeout) {
 	lock();
 	return true;
 }
@@ -233,9 +205,6 @@ bool CCriticalSection::TryLock() {
 #endif
 }
 
-void CCriticalSection::Unlock() {
-	unlock();
-}
 /*
 
 DWORD CCriticalSection::SetSpinCount(DWORD dwSpinCount)
@@ -314,7 +283,7 @@ void CEvent::Reset() {
 #endif
 }
 
-bool CEvent::Lock(UInt32 dwTimeout) {
+bool CEvent::lock(uint32_t dwTimeout) {
 #if UCFG_USE_PTHREADS
 	timespec abstime;
 	if (dwTimeout != INFINITE)
@@ -340,11 +309,11 @@ bool CEvent::Lock(UInt32 dwTimeout) {
 		return true;
 	}
 #else
-	return base::Lock(dwTimeout);
+	return base::lock(dwTimeout);
 #endif
 }
 
-void CEvent::Unlock() {
+void CEvent::unlock() {
 }
 
 #if UCFG_WIN32
@@ -430,7 +399,7 @@ CMutex::~CMutex() {
 }
 
 
-void CMutex::Unlock() {
+void CMutex::unlock() {
 #ifdef WIN32
 	Win32Check(::ReleaseMutex(HandleAccess(_self)));
 #elif UCFG_WDM
@@ -453,7 +422,7 @@ CSemaphore::CSemaphore(LONG lInitialCount, LONG lMaxCount, RCString name
 	KeInitializeSemaphore(&m_sem, lInitialCount, lMaxCount);
 	Attach(&m_sem);
 #elif UCFG_USE_PTHREADS
-	if (name.IsEmpty()) {
+	if (name.empty()) {
 		m_psem = &m_sem;
 		CCheck(::sem_init(&m_sem, 0, lInitialCount));
 	} else {
@@ -490,7 +459,7 @@ LONG CSemaphore::Unlock(LONG lCount) {
 #endif
 }
 
-void CSemaphore::Unlock() {
+void CSemaphore::unlock() {
 	Unlock(1); 
 }
 
