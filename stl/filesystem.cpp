@@ -2,6 +2,10 @@
 
 #include "filesystem"
 
+#if UCFG_USE_POSIX
+#	include <dirent.h>
+#endif
+
 #if UCFG_WIN32
 #	include <shlwapi.h>
 
@@ -10,6 +14,7 @@
 
 namespace ExtSTL { namespace sys {
 	using namespace Ext;
+	using namespace chrono;
 
 #if !UCFG_USE_POSIX
 static error_code Win32_error_code(DWORD code = GetLastError()) {
@@ -17,6 +22,14 @@ static error_code Win32_error_code(DWORD code = GetLastError()) {
 }
 
 #endif
+
+static error_code Last_error_code() {
+#if UCFG_USE_POSIX
+	return error_code(errno, generic_category());
+#else
+	return Win32_error_code();
+#endif
+}
 
 void path::iterator::Retrieve() {
 	m_from = m_to;
@@ -106,7 +119,7 @@ path& path::replace_extension(const path& e) {
 
 path& path::make_preferred() {
 	for (size_t i=m_s.size(); i--;)
-		m_s.SetAt(i, IsSeparator(m_s[i]) ? preferred_separator : m_s[i]);
+		m_s.SetAt(i, IsSeparator(m_s[i]) ? string_type::value_type(preferred_separator) : m_s[i]);	//!!!?
 	return *this;
 }
 
@@ -138,16 +151,16 @@ static file_status StatusImp(const path& p, error_code& ec, bool bLstat) noexcep
 	struct stat s;
 	if ((bLstat ? lstat : stat)(p.native(), &s) < 0) {
 		ec = error_code(errno, generic_category());
-		return ec==errc::no_such_file_or_directory ? file_type::not_found : file_type::unknown;
+		return file_status(ec==errc::no_such_file_or_directory ? file_type::not_found : file_type::unknown);
 	}
-	return S_ISDIR(s.st_mode) ? file_type::directory
+	return file_status(S_ISDIR(s.st_mode) ? file_type::directory
 		: S_ISREG(s.st_mode) ? file_type::regular
 		: S_ISLNK(s.st_mode) ? file_type::symlink
 		: S_ISSOCK(s.st_mode) ? file_type::socket
 		: S_ISFIFO(s.st_mode) ? file_type::fifo
 		: S_ISBLK(s.st_mode) ? file_type::block
 		: S_ISCHR(s.st_mode) ? file_type::character
-		: file_type::unknown;
+		: file_type::unknown);
 #else
 	const int _FILE_ATTRIBUTE_REGULAR = FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_COMPRESSED | FILE_ATTRIBUTE_ENCRYPTED | FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NORMAL | FILE_ATTRIBUTE_NOT_CONTENT_INDEXED |
 		FILE_ATTRIBUTE_OFFLINE | FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_SPARSE_FILE | FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_TEMPORARY;
@@ -206,16 +219,19 @@ file_time_type last_write_time(const path& p, error_code& ec) noexcept {
 	ec.clear();
 #if UCFG_USE_POSIX
 	struct stat s;
-	if (stat(p.native(), &s) >=)
-		return chrono::system_clock::from_time_t(s.st_mtime);
-	ec = error_code(errno, generic_category());
+	if (stat(p.native(), &s) >= 0) {
+		file_time_type r = system_clock::from_time_t(s.st_mtime);
+#ifdef STAT_HAVE_NSEC
+		r += duration_cast<file_time_type::duration>(nanoseconds(s.st_mtime_nsec));
+#endif
+		return r;
 	}
 #else
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if (GetFileAttributesEx(p.native(), GetFileExInfoStandard, &fad))
 		return time_point_cast<file_time_type::duration>(DateTime::time_point(DateTime(fad.ftLastWriteTime)));
-	ec = Win32_error_code();
 #endif
+	ec = Last_error_code();
 	return file_time_type::min();	//!!!?  -1 in the SPEC
 }
 
@@ -279,7 +295,7 @@ void directory_iterator::Init(const path& p, error_code& ec) noexcept {
 	m_prefix = p;
 #if UCFG_USE_POSIX
 	if (DIR *dir = opendir(p.native())) {
-		m_p = (new DirectoryObj)->m_dir = dir;
+		(m_p = new DirectoryObj)->m_dir = (intptr_t)dir;
 		increment(ec);
 	} else
 		ec = error_code(errno, generic_category());
@@ -445,15 +461,15 @@ bool AFXAPI copy_file(const path& from, const path& to, copy_options options, er
 	}
 #if UCFG_USE_POSIX
 	Blob buf(0, 8192);
-	ifstream ifs(from.naive(), ios::binary);
-	ofstream ofs(to.native(), ios::openmode(ios::binary | (options & copy_options::overwrite_existing ? ios::trunc : 0)));
+	ifstream ifs(from.native(), ios::binary);
+	ofstream ofs(to.native(), ios::openmode(ios::binary | (bool(options & copy_options::overwrite_existing) ? ios::trunc : 0)));
 	if (!ifs || !ofs) {
 		ec = make_error_code(errc::operation_not_permitted);
 		return false;
 	}
 	while (ifs) {									 //!!!TODO detect fail during copy process
-		ifs.read(buf.data(), buf.Size);
-		ofs.write(buf.data(), ifs.gcount());
+		ifs.read((char*)buf.data(), buf.Size);
+		ofs.write((char*)buf.data(), ifs.gcount());
 	}
 #else
 	if (!::CopyFile(from.native(), to.native(), !bool(options & copy_options::overwrite_existing))) {
@@ -475,15 +491,14 @@ bool AFXAPI copy_file(const path& from, const path& to, copy_options options) {
 uintmax_t AFXAPI file_size(const path& p, error_code& ec) noexcept {
 #if UCFG_USE_POSIX
 	struct stat st;
-	if (::stat(FullPath, &st) >= 0)
+	if (::stat(p.c_str(), &st) >= 0)
 		return st.st_size;
-	ec = error_code(errno, generic_category());
 #else
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if (::GetFileAttributesEx(p.native(), GetFileExInfoStandard, &fad))
 		return uint64_t(fad.nFileSizeHigh) << 32 | fad.nFileSizeLow;
-	ec = Win32_error_code();
 #endif
+	ec = Last_error_code();
 	return static_cast<uintmax_t>(-1);
 }
 
@@ -547,7 +562,7 @@ bool AFXAPI remove(const path& p, error_code& ec) noexcept {
 		return false;
 #if UCFG_USE_POSIX
 	if (is_directory(p, ec)) {
-		if (::rmdir(p.native()) < 0)) {
+		if (::rmdir(p.native()) < 0) {
 			ec = error_code(errno, generic_category());
 			return false;
 		}
@@ -611,11 +626,10 @@ void AFXAPI rename(const path& old_p, const path& new_p, error_code& ec) noexcep
 	if (!exists(new_p, ec) || remove(new_p, ec)) {
 #if UCFG_USE_POSIX
 		if (::rename(old_p.native(), new_p.native()) < 0)
-			ec = error_code(errno, generic_category());
 #else
 		if (!::MoveFile(old_p.native(), new_p.native()))
-			ec = Win32_error_code();
 #endif
+			ec = Last_error_code();
 	}
 }
 
@@ -630,15 +644,15 @@ path AFXAPI temp_directory_path(error_code& ec) {
 	ec.clear();
 	path r;
 #if UCFG_USE_POSIX
-	String s = GetEnvironmentVariable("TMPDIR");
-	s = !!s ? s : GetEnvironmentVariable("TMP");
-	s = !!s ? s : GetEnvironmentVariable("TEMP");
-	s = !!s ? s : GetEnvironmentVariable("TEMPDIR");
+	String s = Environment::GetEnvironmentVariable("TMPDIR");
+	s = !!s ? s : Environment::GetEnvironmentVariable("TMP");
+	s = !!s ? s : Environment::GetEnvironmentVariable("TEMP");
+	s = !!s ? s : Environment::GetEnvironmentVariable("TEMPDIR");
 	r = !!s ? s : String("/tmp");
 #else
 	TCHAR buf[MAX_PATH];
-	DWORD len = ::GetTempPath(_countof(buf), buf);
-	if (!len || len>=_countof(buf)) {
+	DWORD len = ::GetTempPath(size(buf), buf);
+	if (!len || len>=size(buf)) {
 		ec = Win32_error_code();
 		return path();
 	}
@@ -729,7 +743,6 @@ path AFXAPI canonical(const path& p, const path& base, error_code& ec) {
 	path a = absolute(p, base);
 #if UCFG_USE_POSIX
 	Throw(E_NOTIMPL);
-	return s;
 #else
 	_TCHAR *buf = (TCHAR*)alloca(_MAX_PATH*sizeof(TCHAR));
 	_TCHAR *pbuf;

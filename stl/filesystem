@@ -13,7 +13,7 @@ public:
 	typedef char value_type;
 	static const value_type preferred_separator = '/';
 #else
-	typedef Ext::String::Char value_type;
+	typedef Ext::String::value_type value_type;
 	static const value_type preferred_separator = '\\';
 #endif
 
@@ -351,6 +351,8 @@ using ExtSTL::sys::is_regular_file;
 using ExtSTL::sys::is_directory;
 using ExtSTL::sys::status;
 using ExtSTL::sys::symlink_status;
+using ExtSTL::sys::remove;
+using ExtSTL::sys::rename;
 }}
 
 
