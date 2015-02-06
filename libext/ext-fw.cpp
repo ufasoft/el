@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -512,7 +505,7 @@ path Environment::SystemDirectory() {
 	return "";
 #else
 	TCHAR szPath[_MAX_PATH];
-	Win32Check(::GetSystemDirectory(szPath, _countof(szPath)));
+	Win32Check(::GetSystemDirectory(szPath, size(szPath)));
 	return szPath;
 #endif
 }
@@ -584,7 +577,7 @@ String COperatingSystem::get_UserName() {
 	return getpwuid(getuid())->pw_name;
 #else
 	TCHAR buf[255];
-	DWORD len = _countof(buf);
+	DWORD len = size(buf);
 	Win32Check(::GetUserName(buf, &len));
 	return buf;
 #endif
@@ -858,7 +851,7 @@ String Guid::ToString(RCString format) const {
 	String s;
 #ifdef WIN32
 	wchar_t buf[40];
-	StringFromGUID2(_self, buf, _countof(buf));
+	StringFromGUID2(_self, buf, size(buf));
 	s = buf;
 #else
 	s = "{"+Convert::ToString(Data1, "X8")+"-"+Convert::ToString(Data2, "X4")+"-"+Convert::ToString(Data3, "X4")+"-";			//!!!A
@@ -1226,10 +1219,6 @@ void CMessageProcessor::SetParam(RCString s) {
 	*ps = s;
 }
 
-String AFXAPI AfxProcessError(HRESULT hr) {
-	return CMessageProcessor::Process(hr);
-}
-
 #if UCFG_COM
 
 HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo) {
@@ -1239,7 +1228,7 @@ HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo) {
 HRESULT CMessageProcessor::Process(HRESULT hr, EXCEPINFO *pexcepinfo) {
 	//!!!  HRESULT hr = ProcessOleException(e);
 	if (pexcepinfo) {
-		pexcepinfo->bstrDescription = Process(hr).AllocSysString();
+		pexcepinfo->bstrDescription = HResultToMessage(hr).AllocSysString();
 		pexcepinfo->wCode = 0;
 		pexcepinfo->scode = hr;
 		return DISP_E_EXCEPTION;
@@ -1267,14 +1256,15 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 		ar[0] = (char*)ps->c_str();
 		p = ar;
 	}
-#if UCFG_WIN32
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ARGUMENT_ARRAY, 0, hr, 0, buf, sizeof buf, p))
-		return String(hex)+":  "+buf;
-	for (size_t i=0; i<m_ranges.size(); i++) {
+	for (size_t i = 0; i<m_ranges.size(); i++) {
 		String msg = m_ranges[i]->CheckMessage(hr);
 		if (!msg.empty())
-			return String(hex)+L":  "+msg;
+			return String(hex) + L":  " + msg;
 	}
+
+#if UCFG_WIN32
+	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ARGUMENT_ARRAY, 0, hr, 0, buf, sizeof buf, p))
+		return String(hex)+ ":  " + buf;
 	switch (HRESULT_FACILITY(hr)) {
 	case FACILITY_INTERNET:
 		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(_T("urlmon.dll"))),
@@ -1282,31 +1272,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 			return String(hex)+":  "+buf;
 		break;
 	case FACILITY_WIN32:
-		{
-			WORD code = WORD(HRESULT_CODE(hr)); //!!!
-/*!!!R
-#	if !UCFG_WCE && UCFG_GUI
-			if (code >= RASBASE && code <= RASBASEEND) {
-				RasGetErrorString(code, buf, 256);
-				return buf;
-			} else
-#	endif
-			*/
-			if (code >= INTERNET_ERROR_BASE && code <= INTERNET_ERROR_LAST) {
-				if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(_T("wininet.dll"))),
-					code, 0, buf, sizeof buf, 0))
-					return String(hex)+":  "+buf;
-			} else if (code>=WSABASEERR && code<WSABASEERR+1024) {
-				if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY,
-					LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle),
-					hr, 0, buf, sizeof buf, 0))
-					return String(hex)+":  "+buf;
-			}
-			if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ARGUMENT_ARRAY, 0, code, 0, buf, sizeof buf, 0))
-				return String(hex)+L":  "+buf;
-			return hex;
-		}
-		break;
+		return win32_category().message(WORD(HRESULT_CODE(hr)));
 	}
 #endif // UCFG_WIN32
 
@@ -1331,7 +1297,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	return hex;
 }
 
-String CMessageProcessor::Process(HRESULT hr) {
+String AFXAPI HResultToMessage(HRESULT hr) {
 	return g_messageProcessor.ProcessInst(hr);
 }
 
@@ -1472,9 +1438,9 @@ ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
 
 void ProcessObj::CommonInit() {
 #if !UCFG_WCE
-	StandardInput.m_pFile = &m_fileIn;
-	StandardOutput.m_pFile = &m_fileOut;
-	StandardError.m_pFile = &m_fileErr;
+	StandardInput.m_pFile.reset(&m_fileIn);
+	StandardOutput.m_pFile.reset(&m_fileOut);
+	StandardError.m_pFile.reset(&m_fileErr);
 #endif
 }
 
@@ -1659,7 +1625,7 @@ String Process::get_ProcessName() {
 	return path(szModule).filename();
 #else
 	TCHAR buf[MAX_PATH];
-	Win32Check(::GetModuleBaseName(Handle(*m_pimpl), 0, buf, _countof(buf)));
+	Win32Check(::GetModuleBaseName(Handle(*m_pimpl), 0, buf, size(buf)));
 	path r = buf;
 	String ext = ToLower(r.extension());
 	return ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd" ? r.parent_path() / r.stem() : r;
