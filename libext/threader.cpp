@@ -679,7 +679,11 @@ uint32_t ThreadBase::CppThreadThunk() {
 	SetCurrentThread();
 #if UCFG_USE_POSIX
 	m_ptid = ::pthread_self();
+#	if UCFG_LIBCPP_VERSION
+	m_tid = std::this_thread::get_id();
+#	else
 	m_tid = thread::id(m_ptid);
+#	endif
 #else
 #	if !UCFG_THREAD_SUSPEND_ON_START
 	Attach(GetRealThreadHandle(), ::GetCurrentThreadId());
