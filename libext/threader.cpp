@@ -801,7 +801,9 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 		PthreadCheck(rc);
 	}
-	m_tid = thread::id(m_ptid);
+#	if !UCFG_LIBCPP_VERSION
+	m_tid = thread::id(m_ptid);	//!!!?
+#	endif
 #else
 	HANDLE h;
 	DWORD threadID = 0;
