@@ -74,7 +74,7 @@ public:
 	explicit Exception(HRESULT hr = 0, RCString message = "");
 	explicit Exception(const error_code& ec, RCString message = "");
 	~Exception() noexcept {}		//!!! necessary for GCC 4.6
-	String ToString() const;
+	String ToString() const override;
 
 	virtual String get_Message() const;
 	DEFPROP_VIRTUAL_GET_CONST(String, Message);
