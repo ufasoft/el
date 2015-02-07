@@ -430,7 +430,7 @@ void HttpWebRequest::ReleaseFromAPC() {
 #if UCFG_USE_LIBCURL
 
 void HttpWebRequest::AddHeader(CURL *curl, RCString name, RCString val) {
-	m_headers = ::curl_slist_append(m_headers, name+": "+val);
+	m_headers.reset(::curl_slist_append(m_headers, name+": "+val));
 }
 
 ptr<CurlSession> HttpWebRequest::Connect() {
