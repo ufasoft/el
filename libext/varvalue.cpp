@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 namespace Ext { 
@@ -17,7 +9,7 @@ class SimpleVarValueObj : public VarValueObj {
 	VarValue operator[](int idx) const override { Throw(E_FAIL); }
 	VarValue operator[](RCString key) const override { Throw(E_FAIL); }
 	String ToString() const override { Throw(E_FAIL); }
-	Int64 ToInt64() const override { Throw(E_FAIL); }
+	int64_t ToInt64() const override { Throw(E_FAIL); }
 	bool ToBool() const override { Throw(E_FAIL); }
 	double ToDouble() const override { Throw(E_FAIL); }
 	void Set(int idx, const VarValue& v) override { Throw(E_FAIL); }
@@ -27,14 +19,14 @@ class SimpleVarValueObj : public VarValueObj {
 
 class IntVarValueObj : public SimpleVarValueObj {
 public:
-	Int64 Value;
+	int64_t Value;
 
-	IntVarValueObj(Int64 v)
+	IntVarValueObj(int64_t v)
 		:	Value(v)
 	{}
 
 	VarType type() const override { return VarType::Int; }
-	Int64 ToInt64() const override { return Value; }
+	int64_t ToInt64() const override { return Value; }
 };
 
 class DoubleVarValueObj : public SimpleVarValueObj {
@@ -122,7 +114,7 @@ public:
 };
 
 
-VarValue::VarValue(Int64 v)
+VarValue::VarValue(int64_t v)
 	:	m_pimpl(new IntVarValueObj(v))
 {
 }
@@ -220,7 +212,7 @@ void VarValue::SetType(VarType typ) {
 size_t hash_value(const VarValue& v) {
 	switch (v.type()) {
 	case VarType::Null:		return 0;
-	case VarType::Int:		return hash<Int64>()(v.ToInt64());
+	case VarType::Int:		return hash<int64_t>()(v.ToInt64());
 	case VarType::Float:	return hash<double>()(v.ToDouble());
 	case VarType::Bool:		return hash<bool>()(v.ToBool());
 	case VarType::String:	return hash<String>()(v.ToString());
