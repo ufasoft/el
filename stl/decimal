@@ -9,14 +9,14 @@ using std::ostream;
 namespace decimal {
 
 struct NormalizedDecimal {
-	Ext::UInt64 M;
+	uint64_t M;
 	int Exp;
 	bool Minus;
 };
 
 class decimal64_;
 
-decimal64_ make_decimal64(Ext::Int64 val, int exp);
+decimal64_ make_decimal64(int64_t val, int exp);
 
 class decimal64_ {					// 'decimal64_' because strange error in GCC
 public:
@@ -50,11 +50,11 @@ public:
 
 //	operator long long() const;
 private:
-	Ext::Int64 m_val;
+	int64_t m_val;
 	int m_exp;
 
 	friend NormalizedDecimal AFXAPI Normalize(const decimal64_& a);
-	friend decimal64_ make_decimal64(Ext::Int64 val, int exp);
+	friend decimal64_ make_decimal64(int64_t val, int exp);
 	friend EXT_API ostream& operator<<(ostream& os, const decimal64_& v);
 	friend EXT_API istream& operator>>(istream& is, decimal64_& v);
 	friend decimal64_ operator*(const decimal64_& a, const decimal64_& b);
@@ -68,7 +68,7 @@ private:
 typedef decimal64_ decimal64;
 
 
-decimal64 make_decimal64(Ext::Int64 val, int exp);
+decimal64 make_decimal64(int64_t val, int exp);
 
 EXT_API std::ostream& operator<<(std::ostream& os, const decimal64& v);
 

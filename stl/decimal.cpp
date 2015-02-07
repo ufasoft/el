@@ -9,8 +9,8 @@ using namespace std;
 using namespace Ext;
 
 long long decimal_to_long_long(const decimal64& v) {
-	Int64 maxPrev = numeric_limits<long long>::max()/10;
-	Int64 r = v.m_val;
+	int64_t maxPrev = numeric_limits<long long>::max()/10;
+	int64_t r = v.m_val;
 	if (v.m_exp >= 0) {
 		for (int i=0; i<v.m_exp; ++i) {
 			if (std::abs(r) > maxPrev )
@@ -43,7 +43,7 @@ decimal64_::decimal64_(double v)
 	}
 	double va = fabs(v);
 	int p = numeric_limits<double>::digits, e;
-	Int64 f = (Int64)ldexp(frexp(va, &e), p);
+	int64_t f = (int64_t)ldexp(frexp(va, &e), p);
 	int offset = f==(1LL << (p-1));
 	BigInteger r = BigInteger(f) << offset+max(0, e-p),
 		s = BigInteger(1) << offset+max(0, p-e),
@@ -77,7 +77,7 @@ double decimal_to_double(const decimal64_& v) {
 	return double(v.m_val) * exp(v.m_exp * _M_LN10);
 }
 
-decimal64 make_decimal64(Int64 val, int exp) {
+decimal64 make_decimal64(int64_t val, int exp) {
 	decimal64 r;
 	r.m_val = val;
 	r.m_exp = exp;
@@ -92,7 +92,7 @@ EXT_API ostream& operator<<(ostream& os, const decimal64& v) {
 		long long val = v.m_val;
 		for (lldiv_t qr; nexp>0 && (qr=div(val, 10LL)).rem == 0; --nexp)
 			val = qr.quot;
-		Int64 d = 1;
+		int64_t d = 1;
 		for (int i=0; i<nexp; ++i)
 			d *= 10;
 		os << val/d << use_facet<numpunct<char>>(os.getloc()).decimal_point() << setw(nexp) << setfill('0') << val % d;
@@ -120,7 +120,7 @@ EXT_API istream& operator>>(istream& is, decimal64_& v) {		//!!! TODO read expon
 	return is;
 }
 
-BigInteger Pow10ToInteger(Int64 a, int exp10) {
+BigInteger Pow10ToInteger(int64_t a, int exp10) {
 	BigInteger r(a);
 	for (int i=0; i<exp10; ++i)
 		r *= 10;
@@ -130,7 +130,7 @@ BigInteger Pow10ToInteger(Int64 a, int exp10) {
 decimal64 operator-(const decimal64& a, const decimal64& b) {
 	BigInteger na = Pow10ToInteger(a.m_val, max(0, a.m_exp-b.m_exp)),
 		nb = Pow10ToInteger(b.m_val, max(0, b.m_exp-a.m_exp));
-	return make_decimal64(explicit_cast<Int64>(na-nb), min(a.m_exp, b.m_exp));
+	return make_decimal64(explicit_cast<int64_t>(na-nb), min(a.m_exp, b.m_exp));
 }
 
 decimal64 operator*(const decimal64& a, const decimal64& b) {
@@ -140,14 +140,14 @@ decimal64 operator*(const decimal64& a, const decimal64& b) {
 		bi /= 10;
 		++off;
 	}
-	return make_decimal64(explicit_cast<Int64>(bi), a.m_exp+b.m_exp+off);
+	return make_decimal64(explicit_cast<int64_t>(bi), a.m_exp+b.m_exp+off);
 }
 
-static const UInt64 MAX_DECIMAL_M = 10000000000000000000ULL,
+static const uint64_t MAX_DECIMAL_M = 10000000000000000000ULL,
 					MAX_DECIMAL_M_DIV_10 = MAX_DECIMAL_M/10;
 
 NormalizedDecimal AFXAPI Normalize(const decimal64& a) {
-	NormalizedDecimal r = { UInt64(a.m_val < 0 ? -a.m_val : a.m_val), a.m_exp, a.m_val < 0 };
+	NormalizedDecimal r = { uint64_t(a.m_val < 0 ? -a.m_val : a.m_val), a.m_exp, a.m_val < 0 };
 	if (r.M == 0)
 		r.Exp = INT_MIN;
 	else if (r.M >= MAX_DECIMAL_M) {
