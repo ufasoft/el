@@ -98,7 +98,7 @@ public:
 		Throw(E_EXT_InvalidCast);
 	}
 
-	Int64 ToInt64() const override {
+	int64_t ToInt64() const override {
 		return ::json_integer_value(m_json);
 	}
 
@@ -342,7 +342,7 @@ public:
 		return m_enc.GetChars(ConstBuf(s.data(), s.length()));
 	}
 
-	Int64 ToInt64() const override {
+	int64_t ToInt64() const override {
 		return m_val.asInt();
 	}
 private:
