@@ -26,6 +26,24 @@
 #	define UCFG_MANUFACTURER "Ufasoft"
 #endif
 
+#ifndef UCFG_MANUFACTURER_DOMAIN
+#	define UCFG_MANUFACTURER_DOMAIN 		"ufasoft.com"
+#endif
+
+#define UCFG_MANUFACTURER_HTTP_URL 		"http://" UCFG_MANUFACTURER_DOMAIN
+
+#ifndef UCFG_MANUFACTURER_NEWS_URL
+#	define UCFG_MANUFACTURER_NEWS_URL 		UCFG_MANUFACTURER_HTTP_URL "/forum/"
+#endif
+
+#ifndef UCFG_MANUFACTURER_EMAIL
+#	define UCFG_MANUFACTURER_EMAIL "support@" UCFG_MANUFACTURER_DOMAIN
+#endif
+
+#define UCFG_MANUFACTURER_NOTIFY_URL 	UCFG_MANUFACTURER_HTTP_URL "/cgi-bin/notify.cgi"
+#define UCFG_MANUFACTURER_CRASHDUMP_URL UCFG_MANUFACTURER_HTTP_URL "/cgi-bin/crashdump.cgi"
+
+
 //!!!R #include <manufacturer.h>
 
 
