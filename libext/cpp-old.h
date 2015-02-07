@@ -268,7 +268,11 @@ public:
 	operator pointer() const noexcept { return m_p; }
 	bool operator==(T *p) const noexcept { return m_p == p; }
 	bool operator<(T *p) const noexcept { return m_p < p; }
-	pointer release() noexcept { return exchange(m_p, nullptr); }
+	pointer release() noexcept {		// std::exchange may be unavailable yet
+		pointer r = m_p;
+		m_p = nullptr;
+		return r;
+	}
 	void reset(pointer p) { m_p = p; }										//!!!TODO  = nullptr
 private:
 	T *m_p;
