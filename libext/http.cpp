@@ -278,7 +278,7 @@ void WebRequest::Connect() {
 	String userName = Credentials.UserName, 
 		password = Credentials.Password;
 #if UCFG_USE_LIBCURL
-	ptr<CurlSession> curl = g_curlManager.GetSession(IPEndPoint(RequestUri.Host, (UInt16)RequestUri.Port));
+	ptr<CurlSession> curl = g_curlManager.GetSession(IPEndPoint(RequestUri.Host, (uint16_t)RequestUri.Port));
 
 	if (!!userName || !!password) {
 //		CurlCheck(::curl_easy_setopt(curl->m_h, CURLOPT_CONNECT_ONLY, long(1)));
@@ -370,7 +370,7 @@ void HttpWebRequest::put_UserAgent(RCString v) {
 #if UCFG_USE_LIBCURL
 	m_userAgent = v;
 #else
-	Win32Check(::InternetSetOption(Handle(Session()), INTERNET_OPTION_USER_AGENT, (void*)(const TCHAR*)v, v.Length));	// len in TCHARs for strings
+	Win32Check(::InternetSetOption(Handle(Session()), INTERNET_OPTION_USER_AGENT, (void*)(const TCHAR*)v, v.length()));	// len in TCHARs for strings
 #endif
 }
 
@@ -435,7 +435,7 @@ void HttpWebRequest::AddHeader(CURL *curl, RCString name, RCString val) {
 
 ptr<CurlSession> HttpWebRequest::Connect() {
 	ptr<CurlSession> curl = base::Connect();
-	if (!m_userAgent.IsEmpty())
+	if (!m_userAgent.empty())
 		curl->SetOption(CURLOPT_USERAGENT, (const char*)m_userAgent);
 
 	if (Method=="POST" || Method=="PUT") {
@@ -475,7 +475,7 @@ void HttpWebRequest::Send(const byte *p, size_t size) {
 	if (!sHeaders.empty()) {
 		pib = &ib;	
 		ib.lpcszHeader = sHeaders;
-		ib.dwHeadersLength = sHeaders.Length;
+		ib.dwHeadersLength = sHeaders.length();
 	}
 
 	if (p)
@@ -544,7 +544,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 			}	
 			m_pimpl->m_conn.HttpOpen(m_response.m_pImpl->m_conn, Method, RequestUri.PathAndQuery, nullptr, Referer, nullptr, flags);
 			m_response.m_pImpl->m_conn.AddHeaders(AdditionalHeaders);
-			m_response.m_pImpl->m_stm.m_pConnection = &m_response.m_pImpl->m_conn;
+			m_response.m_pImpl->m_stm.m_pConnection.reset(&m_response.m_pImpl->m_conn);
 
 			Send(p, size);
 		}
@@ -608,10 +608,10 @@ WebHeaderCollection HttpWebResponse::get_Headers() {
 }
 
 #if UCFG_USE_LIBCURL
-Int64 HttpWebResponse::get_ContentLength() {
+int64_t HttpWebResponse::get_ContentLength() {
 	double r;
 	CurlCheck(::curl_easy_getinfo(m_pImpl->m_conn.Session->m_h, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &r));
-	return (Int64)r;
+	return (int64_t)r;
 }
 #endif
 
@@ -692,7 +692,7 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 
 	CHttpHeader hh;
 	hh.Headers = ResponseHeaders;
-	Encoding = hh.GetEncoding();
+	Encoding.reset(hh.GetEncoding());
 
 	int statusCode = m_response.StatusCode;
 	if (!(statusCode>=200 && statusCode<=299)) {
