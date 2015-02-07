@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 using namespace std;
@@ -594,7 +587,7 @@ bool BigInteger::AsBaseWord(S_BASEWORD& n) const {
 	if (m_count > 1)
 		return false;
 	S_BASEWORD esign = *(S_BASEWORD*)m_data >> (BASEWORD_BITS-1);
-	for (int i=1; i<_countof(m_data); i++)
+	for (size_t i=1; i<size(m_data); i++)
 		if (m_data[i] != esign)
 			return false;
 	n = m_data[0];
@@ -868,7 +861,7 @@ void BigInteger::Init(const byte *p, size_t count) {
 	if (!n || byte(((signed char)p[n-1]>>7))!=bhigh)
 		n++;
 	BASEWORD *data;
-	if ((m_count=(n+sizeof(BASEWORD)-1)/sizeof(BASEWORD)) > _countof(m_data)) {
+	if ((m_count=(n+sizeof(BASEWORD)-1)/sizeof(BASEWORD)) > size(m_data)) {
 		size_t size = m_count*sizeof(BASEWORD);
 		m_blob.m_pData = new(size) CStringBlobBuf(0, size);
 		data = (BASEWORD*)m_blob.data();
