@@ -206,13 +206,13 @@ DateTime DateTime::FromAsctime(RCString s) {
 
 int64_t DateTime::SimpleUtc() {
 #if UCFG_USE_POSIX
-	timespec ts;
-	CCheck(::clock_gettime(CLOCK_REALTIME, &ts));
-	return from_time_t(ts.tv_sec).m_ticks + ts.tv_nsec/100;
+//!!! librt required	timespec ts;
+//	CCheck(::clock_gettime(CLOCK_REALTIME, &ts));
+//	return from_time_t(ts.tv_sec).m_ticks + ts.tv_nsec/100;
 
-//!!!O	timeval tv;
-//!!!O	CCheck(::gettimeofday(&tv, 0));
-//!!!O	return FromUnix(tv.tv_sec).m_ticks+tv.tv_usec*10;
+	timeval tv;
+	CCheck(::gettimeofday(&tv, 0));
+	return from_time_t(tv.tv_sec).m_ticks+tv.tv_usec*10;
 #elif UCFG_WDM
 	LARGE_INTEGER st;
 	KeQuerySystemTime(&st);

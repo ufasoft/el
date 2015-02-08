@@ -465,14 +465,7 @@ void ThreadBase::OnAPC() {
 //!!!		Socket::ReleaseFromAPC();
 }
 
-#if UCFG_USE_PTHREADS
-TimeSpan ThreadBase::get_TotalProcessorTime() const {
-	timespec ts;
-	CCheck(::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts));
-	return ts;
-}
-
-#else // UCFG_USE_PTHREADS
+#if !UCFG_USE_PTHREADS
 
 CONTEXT ThreadBase::get_Context(DWORD contextFlags) {
 	CONTEXT context;
