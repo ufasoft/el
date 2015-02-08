@@ -64,10 +64,7 @@ const int NOTIFY_PROBABILITY = 1000;
 class DlException : public Exception {
 	typedef Exception base;
 public:
-	DlException()
-		:	base(E_EXT_Dynamic_Library, dlerror())
-	{
-	}
+	DlException();
 };
 
 inline void DlCheck(int rc) {
