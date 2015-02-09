@@ -225,11 +225,11 @@ AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, i
 #		include <stdexcept>
 
 
-#		if UCFG_CPP11_HAVE_MUTEX
+#		if UCFG_STD_MUTEX
 #			include <mutex>
 #		endif
 
-#		if UCFG_CPP11_HAVE_THREAD
+#		if UCFG_STD_THREAD
 #			include <thread>
 #		endif
 
@@ -594,16 +594,6 @@ inline int64_t abs(const int64_t& v) {
 
 
 #if !defined(_CRTBLD) || UCFG_CRT=='U'
-
-
-#if UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
-#	ifdef _DEBUG
-#		pragma comment(lib, "comsuppwd")
-#	else
-#		pragma comment(lib, "comsuppw")
-#	endif
-#endif
-
 
 #if UCFG_CPP11 && UCFG_STDSTL && !UCFG_MINISTL
 #	include <array>

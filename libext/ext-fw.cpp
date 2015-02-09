@@ -1,5 +1,8 @@
 #include <el/ext.h>
 
+#include <cmath>
+#include <random>
+
 #if UCFG_WIN32
 #	include <windows.h>
 #	include <wininet.h>
@@ -33,6 +36,34 @@
 #ifndef WIN32
 	const GUID GUID_NULL = { 0 };
 #endif
+
+#if !UCFG_STDSTL
+
+extern "C" {
+	errno_t __cdecl rand_s(unsigned int* randval);
+}
+
+namespace std {
+
+__declspec(noreturn) void __cdecl _Xinvalid_argument(const char *msg) {
+	throw invalid_argument(msg);
+}
+
+void __cdecl _Rng_abort(const char *msg) {
+	fputs(msg, stderr);
+	fputc('\n', stderr);
+	abort();
+}
+
+unsigned int __cdecl _Random_device() {	// return a random value
+	unsigned int ans;
+	if (rand_s(&ans))
+		throw out_of_range("invalid random_device value");
+	return ans;
+}
+
+} // std::
+#endif // !UCFG_STDSTL
 
 namespace Ext { 
 using namespace std;
@@ -173,11 +204,9 @@ String Environment::GetMachineVersion() {
 	GetSystemInfo(&si);
 	switch (si.wProcessorArchitecture) {
 	case PROCESSOR_ARCHITECTURE_INTEL:
-		switch (si.dwProcessorType)
-		{
+		switch (si.dwProcessorType) {
 		case 586:
-			switch (si.wProcessorRevision)
-			{
+			switch (si.wProcessorRevision) {
 			case 5895:
 				s = "Core 2 Quad";
 				break;
@@ -394,8 +423,8 @@ path Environment::GetFolderPath(SpecialFolder folder) {
 #if UCFG_USE_POSIX
 	path homedir = GetEnvironmentVariable("HOME");
 	switch (folder) {
-	case SpecialFolder::Desktop: return homedir / "Desktop";
-	case SpecialFolder::ApplicationData: homedir / ".config";
+	case SpecialFolder::Desktop: 			return homedir / "Desktop";
+	case SpecialFolder::ApplicationData: 	return homedir / ".config";
 	default:
 		Throw(E_NOTIMPL);
 	}
@@ -959,27 +988,44 @@ int AFXAPI Rand() {
 #endif
 }
 
+Random::Random(int seed)
+	: m_prngeng(new std::default_random_engine(seed))
+{
+}
+
+static std::default_random_engine *Rngeng(Random& r) {
+	return static_cast<std::default_random_engine*>(r.m_prngeng);
+}
+
+Random::~Random() {
+	delete Rngeng(_self);
+}
 
 uint16_t Random::NextWord() {
-	return uint16_t((m_seed = m_seed * 214013L + 2531011L) >> 16);
+	return (uint16_t) uniform_int_distribution<int>(0, 65535) (*Rngeng(_self));
+
+
+	//!!!R return uint16_t((m_seed = m_seed * 214013L + 2531011L) >> 16);
 }
 
 void Random::NextBytes(const Buf& mb) {
-	for (size_t i=0; i<mb.Size; i++)
-		mb.P[i] = (byte)NextWord();
+	uniform_int_distribution<int> dist(0, 255);
+	for (size_t i = 0; i < mb.Size; i++)
+		mb.P[i] = (byte)dist(*Rngeng(_self));
 }
 
 int Random::Next() {
-	int v;
-	NextBytes(Buf(&v, sizeof v));
-	return abs(v);
+	return uniform_int_distribution<int>(numeric_limits<int>::min(), numeric_limits<int>::max()) (*Rngeng(_self));
 }
 
 int Random::Next(int maxValue) {
-	return Next() % maxValue; //!!!
+	return uniform_int_distribution<int>(0, maxValue-1) (*Rngeng(_self));
 }
 
 double Random::NextDouble() {
+	return uniform_real_distribution<double>(0, 1) (*Rngeng(_self));
+
+/*!!!R
 	STATIC_ASSERT(DBL_MANT_DIG < 64);
 
 	uint64_t n;
@@ -987,6 +1033,7 @@ double Random::NextDouble() {
 
 	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
 	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
+	*/
 }
 
 void CAnnoyer::OnAnnoy() {

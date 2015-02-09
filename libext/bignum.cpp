@@ -30,7 +30,7 @@ BigInteger::BigInteger(uint32_t n)
 #endif
 {
 #if UCFG_BIGNUM=='A'
-	if (n >= 0) {
+	if (n <= 0x7FFFFFFF) {
 		m_count = 1;
 		m_data[0] = n;
 		return;
@@ -745,29 +745,6 @@ BigInteger AFXAPI operator<<(const BigInteger& x, size_t v) {
 	ImpShld(x.Data, p, x.m_count, v & (BASEWORD_BITS-1));
 	return BigInteger(r, size);
 #endif
-}
-
-BigInteger BigInteger::Random(const BigInteger& maxValue, Ext::Random *random) {
-	auto_ptr<Ext::Random> r;
-	if (!random) {
-		r.reset(new Ext::Random);
-		random = r.get();
-	}
-	size_t nbytes = maxValue.Length/8+1;
-	byte *p = (byte*)alloca(nbytes);
-	random->NextBytes(Buf(p, nbytes-1));
-#if UCFG_BIGNUM!='A'
-	byte *ar = (byte*)alloca(nbytes);
-	maxValue.ToBytes(ar, nbytes);
-	byte hiByte = ar[nbytes-1];	
-#else
-	byte hiByte = ((byte*)maxValue.get_Data())[nbytes-1];
-#endif
-	if (hiByte)
-		p[nbytes-1] = byte(random->Next(hiByte));
-	else
-		p[nbytes-1] = 0;
-	return BigInteger(p, nbytes);
 }
 
 BASEWORD *BigInteger::ExtendTo(BASEWORD *p, size_t size) const {

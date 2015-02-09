@@ -1,6 +1,7 @@
 #pragma once
 
 
+
 #define CREATE_NEW          1 //!!!  windows
 typedef struct tagEXCEPINFO EXCEPINFO;
 
@@ -707,13 +708,12 @@ namespace Ext {
 
 AFX_API int AFXAPI Rand();
 
-class EXTAPI Random {
+class EXTAPI Random : noncopyable {
 public:
-	int32_t m_seed;
+	void *m_prngeng;
 
-	explicit Random(int seed = Rand())
-		:	m_seed(seed)
-	{}
+	Random(int seed = Rand());
+	~Random();
 
 	virtual void NextBytes(const Buf& mb);
 	int Next();
@@ -842,22 +842,6 @@ protected:
 #ifdef WIN32
 	EXT_API WIN32_FIND_DATA GetData() const;
 #endif
-};
-
-class EXTAPI FileInfo : public FileSystemInfo {
-	typedef FileInfo class_type;
-public:
-	FileInfo(RCString name)
-		:	FileSystemInfo(name, false)
-	{}
-
-};
-
-class DirectoryInfo : public FileSystemInfo {
-public:
-	DirectoryInfo(RCString name)
-		:	FileSystemInfo(name, true)
-	{}
 };
 
 #if UCFG_WIN32_FULL
