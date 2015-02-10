@@ -17,7 +17,7 @@
 #	include <semaphore.h>
 #endif
 
-#if !UCFG_STDSTL || !UCFG_CPP11_HAVE_MUTEX
+#if !UCFG_STDSTL || !UCFG_STD_MUTEX
 #	include <el/stl/mutex>
 
 namespace std {
@@ -201,7 +201,7 @@ inline void Unlock(CNonRecursiveCriticalSection& cs) {
 }
 #endif
 
-#if UCFG_STDSTL && UCFG_CPP11_HAVE_MUTEX
+#if UCFG_STDSTL && UCFG_STD_MUTEX
 
 inline void Lock(std::mutex& mtx) {
 	mtx.lock();
@@ -219,7 +219,7 @@ inline void Unlock(std::recursive_mutex& mtx) {
 	mtx.unlock();
 }
 
-#endif // UCFG_STDSTL && UCFG_CPP11_HAVE_MUTEX
+#endif // UCFG_STDSTL && UCFG_STD_MUTEX
 */
 
 class CScopedLockBase {
