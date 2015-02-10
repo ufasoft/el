@@ -19,7 +19,7 @@
 
 //!!!#include <exception>//!!!
 
-#if !UCFG_STDSTL || !UCFG_CPP11_HAVE_MUTEX || UCFG_SPECIAL_CRT
+#if !UCFG_STDSTL || !UCFG_STD_MUTEX || UCFG_SPECIAL_CRT
 #	include <el/stl/mutex>
 #endif
 
@@ -79,15 +79,15 @@ DWORD volatile dw = _tls_used;	// forces a tls directory to be created, volatile
 #endif // _MSC_VER
 
 namespace ExtSTL {
-#if !UCFG_STDSTL || !UCFG_CPP11_HAVE_THREAD
+#if !UCFG_STDSTL || !UCFG_STD_THREAD
 	ostream& AFXAPI operator<<(ostream& os, const thread::id& v);
-#endif	// !UCFG_STDSTL || !UCFG_CPP11_HAVE_THREAD
+#endif	// !UCFG_STDSTL || !UCFG_STD_THREAD
 
-#if !UCFG_STDSTL || !UCFG_CPP11_HAVE_MUTEX || UCFG_SPECIAL_CRT
+#if !UCFG_STDSTL || !UCFG_STD_MUTEX || UCFG_SPECIAL_CRT
 	const adopt_lock_t adopt_lock = {};
 	const defer_lock_t defer_lock = {};
 	const try_to_lock_t try_to_lock = {};
-#endif // !UCFG_STDSTL || !UCFG_CPP11_HAVE_MUTEX
+#endif // !UCFG_STDSTL || !UCFG_STD_MUTEX
 
 #if UCFG_WCE
 
