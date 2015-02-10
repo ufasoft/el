@@ -1,5 +1,7 @@
 #pragma once
 
+#include <random>
+
 typedef uintptr_t BASEWORD;
 typedef intptr_t S_BASEWORD;
 
@@ -339,8 +341,24 @@ public:
 	BigInteger operator++(int) { return exchange(_self, Add(1)); }
 	BigInteger& operator--() { return _self -= 1; }
 	BigInteger operator--(int) { return exchange(_self, Sub(1)); }
-
-	static BigInteger AFXAPI Random(const BigInteger& maxValue, class Ext::Random *random = 0);
+	
+	template <class E>
+	static inline BigInteger AFXAPI Random(const BigInteger& maxValue, E& rngeng) {
+		size_t nbytes = maxValue.Length / 8 + 1;
+		byte *p = (byte*)alloca(nbytes);
+		uniform_int_distribution<int> dist(0, 255);
+		for (int i = 0; i < nbytes; ++i)
+			p[i] = (byte)dist(rngeng);
+#if UCFG_BIGNUM!='A'
+		byte *ar = (byte*)alloca(nbytes);
+		maxValue.ToBytes(ar, nbytes);
+		byte hiByte = ar[nbytes - 1];
+#else
+		byte hiByte = ((byte*)maxValue.get_Data())[nbytes - 1];
+#endif
+		p[nbytes - 1] = hiByte ? (byte)uniform_int_distribution<int>(0, hiByte - 1) (rngeng) : 0;
+		return BigInteger(p, nbytes);
+	}
 
 	int Compare(const BigInteger& x) const;
 	BigInteger Add(const BigInteger& x) const;
@@ -349,7 +367,6 @@ public:
 	BigInteger And(const BigInteger& x) const;
 	BigInteger Or(const BigInteger& x) const;
 	BigInteger Xor(const BigInteger& x) const;
-		
 
 	size_t GetBaseWords() const
 #if UCFG_BIGNUM!='A'
