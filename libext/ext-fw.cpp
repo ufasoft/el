@@ -1,6 +1,5 @@
 #include <el/ext.h>
 
-#include <cmath>
 #include <random>
 
 #if UCFG_WIN32
@@ -37,33 +36,6 @@
 	const GUID GUID_NULL = { 0 };
 #endif
 
-#if !UCFG_STDSTL
-
-extern "C" {
-	errno_t __cdecl rand_s(unsigned int* randval);
-}
-
-namespace std {
-
-__declspec(noreturn) void __cdecl _Xinvalid_argument(const char *msg) {
-	throw invalid_argument(msg);
-}
-
-void __cdecl _Rng_abort(const char *msg) {
-	fputs(msg, stderr);
-	fputc('\n', stderr);
-	abort();
-}
-
-unsigned int __cdecl _Random_device() {	// return a random value
-	unsigned int ans;
-	if (rand_s(&ans))
-		throw out_of_range("invalid random_device value");
-	return ans;
-}
-
-} // std::
-#endif // !UCFG_STDSTL
 
 namespace Ext { 
 using namespace std;

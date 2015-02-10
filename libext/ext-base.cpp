@@ -401,6 +401,18 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 	ThrowImp(error_code(hr, hresult_category()));
 }
 
+
+#if UCFG_CRT=='U'
+
+typedef void (AFXAPI *PFNThrowImp)(HRESULT hr);
+void SetThrowImp(PFNThrowImp pfn);
+static int s_initThrowImp = (SetThrowImp(&ThrowImp), 1);
+
+#endif // UCFG_CRT=='U'
+
+
+
+
 DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
 #if UCFG_EH_SUPPORT_IGNORE
 	if (!CLocalIgnoreBase::ErrorCodeIsIgnored(ec)) {
@@ -573,7 +585,7 @@ static struct CTraceInit {
 			CTrace::s_nLevel = atoi(slevel);
 		}
 	}
-} s_traceInit;
+} s_traceInit;			//!!! Windows: too early here
 #endif // !UCFG_WDM
 
 static class CNullStream : public ostream {
