@@ -1,0 +1,159 @@
+#pragma once
+#define _CODECVT_
+
+#if UCFG_STDSTL
+#	include <locale>
+#endif
+
+namespace ExtSTL {
+using std::locale;
+using std::is_same;
+using std::min;
+
+class codecvt_base : public locale::facet {
+	typedef locale::facet base;
+public:
+	enum result {
+		ok, partial, error, noconv
+	};
+
+	explicit codecvt_base(size_t refs = 0)
+		:	base(refs)
+	{}
+	
+	bool always_noconv() const noexcept { return do_always_noconv(); }
+	int max_length() const noexcept { return do_max_length(); }
+	int encoding() const noexcept { return do_encoding(); }
+protected:
+	virtual bool do_always_noconv() const noexcept { return false; }
+	virtual int do_max_length() const noexcept { return 1; }
+	virtual int do_encoding() const noexcept { return 1; }
+};
+
+template <typename E, typename B, typename S>
+class codecvt_Base : public codecvt_base {
+	typedef codecvt_base base;
+public:
+	typedef E intern_type;
+	typedef B extern_type;
+	typedef S state_type;
+
+	explicit codecvt_Base(size_t refs = 0)
+		:	base(refs)
+	{
+	}
+
+	result in(state_type& s, const extern_type *fb, const extern_type *fe, const extern_type *&fn, intern_type *tb, intern_type *te, intern_type *&tn) const { return do_in(s, fb, fe, fn, tb, te, tn); }
+	result out(state_type& s, const intern_type *fb, const intern_type *fe, const intern_type *&fn, extern_type *tb, extern_type *te, extern_type *&tn) const { return do_out(s, fb, fe, fn, tb, te, tn); }
+	result unshift(state_type& s, extern_type *tb, extern_type *te, extern_type *&tn) const { return do_unshift(s, tb, te, tn); }
+	int length(state_type& s, const extern_type *fb, const extern_type *fe, size_t count) const noexcept { return do_length(s, fb, fe, count); }
+protected:
+	virtual ~codecvt_Base() {
+	}
+
+	bool do_always_noconv() const noexcept override { return is_same<intern_type, extern_type>::value; }
+
+	virtual result do_in(state_type& s, const extern_type *fb, const extern_type *fe, const extern_type *&fn, intern_type *tb, intern_type *te, intern_type *&tn) const {
+		fn = fb;
+		tn = tb;
+		if (is_same<intern_type, extern_type>::value)
+			return noconv;
+		while (fn!=fe && tn!=te)
+			*tn++ = (intern_type)*fn++;
+		return ok;
+	}
+
+	virtual result do_out(state_type& s, const intern_type *fb, const intern_type *fe, const intern_type *&fn, extern_type *tb, extern_type *te, extern_type *&tn) const {
+		fn = fb;
+		tn = tb;
+		if (is_same<intern_type, extern_type>::value)
+			return noconv;
+		while (fn!=fe && tn!=te)
+			*tn++ = (extern_type)*fn++;
+		return ok;
+	}
+
+	virtual result do_unshift(state_type& s, extern_type *tb, extern_type *te, extern_type *&tn) const {
+		tn = tb;
+		return ok;
+	}
+
+	virtual int do_length(state_type& s, const extern_type *fb, const extern_type *fe, size_t count) const noexcept {
+		return (int)min(count, size_t(fe-fb));
+	}
+};
+
+template <typename E, typename B, typename S>
+class codecvt : public codecvt_Base<E, B, S> {
+	typedef codecvt_Base<E, B, S> base;
+public:
+	static locale::id id;
+
+	explicit codecvt(size_t refs = 0)
+		:	base(refs)
+	{}
+
+	static size_t GetCat(const locale::facet **pp = 0, const locale *loc = 0) {
+		if (pp && !*pp)
+			*pp = new codecvt;
+		return LC_CTYPE;
+	}
+};
+
+template<> AFX_CLASS class codecvt<wchar_t, char, mbstate_t> : public codecvt_Base<wchar_t, char, mbstate_t> {
+	typedef codecvt_Base<wchar_t, char, mbstate_t> base;
+public:
+	static EXT_DATA locale::id id;
+
+	explicit codecvt(size_t refs = 0)
+		:	base(refs)
+	{}
+
+	static size_t GetCat(const locale::facet **pp = 0, const locale *loc = 0) {
+		if (pp && !*pp)
+			*pp = new codecvt;
+		return LC_CTYPE;
+	}
+};
+
+template <typename EL, typename B, typename ST>
+locale::id codecvt<EL, B, ST>::id;
+
+template <typename E, unsigned long Maxcode = 0x10ffff>
+class codecvt_utf8_utf16 : public codecvt<E, char, mbstate_t> {
+};
+
+#ifdef _MSC_VER
+#	if _VC_CRT_MAJOR_VERSION >= 14
+		inline int& MbstateRef(mbstate_t& s) { return *(int*)&s; }	//!!!
+#	else
+		inline int& MbstateRef(mbstate_t& s) { return s; }
+#	endif
+#else
+	inline int& MbstateRef(mbstate_t& s) { return *(int*)&s; }
+#endif
+
+template<>
+class codecvt_utf8_utf16<wchar_t> : public codecvt<wchar_t, char, mbstate_t> {
+protected:
+	static const long Maxcode = 0x10ffff;
+
+	result do_in(state_type& s, const extern_type *fb, const extern_type *fe, const extern_type *&fn, intern_type *tb, intern_type *te, intern_type *&tn) const override;
+	result do_out(state_type& s, const intern_type *fb, const intern_type *fe, const intern_type *&fn, extern_type *tb, extern_type *te, extern_type *&tn) const override;
+	int do_length(state_type& s, const extern_type *fb, const extern_type *fe, size_t count) const noexcept override;
+
+	int do_max_length() const noexcept override { return 6; }
+	int do_encoding() const noexcept override { return 0; }
+
+	result do_unshift(state_type& s, extern_type *tb, extern_type *te, extern_type *&tn) const override {
+		tn = tb;
+		return MbstateRef(s)<=1 ? ok : error;
+	}
+};
+
+} // ExtSTL::
+
+
+namespace std {
+	using ExtSTL::codecvt_utf8_utf16;
+}
