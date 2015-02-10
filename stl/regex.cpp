@@ -1,16 +1,14 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
-#define PCRE_STATIC 1
-#include <pcre.h>
 
+#if UCFG_USE_PCRE==2
+#	define PCRE2_STATIC 1
+#	define PCRE2_CODE_UNIT_WIDTH 8
+#	include <pcre2.h>
+#else
+#	define PCRE_STATIC 1
+#	include <pcre.h>
+#endif
 
 #if UCFG_STDSTL && defined(_MSC_VER)
 #	include "extstl.h"
@@ -25,17 +23,102 @@ ASSERT_CDECL
 namespace ExtSTL  {
 using namespace Ext;
 
+static class PCRECategory : public error_category {			// outside function to eliminate thread-safe static machinery
+	typedef error_category base;
+
+#if UCFG_USE_PCRE==2
+	const char *name() const noexcept override { return "PCRE2"; }
+#else
+	const char *name() const noexcept override { return "PCRE"; }
+#endif
+
+	string message(int eval) const override {
+#if UCFG_USE_PCRE==2
+		char buf[255];
+		if (pcre2_get_error_message(eval, (byte*)buf, sizeof buf) < 0)
+			Throw(errc::no_buffer_space);
+		return buf;
+#else
+		return EXT_STR("Code " << -eval);
+#endif
+	}
+} s_pcreCategory;
+
+const error_category& pcre_category() {
+	return s_pcreCategory;
+}
+
+class RegexException : public Exception {
+	typedef Exception base;
+public:
+	int Offset;
+
+	RegexException(const error_code& ec, int offset = 0)
+		:	base(ec)
+		,	Offset(offset)
+	{
+	}
+
+	String get_Message() const override {
+		if (m_message.empty())
+			m_message = EXT_STR(base::get_Message() << " at offset " << Offset);
+		return m_message;
+	}
+};
+
+
+int PcreCheck(int r, int offset = 0) {
+	if (r < 0)
+		throw RegexException(error_code(-r, pcre_category()), offset);
+#if UCFG_USE_PCRE==2
+	if (r > 0) {
+		throw RegexException(error_code(r, pcre_category()), offset);
+	}
+#endif
+	return r;
+}
+
+#if UCFG_USE_PCRE==2
+
+class Pcre2MatchData : noncopyable {
+public:
+	pcre2_match_data * const m_md;
+
+	Pcre2MatchData(pcre2_code *code)
+		: m_md(pcre2_match_data_create_from_pattern(code, 0))
+	{
+		if (!m_md)
+			PcreCheck(-1);
+	}
+
+	~Pcre2MatchData() {
+		pcre2_match_data_free_8(m_md);
+	}
+
+	operator pcre2_match_data*() { return m_md; }
+};
+
+#endif // UCFG_USE_PCRE==2
+
+
 class StdRegexObj : public Object {
 public:
 	String m_pattern;
 	int m_pcreOpts;
+#if UCFG_USE_PCRE==2
+	pcre2_code *m_re;
+	pcre2_code *FullRe();
+private:
+	pcre2_code *m_reFull;
+#else
 	pcre *m_re;
-
-	StdRegexObj(RCString pattern, int options, bool bBinary);
-	~StdRegexObj();
 	pcre *FullRe();
 private:
 	pcre *m_reFull;
+#endif
+public:
+	StdRegexObj(RCString pattern, int options, bool bBinary);
+	~StdRegexObj();
 };
 
 
@@ -45,6 +128,15 @@ StdRegexObj::StdRegexObj(RCString pattern, int options, bool bBinary)
 	:	m_pattern(pattern)
 	,	m_reFull(0)
 {
+#if UCFG_USE_PCRE==2
+	m_pcreOpts = 0;
+	if (!bBinary)
+		m_pcreOpts |= PCRE2_UTF;
+	if (options & regex_constants::icase)
+		m_pcreOpts |= PCRE2_CASELESS;
+	if (options & regex_constants::nosubs)		//!!!?
+		m_pcreOpts |= PCRE2_NO_AUTO_CAPTURE;
+#else
 	m_pcreOpts = PCRE_JAVASCRIPT_COMPAT;
 	if (!bBinary)
 		m_pcreOpts |= PCRE_UTF8;
@@ -52,31 +144,52 @@ StdRegexObj::StdRegexObj(RCString pattern, int options, bool bBinary)
 		m_pcreOpts |= PCRE_CASELESS;
 	if (options & regex_constants::nosubs)		//!!!?
 		m_pcreOpts |= PCRE_NO_AUTO_CAPTURE;
-
+#endif
 	Blob utf8 = Encoding::UTF8.GetBytes(pattern);
-	const char *error;
-	int error_offset;
 	unsigned char *table = 0;
 	int errcode;
+#if UCFG_USE_PCRE==2	
+	size_t error_offset;
+	if (!(m_re = pcre2_compile((PCRE2_SPTR8)(const char*)utf8.constData(), PCRE2_ZERO_TERMINATED, m_pcreOpts, &errcode, &error_offset, nullptr)))
+		PcreCheck(errcode, error_offset);
+#else
+	const char *error;
+	int error_offset;
 	if (!(m_re = pcre_compile2((const char*)utf8.constData(), m_pcreOpts, &errcode, &error, &error_offset, table)))
 		throw RegexExc(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PCRE, errcode), EXT_STR(error << " at offset " << error_offset));
+#endif
 }
 
 StdRegexObj::~StdRegexObj() {
+#if UCFG_USE_PCRE==2	
+	pcre2_code_free(m_reFull);
+	pcre2_code_free(m_re);
+#else
 	if (m_reFull)
 		pcre_free(m_reFull);		
 	pcre_free(m_re);
+#endif
 }
 
+#if UCFG_USE_PCRE==2
+pcre2_code *StdRegexObj::FullRe() {
+#else
 pcre *StdRegexObj::FullRe() {
+#endif
 	if (!m_reFull) {
 		Blob utf8 = Encoding::UTF8.GetBytes("(?:"+m_pattern+")\\z");
-		const char *error;
-		int error_offset;
 		unsigned char *table = 0;
 		int errcode;
+#if UCFG_USE_PCRE==2
+		size_t error_offset;
+		if (!(m_reFull = pcre2_compile((PCRE2_SPTR8)(const char*)utf8.constData(), PCRE2_ZERO_TERMINATED, m_pcreOpts | PCRE2_ANCHORED, &errcode, &error_offset, nullptr)))
+			PcreCheck(errcode);
+#else
+		const char *error;
+		int error_offset;
 		if (!(m_reFull = pcre_compile2((const char*)utf8.constData(), m_pcreOpts | PCRE_ANCHORED, &errcode, &error, &error_offset, table)))
 			throw RegexExc(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PCRE, errcode), EXT_STR(error << " at offset " << error_offset));
+#endif
 	}
 	return m_reFull;
 }
@@ -92,12 +205,6 @@ void *basic_regexBase::FullRe() const {
 	return m_pimpl->FullRe();
 }
 
-int PcreCheck(int r) {
-	if (r < 0)
-		throw RegexExc(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PCRE, -r));
-	return r;
-}
-
 basic_regex<char>::basic_regex(RCString pattern, flag_type flags) {
 	m_pimpl = new StdRegexObj(pattern, flags, true);
 }
@@ -109,30 +216,48 @@ basic_regex<wchar_t>::basic_regex(RCString pattern, flag_type flags) {
 bool AFXAPI regex_searchImpl(const char *b, const char *e, match_results<const char*> *m, const basic_regexBase& re, bool bMatch, regex_constants::match_flag_type flags, const char *org) {
 	void *pre = bMatch ? re.FullRe() : re.Re();
 
-	int matches[MAX_MATCHES*3];
 	int options = 0;	
+
+#if UCFG_USE_PCRE==2
+	if (flags & regex_constants::match_not_bol)
+		options |= PCRE2_NOTBOL;
+	if (flags & regex_constants::match_not_eol)
+		options |= PCRE2_NOTEOL;
+	Pcre2MatchData md((pcre2_code*)pre);
+	int rc = ::pcre2_match((pcre2_code*)pre, (PCRE2_SPTR8)b, int(e-b), 0, options, md, nullptr);
+#else
+	int ovector[MAX_MATCHES*3];
 	if (flags & regex_constants::match_not_bol)
 		options |= PCRE_NOTBOL;
 	if (flags & regex_constants::match_not_eol)
 		options |= PCRE_NOTEOL;
-
-	int rc = ::pcre_exec((pcre*)pre, NULL, b, int(e-b), 0, options, matches, MAX_MATCHES*3);
+	int rc = ::pcre_exec((pcre*)pre, NULL, b, int(e-b), 0, options, ovector, MAX_MATCHES*3);
+#endif
 
 	if (rc < -1)
 		PcreCheck(rc);
 	if (rc < 1)
 		return false;
+#if UCFG_USE_PCRE==2
+	size_t *ovector = pcre2_get_ovector_pointer(md.m_md);
+	size_t count = pcre2_get_ovector_count(md.m_md);
+#else
 	int count;
 	PcreCheck(::pcre_fullinfo((pcre*)pre, 0, PCRE_INFO_CAPTURECOUNT, &count));
+#endif
 	if (m) {
 		m->m_ready = true;
 		m->m_org = b;
 		m->Resize(count+1);
 		for (int i=0; i<rc; i++) {
 			sub_match<const char*>& sm = m->GetSubMatch(i);
-			sm.first = b+matches[2*i];
-			sm.second = b+matches[2*i+1];
-			sm.matched = matches[2*i] >= 0;
+			sm.first = b + ovector[2*i];
+			sm.second = b + ovector[2*i+1];
+#if UCFG_USE_PCRE==2
+			sm.matched = ovector[2 * i] != PCRE2_UNSET;
+#else			
+			sm.matched = ovector[2*i] >= 0;
+#endif
 		}
 		m->m_prefix.first = b;
 		m->m_prefix.second = (*m)[0].first;
@@ -156,7 +281,7 @@ bool AFXAPI regex_searchImpl(const wchar_t *bs, const wchar_t *es, match_results
 			m->m_ready = true;
 			m->m_org = org;
 			m->Resize(m8.size());
-			for (int i=0; i<m8.size(); ++i) {
+			for (size_t i=0; i<m8.size(); ++i) {
 				const sub_match<const char*>& sm = m8[i];
 				match_results<const wchar_t*>::value_type& dm = m->GetSubMatch(i);
 				if (dm.matched = sm.matched) {
@@ -187,7 +312,7 @@ bool AFXAPI regex_searchImpl(string::const_iterator bi,  string::const_iterator 
 			m->m_ready = true;
 			m->m_org = orgi;
 			m->Resize(m8.size());
-			for (int i=0; i<m8.size(); ++i) {
+			for (size_t i=0; i<m8.size(); ++i) {
 				const sub_match<const char*>& sm = m8[i];
 				smatch::value_type& dm = m->GetSubMatch(i);
 				if (dm.matched = sm.matched) {
@@ -240,7 +365,7 @@ string AFXAPI regex_replace(const string& s, const regex& re, const string& fmt,
 	for (cregex_iterator it(bs, es, re, flags), e; it!=e; ++it) {
 		r += string(prev, (*it)[0].first);
 		const char *prevRepl = bfmt;
-		for (int j=0; j<vRepl.size(); ++j) {
+		for (size_t j=0; j<vRepl.size(); ++j) {
 			r += string(prevRepl, vRepl[j].sm.first);
 			String name = vRepl[j].Name;
 			int idx = atoi(name);
