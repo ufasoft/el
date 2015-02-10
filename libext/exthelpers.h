@@ -2,7 +2,81 @@
 
 #pragma once
 
-#if !UCFG_STD_EXCHANGE
+#ifndef UCFG_STD_EXCHANGE
+#	ifdef __cpp_lib_exchange_function
+#		define UCFG_STD_EXCHANGE 1
+#	else
+#		define UCFG_STD_EXCHANGE (UCFG_CPP14 || UCFG_LIBCPP_VERSION >= 1100)
+#	endif
+#endif
+
+
+#if !UCFG_STD_EXCHANGE && !UCFG_MINISTL
+
+
+/*!!!?R
+
+template <typename T, typename U>
+inline T Do_exchange(T& obj, const U EXT_REF new_val, false_type) {
+#	if UCFG_CPP11_RVALUE
+	T old_val = std::move(obj);
+	obj = std::forward<U>(new_val);
+#else
+	T old_val = obj;
+	obj = new_val;
+#endif
+  	return old_val;
+}
+
+template <typename T, typename U>
+inline T Do_exchange(T& obj, const U& new_val, false_type) {
+#	if UCFG_CPP11_RVALUE
+	T old_val = std::move(obj);
+#else
+	T old_val = obj;
+#endif
+	obj = new_val;
+  	return old_val;
+}
+
+template <typename T, typename U>
+inline T Do_exchange(T& obj, const U new_val, true_type) {
+#	if UCFG_CPP11_RVALUE
+	T old_val = std::move(obj);
+#else
+	T old_val = obj;
+#endif
+	obj = new_val;
+  	return old_val;
+}
+
+template <typename T, typename U>
+inline T exchange(T& obj, U EXT_REF new_val) {
+	return Do_exchange(obj, new_val, typename is_scalar<U>::type());
+}
+
+#	if UCFG_CPP11_RVALUE
+
+	template <typename T, typename U>
+	inline T exchange(T& obj, const U& new_val) {
+		return Do_exchange(obj, new_val, typename is_scalar<U>::type());
+	}
+#	endif
+*/
+
+template <typename T, typename U>
+inline T exchange(T& obj, U EXT_REF new_val) {
+	T old_val = std::move(obj);
+#	if UCFG_CPP11_RVALUE
+	obj = forward<U>(new_val);
+#	else
+	obj = new_val;
+#	endif
+	return old_val;
+}
+
+
+
 
 namespace std {
 inline char exchange(char& obj, char new_val) {
