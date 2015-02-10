@@ -354,7 +354,7 @@
 #	endif
 
 #	ifndef UCFG_STD_MUTEX
-#		define UCFG_STD_MUTEX (UCFG_CPP14 || UCFG_MSC_VERSION >= 1700 || UCFG_LIBCPP_VERSION >= 1100)
+#		define UCFG_STD_MUTEX (UCFG_CPP11 || UCFG_MSC_VERSION >= 1700 || UCFG_LIBCPP_VERSION >= 1100)
 #	endif
 #endif // __cplusplus
 
