@@ -795,7 +795,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 		PthreadCheck(rc);
 	}
 #	if UCFG_LIBCPP_VERSION
-	reinterpret<native_handle_type&>(m_tid) = m_ptid;	//!!!C
+	reinterpret_cast<native_handle_type&>(m_tid) = m_ptid;	//!!!C
 #	else
 	m_tid = thread::id(m_ptid);
 #	endif
