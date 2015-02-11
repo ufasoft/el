@@ -42,7 +42,7 @@ public:
 
 	String ToString() const override;
 //!!!private:
-	DWORD_PTR m_resId;
+	uintptr_t m_resId;
 	String m_name;
 
 	void Read(const BinaryReader& rd) override;
