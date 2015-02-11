@@ -78,15 +78,23 @@ DateTime::DateTime(const timeval& tv) {
 }
 
 DateTime::DateTime(int year, int month, int day, int hour, int minute, int second, int ms) {
+#if UCFG_WIN32
 	SYSTEMTIME st = { (WORD)year, (WORD)month, 0, (WORD)day, (WORD)hour, (WORD)minute, (WORD)second, (WORD)ms };
 	DateTime dt(st);
 	_self = dt;
+#else
+	tm t = { second, minute, hour, day, month-1, year-1900 };
+	_self = t;
+	m_ticks += ms * 10000;
+#endif
 }
 
 DateTime::DateTime(const tm& t) {
 	tm _t = t;
 	_self = from_time_t(mktime(&_t));
 }
+
+#if UCFG_WIN32
 
 DateTime::DateTime(const SYSTEMTIME& st) {
 #if UCFG_USE_POSIX
@@ -98,6 +106,8 @@ DateTime::DateTime(const SYSTEMTIME& st) {
 	_self = ft;
 #endif
 }
+
+#endif
 
 DateTime DateTime::from_time_t(int64_t epoch) {
 	return DateTime(epoch*10000000 + Unix_DateTime_Offset);
@@ -210,9 +220,13 @@ int64_t DateTime::SimpleUtc() {
 //	CCheck(::clock_gettime(CLOCK_REALTIME, &ts));
 //	return from_time_t(ts.tv_sec).m_ticks + ts.tv_nsec/100;
 
+#	ifdef HAVE_SYS_TIME_H
 	timeval tv;
 	CCheck(::gettimeofday(&tv, 0));
 	return from_time_t(tv.tv_sec).m_ticks+tv.tv_usec*10;
+#	else
+		return from_time_t(time(0)).m_ticks;
+#	endif
 #elif UCFG_WDM
 	LARGE_INTEGER st;
 	KeQuerySystemTime(&st);

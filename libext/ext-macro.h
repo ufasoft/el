@@ -49,6 +49,8 @@ typedef void *HMODULE;
 typedef void *HINSTANCE;
 //!!!typedef void (*FARPROC)();
 
+/*!!!R
+
 #ifdef __cplusplus
 	namespace Ext {
 #endif
@@ -67,6 +69,8 @@ typedef struct _SYSTEMTIME {
 #ifdef __cplusplus
 	}
 #endif
+
+*/
 
 #define MAX_COMPUTERNAME_LENGTH 31		//!!!
 #define CP_UTF7                   65000       // UTF-7 translation

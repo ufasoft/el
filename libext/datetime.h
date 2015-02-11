@@ -210,7 +210,9 @@ public:
 
 #if !UCFG_WDM
 
+#	if UCFG_WIN32
 	DateTime(const SYSTEMTIME& st);
+#	endif
 	DateTime(const timeval& tv);
 
 	int get_DayOfYear() const { return tm(*this).tm_yday+1; }
