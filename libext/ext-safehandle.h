@@ -221,7 +221,7 @@ class EXTAPI SafeHandle : public Object, public CHandleBase<SafeHandle> {
 	typedef CHandleBase<SafeHandle> base;
 	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
 public:
-	typedef HANDLE handle_type;
+	typedef int64_t handle_type;
 
 #ifndef WDM_DRIVER
 	//!!!R static CTls t_pCurrentHandle;
@@ -280,7 +280,7 @@ public:
 	//!!!  void CloseHandle();
 	HANDLE DangerousGetHandle() const;
 	void Attach(HANDLE handle, bool bOwn = true);
-	void ThreadSafeAttach(HANDLE handle, bool bOwn = true);
+	void ThreadSafeAttach(intptr_t handle, bool bOwn = true);
 
 	EXPLICIT_OPERATOR_BOOL() const {
 		return Valid() ? EXT_CONVERTIBLE_TO_TRUE : 0;
@@ -307,7 +307,7 @@ public:
 	NTSTATUS InitFromHandle(HANDLE h, ACCESS_MASK DesiredAccess, POBJECT_TYPE ObjectType, KPROCESSOR_MODE  AccessMode);
 #endif
 
-	HANDLE Detach();
+	intptr_t Detach();
 	void Duplicate(HANDLE h, uint32_t dwOptions = 0);
 	virtual bool Valid() const;
 
@@ -348,7 +348,7 @@ protected:
 	const intptr_t m_invalidHandleValue;
 
 	void ReplaceHandle(HANDLE h) { m_aHandle = (intptr_t)h; }
-	virtual void ReleaseHandle(HANDLE h) const;	
+	virtual void ReleaseHandle(intptr_t h) const;
 private:
 	mutable atomic<intptr_t> m_aHandle;
 	CBool m_bOwn;
