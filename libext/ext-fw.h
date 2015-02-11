@@ -292,7 +292,7 @@ public:
 
 	File();
 
-	File(HANDLE h, bool bOwn) {
+	File(intptr_t h, bool bOwn) {
 		Attach(h, bOwn);
 	}
 
