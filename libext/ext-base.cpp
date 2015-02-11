@@ -75,8 +75,8 @@ SafeHandle::HandleAccess::~HandleAccess() {
 }
 
 
-SafeHandle::SafeHandle(HANDLE handle)
-	:	m_aHandle((intptr_t)handle)
+SafeHandle::SafeHandle(intptr_t handle)
+	:	m_aHandle(handle)
 	,	m_invalidHandleValue(-1)
 #ifdef WDM_DRIVER
 	,	m_pObject(nullptr)
@@ -98,7 +98,7 @@ void SafeHandle::InternalReleaseHandle() const {
 	intptr_t h = m_aHandle.exchange(m_invalidHandleValue);
 	if (h != m_invalidHandleValue) {
 		if (m_bOwn) //!!!
-			ReleaseHandle((HANDLE)h);
+			ReleaseHandle(h);
 	}
 #if UCFG_WDM
 	if (m_CreatedReference) {
@@ -127,13 +127,13 @@ NTSTATUS SafeHandle::InitFromHandle(HANDLE h, ACCESS_MASK DesiredAccess, POBJECT
 
 #endif
 
-void SafeHandle::ReleaseHandle(HANDLE h) const {
+void SafeHandle::ReleaseHandle(intptr_t h) const {
 #if UCFG_USE_POSIX
-	CCheck(::close((int)(intptr_t)h));
+	CCheck(::close((int)h));
 #elif UCFG_WIN32
-	Win32Check(::CloseHandle(h));
+	Win32Check(::CloseHandle((HANDLE)h));
 #else
-	NtCheck(::ZwClose(h));
+	NtCheck(::ZwClose((HANDLE)h));
 #endif
 }
 
@@ -143,10 +143,10 @@ if (Valid() && m_bOwn)
 Win32Check(::CloseHandle(exchange(m_handle, (HANDLE)0)));
 }*/
 
-HANDLE SafeHandle::DangerousGetHandle() const {
+intptr_t SafeHandle::DangerousGetHandle() const {
 	if (!m_aInUse)
 		Throw(E_EXT_ObjectDisposed);
-	return (HANDLE)m_aHandle.load();
+	return m_aHandle.load();
 }
 
 void SafeHandle::AfterAttach(bool bOwn) {
@@ -164,26 +164,26 @@ void SafeHandle::AfterAttach(bool bOwn) {
 	}
 }
 
-void SafeHandle::ThreadSafeAttach(HANDLE handle, bool bOwn) {
+void SafeHandle::ThreadSafeAttach(intptr_t handle, bool bOwn) {
 	intptr_t prev = m_invalidHandleValue;
-	if (m_aHandle.compare_exchange_strong(prev, intptr_t(handle)))
+	if (m_aHandle.compare_exchange_strong(prev, handle))
 		AfterAttach(bOwn);
 	else
 		ReleaseHandle(handle);		
 }
 
-void SafeHandle::Attach(HANDLE handle, bool bOwn) {
+void SafeHandle::Attach(intptr_t handle, bool bOwn) {
 	if (Valid())
 		Throw(E_EXT_AlreadyOpened);
-	m_aHandle = (intptr_t)handle;
+	m_aHandle = handle;
 	AfterAttach(bOwn);
 }
 
-HANDLE SafeHandle::Detach() { //!!!
+intptr_t SafeHandle::Detach() { //!!!
 	m_abClosed = true;
 	m_aInUse = 0;
 	m_bOwn = false;
-	return (HANDLE)m_aHandle.exchange(m_invalidHandleValue);
+	return m_aHandle.exchange(m_invalidHandleValue);
 }
 
 void SafeHandle::Duplicate(HANDLE h, uint32_t dwOptions) {

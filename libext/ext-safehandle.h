@@ -243,7 +243,7 @@ public:
 #endif
 	{}
 
-	SafeHandle(HANDLE handle);
+	SafeHandle(intptr_t handle);
 	virtual ~SafeHandle();
 
 	SafeHandle(EXT_RV_REF(SafeHandle) rv)
@@ -278,8 +278,8 @@ public:
 
 //!!!	void Release() const;
 	//!!!  void CloseHandle();
-	HANDLE DangerousGetHandle() const;
-	void Attach(HANDLE handle, bool bOwn = true);
+	intptr_t DangerousGetHandle() const;
+	void Attach(intptr_t handle, bool bOwn = true);
 	void ThreadSafeAttach(intptr_t handle, bool bOwn = true);
 
 	EXPLICIT_OPERATOR_BOOL() const {
