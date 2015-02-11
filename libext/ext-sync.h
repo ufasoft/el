@@ -67,7 +67,7 @@ public:
 
 	CSyncObject() {}
 	CSyncObject(RCString pstrName);
-	void AttachCreated(HANDLE h);
+	void AttachCreated(intptr_t h);
 	virtual void unlock() =0;
 
 	virtual bool lock(uint32_t dwTimeout = INFINITE);
