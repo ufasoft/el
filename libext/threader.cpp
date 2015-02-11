@@ -535,7 +535,7 @@ bool ThreadBase::Join(int ms) {
 	void *r;	
 	PthreadCheck(::pthread_join(m_ptid, &r));
 	m_bJoined = true;
-	m_exitCode = (DWORD)(DWORD_PTR)r;
+	m_exitCode = (uint32_t)(uintptr_t)r;
 	return true;
 #else
 	int r = ::WaitForSingleObject(HandleAccess(_self), ms);
