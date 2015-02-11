@@ -283,14 +283,13 @@ class Dns {
 public:
 	AFX_API static String GetHostName();
 	AFX_API static IPHostEntry AFXAPI GetHostEntry(RCString hostNameOrAddress);
-	AFX_API static IPHostEntry AFXAPI GetHostEntry(const IPAddress& address);
-	
-	AFX_API static std::vector<IPAddress> GetHostAddresses(RCString hostNameOrAddress) { return GetHostEntry(hostNameOrAddress).AddressList; }
+	AFX_API static IPHostEntry AFXAPI GetHostEntry(const IPAddress& address);	
+	AFX_API static vector<IPAddress> GetHostAddresses(RCString hostNameOrAddress);
 };
 
 class IPAddrInfo : noncopyable {
 public:
-	IPAddrInfo();
+	IPAddrInfo(RCString hostname = Dns::GetHostName());
 	~IPAddrInfo();
 	vector<IPAddress> GetIPAddresses() const;
 private:
@@ -304,7 +303,7 @@ public:
 	{}
 
 	operator typename C::handle_type() {
-		return (typename C::handle_type)(intptr_t)(B::operator HANDLE());
+		return (typename C::handle_type)(intptr_t)(B::operator intptr_t());
 	}
 };
 
@@ -366,7 +365,7 @@ public:
 	}
 
 	AFX_API static void AFXAPI ReleaseFromAPC();
-	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
+//!!!R	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
 	EXT_API void Create(AddressFamily af, SocketType socktyp, ProtocolType prottyp);
 	virtual int Receive(void *buf, int len, int flags = 0);
 	virtual int Send(const void *buf, int len, int flags = 0);
@@ -502,7 +501,7 @@ public:
 	DEFPROP(bool, Blocking);
 protected:
 	virtual bool ConnectHelper(const IPEndPoint& ep);
-	void ReleaseHandle(HANDLE h) const;
+	void ReleaseHandle(intptr_t h) const;
 private:
 	CBool m_bBlocking;
 };
@@ -513,7 +512,7 @@ public:
 	Socket& m_sock;
 	T& m_tr;
 
-	CSocketKeeper(T& tr, Socket& sock, int nPort = 0, int nSocketType = SOCK_STREAM, DWORD host = 0)
+	CSocketKeeper(T& tr, Socket& sock)//, int nPort = 0, int nSocketType = SOCK_STREAM, DWORD host = 0)
 		:	m_tr(tr)
 		,	m_sock(sock)   
 	{
@@ -521,8 +520,8 @@ public:
 			if (tr.m_bStop)
 				Throw(E_EXT_ThreadInterrupted);
 			m_tr.m_arKeepers.push_back(this);
-			if (!m_sock.Valid() && nPort!=-1)
-				m_sock.Create((WORD)nPort, nSocketType, host);
+//!!!R			if (!m_sock.Valid() && nPort!=-1)
+//!!!R				m_sock.Create((WORD)nPort, nSocketType, host);
 		}
 	}
 
@@ -652,7 +651,6 @@ public:
 	{}
 
 	void Connect(const IPEndPoint& ep) {
-		Client.Create();
 		Client.Connect(ep);
 	}
 };
