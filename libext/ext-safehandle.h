@@ -308,7 +308,7 @@ public:
 #endif
 
 	intptr_t Detach();
-	void Duplicate(HANDLE h, uint32_t dwOptions = 0);
+	void Duplicate(intptr_t h, uint32_t dwOptions = 0);
 	virtual bool Valid() const;
 
 	class HandleAccess : public CHandleKeeper<SafeHandle> {
