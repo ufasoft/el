@@ -330,7 +330,7 @@ path AFXAPI canonical(const path& p, const path& base = current_path());
 path AFXAPI canonical(const path& p, error_code& ec);
 
 template <class T>
-basic_ostream<T>& operator<<(basic_ostream<T>& os, path& p) {
+basic_ostream<T>& operator<<(basic_ostream<T>& os, const path& p) {
 	return os << p.native();
 }
 
