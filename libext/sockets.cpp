@@ -127,7 +127,7 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 	return false;
 }
 
-bool Socket::Connect(RCString hostAddress, WORD hostPort) {
+bool Socket::Connect(RCString hostAddress, uint16_t hostPort) {
 	return ConnectHelper(IPEndPoint(hostAddress, hostPort));
 }
 
@@ -251,7 +251,7 @@ int Socket::ReceiveFrom(void *buf, int len, IPEndPoint& ep) {
 
 void Socket::Attach(SOCKET s) {
 	Close();
-	SafeHandle::Attach(HANDLE(uintptr_t(s)));
+	SafeHandle::Attach(intptr_t(s));
 	//!!!  m_hSocket = s;
 }
 
