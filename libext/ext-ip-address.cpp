@@ -477,51 +477,6 @@ IPEndPoint IPEndPoint::Parse(RCString s) {
 	return IPEndPoint(IPAddress::Parse(ar[0]), Convert::ToUInt16(ar[1]));
 }
 
-IPHostEntry::IPHostEntry(hostent *phost) {
-	if (phost) {
-		HostName = phost->h_name;
-		for (const char * const *p = phost->h_addr_list; p && *p; ++p) {
-			IPAddress ip;
-			switch (phost->h_addrtype) {
-			case AF_INET:
-				ip = IPAddress(*(uint32_t*)*p);
-				break;
-			case AF_INET6:
-				ip = IPAddress(ConstBuf(*p, 16));
-				break;
-			default:
-				Throw(E_EXT_UnknownHostAddressType);
-			}
-			AddressList.push_back(ip);
-		}
-		for (const char * const *q = phost->h_aliases; q && *q; ++q)
-			Aliases.push_back(*q);
-	}
-}
-
-IPHostEntry Dns::GetHostEntry(const IPAddress& address) {
-	Blob blob = address.GetAddressBytes();
-	if (hostent *phost = gethostbyaddr((const char*)blob.constData(), blob.Size, (int)address.get_AddressFamily()))
-		return IPHostEntry(phost);
-	else
-		ThrowWSALastError();
-}
-
-IPHostEntry Dns::GetHostEntry(RCString hostNameOrAddress) {
-	uint32_t nhost = inet_addr(hostNameOrAddress);
-	if (nhost != INADDR_NONE)
-		return GetHostEntry(IPAddress(nhost));
-	if (hostent *phost = gethostbyname(hostNameOrAddress))
-		return IPHostEntry(phost);
-	else
-		ThrowWSALastError();
-}
-
-String Dns::GetHostName() {
-	char buf[256] = "";
-	SocketCheck(gethostname(buf, size(buf)));
-	return buf;
-}
 
 String COperatingSystem::get_ComputerName() {	
 #if UCFG_USE_POSIX || UCFG_WCE
@@ -602,8 +557,8 @@ extern "C" const char *inet_ntop(int af, const void *src, char *dst, size_t size
 
 namespace Ext {
 
-IPAddrInfo::IPAddrInfo() {
-	SocketCodeCheck(::getaddrinfo(Dns::GetHostName(), 0, 0, &m_ai));
+IPAddrInfo::IPAddrInfo(RCString hostname) {
+	SocketCodeCheck(::getaddrinfo(hostname, 0, 0, &m_ai));
 }
 
 IPAddrInfo::~IPAddrInfo() {
@@ -615,6 +570,58 @@ vector<IPAddress> IPAddrInfo::GetIPAddresses() const {
 	for (addrinfo *ai = m_ai; ai; ai = ai->ai_next)
 		r.push_back(IPAddress(*ai->ai_addr));
 	return r;
+}
+
+vector<IPAddress> Dns::GetHostAddresses(RCString hostNameOrAddress) {
+	//!!! return GetHostEntry(hostNameOrAddress).AddressList;		// deprected, do not returns IPv6 addresses
+
+	return IPAddrInfo(hostNameOrAddress).GetIPAddresses();
+}
+
+IPHostEntry::IPHostEntry(hostent *phost) {
+	if (phost) {
+		HostName = phost->h_name;
+		for (const char * const *p = phost->h_addr_list; p && *p; ++p) {
+			IPAddress ip;
+			switch (phost->h_addrtype) {
+			case AF_INET:
+				ip = IPAddress(*(uint32_t*)*p);
+				break;
+			case AF_INET6:
+				ip = IPAddress(ConstBuf(*p, 16));
+				break;
+			default:
+				Throw(E_EXT_UnknownHostAddressType);
+			}
+			AddressList.push_back(ip);
+		}
+		for (const char * const *q = phost->h_aliases; q && *q; ++q)
+			Aliases.push_back(*q);
+	}
+}
+
+IPHostEntry Dns::GetHostEntry(const IPAddress& address) {
+	Blob blob = address.GetAddressBytes();
+	if (hostent *phost = gethostbyaddr((const char*)blob.constData(), blob.Size, (int)address.get_AddressFamily()))
+		return IPHostEntry(phost);
+	else
+		ThrowWSALastError();
+}
+
+IPHostEntry Dns::GetHostEntry(RCString hostNameOrAddress) {
+	uint32_t nhost = inet_addr(hostNameOrAddress);
+	if (nhost != INADDR_NONE)
+		return GetHostEntry(IPAddress(nhost));
+	if (hostent *phost = gethostbyname(hostNameOrAddress))
+		return IPHostEntry(phost);
+	else
+		ThrowWSALastError();
+}
+
+String Dns::GetHostName() {
+	char buf[256] = "";
+	SocketCheck(gethostname(buf, size(buf)));
+	return buf;
 }
 
 } // Ext::
