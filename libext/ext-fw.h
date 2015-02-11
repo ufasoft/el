@@ -563,8 +563,8 @@ public:
 	void Close() const override;
 	void Flush() override;
 
-	HANDLE get_Handle() const;
-	DEFPROP_GET(HANDLE, Handle);
+	intptr_t get_Handle() const;
+	DEFPROP_GET(intptr_t, Handle);
 
 	uint64_t get_Position() const override{
 		if (m_fstm) {

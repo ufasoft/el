@@ -507,7 +507,7 @@ void File::put_Length(uint64_t len) {
 }
 
 void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share, size_t bufferSize, FileOptions options) {
-	HANDLE h = File(p, mode, access, share).Detach();
+	intptr_t h = File(p, mode, access, share).Detach();
 #if UCFG_WIN32_FULL
 	int flags = 0;
 	if (mode == FileMode::Append)
@@ -518,7 +518,7 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 	case FileAccess::ReadWrite:	flags |= _O_RDWR; break;
 	}
 
-	int fd = _open_osfhandle(intptr_t(h), flags);
+	int fd = _open_osfhandle(h, flags);
 #elif UCFG_WCE
 	HANDLE fd = h;
 #else
@@ -573,12 +573,12 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 	CCheck(setvbuf(m_fstm, 0, _IOFBF, bufferSize) ? -1 : 0);
 }
 
-HANDLE FileStream::get_Handle() const {
+intptr_t FileStream::get_Handle() const {
 	if (m_fstm) {
 #if UCFG_WIN32_FULL
-		return (HANDLE)_get_osfhandle(fileno(m_fstm));
+		return (intptr_t)_get_osfhandle(fileno(m_fstm));
 #else
-		return (HANDLE)(uintptr_t)fileno(m_fstm);
+		return (intptr_t)(uintptr_t)fileno(m_fstm);
 #endif
 	} else if (m_pFile)
 		return m_pFile->DangerousGetHandle();
