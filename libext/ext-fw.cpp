@@ -899,7 +899,7 @@ CResID& CResID::operator=(const char *resId) {
 	if (HIWORD(resId))
 		m_name = resId;
 	else
-		m_resId = (DWORD)(DWORD_PTR)resId;
+		m_resId = (uint32_t)(uintptr_t)resId;
 	return _self;
 }
 

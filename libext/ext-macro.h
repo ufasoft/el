@@ -36,10 +36,10 @@ typedef struct _LARGE_INTEGER {
 
 #define FACILITY_HTTP                    25
 
-#	define MAKEWORD(a, b)      ((WORD)(((BYTE)(((DWORD_PTR)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
-#	define MAKELONG(a, b)      ((LONG)(((WORD)(((DWORD_PTR)(a)) & 0xffff)) | ((DWORD)((WORD)(((DWORD_PTR)(b)) & 0xffff))) << 16))
-#	define LOWORD(l)           ((WORD)(((DWORD_PTR)(l)) & 0xffff))
-#	define HIWORD(l)           ((WORD)((((DWORD_PTR)(l)) >> 16) & 0xffff))
+#	define MAKEWORD(a, b)      ((uint16_t)(((BYTE)(((uintptr_t)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
+#	define MAKELONG(a, b)      ((LONG)(((WORD)(((uintptr_t)(a)) & 0xffff)) | ((DWORD)((WORD)(((DWORD_PTR)(b)) & 0xffff))) << 16))
+#	define LOWORD(l)           ((uint16_t)(((uintptr_t)(l)) & 0xffff))
+#	define HIWORD(l)           ((uint16_t)((((uintptr_t)(l)) >> 16) & 0xffff))
 #	define LOBYTE(w)           ((BYTE)(((DWORD_PTR)(w)) & 0xff))
 #	define HIBYTE(w)           ((BYTE)((((DWORD_PTR)(w)) >> 8) & 0xff))
 
