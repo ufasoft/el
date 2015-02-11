@@ -757,9 +757,9 @@ inline int AFXAPI GetThreadNumber() {
 #elif UCFG_WIN32
 	return ::GetCurrentThreadId();
 #else
-	int r = (int)(DWORD_PTR)(void*)t_threadNumber.Value;
+	int r = (int)(uintptr_t)(void*)t_threadNumber.Value;
 	if (!(r & 0xFFFFFF))
-		t_threadNumber.Value = (void*)(DWORD_PTR)(r |= ++s_nThreadNumber);
+		t_threadNumber.Value = (void*)(uintptr_t)(r |= ++s_nThreadNumber);
 	return r & 0xFFFFFF;
 #endif
 }
