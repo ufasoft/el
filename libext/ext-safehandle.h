@@ -347,7 +347,7 @@ public:
 protected:
 	const intptr_t m_invalidHandleValue;
 
-	void ReplaceHandle(HANDLE h) { m_aHandle = (intptr_t)h; }
+	void ReplaceHandle(intptr_t h) { m_aHandle = h; }
 	virtual void ReleaseHandle(intptr_t h) const;
 private:
 	mutable atomic<intptr_t> m_aHandle;
