@@ -1441,7 +1441,7 @@ public:
 #endif
 public:
 	ProcessObj();
-	ProcessObj(HANDLE handle, bool bOwn = false);
+	ProcessObj(intptr_t handle, bool bOwn = false);
 
 	DWORD get_ID() const;
 	DWORD get_ExitCode() const;

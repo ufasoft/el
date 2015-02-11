@@ -105,7 +105,7 @@ public:
 	virtual void OnEnd();
 	virtual void Delete();
 
-	void Attach(HANDLE h, DWORD id, bool bOwn = true);
+	void Attach(intptr_t h, uint32_t id, bool bOwn = true);
 	void AttachSelf();
 
 //!!!#if UCFG_EXTENDED
@@ -180,14 +180,7 @@ public:
 	EXT_API void PostMessage(UINT message, WPARAM wParam = 0, LPARAM lParam = 0);
 #endif
 
-	TimeSpan get_TotalProcessorTime() const
-#if UCFG_USE_PTHREADS
-		;
-#else
-	{
-		return UserProcessorTime + PrivilegedProcessorTime;
-	}
-#endif
+	TimeSpan get_TotalProcessorTime() const;
 	DEFPROP_GET(TimeSpan, TotalProcessorTime);
 	
 	void Start(DWORD flags = 0);
@@ -222,7 +215,7 @@ protected:
 #if UCFG_USE_PTHREADS
 	mutable pthread_t m_ptid;
 	mutable CBool m_bJoined;
-	void ReleaseHandle(HANDLE h) const override;
+	void ReleaseHandle(intptr_t h) const override;
 #endif
 
 	virtual void BeforeStart() {}

@@ -1398,7 +1398,7 @@ ProcessObj::ProcessObj()
 	CommonInit();
 }
 
-ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
+ProcessObj::ProcessObj(intptr_t handle, bool bOwn)
 	:	SafeHandle(0, false)
 	,	m_stat_loc(0)
 {
@@ -1570,7 +1570,7 @@ bool ProcessObj::Start() {
 	Attach(pi.hProcess);
 	m_pid = pi.dwProcessId;
 	ptr<CWinThread> pThread(new CWinThread);
-	pThread->Attach(pi.hThread, pi.dwThreadId);
+	pThread->Attach((intptr_t)pi.hThread, pi.dwThreadId);
 	return true;
 #else
 	Throw(E_NOTIMPL);

@@ -210,7 +210,7 @@ int PthreadCheck(int code, int allowableError) {
 	return code;
 }
 
-void ThreadBase::ReleaseHandle(HANDLE h) const {
+void ThreadBase::ReleaseHandle(intptr_t h) const {
 	m_tid = thread::id();
 	pthread_t ptid = exchange(m_ptid, (pthread_t)0);
 	if (!m_bJoined)	
@@ -227,11 +227,11 @@ HANDLE GetRealThreadHandle() {
 }
 #endif //  UCFG_WIN32
 
-void ThreadBase::Attach(HANDLE h, DWORD id, bool bOwn) {
+void ThreadBase::Attach(intptr_t h, uint32_t id, bool bOwn) {
 #if UCFG_THREAD_SUSPEND_ON_START
 	SafeHandle::Attach(h, bOwn);
 #else
-	if (h == 0 || h == HANDLE(m_invalidHandleValue)) {
+	if (h == 0 || h == m_invalidHandleValue) {
 #if UCFG_USE_POSIX
 		CCheck(-1);
 #elif UCFG_WIN32
@@ -252,16 +252,16 @@ void ThreadBase::AttachSelf() {
 	if (!TryGetCurrentThread())
 		SetCurrentThread();
 #if UCFG_WIN32
-	Attach(GetRealThreadHandle(), ::GetCurrentThreadId());
+	Attach((intptr_t)GetRealThreadHandle(), ::GetCurrentThreadId());
 #	if !UCFG_STDSTL
 	m_tid = std::this_thread::get_id();
 #	endif
 #else
 	m_ptid = ::pthread_self();
-#	if UCFG_LIBCPP_VERSION
+#	if UCFG_STD_THREAD
 	m_tid = std::this_thread::get_id();
 #	else
-	m_tid = thread::id(m_ptid);
+	m_tid = thread::id(__gthread_self());
 #	endif
 #endif
 }
@@ -672,14 +672,14 @@ uint32_t ThreadBase::CppThreadThunk() {
 	SetCurrentThread();
 #if UCFG_USE_POSIX
 	m_ptid = ::pthread_self();
-#	if UCFG_LIBCPP_VERSION
+#	if UCFG_STD_THREAD
 	m_tid = std::this_thread::get_id();
 #	else
-	m_tid = thread::id(m_ptid);
+	m_tid = thread::id(__gthread_self());
 #	endif
 #else
 #	if !UCFG_THREAD_SUSPEND_ON_START
-	Attach(GetRealThreadHandle(), ::GetCurrentThreadId());
+	Attach((intptr_t)GetRealThreadHandle(), ::GetCurrentThreadId());
 #	endif
 #endif
 	uint32_t exitCode = (UINT)E_FAIL; //!!!
@@ -783,7 +783,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 #ifdef WIN32
 	m_pModuleStateForThread.reset(AfxGetModuleState());
 #endif
-	++base::m_aRef;	// Trunned thread decrements m_aRef;
+	++base::m_aRef;	// Runned thread decrements m_aRef;
 	ptr<ThreadBase> tThis = this;			// if keep this object live if the fread exits quickly
 #if UCFG_USE_PTHREADS
 	CAttr attr;
@@ -794,8 +794,10 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 		PthreadCheck(rc);
 	}
-#	if !UCFG_LIBCPP_VERSION
-	m_tid = thread::id(m_ptid);	//!!!?
+#	if UCFG_LIBCPP_VERSION
+	reinterpret<native_handle_type&>(m_tid) = m_ptid;	//!!!C
+#	else
+	m_tid = thread::id(m_ptid);
 #	endif
 #else
 	HANDLE h;
@@ -809,7 +811,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 	if (!h || h==(HANDLE)-1) {
 		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release(this);
 	}
-	Attach(h, threadID);
+	Attach((intptr_t)h, threadID);
 #	if UCFG_THREAD_SUSPEND_ON_START
 	if (!(dwCreateFlags & CREATE_SUSPENDED))
 		Resume();
