@@ -182,7 +182,7 @@ size_t InetStream::Read(void *buf, size_t size) const {
 	return m_io.ReceivedSize;	//!!!?
 #else
 	DWORD dw;
-	bool b = ::InternetReadFile(BlockingHandle(*m_pConnection), buf, size, &dw);
+	bool b = ::InternetReadFile((HINTERNET)(intptr_t)BlockingHandle(*m_pConnection), buf, size, &dw);
 	Win32Check(b);
 	return dw;
 #endif
@@ -199,7 +199,7 @@ int InetStream::ReadByte() const {
 	return by;
 #else
 	DWORD dw;
-	Win32Check(::InternetReadFile(BlockingHandle(*m_pConnection), &by, 1, &dw));
+	Win32Check(::InternetReadFile((HINTERNET)(intptr_t)BlockingHandle(*m_pConnection), &by, 1, &dw));
 	return dw ? by : -1;
 #endif
 }
@@ -211,7 +211,7 @@ void InetStream::WriteBuffer(const void *buf, size_t count) {
 	CurlCheck(::curl_easy_pause(m_curl, CURLPAUSE_RECV));
 #else
 	DWORD dw;
-	Win32Check(::InternetWriteFile(BlockingHandle(*m_pConnection), buf, count, &dw));
+	Win32Check(::InternetWriteFile((HINTERNET)(intptr_t)BlockingHandle(*m_pConnection), buf, count, &dw));
 	if (dw != count)
 		Throw(E_FAIL);
 #endif
@@ -258,12 +258,12 @@ CInternetConnection::~CInternetConnection() {
 #if !UCFG_USE_LIBCURL
 
 void CInternetConnection::HttpOpen(CHttpInternetConnection& respConn, RCString verb, RCString objectName, RCString version, RCString referer, LPCTSTR* lplpszAcceptTypes, DWORD dwFlags, DWORD_PTR ctx) {
-	respConn.Attach(::HttpOpenRequest(BlockingHandle(_self), verb, objectName, version, referer, lplpszAcceptTypes, dwFlags, ctx));
+	respConn.Attach(::HttpOpenRequest((HINTERNET)(intptr_t)BlockingHandle(_self), verb, objectName, version, referer, lplpszAcceptTypes, dwFlags, ctx));
 }
 
 void CInternetConnection::AddHeaders(const WebHeaderCollection& headers, DWORD dwModifiers) {
 	if (!headers.empty())
-		Win32Check(::HttpAddRequestHeaders(Handle(_self), headers.ToString(), DWORD(-1), dwModifiers));
+		Win32Check(::HttpAddRequestHeaders((HINTERNET)(intptr_t)Handle(_self), headers.ToString(), DWORD(-1), dwModifiers));
 }
 
 #endif
@@ -341,7 +341,7 @@ DWORD HttpWebRequest::get_Timeout() {
 	return m_timeout;
 #else
 	DWORD r, qlen = sizeof r;
-	Win32Check(::InternetQueryOption(Handle(Session()), INTERNET_OPTION_RECEIVE_TIMEOUT, &r, &qlen));
+	Win32Check(::InternetQueryOption((HINTERNET)(intptr_t)Handle(Session()), INTERNET_OPTION_RECEIVE_TIMEOUT, &r, &qlen));
 	return r;
 #endif
 }
@@ -350,7 +350,7 @@ void HttpWebRequest::put_Timeout(DWORD v) {
 #if UCFG_USE_LIBCURL
 	m_timeout = v;
 #else
-	Win32Check(::InternetSetOption(Handle(Session()), INTERNET_OPTION_RECEIVE_TIMEOUT, &v, sizeof v));
+	Win32Check(::InternetSetOption((HINTERNET)(intptr_t)Handle(Session()), INTERNET_OPTION_RECEIVE_TIMEOUT, &v, sizeof v));
 #endif
 }
 
@@ -359,9 +359,9 @@ String HttpWebRequest::get_UserAgent() {
 	return m_userAgent;
 #else
 	DWORD qlen = 0;
-	Win32Check(::InternetQueryOption(Handle(Session()), INTERNET_OPTION_USER_AGENT, 0, &qlen),  ERROR_INSUFFICIENT_BUFFER);
+	Win32Check(::InternetQueryOption((HINTERNET)(intptr_t)Handle(Session()), INTERNET_OPTION_USER_AGENT, 0, &qlen),  ERROR_INSUFFICIENT_BUFFER);
 	TCHAR *p = (TCHAR*)alloca(qlen);
-	Win32Check(::InternetQueryOption(Handle(Session()), INTERNET_OPTION_USER_AGENT, p, &qlen));
+	Win32Check(::InternetQueryOption((HINTERNET)(intptr_t)Handle(Session()), INTERNET_OPTION_USER_AGENT, p, &qlen));
 	return String(p, qlen/sizeof(TCHAR));
 #endif
 }
@@ -370,7 +370,7 @@ void HttpWebRequest::put_UserAgent(RCString v) {
 #if UCFG_USE_LIBCURL
 	m_userAgent = v;
 #else
-	Win32Check(::InternetSetOption(Handle(Session()), INTERNET_OPTION_USER_AGENT, (void*)(const TCHAR*)v, v.length()));	// len in TCHARs for strings
+	Win32Check(::InternetSetOption((HINTERNET)(intptr_t)Handle(Session()), INTERNET_OPTION_USER_AGENT, (void*)(const TCHAR*)v, v.length()));	// len in TCHARs for strings
 #endif
 }
 
@@ -411,7 +411,7 @@ bool HttpWebRequest::EndRequest() {
 #else
 	if (!m_bSendEx)
 		Throw(E_FAIL);
-	int r = Win32Check(::HttpEndRequest(CInternetConnection::BlockingHandleAccess(m_response.m_pImpl->m_conn), 0, 0, 0), ERROR_INTERNET_FORCE_RETRY);
+	int r = Win32Check(::HttpEndRequest((HINTERNET)(intptr_t)CInternetConnection::BlockingHandleAccess(m_response.m_pImpl->m_conn), 0, 0, 0), ERROR_INTERNET_FORCE_RETRY);
 	return r;
 #endif
 }
@@ -480,7 +480,7 @@ void HttpWebRequest::Send(const byte *p, size_t size) {
 
 	if (p)
 		pib = &ib;	
-	Win32Check(::HttpSendRequestEx(SafeHandle::HandleAccess(m_response.m_pImpl->m_conn), pib, 0, 0, 0));
+	Win32Check(::HttpSendRequestEx((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_response.m_pImpl->m_conn), pib, 0, 0, 0));
 #endif
 }
 
@@ -579,7 +579,7 @@ int HttpWebResponse::get_StatusCode() {
 	return r;	
 #else
 	DWORD r, dw = sizeof r;
-	Win32Check(::HttpQueryInfo(SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &r, &dw, 0));
+	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &r, &dw, 0));
 	return r;
 #endif
 }
@@ -589,9 +589,9 @@ WebHeaderCollection HttpWebResponse::get_Headers() {
 	return m_pImpl->m_headers;
 #else
 	DWORD dw = 0;
-	Win32Check(::HttpQueryInfo(SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_RAW_HEADERS, 0, &dw, 0) || ::GetLastError()==ERROR_INSUFFICIENT_BUFFER);
+	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_RAW_HEADERS, 0, &dw, 0) || ::GetLastError()==ERROR_INSUFFICIENT_BUFFER);
 	TCHAR *buf = (TCHAR*)alloca(dw);
-	Win32Check(::HttpQueryInfo(SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_RAW_HEADERS, buf, &dw, 0));
+	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_RAW_HEADERS, buf, &dw, 0));
 	WebHeaderCollection r;
 	int i = 0;
 	for (; *buf; ++i, buf+=_tcslen(buf)+1) {
@@ -623,9 +623,9 @@ String HttpWebResponse::GetString(DWORD dwInfoLevel) {
 	return p;	
 #else
 	DWORD dw = 0;
-	Win32Check(::HttpQueryInfo(SafeHandle::HandleAccess(m_pImpl->m_conn), dwInfoLevel, 0, &dw, 0) || ::GetLastError()==ERROR_INSUFFICIENT_BUFFER);
+	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), dwInfoLevel, 0, &dw, 0) || ::GetLastError()==ERROR_INSUFFICIENT_BUFFER);
 	TCHAR *buf = (TCHAR*)alloca(dw);
-	Win32Check(::HttpQueryInfo(SafeHandle::HandleAccess(m_pImpl->m_conn), dwInfoLevel, buf, &dw, 0));
+	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), dwInfoLevel, buf, &dw, 0));
 #	if UCFG_WCE
 	return String(buf, dw);
 #	else

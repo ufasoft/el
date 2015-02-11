@@ -133,7 +133,7 @@ path Path::GetTruePath(const path& p) {
 	TCHAR buf2[_MAX_PATH];
 	File file;
 	file.Attach(::CreateFile(buf, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0));
-	len = pfn(Handle(file), buf2, size(buf2)-1, 0);
+	len = pfn((HANDLE)(intptr_t)Handle(file), buf2, size(buf2)-1, 0);
 	Win32Check(len != 0);
 	buf2[len] = 0;	
 #if UCFG_USE_REGEX
@@ -317,7 +317,7 @@ void File::CreateForMapping(LPCTSTR lpFileName, DWORD dwDesiredAccess, DWORD dwS
 }
 
 bool File::Read(void *buf, uint32_t len, uint32_t *read, OVERLAPPED *pov) {
-	bool b = ::ReadFile(HandleAccess(_self), buf, len, (DWORD*)read, pov);
+	bool b = ::ReadFile((HANDLE)(intptr_t)HandleAccess(_self), buf, len, (DWORD*)read, pov);
 	if (!b && ::GetLastError()==ERROR_BROKEN_PIPE) {
 		*read = 0;
 		return true;
@@ -326,11 +326,11 @@ bool File::Read(void *buf, uint32_t len, uint32_t *read, OVERLAPPED *pov) {
 }
 
 bool File::Write(const void *buf, uint32_t len, uint32_t *written, OVERLAPPED *pov) {
-	return CheckPending(::WriteFile(HandleAccess(_self), buf, len, (DWORD*)written, pov));
+	return CheckPending(::WriteFile((HANDLE)(intptr_t)HandleAccess(_self), buf, len, (DWORD*)written, pov));
 }
 
 bool File::DeviceIoControl(int code, LPCVOID bufIn, size_t nIn, LPVOID bufOut, size_t nOut, LPDWORD pdw, LPOVERLAPPED pov) {
-	return CheckPending(::DeviceIoControl(HandleAccess(_self), code, (void*)bufIn, (DWORD)nIn, bufOut, (DWORD)nOut, pdw, pov));
+	return CheckPending(::DeviceIoControl((HANDLE)(intptr_t)HandleAccess(_self), code, (void*)bufIn, (DWORD)nIn, bufOut, (DWORD)nOut, pdw, pov));
 }
 
 void File::CancelIo() {
@@ -338,7 +338,7 @@ void File::CancelIo() {
 	if (!dll)
 		dll.Load("kernel32.dll");
 	typedef BOOL(__stdcall *C_CancelIo)(HANDLE);
-	Win32Check(((C_CancelIo)dll.GetProcAddress((LPCTSTR)String("CancelIo")))(HandleAccess(_self)));
+	Win32Check(((C_CancelIo)dll.GetProcAddress((LPCTSTR)String("CancelIo")))((HANDLE)(intptr_t)HandleAccess(_self)));
 }
 
 bool File::CheckPending(BOOL b) {
@@ -354,7 +354,7 @@ void File::SetEndOfFile() {
 #if UCFG_USE_POSIX
 	CCheck(::ftruncate((int)(intptr_t)HandleAccess(_self), Seek(0, SeekOrigin::Current)));
 #else
-	Win32Check(::SetEndOfFile(HandleAccess(_self)));
+	Win32Check(::SetEndOfFile((HANDLE)(intptr_t)HandleAccess(_self)));
 #endif
 }
 
@@ -397,7 +397,7 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 			ov.Offset = DWORD(offset);
 			ov.OffsetHigh = DWORD(offset >> 32);
 		}
-		Win32Check(::WriteFile(HandleAccess(_self), p, std::min(size, (size_t)0xFFFFFFFF), &nWritten, pov));
+		Win32Check(::WriteFile((HANDLE)(intptr_t)HandleAccess(_self), p, std::min(size, (size_t)0xFFFFFFFF), &nWritten, pov));
 		if (offset >= 0)
 			offset += nWritten;
 	}
@@ -412,7 +412,7 @@ uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nRead;
-	Win32Check(::ReadFile(HandleAccess(_self), buf, std::min(size, (size_t)0xFFFFFFFF), &nRead, pov), ERROR_BROKEN_PIPE);
+	Win32Check(::ReadFile((HANDLE)(intptr_t)HandleAccess(_self), buf, std::min(size, (size_t)0xFFFFFFFF), &nRead, pov), ERROR_BROKEN_PIPE);
 	return nRead;
 #endif
 }
@@ -430,7 +430,7 @@ void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediate
 	DWORD flags = bExclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0;
 	if (bFailImmediately)
 		flags |= LOCKFILE_FAIL_IMMEDIATELY;
-	Win32Check(::LockFileEx(HandleAccess(_self), flags, 0, DWORD(len), DWORD(len >> 32), &ovl));
+	Win32Check(::LockFileEx((HANDLE)(intptr_t)HandleAccess(_self), flags, 0, DWORD(len), DWORD(len >> 32), &ovl));
 #endif
 }
 
@@ -444,7 +444,7 @@ void File::Unlock(uint64_t pos, uint64_t len) {
 	OVERLAPPED ovl = { 0 };
 	ovl.Offset = DWORD(pos);
 	ovl.OffsetHigh = DWORD(pos >> 32);
-	Win32Check(::UnlockFileEx(HandleAccess(_self), 0, DWORD(len), DWORD(len >> 32), &ovl));
+	Win32Check(::UnlockFileEx((HANDLE)(intptr_t)HandleAccess(_self), 0, DWORD(len), DWORD(len >> 32), &ovl));
 #endif
 }
 
@@ -455,7 +455,7 @@ size_t File::PhysicalSectorSize() const {			// return 0 if not detected
 	if (pfnZwQueryVolumeInformationFile) {
 		IO_STATUS_BLOCK io;
 		NT::FILE_FS_SECTOR_SIZE_INFORMATION outs;
-		if (!pfnZwQueryVolumeInformationFile(DangerousGetHandle(), &io, &outs, sizeof outs, NT::FileFsSectorSizeInformation))
+		if (!pfnZwQueryVolumeInformationFile((HANDLE)DangerousGetHandle(), &io, &outs, sizeof outs, NT::FileFsSectorSizeInformation))
 			return outs.PhysicalBytesPerSectorForPerformance;
 	}
 #endif
@@ -468,7 +468,7 @@ int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 #else
 	ULARGE_INTEGER uli;
 	uli.QuadPart = (ULONGLONG)off;
-	uli.LowPart = ::SetFilePointer(HandleAccess(_self), (LONG)uli.LowPart, (LONG*)&uli.HighPart, (DWORD)origin);
+	uli.LowPart = ::SetFilePointer((HANDLE)(intptr_t)HandleAccess(_self), (LONG)uli.LowPart, (LONG*)&uli.HighPart, (DWORD)origin);
 	if (uli.LowPart == MAXDWORD)
 		Win32Check(GetLastError() == NO_ERROR);
 	return uli.QuadPart;
@@ -479,7 +479,7 @@ void File::Flush() {
 #if UCFG_USE_POSIX
 	CCheck(::fsync((int)(intptr_t)HandleAccess(_self)));
 #else
-	Win32Check(::FlushFileBuffers(HandleAccess(_self)));
+	Win32Check(::FlushFileBuffers((HANDLE)(intptr_t)HandleAccess(_self)));
 #endif
 }  
 
@@ -490,7 +490,7 @@ uint64_t File::get_Length() const {
 	return st.st_size;
 #else
 	ULARGE_INTEGER uli;
-	uli.LowPart = ::GetFileSize(HandleAccess(_self), &uli.HighPart);
+	uli.LowPart = ::GetFileSize((HANDLE)(intptr_t)HandleAccess(_self), &uli.HighPart);
 	if (uli.LowPart == INVALID_FILE_SIZE)
 		Win32Check(GetLastError() == NO_ERROR);
 	return uli.QuadPart;
@@ -759,7 +759,7 @@ void FileSystemInfo::put_CreationTime(const DateTime& dt) {
 	File file;
 	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
-	Win32Check(::SetFileTime(Handle(file), &ft, 0, 0));	
+	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), &ft, 0, 0));
 #endif
 }
 
@@ -786,7 +786,7 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 	File file;
 	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
-	Win32Check(::SetFileTime(Handle(file), 0, &ft, 0));	
+	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, &ft, 0));
 #endif
 }
 
@@ -813,7 +813,7 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 	File file;
 	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
-	Win32Check(::SetFileTime(Handle(file), 0, 0, &ft));	
+	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, 0, &ft));
 #endif
 }
 

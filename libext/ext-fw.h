@@ -506,7 +506,7 @@ public:
 
 	intptr_t GetHandle() { return (intptr_t)m_pFile->DangerousGetHandle(); }
 #else
-	HANDLE GetHandle() { return m_hMapFile.DangerousGetHandle(); }
+	intptr_t GetHandle() { return m_hMapFile.DangerousGetHandle(); }
 #endif
 
 	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
@@ -1441,7 +1441,9 @@ public:
 #endif
 public:
 	ProcessObj();
-	ProcessObj(intptr_t handle, bool bOwn = false);
+#if UCFG_WIN32
+	ProcessObj(HANDLE handle, bool bOwn = false);
+#endif
 
 	DWORD get_ID() const;
 	DWORD get_ExitCode() const;
@@ -1455,7 +1457,7 @@ public:
 
 	EXT_API std::unique_ptr<CWinThread> Create(RCString commandLine, DWORD dwFlags = 0, const char *dir = 0, bool bInherit = false, STARTUPINFO *psi = 0);
 
-	void Terminate(DWORD dwExitCode)  {	Win32Check(::TerminateProcess(HandleAccess(*this), dwExitCode)); }
+	void Terminate(DWORD dwExitCode)  {	Win32Check(::TerminateProcess((HANDLE)(intptr_t)HandleAccess(*this), dwExitCode)); }
 
 	AFX_API CTimesInfo get_Times() const;
 	DEFPROP_GET(CTimesInfo, Times);
@@ -1470,13 +1472,13 @@ public:
 	bool get_IsWow64();
 	DEFPROP_GET(bool, IsWow64);
 
-	DWORD get_PriorityClass() { return Win32Check(::GetPriorityClass(HandleAccess(*this))); }
-	void put_PriorityClass(DWORD pc) { Win32Check(::SetPriorityClass(HandleAccess(*this), pc)); }
+	DWORD get_PriorityClass() { return Win32Check(::GetPriorityClass((HANDLE)(intptr_t)HandleAccess(*this))); }
+	void put_PriorityClass(DWORD pc) { Win32Check(::SetPriorityClass((HANDLE)(intptr_t)HandleAccess(*this), pc)); }
 
 	String get_MainModuleFileName();
 #endif
 
-	void FlushInstructionCache(LPCVOID base = 0, SIZE_T size = 0) { Win32Check(::FlushInstructionCache(HandleAccess(*this), base, size)); }
+	void FlushInstructionCache(LPCVOID base = 0, SIZE_T size = 0) { Win32Check(::FlushInstructionCache((HANDLE)(intptr_t)HandleAccess(*this), base, size)); }
 
 	DWORD VirtualProtect(void *addr, size_t size, DWORD flNewProtect);
 	MEMORY_BASIC_INFORMATION VirtualQuery(const void *addr);

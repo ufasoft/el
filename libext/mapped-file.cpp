@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -33,7 +26,7 @@ static int MemoryMappedFileAccessToInt(MemoryMappedFileAccess access) {
 	}
 #else
 	switch (access) {
-	case MemoryMappedFileAccess::None: return 0;
+	case MemoryMappedFileAccess::None:				return PAGE_NOACCESS;
 	case MemoryMappedFileAccess::ReadWrite:			return PAGE_READWRITE;
 	case MemoryMappedFileAccess::Read:				return PAGE_READONLY;
 	case MemoryMappedFileAccess::Write:				return PAGE_READWRITE;
@@ -90,9 +83,9 @@ void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size,
 	case MemoryMappedFileAccess::ReadWriteExecute:	dwAccess = FILE_MAP_ALL_ACCESS;				break;
 	}
 #	if UCFG_WCE
-	Win32Check((Address = ::MapViewOfFile(file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size)) != 0);
+	Win32Check((Address = ::MapViewOfFile((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size)) != 0);
 #	else
-	Win32Check((Address = ::MapViewOfFileEx(file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size, desiredAddress)) != 0);
+	Win32Check((Address = ::MapViewOfFileEx((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size, desiredAddress)) != 0);
 #	endif
 #endif
 }
@@ -138,7 +131,7 @@ MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, 
 	int prot = MemoryMappedFileAccessToInt(access);
 	MemoryMappedFile r;
 #if UCFG_WIN32	
-	r.m_hMapFile.Attach(::CreateFileMapping(file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));	
+	r.m_hMapFile.Attach((intptr_t)::CreateFileMapping((HANDLE)file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));	
 #else
 	Throw(E_NOTIMPL);
 #endif
@@ -162,13 +155,38 @@ MemoryMappedFile MemoryMappedFile::OpenExisting(RCString mapName, MemoryMappedFi
 		dwAccess |= FILE_MAP_WRITE;
 	if (int(rights) & int(MemoryMappedFileRights::Execute))
 		dwAccess |= FILE_MAP_EXECUTE;
-	r.m_hMapFile.Attach(::OpenFileMapping(dwAccess, inheritability==HandleInheritability::Inheritable, mapName));
+	r.m_hMapFile.Attach((intptr_t)::OpenFileMapping(dwAccess, inheritability==HandleInheritability::Inheritable, mapName));
 #else
 	Throw(E_NOTIMPL);
 #endif
 	return std::move(r);
 }
 
+void VirtualMem::Alloc(size_t size, MemoryMappedFileAccess access, bool bLargePage) {
+	if (m_address)
+		Throw(E_FAIL);
+	m_size = size;
+#if UCFG_USE_POSIX
+	int flags = 0 
+		| (bLargePage ? MAP_HUGETLB : 0;
+	void *a = ::mmap(0, size, MemoryMappedFileAccessToInt(access), flags, 0, 0);
+	CCheck(a != MAP_FAILED);
+	m_address = a;
+#else
+	Win32Check(bool(m_address = (byte*)::VirtualAlloc(0, size, MEM_COMMIT | (bLargePage ? MEM_LARGE_PAGES : 0), MemoryMappedFileAccessToInt(access))));
+#endif
+}
+
+void VirtualMem::Free() {
+	if (void *a = exchange(m_address, nullptr)) {
+#if UCFG_USE_POSIX
+		CCheck(::munmap(a, m_size));
+#else
+		if (a)
+			Win32Check(::VirtualFree(a, 0, MEM_RELEASE));
+#endif
+	}
+}
 
 
 } // Ext::

@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "ext-http.h"
@@ -18,7 +11,7 @@ int AFXAPI InetCheck(int i) {
 		if (dw == ERROR_INTERNET_EXTENDED_ERROR) {
 			TCHAR buf[256];
 			DWORD code,
-				len = _countof(buf);
+				len = size(buf);
 			Win32Check(::InternetGetLastResponseInfo(&code, buf, &len));
 			code = code;
 			//!!!! todo
@@ -37,7 +30,8 @@ void CInternetFile::Attach(HINTERNET hInternet) {
 CInternetFile::~CInternetFile() {
 }
 
-uint32_t CInternetFile::Read(void *lpBuf, uint32_t nCount) {
+uint32_t CInternetFile::Read(void *lpBuf, size_t nCount, int64_t offset) {
+	ASSERT(offset == CURRENT_OFFSET);
 	DWORD dw;
 	Win32Check(InternetReadFile(m_hInternet, lpBuf, nCount, &dw));
 	return dw;
@@ -78,16 +72,16 @@ void CInternetSession::Close() {
 		Win32Check(::InternetCloseHandle(exchangeZero(m_hSession)));
 }*/
 
-void CInternetSession::ReleaseHandle(HANDLE h) const {
-	Win32Check(::InternetCloseHandle(h));
+void CInternetSession::ReleaseHandle(intptr_t h) const {
+	Win32Check(::InternetCloseHandle((HINTERNET)h));
 }
 
 void CInternetSession::OpenUrl(CInternetConnection& conn, RCString url, LPCTSTR headers, DWORD headersLength, DWORD dwFlags, DWORD_PTR ctx) {
-	conn.Attach(::InternetOpenUrl(BlockingHandleAccess(_self), url, headers, headersLength, dwFlags, ctx));
+	conn.Attach(::InternetOpenUrl((HINTERNET)(intptr_t)BlockingHandleAccess(_self), url, headers, headersLength, dwFlags, ctx));
 }
 
 void CInternetSession::Connect(CInternetConnection& conn, RCString serverName, INTERNET_PORT port, RCString userName, RCString password, DWORD dwService, DWORD dwFlags, DWORD_PTR ctx) {
-	conn.Attach(::InternetConnect(BlockingHandleAccess(_self), serverName, port, userName, password, dwService, dwFlags, ctx));
+	conn.Attach(::InternetConnect((HINTERNET)(intptr_t)BlockingHandleAccess(_self), serverName, port, userName, password, dwService, dwFlags, ctx));
 }
 
 #endif // !UCFG_USE_LIBCURL

@@ -1398,13 +1398,15 @@ ProcessObj::ProcessObj()
 	CommonInit();
 }
 
-ProcessObj::ProcessObj(intptr_t handle, bool bOwn)
+#if UCFG_WIN32
+ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
 	:	SafeHandle(0, false)
 	,	m_stat_loc(0)
 {
 	Attach(handle, bOwn);
 	CommonInit();
 }
+#endif
 
 void ProcessObj::CommonInit() {
 #if !UCFG_WCE
@@ -1423,7 +1425,7 @@ DWORD ProcessObj::get_ID() const {
 		typedef DWORD (WINAPI *PFN_GetProcessId)(HANDLE);
 		DlProcWrap<PFN_GetProcessId> pfn("KERNEL32.DLL", "GetProcessId");
 		if (pfn)
-			m_pid = pfn(Handle(_self));
+			m_pid = pfn((HANDLE)(intptr_t)Handle(_self));
 		else {
 			/*!!!R
 			typedef enum _PROCESSINFOCLASS {
@@ -1455,7 +1457,7 @@ DWORD ProcessObj::get_ID() const {
 
 			PROCESS_BASIC_INFORMATION info;
 			ULONG returnSize;
-			ntQIP(Handle(_self), ProcessBasicInformation, &info, sizeof(info), &returnSize);  // Get basic information.
+			ntQIP((HANDLE)(intptr_t)Handle(_self), ProcessBasicInformation, &info, sizeof(info), &returnSize);  // Get basic information.
 			m_pid = (DWORD)info.UniqueProcessId;		
 		}
 #endif
@@ -1467,7 +1469,7 @@ DWORD ProcessObj::get_ID() const {
 DWORD ProcessObj::get_ExitCode() const {
 #if UCFG_WIN32
 	DWORD r;
-	Win32Check(::GetExitCodeProcess(HandleAccess(*this), &r));
+	Win32Check(::GetExitCodeProcess((HANDLE)(intptr_t)HandleAccess(*this), &r));
 	return r;
 #else
 	return m_stat_loc;
@@ -1477,7 +1479,7 @@ DWORD ProcessObj::get_ExitCode() const {
 
 void ProcessObj::Kill() {
 #if UCFG_WIN32
-	Win32Check(::TerminateProcess(HandleAccess(*this), 1));
+	Win32Check(::TerminateProcess((HANDLE)(intptr_t)HandleAccess(*this), 1));
 #else
 	CCheck(::kill(m_pid, SIGKILL));
 #endif
@@ -1485,7 +1487,7 @@ void ProcessObj::Kill() {
 
 void ProcessObj::WaitForExit(DWORD ms) {
 #if UCFG_WIN32
-	WaitWithMS(ms, HandleAccess(*this));
+	WaitWithMS(ms, (HANDLE)(intptr_t)HandleAccess(*this));
 #else
 	::waitpid(m_pid, &m_stat_loc, 0);
 #endif
@@ -1524,19 +1526,19 @@ bool ProcessObj::Start() {
 			Win32Check(::CreatePipe(&hRead, &hWrite, &sattr, 0));
 			si.hStdInput = hRead;
 			hI.Attach(hRead);
-			StandardInput.m_pFile->Duplicate(hWrite, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
+			StandardInput.m_pFile->Duplicate((intptr_t)hWrite, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
 		}
 		if (StartInfo.RedirectStandardOutput) {
 			Win32Check(::CreatePipe(&hRead, &hWrite, &sattr, 0));
 			si.hStdOutput = hWrite;
 			hO.Attach(hWrite);
-			StandardOutput.m_pFile->Duplicate(hRead, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
+			StandardOutput.m_pFile->Duplicate((intptr_t)hRead, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
 		}
 		if (StartInfo.RedirectStandardError) {
 			Win32Check(::CreatePipe(&hRead, &hWrite, &sattr, 0));
 			si.hStdError = hWrite;
 			hE.Attach(hWrite);
-			StandardError.m_pFile->Duplicate(hRead, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
+			StandardError.m_pFile->Duplicate((intptr_t)hRead, DUPLICATE_CLOSE_SOURCE|DUPLICATE_SAME_ACCESS);
 		}
 	}
 	STARTUPINFO *psi = &si;
@@ -1595,7 +1597,7 @@ String Process::get_ProcessName() {
 	return path(szModule).filename();
 #else
 	TCHAR buf[MAX_PATH];
-	Win32Check(::GetModuleBaseName(Handle(*m_pimpl), 0, buf, size(buf)));
+	Win32Check(::GetModuleBaseName((HANDLE)(intptr_t)Handle(*m_pimpl), 0, buf, size(buf)));
 	path r = buf;
 	String ext = ToLower(r.extension());
 	return ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd" ? r.parent_path() / r.stem() : r;

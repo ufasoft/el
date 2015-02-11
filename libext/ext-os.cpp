@@ -95,7 +95,7 @@ bool CSyncObject::lock(uint32_t dwTimeout) {
 	Throw(E_NOTIMPL);
 #endif
 #ifdef WIN32
-	DWORD r = ::WaitForSingleObject(HandleAccess(_self), dwTimeout);
+	DWORD r = ::WaitForSingleObject((HANDLE)(intptr_t)HandleAccess(_self), dwTimeout);
 	switch (r) {
 		case WAIT_OBJECT_0: return true;
 		case WAIT_TIMEOUT: break;
@@ -235,7 +235,7 @@ CEvent::CEvent(bool bInitiallyOwn, bool bManualReset, RCString name
 	::KeInitializeEvent(&m_ev, bManualReset ? NotificationEvent : SynchronizationEvent, (BOOLEAN)bInitiallyOwn);
 	Attach(&m_ev);
 #else
-	AttachCreated(::CreateEvent(lpsaAttribute, bManualReset, bInitiallyOwn, name));
+	AttachCreated((intptr_t)::CreateEvent(lpsaAttribute, bManualReset, bInitiallyOwn, name));
 #endif
 }
 
@@ -261,13 +261,13 @@ void CEvent::Set() {
 #elif UCFG_WDM
 	::KeSetEvent(Obj(), IO_NO_INCREMENT, FALSE);
 #else		
-	Win32Check(::SetEvent(HandleAccess(*this)));
+	Win32Check(::SetEvent((HANDLE)(intptr_t)HandleAccess(*this)));
 #endif
 }
 
 #if !UCFG_USE_PTHREADS && !defined(WDM_DRIVER)
 void CEvent::Pulse() {
-	Win32Check(::PulseEvent(HandleAccess(*this)));
+	Win32Check(::PulseEvent((HANDLE)(intptr_t)HandleAccess(*this)));
 }
 #endif
 
@@ -279,7 +279,7 @@ void CEvent::Reset() {
 #elif UCFG_WDM
 	::KeClearEvent(Obj());
 #else
-	Win32Check(::ResetEvent(HandleAccess(_self)));
+	Win32Check(::ResetEvent((HANDLE)(intptr_t)HandleAccess(_self)));
 #endif
 }
 
@@ -376,7 +376,7 @@ CMutex::CMutex(bool bInitiallyOwn, RCString name
 	::KeInitializeMutex(&m_mutex, 0);
 	Attach(&m_mutex);
 #else
-	AttachCreated(::CreateMutex(lpsaAttribute, bInitiallyOwn, name));
+	AttachCreated((intptr_t)::CreateMutex(lpsaAttribute, bInitiallyOwn, name));
 #endif
 }
 
@@ -401,7 +401,7 @@ CMutex::~CMutex() {
 
 void CMutex::unlock() {
 #ifdef WIN32
-	Win32Check(::ReleaseMutex(HandleAccess(_self)));
+	Win32Check(::ReleaseMutex((HANDLE)(intptr_t)HandleAccess(_self)));
 #elif UCFG_WDM
 	KeReleaseMutex(&m_mutex, FALSE);
 #else
@@ -417,7 +417,7 @@ CSemaphore::CSemaphore(LONG lInitialCount, LONG lMaxCount, RCString name
 	:	CSyncObject(name)
 {
 #ifdef WIN32
-	AttachCreated(::CreateSemaphore(lpsaAttributes, lInitialCount, lMaxCount, name));
+	AttachCreated((intptr_t)::CreateSemaphore(lpsaAttributes, lInitialCount, lMaxCount, name));
 #elif UCFG_WDM	
 	KeInitializeSemaphore(&m_sem, lInitialCount, lMaxCount);
 	Attach(&m_sem);
@@ -449,7 +449,7 @@ CSemaphore::~CSemaphore() {
 LONG CSemaphore::Unlock(LONG lCount) {
 #ifdef WIN32
 	LONG r; //!!!
-	Win32Check(::ReleaseSemaphore(HandleAccess(_self), lCount, &r));
+	Win32Check(::ReleaseSemaphore((HANDLE)(intptr_t)HandleAccess(_self), lCount, &r));
 	return r;
 #elif UCFG_WDM
 	return KeReleaseSemaphore(&m_sem, 0, lCount, FALSE);

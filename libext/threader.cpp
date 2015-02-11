@@ -1092,7 +1092,7 @@ void PoolThread::Execute() {
 		EXT_LOCK (m_cs) {
 			m_wiToCancel = nullptr;
 		}
-		int r = Wait(Handle(m_pool.m_evStop), Handle(ThreadPool::I->m_sem));
+		int r = Wait((HANDLE)(intptr_t)Handle(m_pool.m_evStop), (HANDLE)(intptr_t)Handle(ThreadPool::I->m_sem));
 	}
 }
 

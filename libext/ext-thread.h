@@ -47,10 +47,10 @@ public:
 	class HandleAccess : protected SafeHandle::HandleAccess {
 		typedef SafeHandle::HandleAccess base;
 	public:
-		HANDLE m_handle;
+		SafeHandle::handle_type m_handle;
 
 		HandleAccess(const ThreadBase& t) 
-			:	m_handle(&t==TryGetCurrentThread() ? ::GetCurrentThread() : 0)
+			:	m_handle(&t==TryGetCurrentThread() ? (intptr_t)::GetCurrentThread() : 0)
 		{
 			if (!m_handle) {
 				m_hp = &t;
@@ -58,10 +58,10 @@ public:
 			}
 		}
 
-		operator SafeHandle::handle_type() {
+		operator HANDLE() {
 			if (m_handle)
-				return m_handle;
-			return base::operator SafeHandle::handle_type();
+				return (HANDLE)m_handle;
+			return HANDLE(base::operator SafeHandle::handle_type());
 		}
 	};
 #endif

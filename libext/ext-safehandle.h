@@ -279,7 +279,12 @@ public:
 //!!!	void Release() const;
 	//!!!  void CloseHandle();
 	intptr_t DangerousGetHandle() const;
+	
 	void Attach(intptr_t handle, bool bOwn = true);
+#ifdef _WIN32
+	void Attach(HANDLE handle, bool bOwn = true) { Attach((intptr_t)handle, bOwn); }
+#endif
+
 	void ThreadSafeAttach(intptr_t handle, bool bOwn = true);
 
 	EXPLICIT_OPERATOR_BOOL() const {
