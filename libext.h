@@ -456,19 +456,16 @@ typedef unsigned long u_long;
 
 
 		typedef byte UCHAR;
-		typedef uint16_t WORD;	
-		typedef uint32_t UINT32;
+//!!!R		typedef uint16_t WORD;	
+//!!!R		typedef uint32_t UINT32;
 		//!!!	typedef int32_t LONG;
-		typedef uint32_t ULONG;
-		typedef uint32_t UINT;
-		typedef wchar_t *BSTR;
-		typedef void *HANDLE;
+//!!!R		typedef uint32_t ULONG;
+//!!!R		typedef uint32_t UINT;
+//!!!R		typedef wchar_t *BSTR;
+//!!!R		typedef void *HANDLE;
 		typedef int SOCKET;
-//!!!R		typedef long LONG_PTR;
-		typedef unsigned long DWORD_PTR;
-		typedef int64_t INT64;
-		typedef uint64_t UINT64;
-#	define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
+//#	define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
+#	define EXT_INVALID_HANDLE_VALUE (-1)
 
 #	define LANG_USER_DEFAULT 0
 
@@ -916,15 +913,10 @@ typedef WCHAR *BSTR;
 			inline void operator delete(void *, void *) {}
 #	endif
 
-#if !UCFG_MSC_VERSION
-#	include <ciso646>
-#endif
 
 #ifdef _LIBCPP_VERSION
-#	define UCFG_LIBCPP_VERSION _LIBCPP_VERSION
 #	include <system_error>
 #else
-#	define UCFG_LIBCPP_VERSION 0
 	namespace std { class error_code; }
 #endif
 
@@ -1017,7 +1009,13 @@ __END_DECLS
 #if !UCFG_STDSTL
 #	define lround C_lround
 #endif
-#include <math.h>
+
+#ifdef __cplusplus
+#	include <cmath>
+#else
+#	include <math.h>
+#endif
+
 #if !UCFG_STDSTL && UCFG_CRT!='U'
 #	ifndef _CLASSIFY
 #		define _CLASS_ARG(_Val)                                  (sizeof ((_Val) + (float)0) == sizeof (float) ? 'f' : sizeof ((_Val) + (double)0) == sizeof (double) ? 'd' : 'l')
