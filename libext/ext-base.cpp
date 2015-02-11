@@ -186,12 +186,12 @@ intptr_t SafeHandle::Detach() { //!!!
 	return m_aHandle.exchange(m_invalidHandleValue);
 }
 
-void SafeHandle::Duplicate(HANDLE h, uint32_t dwOptions) {
+void SafeHandle::Duplicate(intptr_t h, uint32_t dwOptions) {
 #if UCFG_WIN32
 	if (Valid())
 		Throw(E_EXT_AlreadyOpened);
 	HANDLE hMy;
-	Win32Check(::DuplicateHandle(GetCurrentProcess(), h, GetCurrentProcess(), &hMy, 0, FALSE, dwOptions));
+	Win32Check(::DuplicateHandle(GetCurrentProcess(), (HANDLE)h, GetCurrentProcess(), &hMy, 0, FALSE, dwOptions));
 	m_aHandle = intptr_t(hMy);
 	m_aInUse = 1;
 	m_abClosed = false;
