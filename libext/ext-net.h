@@ -378,7 +378,6 @@ public:
 	IPEndPoint get_RemoteEndPoint();
 	DEFPROP_GET(IPEndPoint, RemoteEndPoint);
 
-	bool Connect(DWORD host, uint16_t hostPort);
 	bool Connect(RCString hostAddress, uint16_t hostPort);
 
 	bool Connect(const IPEndPoint& hp) { return ConnectHelper(hp); }

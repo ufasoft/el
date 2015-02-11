@@ -127,10 +127,6 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 	return false;
 }
 
-bool Socket::Connect(DWORD host, WORD hostPort) {
-	return ConnectHelper(IPEndPoint(htonl(host), hostPort));
-}
-
 bool Socket::Connect(RCString hostAddress, WORD hostPort) {
 	return ConnectHelper(IPEndPoint(hostAddress, hostPort));
 }
