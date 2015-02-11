@@ -364,7 +364,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 		{}
 
 		bool Process(fd_set *fdset) {
-			if (FD_ISSET(m_hp, fdset)) {
+			if (FD_ISSET((intptr_t)m_hp, fdset)) {
 				byte buf[BUF_SIZE];
 				int r = m_sock.Receive(buf, sizeof buf);
 				if (m_bLive = r) {
