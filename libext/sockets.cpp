@@ -49,20 +49,21 @@ Socket::~Socket() {
 	Close(true);
 }
 
+/*!!!R
 void Socket::Create(uint16_t nPort, int nSocketType, uint32_t host) {
 	Open(nSocketType, 0, AF_INET);
 	Bind(IPEndPoint(htonl(host), nPort));
-}
+}*/
 
 void Socket::Create(AddressFamily af, SocketType socktyp, ProtocolType prottyp) {
 	Open((int)socktyp, (int)prottyp, (int)af);
 }
 
-void Socket::ReleaseHandle(HANDLE h) const {
+void Socket::ReleaseHandle(intptr_t h) const {
 #if UCFG_WIN32
 	SocketCheck(::closesocket(SOCKET(h)));
 #else
-	SocketCheck(::close(static_cast<SOCKET>(reinterpret_cast<intptr_t>(h))));
+	SocketCheck(::close(static_cast<SOCKET>(h)));
 #endif
 }
 
@@ -80,19 +81,47 @@ void Socket::Bind(const IPEndPoint& ep) {
 }
 
 bool Socket::ConnectHelper(const IPEndPoint& ep) {
-	if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {
-		vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
-		EXT_FOR (const IPAddress& ip, addrs) {
-			IPEndPoint nep(ip, ep.Port);
-			if (::connect(BlockingHandleAccess(_self), nep.c_sockaddr(), nep.sockaddr_len()) != SOCKET_ERROR)
+	TRC(4, "Connecting to " << ep);
+
+	if (Valid()) {
+		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
+			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
+			EXT_FOR(const IPAddress& ip, addrs) {
+				IPEndPoint nep(ip, ep.Port);
+				if (::connect(BlockingHandleAccess(_self), nep.c_sockaddr(), nep.sockaddr_len()) != SOCKET_ERROR)
+					return true;
+				int r = WSAGetLastError();
+				if (WSAGetLastError() == WSA(EWOULDBLOCK))
+					return false;
+			}
+			Throw(errc::timed_out);
+		} else if (::connect(BlockingHandleAccess(_self), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR)
+			return true;
+	} else {
+		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
+			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
+			EXT_FOR(const IPAddress& ip, addrs) {
+				Socket s(ip.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+				IPEndPoint nep(ip, ep.Port);
+				if (::connect(BlockingHandleAccess(s), nep.c_sockaddr(), nep.sockaddr_len()) != SOCKET_ERROR) {
+					_self = move(s);
+					return true;
+				}
+				int r = WSAGetLastError();
+				if (WSAGetLastError() == WSA(EWOULDBLOCK))
+					return false;
+			}
+			Throw(errc::timed_out);
+		} else {
+			Socket s(ep.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+			if (::connect(BlockingHandleAccess(s), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR) {
+				_self = move(s);
 				return true;
-			int r = WSAGetLastError();
-			if (WSAGetLastError() == WSA(EWOULDBLOCK))
-				return false;
+			}
 		}
-		Throw(HRESULT_FROM_WIN32(WSA(ETIMEDOUT)));
-	} else if (::connect(BlockingHandleAccess(_self), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR)
-		return true;
+	}
+
+
 	if (WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
 	return false;
@@ -231,7 +260,7 @@ void Socket::Attach(SOCKET s) {
 }
 
 SOCKET Socket::Detach() {
-	return static_cast<SOCKET>(reinterpret_cast<intptr_t>(SafeHandle::Detach()));
+	return static_cast<SOCKET>(SafeHandle::Detach());
 
 	//!!!return exchange(m_hSocket, INVALID_SOCKET);
 }
@@ -286,8 +315,12 @@ size_t NetworkStream::Read(void *buf, size_t count) const {
 }
 
 void NetworkStream::WriteBuffer(const void *buf, size_t count) {
+	int flags = 0;
+#if UCFG_USE_POSIX
+	flags |= NoSignal ? MSG_NOSIGNAL : 0;
+#endif
 	while (count) {
-		if (int n = m_sock.Send(buf, (int)count, NoSignal ? MSG_NOSIGNAL : 0)) {
+		if (int n = m_sock.Send(buf, (int)count, flags)) {
 			if (n < 0)
 				Throw(E_FAIL);
 			count -= n;
@@ -312,7 +345,7 @@ void CSocketLooper::Send(Socket& sock, const ConstBuf& mb) {
 }
 
 void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
-	TRC(3, "");
+	TRC(5, "");
 
 	DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
 
