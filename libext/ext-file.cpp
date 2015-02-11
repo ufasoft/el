@@ -200,7 +200,7 @@ void File::Open(const File::OpenInfo& oi) {
 		Throw(E_INVALIDARG);
 	}
 	int fd = CCheck(::open(oi.Path.c_str(), oflag, 0644));
-	Attach((HANDLE)(uintptr_t)fd);
+	Attach((intptr_t)fd);
 #else
 	DWORD dwAccess = 0;
 	switch (oi.Access) {
@@ -299,7 +299,7 @@ void File::Create(RCString fileName, DWORD dwDesiredAccess, DWORD dwShareMode, D
 		oflag = O_RDONLY;
 	else if (dwDesiredAccess & GENERIC_WRITE)
 		oflag = O_WRONLY;
-	Attach((HANDLE)CCheck(::open(fileName, oflag)));
+	Attach(CCheck(::open(fileName, oflag)));
 #else
 	Attach(::CreateFile(fileName, dwDesiredAccess, dwShareMode, lpsa, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
 #endif
@@ -352,7 +352,7 @@ bool File::CheckPending(BOOL b) {
 
 void File::SetEndOfFile() {
 #if UCFG_USE_POSIX
-	CCheck(::ftruncate((int)(intptr_t)(HANDLE)HandleAccess(_self), Seek(0, SeekOrigin::Current)));
+	CCheck(::ftruncate((int)(intptr_t)HandleAccess(_self), Seek(0, SeekOrigin::Current)));
 #else
 	Win32Check(::SetEndOfFile(HandleAccess(_self)));
 #endif
@@ -386,9 +386,9 @@ OVERLAPPED *File::SetOffsetForFileOp(OVERLAPPED& ov, int64_t offset) {
 void File::Write(const void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
 	if (offset >= 0)
-		CCheck(::pwrite((int)(intptr_t)(HANDLE)HandleAccess(_self), buf, size, offset));
+		CCheck(::pwrite((int)(intptr_t)HandleAccess(_self), buf, size, offset));
 	else
-		CCheck(::write((int)(intptr_t)(HANDLE)HandleAccess(_self), buf, size));
+		CCheck(::write((int)(intptr_t)HandleAccess(_self), buf, size));
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nWritten;
@@ -406,7 +406,7 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 
 uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)(HANDLE)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)(HANDLE)HandleAccess(_self), buf, size);
+	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
 	CCheck(r>=0 ? 0 : -1);
 	return r;
 #else
@@ -420,7 +420,7 @@ uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediately) {
 #if UCFG_USE_POSIX
 	int64_t prev = File::Seek(pos, SeekOrigin::Begin);
-	int rc = ::lockf((int)(intptr_t)(HANDLE)HandleAccess(_self), F_LOCK, len);
+	int rc = ::lockf((int)(intptr_t)HandleAccess(_self), F_LOCK, len);
 	File::Seek(prev, SeekOrigin::Begin);
 	CCheck(rc);
 #else
@@ -437,7 +437,7 @@ void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediate
 void File::Unlock(uint64_t pos, uint64_t len) {
 #if UCFG_USE_POSIX
 	int64_t prev = File::Seek(pos, SeekOrigin::Begin);
-	int rc = ::lockf((int)(intptr_t)(HANDLE)HandleAccess(_self), F_ULOCK, len);
+	int rc = ::lockf((int)(intptr_t)HandleAccess(_self), F_ULOCK, len);
 	File::Seek(prev, SeekOrigin::Begin);
 	CCheck(rc);
 #else
@@ -464,7 +464,7 @@ size_t File::PhysicalSectorSize() const {			// return 0 if not detected
 
 int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 #if UCFG_USE_POSIX
-	return CCheck(::lseek((int)(intptr_t)(HANDLE)HandleAccess(_self), (long)off, (int)origin));
+	return CCheck(::lseek((int)(intptr_t)HandleAccess(_self), (long)off, (int)origin));
 #else
 	ULARGE_INTEGER uli;
 	uli.QuadPart = (ULONGLONG)off;
@@ -477,7 +477,7 @@ int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 
 void File::Flush() {
 #if UCFG_USE_POSIX
-	CCheck(::fsync((int)(intptr_t)(HANDLE)HandleAccess(_self)));
+	CCheck(::fsync((int)(intptr_t)HandleAccess(_self)));
 #else
 	Win32Check(::FlushFileBuffers(HandleAccess(_self)));
 #endif
@@ -486,7 +486,7 @@ void File::Flush() {
 uint64_t File::get_Length() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::fstat((int)(intptr_t)(HANDLE)HandleAccess(_self), &st));
+	CCheck(::fstat((int)(intptr_t)HandleAccess(_self), &st));
 	return st.st_size;
 #else
 	ULARGE_INTEGER uli;
@@ -499,7 +499,7 @@ uint64_t File::get_Length() const {
 
 void File::put_Length(uint64_t len) {
 #if UCFG_USE_POSIX
-	CCheck(::ftruncate((int)(intptr_t)(HANDLE)HandleAccess(_self), len));
+	CCheck(::ftruncate((int)(intptr_t)HandleAccess(_self), len));
 #else
 	Seek((int64_t)len, SeekOrigin::Begin);
 	SetEndOfFile();
