@@ -470,11 +470,6 @@ public:
 	static CRuntimeClass* PASCAL GetThisClass();
 #endif
 
-#ifdef _DEBUG
-	virtual void AssertValid() const {} //!!!
-	//	virtual void Dump(CDumpContext& dc) const {}
-#endif
-
 };
 
 	// generate static object constructor for class registration
