@@ -221,7 +221,7 @@ class EXTAPI SafeHandle : public Object, public CHandleBase<SafeHandle> {
 	typedef CHandleBase<SafeHandle> base;
 	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
 public:
-	typedef int64_t handle_type;
+	typedef intptr_t handle_type;
 
 #ifndef WDM_DRIVER
 	//!!!R static CTls t_pCurrentHandle;
@@ -234,9 +234,9 @@ public:
 		,	m_bOwn(true)
 	{}
 
-	SafeHandle(HANDLE invalidHandle, bool)
-		:	m_aHandle((intptr_t)invalidHandle)
-		,	m_invalidHandleValue((intptr_t)invalidHandle)
+	SafeHandle(intptr_t invalidHandle, bool)
+		:	m_aHandle(invalidHandle)
+		,	m_invalidHandleValue(invalidHandle)
 		,	m_bOwn(true)
 #if UCFG_WDM
 		,	m_pObject(nullptr)
@@ -343,7 +343,7 @@ public:
 	};
 
 	void InternalReleaseHandle() const;
-	HANDLE DangerousGetHandleEx() const { return (HANDLE)m_aHandle.load(); }
+	intptr_t DangerousGetHandleEx() const { return m_aHandle.load(); }
 protected:
 	const intptr_t m_invalidHandleValue;
 
