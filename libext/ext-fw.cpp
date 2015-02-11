@@ -909,7 +909,7 @@ CResID& CResID::operator=(const String::value_type *resId) {
 	if (HIWORD(resId))
 		m_name = resId;
 	else
-		m_resId = (DWORD)(DWORD_PTR)resId;
+		m_resId = (uint32_t)(uintptr_t)resId;
 	return _self;
 }
 
@@ -935,7 +935,7 @@ CResID::operator const String::value_type *() const {
 
 #ifdef WIN32
 CResID::operator UINT() const {
-	return (UINT)(DWORD_PTR)(operator LPCTSTR());
+	return (uint32_t)(uintptr_t)(operator LPCTSTR());
 }
 #endif
 
