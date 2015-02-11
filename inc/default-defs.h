@@ -84,6 +84,12 @@
 #	define UCFG_PLATFORM_X64 0
 #endif
 
+#if defined(_M_X64) || defined(__ppc64__) || defined(__mips64__) || defined(__arm64__) || defined(_WIN64) || (defined(__LP64__) && __LP64__)
+#	define UCFG_64 1
+#else
+#	define UCFG_64 0
+#endif
+
 #define UCFG_CPU_X86_X64 (UCFG_PLATFORM_IX86 || UCFG_PLATFORM_X64)
 
 #define UCFG_PLATFORM_64 UCFG_PLATFORM_X64
