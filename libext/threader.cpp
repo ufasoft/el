@@ -137,6 +137,10 @@ ThreadBase::~ThreadBase() {
 	if (_AFX_THREAD_STATE *ats = exchange(m_pAfxThreadState, nullptr))
 		delete ats;
 #endif
+#if UCFG_USE_POSIX
+	if (m_ptid && !m_bJoined)
+		PthreadCheck(::pthread_detach(ptid));
+#endif
 }
 
 #if UCFG_WIN32
@@ -213,7 +217,7 @@ int PthreadCheck(int code, int allowableError) {
 void ThreadBase::ReleaseHandle(intptr_t h) const {
 	m_tid = thread::id();
 	pthread_t ptid = exchange(m_ptid, (pthread_t)0);
-	if (!m_bJoined)	
+	if (!m_bJoined)
 		PthreadCheck(::pthread_detach(ptid));
 }
 
