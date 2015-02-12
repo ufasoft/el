@@ -120,7 +120,7 @@ ThreadBase::ThreadBase(thread_group *ownRef)
 #endif
 #if UCFG_USE_PTHREADS
 	,	m_tid()
-	,	m_ptid((phtread_t)0)
+	,	m_ptid((pthread_t)0)
 #elif UCFG_OLE
 	,	m_usingCOM(E_NoInit)
 	,	m_dwCoInit(COINIT_APARTMENTTHREADED)
