@@ -120,6 +120,7 @@ ThreadBase::ThreadBase(thread_group *ownRef)
 #endif
 #if UCFG_USE_PTHREADS
 	,	m_tid()
+	,	m_ptid((phtread_t)0)
 #elif UCFG_OLE
 	,	m_usingCOM(E_NoInit)
 	,	m_dwCoInit(COINIT_APARTMENTTHREADED)
@@ -138,7 +139,7 @@ ThreadBase::~ThreadBase() {
 		delete ats;
 #endif
 #if UCFG_USE_POSIX
-	if (m_ptid && !m_bJoined)
+	if (m_ptid)
 		PthreadCheck(::pthread_detach(m_ptid));
 #endif
 }
@@ -216,8 +217,7 @@ int PthreadCheck(int code, int allowableError) {
 
 void ThreadBase::ReleaseHandle(intptr_t h) const {
 	m_tid = thread::id();
-	pthread_t ptid = exchange(m_ptid, (pthread_t)0);
-	if (!m_bJoined)
+	if (pthread_t ptid = exchange(m_ptid, (pthread_t)0))
 		PthreadCheck(::pthread_detach(ptid));
 }
 
@@ -538,7 +538,7 @@ bool ThreadBase::Join(int ms) {
 	ASSERT(ms == INFINITE);
 	void *r;	
 	PthreadCheck(::pthread_join(m_ptid, &r));
-	m_bJoined = true;
+	m_ptid = (pthread_t)0;
 	m_exitCode = (uint32_t)(uintptr_t)r;
 	return true;
 #else
