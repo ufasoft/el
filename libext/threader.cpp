@@ -139,7 +139,7 @@ ThreadBase::~ThreadBase() {
 #endif
 #if UCFG_USE_POSIX
 	if (m_ptid && !m_bJoined)
-		PthreadCheck(::pthread_detach(ptid));
+		PthreadCheck(::pthread_detach(m_ptid));
 #endif
 }
 
