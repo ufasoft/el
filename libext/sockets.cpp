@@ -344,6 +344,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 	TRC(5, "");
 
 	DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
+	DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
 
 	class CLoopKeeper {
 	public:
@@ -369,13 +370,12 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 				int r = m_sock.Receive(buf, sizeof buf);
 				if (m_bLive = r) {
 					bool bDisconnectAfterData = false;
-					Blob blob(buf, r);
-					if (m_bIncoming)
-						m_socketLooper.ProcessDest(blob, bDisconnectAfterData);
-					else
-						m_socketLooper.ProcessSrc(blob, bDisconnectAfterData);
+					ConstBuf cbuf = ConstBuf(buf, r);
+					Blob blob = m_bIncoming ? m_socketLooper.ProcessDest(cbuf, bDisconnectAfterData) : m_socketLooper.ProcessSrc(cbuf, bDisconnectAfterData);
+					if (!!blob)
+						cbuf = blob;
 					try {
-						m_socketLooper.Send(m_sockOther, blob);
+						m_socketLooper.Send(m_sockOther, cbuf);
 					} catch (RCExc) {
 						m_bAccepts = false;
 						if (m_socketLooper.m_bDoShutdown)

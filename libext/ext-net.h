@@ -605,8 +605,8 @@ public:
 	}
 
 	virtual ~CSocketLooper() {}
-	virtual void ProcessSrc(Blob& blob, bool& bDisconnectAfterData) {}
-	virtual void ProcessDest(Blob& blob, bool& bDisconnectAfterData) {}
+	virtual Blob ProcessSrc(const ConstBuf& cbuf, bool& bDisconnectAfterData) { return nullptr; }
+	virtual Blob ProcessDest(const ConstBuf& cbuf, bool& bDisconnectAfterData) { return nullptr; }
 	
 	virtual void Send(Socket& sock, const ConstBuf& mb);
 	virtual TimeSpan GetTimeout() { return TimeSpan(-1); }
