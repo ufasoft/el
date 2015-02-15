@@ -690,9 +690,12 @@ uint32_t ThreadBase::CppThreadThunk() {
 	alloca(StackOffset);							// to prevent cache line aliasing 
 	try {
 #ifdef X_CPPRTTI
-		const type_info& ti = typeid(*this);
-		Name = ti.name();
-#endif
+		try {
+			const type_info& ti = typeid(*this);
+			Name = ti.name();
+		} catch (const bad_typeid& ex) {		//!!! option /GR- in VC++, really don't work by unknown reason
+		}
+#endif // _CPPRTTI
 		{
 			struct ActiveThreadKeeper {
 				thread_group *m_tr;
@@ -721,7 +724,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 		TRC(1, ex.Message << " in Thread: " << get_id() << "\t" << Name);
 		OnEndThread(true);
 	} catch (...) {
-		TRC(0, "Unhandled exception in Thread: " << hex << get_id() << "\t" << Name);
+		TRC(0, "Unhandled exception in Thread: " << get_id() << "\t" << Name);
 		ProcessExceptionInCatch();
 		OnEndThread(true);
 	}

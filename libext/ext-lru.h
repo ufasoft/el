@@ -1,14 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 namespace Ext {
+using std::pair;
 
 #ifndef UCFG_DEFAULT_CACHE_SIZE
 #	define UCFG_DEFAULT_CACHE_SIZE 256
@@ -132,7 +125,7 @@ protected:
 	}
 
 #if !UCFG_STDSTL														// really works only in ExtSTL
-	CPointer<byte> m_pTemporaryFreed;
+	std::observer_ptr<byte> m_pTemporaryFreed;
 
 	~LruBase() {
 		if (m_pTemporaryFreed)
@@ -140,15 +133,14 @@ protected:
 	}
 
 	void * __fastcall VBuyNode() override {				
-		if (m_pTemporaryFreed) {
-			return exchange(m_pTemporaryFreed, (byte*)0);
-		}
+		if (m_pTemporaryFreed)
+			return m_pTemporaryFreed.release();
 		return base::VBuyNode();
 	}
 
 	void __fastcall VFreeNode(void *p) override {
 		if (!m_pTemporaryFreed)
-			m_pTemporaryFreed = (byte*)p;
+			m_pTemporaryFreed.reset((byte*)p);
 		else
 			base::VFreeNode(p);
 	}
@@ -172,17 +164,17 @@ public:
 	{
 	}
 
-	std::pair<iterator, bool> insert(const value_type& v) {
+	pair<iterator, bool> insert(const value_type& v) {
 		return base::PInsert(typename C::value_type(v, UnorderedLruItem()));
 	}
 };
 
-template <class K, class T, class C = std::unordered_map<K, std::pair<T, UnorderedLruItem> > >
-class LruMap : public LruBase<K, std::pair<T, UnorderedLruItem>, C> {
+template <class K, class T, class C = std::unordered_map<K, pair<T, UnorderedLruItem> > >
+class LruMap : public LruBase<K, pair<T, UnorderedLruItem>, C> {
 	typedef LruMap class_type;
-	typedef LruBase<K, std::pair<T, UnorderedLruItem>, C> base;
+	typedef LruBase<K, pair<T, UnorderedLruItem>, C> base;
 public:
-	typedef std::pair<K,T> value_type;
+	typedef pair<K,T> value_type;
 	typedef typename base::iterator iterator;
 
 	using base::end;

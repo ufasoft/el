@@ -540,7 +540,7 @@ void AFXAPI ProcessExceptionInCatch() {
 	_exit(ERR_UNHANDLED_EXCEPTION);
 #else
 	//!!! Error in DLLS ::ExitProcess(ERR_UNHANDLED_EXCEPTION);	
-	Win32Check(::TerminateProcess(::GetCurrentProcess(), ERR_UNHANDLED_EXCEPTION));
+	::TerminateProcess(::GetCurrentProcess(), ERR_UNHANDLED_EXCEPTION);
 #endif
 }
 

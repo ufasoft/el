@@ -4,6 +4,7 @@
 #include EXT_HEADER_SYSTEM_ERROR
 
 namespace Ext {
+	using std::pair;
 	using std::size;
 	using std::vector;
 	using std::map;

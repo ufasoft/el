@@ -347,16 +347,18 @@ public:
 	{
 	}
 
-	Socket(AddressFamily af, SocketType sockType, ProtocolType protoType) {
-		Open((int)sockType, (int)protoType, (int)af);
+	Socket(AddressFamily af, SocketType sockType = SocketType::Stream, ProtocolType protoType = ProtocolType::Tcp) {
+		Create(af, sockType, protoType);
 	}
-
-	virtual ~Socket();
 
 	Socket(EXT_RV_REF(Socket) rv)
 		:	base(static_cast<EXT_RV_REF(SafeHandle)>(rv))
 		,	m_bBlocking(rv.m_bBlocking)
 	{}
+
+	virtual ~Socket();
+
+	EXT_API void Create(AddressFamily af, SocketType sockType = SocketType::Stream, ProtocolType protoType = ProtocolType::Tcp);
 
 	Socket& operator=(EXT_RV_REF(Socket) rv) {
 		base::operator=(static_cast<EXT_RV_REF(SafeHandle)>(rv));
@@ -366,7 +368,6 @@ public:
 
 	AFX_API static void AFXAPI ReleaseFromAPC();
 //!!!R	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
-	EXT_API void Create(AddressFamily af, SocketType socktyp = SocketType::Stream, ProtocolType prottyp = ProtocolType::Tcp);
 	virtual int Receive(void *buf, int len, int flags = 0);
 	virtual int Send(const void *buf, int len, int flags = 0);
 	virtual void SendTo(const ConstBuf& cbuf, const IPEndPoint& ep);
@@ -382,16 +383,9 @@ public:
 
 	bool Connect(const IPEndPoint& hp) { return ConnectHelper(hp); }
 
-	void Open(int nSocketType = SOCK_STREAM, int nProtocolType = 0, int nAddressFormat = PF_INET);
-	bool Accept(Socket& socket, IPEndPoint& epRemote);
-
-	bool Accept(Socket& socket) {
-		IPEndPoint epRemote;
-		return Accept(socket, epRemote);
-	}
-
 	void Bind(const IPEndPoint& ep = IPEndPoint());
 	void Listen(int backLog = SOMAXCONN);
+	pair<Socket, IPEndPoint> Accept();
 
 #if UCFG_WIN32
 	void EventSelect(HANDLE hEvent = 0, long lEvents = 0);

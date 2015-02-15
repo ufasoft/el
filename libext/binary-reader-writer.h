@@ -142,7 +142,7 @@ public:
 		m.clear();
 		size_t count = ReadSize();
 		for (size_t i=0; i<count; ++i) {
-			std::pair<K, T> pp;
+			pair<K, T> pp;
 			*this >> pp;
 			m.insert(pp);
 		}
@@ -153,7 +153,7 @@ public:
 		m.clear();
 		size_t count = ReadSize();
 		for (size_t i=0; i<count; ++i) {
-			std::pair<K, T> pp;
+			pair<K, T> pp;
 			*this >> pp;
 			m.insert(pp);
 		}

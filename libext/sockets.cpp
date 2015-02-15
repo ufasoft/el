@@ -49,14 +49,13 @@ Socket::~Socket() {
 	Close(true);
 }
 
-/*!!!R
-void Socket::Create(uint16_t nPort, int nSocketType, uint32_t host) {
-	Open(nSocketType, 0, AF_INET);
-	Bind(IPEndPoint(htonl(host), nPort));
-}*/
-
-void Socket::Create(AddressFamily af, SocketType socktyp, ProtocolType prottyp) {
-	Open((int)socktyp, (int)prottyp, (int)af);
+void Socket::Create(AddressFamily af, SocketType socktyp, ProtocolType protoTyp) {
+	if (Valid())
+		Throw(E_EXT_AlreadyOpened);
+	SOCKET h = ::socket((int)af, (int)socktyp, (int)protoTyp);
+	if (h == INVALID_SOCKET)
+		ThrowWSALastError();
+	Attach(h);
 }
 
 void Socket::ReleaseHandle(intptr_t h) const {
@@ -65,15 +64,6 @@ void Socket::ReleaseHandle(intptr_t h) const {
 #else
 	SocketCheck(::close(static_cast<SOCKET>(h)));
 #endif
-}
-
-void Socket::Open(int nSocketType, int nProtocolType, int nAddressFormat) {
-	if (Valid())
-		Throw(E_EXT_AlreadyOpened);
-	SOCKET h = ::socket(nAddressFormat, nSocketType, nProtocolType);
-	if (h == INVALID_SOCKET)
-		ThrowWSALastError();
-	Attach(h);
 }
 
 void Socket::Bind(const IPEndPoint& ep) {
@@ -135,23 +125,23 @@ void Socket::SendTo(const ConstBuf& cbuf, const IPEndPoint& ep) {
 	SocketCheck(::sendto(BlockingHandleAccess(_self), (const char*)cbuf.P, cbuf.Size, 0, ep.c_sockaddr(), ep.sockaddr_len()));
 }
 
-bool Socket::Accept(Socket& socket, IPEndPoint& epRemote) {
-	byte sa[100];
-	socklen_t addrlen = sizeof(sa);
-	SOCKET s;
-	s = ::accept(BlockingHandleAccess(_self), (sockaddr*)sa, &addrlen);
-	if (s == INVALID_SOCKET)
-		if (WSAGetLastError() == WSA(EWOULDBLOCK))
-			return false;
-		else
-			ThrowWSALastError();
-	socket.Attach(s);
-	epRemote = IPEndPoint(*(const sockaddr*)sa);
-	return true;
-}
-
 void Socket::Listen(int backLog) {
 	SocketCheck(::listen(HandleAccess(_self), backLog));
+}
+
+pair<Socket, IPEndPoint> Socket::Accept() {
+	byte sa[50];
+	socklen_t addrlen = sizeof(sa);
+	SOCKET s = ::accept(BlockingHandleAccess(_self), (sockaddr*)sa, &addrlen);
+	pair<Socket, IPEndPoint> r;
+	if (s != INVALID_SOCKET) {
+		r.first.Attach(s);
+		r.second = IPEndPoint(*(const sockaddr*)sa);
+
+		TRC(4, "from " << r.second);
+	} else if (WSAGetLastError() != WSA(EWOULDBLOCK))
+		ThrowWSALastError();
+	return move(r);
 }
 
 #ifndef WDM_DRIVER
