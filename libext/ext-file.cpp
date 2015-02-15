@@ -61,11 +61,11 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 	sp.m_fname = fname;
 	sp.m_ext = ext;
 #else
-	int fn = path.LastIndexOf(path::preferred_separator);
-	String sSnExt = path.substr(fn+1);
+	size_t fn = path.rfind(path::preferred_separator);
+	String sSnExt = path.substr(fn==String::npos ? 0 : fn+1);
 
-	int ext = sSnExt.LastIndexOf('.');
-	if (ext != -1)
+	size_t ext = sSnExt.rfind('.');
+	if (ext != String::npos)
 		sp.m_ext = sSnExt.substr(ext);
 	else
 		ext = sSnExt.length();
