@@ -117,11 +117,15 @@ typedef BeInt<uint64_t> BeUInt64;
 
 
 inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
-	return os << (const char*)s;
+	const char *p = (const char*)s;
+	return os << (p ? p : "<#nullptr>");	
 }
 
 inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
-	return os << (std::wstring)explicit_cast<std::wstring>(s);
+	if (s == nullptr)
+		return os << "<#nullptr>";	
+	else
+		return os << (std::wstring)explicit_cast<std::wstring>(s);
 }
 
 /*!!!

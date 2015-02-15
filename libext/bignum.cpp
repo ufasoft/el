@@ -177,7 +177,7 @@ BigInteger::BigInteger(RCString s, int bas)
 		Throw(E_FAIL);
 	bool bMinus = false;
 	size_t i=0;
-	if (s[0] == '-') {
+	if (s.at(0) == '-') {
 		bMinus = true;
 		++i;
 		if (s.length() == 1)

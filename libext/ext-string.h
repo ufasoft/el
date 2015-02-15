@@ -3,6 +3,8 @@
 
 namespace Ext {
 
+using std::vector;
+
 template <typename T>
 class explicit_cast {
 public:
@@ -179,10 +181,18 @@ public:
 	}
 #endif
 
-	value_type operator[](int nIndex) const;
-	value_type operator[](size_t nIndex) const { return operator[]((int)nIndex); }
-	//!!!D  String ToOem() const;
-	value_type GetAt(size_t idx) const { return (*this)[idx]; }
+	const value_type& operator[](size_type idx) const;
+	
+	const value_type& operator[](int idx) const {
+		return operator[]((size_t)idx);
+	}
+
+	const value_type& at(size_type idx) const {
+		if 	(idx >= length())
+			Throw(E_EXT_IndexOutOfRange);
+		return (*this)[idx];
+	}
+
 	void SetAt(size_t nIndex, char c);
 	void SetAt(size_t nIndex, unsigned char c) { SetAt(nIndex, (char)c); }
 	void SetAt(size_t nIndex, value_type ch);
@@ -214,12 +224,12 @@ public:
 	int CompareNoCase(const String& s) const;
 	bool empty() const noexcept;
 	void clear();
-	size_type find(value_type chm, size_type pos = 0) const noexcept;
+	size_type find(value_type ch, size_type pos = 0) const noexcept;
 	size_type find(const value_type *s, size_type pos, size_type count) const;
 
 	size_type find(const String& s, size_type pos = 0) const { return find((const value_type*)s, pos, s.size()); }
 
-	int LastIndexOf(value_type c) const;
+	size_type rfind(value_type chm, size_type pos = npos) const noexcept;
 
 	bool Contains(const String& s) const noexcept { return find(s) != npos; }
 
@@ -232,8 +242,8 @@ public:
 	String& TrimLeft() { return (*this) = TrimStart(); }
 	String& TrimRight() { return (*this) = TrimEnd(); }
 	String Trim() const { return TrimStart().TrimEnd(); }
-	EXT_API std::vector<String> Split(RCString separator = "", size_t count = INT_MAX) const;
-	EXT_API static String AFXAPI Join(RCString separator, const std::vector<String>& value);
+	EXT_API vector<String> Split(RCString separator = "", size_t count = INT_MAX) const;
+	EXT_API static String AFXAPI Join(RCString separator, const vector<String>& value);
 	void MakeUpper();
 	void MakeLower();
 

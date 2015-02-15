@@ -292,8 +292,8 @@ String::operator UNICODE_STRING*() const {
 }
 #endif
 
-String::value_type String::operator[](int nIndex) const {
-	return (operator const value_type*())[nIndex];
+const String::value_type& String::operator[](size_type idx) const {
+	return (operator const value_type*())[idx];
 }
 
 void String::SetAt(size_t nIndex, value_type ch) {
@@ -412,11 +412,12 @@ String::size_type String::find(const value_type *s, size_type pos, size_type cou
 	return npos;
 }
 
-int String::LastIndexOf(value_type c) const {
-	for (size_t i=length(); i--;)
-		if (_self[i] == c)
-			return (int)i;
-	return -1;
+String::size_type String::rfind(value_type ch, size_type pos) const noexcept {
+	const value_type *p = _self;
+	for (size_t i = pos<length() ? pos+1 : length(); i--;)
+		if (p[i] == ch)
+			return i;
+	return npos;
 }
 
 String String::substr(size_type pos, size_type count) const {
