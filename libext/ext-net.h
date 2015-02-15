@@ -366,7 +366,7 @@ public:
 
 	AFX_API static void AFXAPI ReleaseFromAPC();
 //!!!R	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
-	EXT_API void Create(AddressFamily af, SocketType socktyp, ProtocolType prottyp);
+	EXT_API void Create(AddressFamily af, SocketType socktyp = SocketType::Stream, ProtocolType prottyp = ProtocolType::Tcp);
 	virtual int Receive(void *buf, int len, int flags = 0);
 	virtual int Send(const void *buf, int len, int flags = 0);
 	virtual void SendTo(const ConstBuf& cbuf, const IPEndPoint& ep);
