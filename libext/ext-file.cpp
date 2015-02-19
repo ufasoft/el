@@ -766,7 +766,7 @@ void FileSystemInfo::put_CreationTime(const DateTime& dt) {
 DateTime FileSystemInfo::get_LastAccessTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath, &st));
+	CCheck(::stat(FullPath.native(), &st));
 	return DateTime::from_time_t(st.st_atime);
 #else
 	return GetData().ftLastAccessTime;
