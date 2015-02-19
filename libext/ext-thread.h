@@ -454,7 +454,7 @@ protected:
 #endif	// WIN32
 
 
-int AFXAPI GetThreadNumber();
+intptr_t AFXAPI GetThreadNumber();
 
 class Thread
 #ifdef WIN32

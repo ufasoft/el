@@ -752,13 +752,15 @@ public:
 
 #endif
 
-inline int AFXAPI GetThreadNumber() {
+inline intptr_t AFXAPI GetThreadNumber() {
 #ifdef WDM_DRIVER
-	return 0;
+	return (intptr_t)PsGetCurrentThreadId();
 #elif UCFG_WIN32
 	return ::GetCurrentThreadId();
+#elif defined(HAVE_GETTID)
+	return gettid();
 #else
-	int r = (int)(uintptr_t)(void*)t_threadNumber.Value;
+	intptr_t r = (intptr_t)(void*)t_threadNumber.Value;
 	if (!(r & 0xFFFFFF))
 		t_threadNumber.Value = (void*)(uintptr_t)(r |= ++s_nThreadNumber);
 	return r & 0xFFFFFF;
@@ -797,12 +799,12 @@ CTraceWriter::~CTraceWriter() noexcept {
     		m = dt.Minute,
     		s = dt.Second,
     		ms = dt.Millisecond;
-		int tid = GetThreadNumber();
-		char *buf = (char*)alloca(100);
+		long long tid = GetThreadNumber();
+		char buf[100];
 		if (m_bPrintDate)
-			sprintf(buf, "%4x %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
+			sprintf(buf, EXT_LL_PREFIX " %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
 		else
-			sprintf(buf, "%4x %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			sprintf(buf, EXT_LL_PREFIX " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
