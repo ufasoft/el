@@ -815,7 +815,7 @@ CTraceWriter::~CTraceWriter() noexcept {
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
-			format = EXT_LL_PREFIX " %02d:%02d:%02d.%03d "
+			format = EXT_LL_PREFIX " %02d:%02d:%02d.%03d ";
 			sprintf(buf, format, tid, h, m, s, ms);
 			time_str = buf + str;
 		}
