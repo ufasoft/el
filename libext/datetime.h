@@ -343,7 +343,7 @@ public:
 	TimeSpan get_TimeOfDay() const { return TimeSpan(Ticks % (24LL*3600*10000000)); }
 	DEFPROP_GET_CONST(TimeSpan, TimeOfDay);
 
-	DateTime get_Date() const { return *this - TimeOfDay; }
+	DateTime get_Date() const { return *this - get_TimeOfDay(); }
 	DEFPROP_GET_CONST(DateTime, Date);
 
 	Ext::DayOfWeek get_DayOfWeek() const {
