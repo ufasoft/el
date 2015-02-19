@@ -63,7 +63,7 @@ public:
 		m_hSession = h;
 	}*/
 protected:
-	void ReleaseHandle(HANDLE h) const;
+	void ReleaseHandle(intptr_t h) const override;
 };
 
 /*!!!R
@@ -90,21 +90,22 @@ public:
 
 #if UCFG_USE_LIBCURL
 
-void CurlCheck(CURLcode rc);
-
 class CurlSession : public Object {
 public:
 	typedef InterlockedPolicy interlocked_policy; //!!!
 
 	IPEndPoint EndPoint;
 	CURL *m_h;
+	char m_errbuf[CURL_ERROR_SIZE];
 
 	CurlSession(const IPEndPoint& ep)
 		:	EndPoint(ep)
 		,	m_h(::curl_easy_init())
 	{
+		ZeroStruct(m_errbuf);
 		if (!m_h)
 			Throw(E_FAIL);
+		SetOption(CURLOPT_ERRORBUFFER, m_errbuf);
 	}
 
 	~CurlSession();
@@ -119,7 +120,9 @@ public:
 	void SetNullFunctions();
 };
 
-#endif
+void CurlCheck(CURLcode rc, CurlSession *sess = 0);
+
+#endif // UCFG_USE_LIBCURL
 
 
 #if UCFG_USE_LIBCURL
@@ -128,7 +131,7 @@ public:
 		ptr<CurlSession> Session;
 #else
 	class CInternetConnection : public SafeHandle {
-		void ReleaseHandle(HANDLE h) const {
+		void ReleaseHandle(intptr_t h) const override {
 			Win32Check(::InternetCloseHandle((HINTERNET)h));
 		}
 public:

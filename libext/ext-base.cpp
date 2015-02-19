@@ -246,24 +246,23 @@ thread_specific_ptr<String> Exception::t_LastStringArg;
 #endif
 
 String Exception::get_Message() const {
-#if UCFG_WDM
 	ostringstream os;
-	os << code() <<  code().message();
-	return os.str();
-#else
-	return EXT_STR("Error " << setw(8) << hex << ToHResult(_self) << ": " << code() << code().message());
+	os << "Error ";
+#if !UCFG_WDM
+	os << setw(8) << hex << ToHResult(_self) << ": ";
 #endif
+	os << code() << " " << code().message();
+	return os.str();
 }
 
 const char *Exception::what() const noexcept {
-	if (m_message.empty()) {
-		try {
+	try {
+		if (m_message.empty())
 			m_message = get_Message();
-		} catch (RCExc) {
-			return "Error: double exception in the Exception::what()";
-		}
+		return m_message.c_str();
+	} catch (RCExc) {
+		return "Error: double exception in the Exception::what()";
 	}
-	return m_message.c_str();
 }
 
 String Exception::ToString() const {
