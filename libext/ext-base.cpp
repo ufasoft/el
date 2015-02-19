@@ -805,18 +805,14 @@ CTraceWriter::~CTraceWriter() noexcept {
     		ms = dt.Millisecond;
 		long long tid = GetThreadNumber();
 		char buf[100];
-		const char *format = m_bPrintDate ? EXT_LL_PREFIX " %4d-%02d-%02d %02d:%02d:%02d.%03d "
-			: EXT_LL_PREFIX " %02d:%02d:%02d.%03d ";
-
 		if (m_bPrintDate)
-			sprintf(buf, format, tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
+			sprintf(buf, "%" EXT_LL_PREFIX " %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
 		else
-			sprintf(buf, format, tid, h, m, s, ms);
+			sprintf(buf, "%" EXT_LL_PREFIX " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
-			format = EXT_LL_PREFIX " %02d:%02d:%02d.%03d ";
-			sprintf(buf, format, tid, h, m, s, ms);
+			sprintf(buf, "%" EXT_LL_PREFIX " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
 			time_str = buf + str;
 		}
 
