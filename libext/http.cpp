@@ -31,19 +31,24 @@ Encoding *CHttpHeader::GetEncoding() {
 
 #if UCFG_USE_LIBCURL
 
-class CurlException : public Exception {
-	typedef Exception base;
-public:
-	CurlException(HRESULT hr, RCString s)
-		:	base(hr, s)
-	{}
-};
 
+static class curl_error_category : public error_category {
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "cURL"; }
+	
+	string message(int errval) const override {
+	     return ::curl_easy_strerror((CURLcode)errval);
+	}
+} s_curlErrorCategory;
+
+const error_category& curl_category() {
+	return s_curlErrorCategory;
+}
 
 void CurlCheck(CURLcode rc) {
-	if (rc == CURLE_OK)
-		return;
-	throw CurlException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_CURL, rc), ::curl_easy_strerror(rc));
+	if (rc != CURLE_OK)
+		Throw(error_code(rc, curl_category()));
 }
 
 
