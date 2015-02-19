@@ -7,6 +7,10 @@
 #	include <windows.h>
 #endif
 
+#ifdef __linux__
+#	include <sys/syscall.h>
+#endif
+
 #if UCFG_WIN32 && !UCFG_MINISTL
 #	include <shlwapi.h>
 
@@ -757,8 +761,8 @@ inline intptr_t AFXAPI GetThreadNumber() {
 	return (intptr_t)PsGetCurrentThreadId();
 #elif UCFG_WIN32
 	return ::GetCurrentThreadId();
-#elif defined(HAVE_GETTID)
-	return gettid();
+#elif defined(__linux__)
+	return syscall(SYS_gettid);
 #else
 	intptr_t r = (intptr_t)(void*)t_threadNumber.Value;
 	if (!(r & 0xFFFFFF))
