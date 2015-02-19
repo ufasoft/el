@@ -745,7 +745,7 @@ DWORD FileSystemInfo::get_Attributes() const {
 DateTime FileSystemInfo::get_CreationTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath, &st));
+	CCheck(::stat(FullPath.native(), &st));
 	return DateTime::from_time_t(st.st_ctime);
 #else
 	return GetData().ftCreationTime;
@@ -781,7 +781,7 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 	ut.modtime = tv.tv_sec;
 	dt.ToTimeval(tvDt);
 	ut.actime = tvDt.tv_sec;
-	CCheck(::utime(FullPath, &ut));
+	CCheck(::utime(FullPath.native(), &ut));
 #else
 	File file;
 	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
@@ -793,7 +793,7 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 DateTime FileSystemInfo::get_LastWriteTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath, &st));
+	CCheck(::stat(FullPath.native(), &st));
 	return DateTime::from_time_t(st.st_mtime);
 #else
 	return GetData().ftLastWriteTime;
