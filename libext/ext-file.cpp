@@ -729,7 +729,7 @@ void FileStream::Flush() {
 #ifdef WIN32
 WIN32_FIND_DATA FileSystemInfo::GetData() const {
 	WIN32_FIND_DATA findFileData;
-	HANDLE hFind = FindFirstFile(FullPath, &findFileData);
+	HANDLE hFind = FindFirstFile(FullPath.native(), &findFileData);
 	Win32Check(hFind != INVALID_HANDLE_VALUE);
 	Win32Check(FindClose(hFind));
 	return findFileData;
