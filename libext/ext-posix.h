@@ -86,6 +86,7 @@ typedef unsigned __int32 u32;
 
 typedef u32 dma_addr_t;
 
+
 /* Non-ANSI name for compatibility */
 #if !UCFG_EXT_C  && !defined(_OFF_T_DEFINED)//!!!
 	typedef __int64 off_t;
@@ -96,6 +97,9 @@ typedef u32 dma_addr_t;
 #	define SHUT_RD   	SD_RECEIVE
 #	define SHUT_WR		SD_SEND
 #	define SHUT_RDWR	SD_BOTH
+
+#	define popen _popen
+#	define pclose _pclose
 
 
 

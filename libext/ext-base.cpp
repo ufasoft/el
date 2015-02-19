@@ -243,21 +243,22 @@ thread_specific_ptr<String> Exception::t_LastStringArg;
 
 String Exception::get_Message() const {
 #if UCFG_WDM
-	return !m_message.empty() ? m_message : (m_message = (String(code().category().name()) + String(": ")  + String(code().message())));
+	ostringstream os;
+	os << code() <<  code().message();
+	return os.str();
 #else
-	return !m_message.empty() ? m_message : (m_message = EXT_STR("Error " << setw(8) << hex << ToHResult(_self) << ": " << code().category().name() << ": " << code().message()));
+	return EXT_STR("Error " << setw(8) << hex << ToHResult(_self) << ": " << code() << code().message());
 #endif
-/*!!!R
-#if UCFG_WDM
-	return m_message;
-#else
-	return m_message.empty() ? AfxProcessError(ToHResult(_self)) : m_message;
-#endif*/
 }
 
 const char *Exception::what() const noexcept {
-	if (m_message.empty())
-		m_message = get_Message();
+	if (m_message.empty()) {
+		try {
+			m_message = get_Message();
+		} catch (RCExc) {
+			return "Error: double exception in the Exception::what()";
+		}
+	}
 	return m_message.c_str();
 }
 
@@ -402,13 +403,13 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(HRESULT hr) {
 }
 
 
-#if UCFG_CRT=='U'
+#if UCFG_CRT=='U' && !UCFG_WDM
 
 typedef void (AFXAPI *PFNThrowImp)(HRESULT hr);
 void SetThrowImp(PFNThrowImp pfn);
 static int s_initThrowImp = (SetThrowImp(&ThrowImp), 1);
 
-#endif // UCFG_CRT=='U'
+#endif // UCFG_CRT=='U' && !UCFG_WDM
 
 
 
@@ -416,7 +417,7 @@ static int s_initThrowImp = (SetThrowImp(&ThrowImp), 1);
 DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
 #if UCFG_EH_SUPPORT_IGNORE
 	if (!CLocalIgnoreBase::ErrorCodeIsIgnored(ec)) {
-		TRC(1, funname <<  "(Ln" << nLine << "): " << ec.message());
+		TRC(1, funname <<  "(Ln" << nLine << "): " << ec << " " << ec.message());
 	}
 #endif
 	ThrowImp(ec);
@@ -507,10 +508,10 @@ void AFXAPI ProcessExceptionInCatch() {
 		throw;
 	} catch (const Exception& ex) {
 		TRC(0, ex);
-		wcerr << ex.Message << endl;
+		wcerr << ex.what() << endl;
 #if UCFG_GUI
 		if (!IsConsole())
-			MessageBox::Show(ex.Message);
+			MessageBox::Show(ex.what());
 #endif
 #if !UCFG_CATCH_UNHANDLED_EXC
 		throw;
@@ -1048,5 +1049,13 @@ static int s_initBignumFuns = InitBignumFuns();
 
 } // "C"
 
+namespace ExtSTL {
+#if !UCFG_STDSTL || !UCFG_STD_MUTEX || UCFG_SPECIAL_CRT
+	const adopt_lock_t adopt_lock = {};
+	const defer_lock_t defer_lock = {};
+	const try_to_lock_t try_to_lock = {};
+#endif // !UCFG_STDSTL || !UCFG_STD_MUTEX
+
+} // ExtSTL::
 
 

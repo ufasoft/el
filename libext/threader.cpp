@@ -83,12 +83,6 @@ namespace ExtSTL {
 	ostream& AFXAPI operator<<(ostream& os, const thread::id& v);
 #endif	// !UCFG_STDSTL || !UCFG_STD_THREAD
 
-#if !UCFG_STDSTL || !UCFG_STD_MUTEX || UCFG_SPECIAL_CRT
-	const adopt_lock_t adopt_lock = {};
-	const defer_lock_t defer_lock = {};
-	const try_to_lock_t try_to_lock = {};
-#endif // !UCFG_STDSTL || !UCFG_STD_MUTEX
-
 #if UCFG_WCE
 
 ostream& operator<<(ostream& os, const thread::id& v) {
@@ -721,7 +715,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 		OnEndThread(true);
 	} catch (thread_interrupted& ex) {
 		exitCode = m_exitCode = ex.code().value();
-		TRC(1, ex.Message << " in Thread: " << get_id() << "\t" << Name);
+		TRC(1, ex.what() << " in Thread: " << get_id() << "\t" << Name);
 		OnEndThread(true);
 	} catch (...) {
 		TRC(0, "Unhandled exception in Thread: " << get_id() << "\t" << Name);

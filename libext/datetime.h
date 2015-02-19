@@ -43,6 +43,7 @@ typedef duration<int, ratio<3600 * 24>> Days;
 class TimeSpan : public duration<int64_t, ratio<1, 10000000>> {					//!!!R	: public DateTimeBase {
 	typedef duration<int64_t, ratio<1, 10000000>> base;
 public:
+
 	typedef TimeSpan class_type;
 
 #if UCFG_WCE
@@ -63,6 +64,11 @@ public:
 
 	explicit TimeSpan(int64_t ticks = 0)
 		:	base(ticks)
+	{}
+
+	template <class T, class U>
+	TimeSpan(const std::chrono::duration<T, U>& dur)
+		: base(duration_cast<duration<TimeSpan::rep, TimeSpan::period>>(dur).count())
 	{}
 
 	TimeSpan(const TimeSpan& span)
@@ -99,24 +105,15 @@ public:
 		base::operator=(base(rd.ReadInt64()));
 	}
 
-	TimeSpan operator+(const TimeSpan& span) const {
-		return TimeSpan(count() + span.count());
-	}
+	TimeSpan operator+(const TimeSpan& span) const { return TimeSpan(count() + span.count()); }
+	TimeSpan operator-(const TimeSpan& span) const { return TimeSpan(count() - span.count()); }
 
 	/*
 
 	TimeSpan& operator+=(const TimeSpan& span) { m_ticks+=span.Ticks; return *this;}
 
-	TimeSpan operator-(const TimeSpan& span) const { return TimeSpan(m_ticks - span.m_ticks); }
 	TimeSpan& operator-=(const TimeSpan& span) { m_ticks-=span.Ticks; return *this;}
 
-	TimeSpan operator*(double v) const {
-		return TimeSpan(int64_t(m_ticks * v));
-	}
-
-	TimeSpan operator/(double v) const {
-		return TimeSpan(int64_t(m_ticks / v));
-	}
 
 	double get_TotalSeconds() const { return double(m_ticks)/10000000; }
 	DEFPROP_GET_CONST(double, TotalSeconds);
@@ -156,6 +153,14 @@ public:
 
 	friend class DateTime;
 };
+
+
+inline TimeSpan operator*(const TimeSpan& ts, int v) { return TimeSpan(int64_t(ts.count() * v)); }
+inline TimeSpan operator*(const TimeSpan& ts, double v) { return TimeSpan(int64_t(ts.count() * v)); }
+
+inline TimeSpan operator/(const TimeSpan& ts, int v) { return TimeSpan(int64_t(ts.count() / v)); }
+inline TimeSpan operator/(const TimeSpan& ts, double v) { return TimeSpan(int64_t(ts.count() / v)); }
+
 
 /*inline bool AFXAPI operator==(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks == span2.Ticks; }
 inline bool AFXAPI operator!=(const TimeSpan& span1, const TimeSpan& span2) { return !(span1 == span2); }
@@ -298,7 +303,12 @@ public:
 	DateTime operator+(const TimeSpan& span) const { return DateTime(m_ticks + span.count()); }
 	DateTime& operator+=(const TimeSpan& span) { return *this = *this + span; }
 
-	DateTime operator-(const TimeSpan& span) const { return DateTime(m_ticks - span.count()); }
+
+	template <class T, class U>
+	DateTime operator-(const std::chrono::duration<T, U>& dur) const {
+		return DateTime(m_ticks - duration_cast<std::chrono::duration<TimeSpan::rep, TimeSpan::period>>(dur).count());
+	}	
+	
 	DateTime& operator-=(const TimeSpan& span) { return *this = *this - span; }
 
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }

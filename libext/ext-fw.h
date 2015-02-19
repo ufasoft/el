@@ -816,10 +816,10 @@ path AFXAPI AddDirSeparator(const path& p);
 class FileSystemInfo {
 	typedef FileSystemInfo class_type;
 public:
-	String FullPath;
+	path FullPath;
 	bool m_bDir;
 
-	FileSystemInfo(RCString name, bool bDir)
+	FileSystemInfo(const path& name, bool bDir)
 		:	FullPath(name)
 		,	m_bDir(bDir)
 	{}
@@ -1550,6 +1550,35 @@ public:
 	String get_MainModuleFileName() { return m_pimpl->get_MainModuleFileName(); }
 	DEFPROP_GET(String, MainModuleFileName);
 #endif
+};
+
+class POpen : noncopyable {
+public:
+	POpen(RCString command, RCString mode)
+		:	m_stream(::popen(command, mode))
+	{
+		CCheck(m_stream ? 1 : -1);
+	}
+
+	~POpen() {
+		if (m_stream)
+			Wait();		
+	}
+
+	void Wait() {
+		switch (int rc = pclose(exchange(m_stream, nullptr))) {
+		case -1:
+			CCheck(-1);
+		case 0:
+			return;
+		default:
+			ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (byte)rc));
+		}
+	}
+
+	operator FILE*() { return m_stream; }
+private:
+	FILE *m_stream;
 };
 
 
