@@ -808,7 +808,7 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 	ut.actime = tv.tv_sec;
 	dt.ToTimeval(tvDt);
 	ut.modtime = tvDt.tv_sec;
-	CCheck(::utime(FullPath, &ut));
+	CCheck(::utime(FullPath.native(), &ut));
 #else
 	File file;
 	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
