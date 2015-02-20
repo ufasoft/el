@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include "ext-opencl.h"
@@ -26,16 +18,27 @@ const char * const s_errorTable[] = {
 	"PROPERTY",				"IMAGE_DESCRIPTOR",			"COMPILER_OPTIONS",			"LINKER_OPTIONS",				"DEVICE_PARTITION_COUNT"
 };
 
-String OpenclException::get_Message() const {
-	UInt32 code = HRESULT_CODE(HResult);
-	if (code < _countof(s_errorTable) && s_errorTable[code])
-		return EXT_STR("OpenCL CL_" << (code<30 ? "" : "INVALID_") << s_errorTable[code]);
-	return base::get_Message();	
+
+static class opencl_error_category : public error_category {
+	typedef error_category base;
+
+	const char *name() const noexcept override { return "OpenCL"; }
+	
+	string message(int errval) const override {
+		if (errval < size(s_errorTable) && s_errorTable[errval])
+  			return string(errval<30 ? "" : "INVALID_") + s_errorTable[errval];
+		return "Unknow error";
+	}
+
+} s_openclErrorCategory;
+
+const error_category& opencl_category() {
+	return s_openclErrorCategory;
 }
 
 void ClCheck(cl_int rc) {
 	if (rc != CL_SUCCESS)
-		throw OpenclException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENCL, -rc));
+		throw OpenclException(-rc);
 }
 
 String CommandTypeToString(cl_command_type ct) {
@@ -111,7 +114,7 @@ String Platform::GetStringInfo(cl_platform_info param_name) const {
 
 bool Platform::get_HasRetainDeviceFunction() const {
 	String sver = Version;
-	return !(sver.Find("OpenCL 1.0 ") >= 0 || sver.Find("OpenCL 1.1 ") >= 0);
+	return sver.find("OpenCL 1.0 ")==String::npos && sver.find("OpenCL 1.1 ")==String::npos;
 }
 
 vector<Device> Platform::GetDevices(cl_device_type typ) const {
@@ -128,7 +131,7 @@ vector<Device> Platform::GetDevices(cl_device_type typ) const {
 Device::Device(cl_device_id id)
 	:	m_h(id)
 {
-	m_bHasRetain = get_Platform().HasRetainDeviceFunction;
+	m_bHasRetain = get_Platform().get_HasRetainDeviceFunction();
 }
 
 
@@ -158,7 +161,7 @@ cl_command_type Event::get_CommandType() {
 	return r;
 }
 
-UInt64 Event::GetProfilingInfo(cl_event_info name) {
+uint64_t Event::GetProfilingInfo(cl_event_info name) {
 	cl_ulong r;
 	ClCheck(::clGetEventProfilingInfo(Handle(), name, sizeof r, &r, 0));
 	return r;
@@ -176,8 +179,18 @@ static cl_uint NumEvents(const vector<Event> *events) {
 	return events ? events->size() : 0;
 }
 
-static const cl_event *ToEventWaitList(const vector<Event> *events) {
-	return events && !events->empty() ? &events->front().m_h : 0;
+static const cl_event *ToEventWaitList(const vector<cl_event>& events) {
+	return !events.empty() ? &events.front() : 0;
+}
+
+static const vector<cl_event> ToEventList(const vector<Event> *events) {
+	if (events) {
+		vector<cl_event> r(events->size());
+		for (size_t i=0; i<r.size(); ++i)
+			r[i] = (*events)[i].m_h;
+		return r;
+	}
+	return vector<cl_event>();
 }
 
 CommandQueue::CommandQueue(const Context& ctx, const Device& dev, cl_command_queue_properties prop) {
@@ -188,43 +201,43 @@ CommandQueue::CommandQueue(const Context& ctx, const Device& dev, cl_command_que
 
 Event CommandQueue::enqueueTask(const Kernel& kernel, const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueTask(Handle(), kernel(), NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueTask(Handle(), kernel(), NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueNDRangeKernel(const Kernel& kernel, const NDRange& offset, const NDRange& global, const NDRange& local, const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueNDRangeKernel(Handle(), kernel(), global.dimensions(), offset, global, local, NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueNDRangeKernel(Handle(), kernel(), global.dimensions(), offset, global, local, NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueNativeKernel(void (CL_CALLBACK *pfn)(void *), pair<void*, size_t> args, const vector<Memory> *mems, const vector<const void*> *memLocs, const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueNativeKernel(Handle(), pfn, args.first, args.second, (mems ? mems->size() : 0), (mems ? &(*mems)[0].m_h : 0), (memLocs ? (const void **)&(*memLocs)[0]: 0), NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueNativeKernel(Handle(), pfn, args.first, args.second, (mems ? mems->size() : 0), (mems ? &(*mems)[0].m_h : 0), (memLocs ? (const void **)&(*memLocs)[0]: 0), NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueReadBuffer(const Buffer& buffer, bool bBlocking, size_t offset, size_t cb, void *p, const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueReadBuffer(Handle(), buffer(), bBlocking, offset, cb, p, NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueReadBuffer(Handle(), buffer(), bBlocking, offset, cb, p, NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueWriteBuffer(const Buffer& buffer, bool bBlocking, size_t offset, size_t cb, const void *p, const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueWriteBuffer(Handle(), buffer(), bBlocking, offset, cb, p, NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueWriteBuffer(Handle(), buffer(), bBlocking, offset, cb, p, NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueMarkerWithWaitList(const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueMarkerWithWaitList(Handle(), NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueMarkerWithWaitList(Handle(), NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
 Event CommandQueue::enqueueBarrierWithWaitList(const vector<Event> *events) {
 	Event ev;
-	ClCheck(::clEnqueueBarrierWithWaitList(Handle(), NumEvents(events), ToEventWaitList(events), &ev.m_h));
+	ClCheck(::clEnqueueBarrierWithWaitList(Handle(), NumEvents(events), ToEventWaitList(ToEventList(events)), &ev.m_h));
 	return ev;
 }
 
@@ -393,7 +406,6 @@ void Program::build(const vector<Device>& devs) {
 		throw BuildException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENCL, -rc), &buf[0]);
 	}
 }
-
 
 }} // Ext::cl::
 

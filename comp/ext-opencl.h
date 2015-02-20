@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #ifdef __APPLE__
@@ -141,19 +133,19 @@ public:
 	cl_command_type get_CommandType();
 	DEFPROP_GET(cl_command_type, CommandType);
 
-	UInt64 get_ProfilingCommandQueued() { return GetProfilingInfo(CL_PROFILING_COMMAND_QUEUED); }
-	DEFPROP_GET(UInt64, ProfilingCommandQueued);
+	uint64_t get_ProfilingCommandQueued() { return GetProfilingInfo(CL_PROFILING_COMMAND_QUEUED); }
+	DEFPROP_GET(uint64_t, ProfilingCommandQueued);
 
-	UInt64 get_ProfilingCommandSubmit() { return GetProfilingInfo(CL_PROFILING_COMMAND_SUBMIT); }
-	DEFPROP_GET(UInt64, ProfilingCommandSubmit);
+	uint64_t get_ProfilingCommandSubmit() { return GetProfilingInfo(CL_PROFILING_COMMAND_SUBMIT); }
+	DEFPROP_GET(uint64_t, ProfilingCommandSubmit);
 
-	UInt64 get_ProfilingCommandStart() { return GetProfilingInfo(CL_PROFILING_COMMAND_START); }
-	DEFPROP_GET(UInt64, ProfilingCommandStart);
+	uint64_t get_ProfilingCommandStart() { return GetProfilingInfo(CL_PROFILING_COMMAND_START); }
+	DEFPROP_GET(uint64_t, ProfilingCommandStart);
 
-	UInt64 get_ProfilingCommandEnd() { return GetProfilingInfo(CL_PROFILING_COMMAND_END); }
-	DEFPROP_GET(UInt64, ProfilingCommandEnd);
+	uint64_t get_ProfilingCommandEnd() { return GetProfilingInfo(CL_PROFILING_COMMAND_END); }
+	DEFPROP_GET(uint64_t, ProfilingCommandEnd);
 private:
-	UInt64 GetProfilingInfo(cl_event_info name);
+	uint64_t GetProfilingInfo(cl_event_info name);
 };
 
 class Device { //!!! special case, OpenCL 1.1 has not retain/release : public ResourceWrapper<cl_device_id> {
@@ -185,7 +177,7 @@ public:
 
 	~Device() {
 		if (Valid() && m_bHasRetain) {
-			if (!std::uncaught_exception())
+			if (!InException)
 				ClCheck(::clReleaseDevice(m_h));
 			else {
 				try {
@@ -256,17 +248,17 @@ public:
 	bool get_Available() const { return *(cl_bool*)GetInfo(CL_DEVICE_AVAILABLE).constData(); }
 	DEFPROP_GET(bool, Available);
 
-	UInt32 get_MaxComputeUnits() const { return *(cl_uint*)GetInfo(CL_DEVICE_MAX_COMPUTE_UNITS).constData(); }
-	DEFPROP_GET(UInt32, MaxComputeUnits);
+	uint32_t get_MaxComputeUnits() const { return *(cl_uint*)GetInfo(CL_DEVICE_MAX_COMPUTE_UNITS).constData(); }
+	DEFPROP_GET(uint32_t, MaxComputeUnits);
 
 	size_t get_MaxWorkGroupSize() const { return *(size_t*)GetInfo(CL_DEVICE_MAX_WORK_GROUP_SIZE).constData(); }
 	DEFPROP_GET(size_t, MaxWorkGroupSize);
 
-	UInt64 get_GlobalMemSize() const { return *(cl_ulong*)GetInfo(CL_DEVICE_GLOBAL_MEM_SIZE).constData(); }
-	DEFPROP_GET(UInt64, GlobalMemSize);
+	uint64_t get_GlobalMemSize() const { return *(cl_ulong*)GetInfo(CL_DEVICE_GLOBAL_MEM_SIZE).constData(); }
+	DEFPROP_GET(uint64_t, GlobalMemSize);
 
-	UInt64 get_MaxMemAllocSize() const { return *(cl_ulong*)GetInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE).constData(); }
-	DEFPROP_GET(UInt64, MaxMemAllocSize);
+	uint64_t get_MaxMemAllocSize() const { return *(cl_ulong*)GetInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE).constData(); }
+	DEFPROP_GET(uint64_t, MaxMemAllocSize);
 
 	vector<String> get_Extensions() const {
 		Blob blob = GetInfo(CL_DEVICE_EXTENSIONS);
@@ -279,6 +271,8 @@ public:
 
 	size_t get_ProfilingTimerResolution() const { return *(size_t*)GetInfo(CL_DEVICE_PROFILING_TIMER_RESOLUTION).constData(); }
 	DEFPROP_GET(size_t, ProfilingTimerResolution);
+private:
+	CInException InException;
 };
 
 typedef map<cl_context_properties, cl_context_properties> CContextProps;
@@ -337,7 +331,7 @@ public:
 };
 
 struct ProgramBinary {
-	Device Device;
+	cl::Device Device;
 	Blob Binary;
 };
 
@@ -385,15 +379,16 @@ public:
 	}
 };
 
+const error_category& opencl_category();
 
-class OpenclException : public Exc {
-	typedef Exc base;
+
+class OpenclException : public Exception {
+	typedef Exception base;
 public:
-	OpenclException(HRESULT hr)
-		:	base(hr)
+	OpenclException(int errval)
+		:	base(error_code(errval, opencl_category()))
 	{}
 
-	String get_Message() const override;
 };
 
 class BuildException : public OpenclException {
@@ -406,7 +401,6 @@ public:
 		,	Log(log)
 	{}
 };
-
 
 }} // Ext::cl::
 
