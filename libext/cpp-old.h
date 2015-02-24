@@ -176,9 +176,9 @@ template <class T>
 class observer_ptr : public Ext::PtrBase<T> {
 	typedef Ext::PtrBase<T> base;
 public:
-/*!!!R	typedef T element_type;
-	typedef T *pointer;
-	typedef T &reference; */
+	using base::element_type;
+	using base::pointer;
+	using base::reference;
 
 	observer_ptr() noexcept
 		: base(0) {
