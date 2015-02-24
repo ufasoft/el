@@ -556,7 +556,9 @@ void AFXAPI ProcessExceptionInCatch() {
 #endif // !UCFG_WDM && !UCFG_MINISTL
 
 String TruncPrettyFunction(const char *fn) {
-	return String(fn, strchr(fn, '(')-fn);
+	const char *e = strchr(fn, '(',
+			*b = strchr(e, ' ');
+	return String(b+1, e);
 }
 
 bool CTrace::s_bShowCategoryNames;
