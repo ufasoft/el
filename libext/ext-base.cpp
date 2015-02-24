@@ -556,7 +556,7 @@ void AFXAPI ProcessExceptionInCatch() {
 #endif // !UCFG_WDM && !UCFG_MINISTL
 
 String TruncPrettyFunction(const char *fn) {
-	const char *e = strchr(fn, '('), b;
+	const char *e = strchr(fn, '('), *b;
 	for (b=e-1; b!=fn; --b)
 		if (*b[-1] == ' ') 
 			break;
