@@ -163,7 +163,7 @@ public:
 	{
 	}
 
-	WebProxy(nullptr_t)
+	WebProxy(std::nullptr_t)
 		:	Type(ProxyType::Default)
 	{
 	}
@@ -348,9 +348,7 @@ public:
 #if UCFG_USE_LIBCURL
 	int64_t get_ContentLength();
 
-	String get_StatusDescription() {
-		return m_pImpl->m_statusDesc;
-	}
+	String get_StatusDescription();
 	DEFPROP_GET(String, StatusDescription);
 #else
 	DEF_STRING_PROP(ContentEncoding,	HTTP_QUERY_CONTENT_ENCODING)

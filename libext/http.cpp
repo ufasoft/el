@@ -143,7 +143,7 @@ size_t InetStream::ReadFunction(void *ptr, size_t size, size_t nmemb, void *stre
 	InetStream& stm = *(InetStream*)stream;
 	if (!stm.m_io.UserWriteBuf)
 		return 0; //EOF CURL_READFUNC_PAUSE;
-	size_t n = std::min(stm.m_io.UserWriteSize, size*nmemb);
+	size_t n = (std::min)(stm.m_io.UserWriteSize, size*nmemb);
 	memcpy(ptr, stm.m_io.UserWriteBuf, n);
 	if (stm.m_io.UserWriteSize -= n)
 		stm.m_io.UserWriteBuf += n;
@@ -152,12 +152,12 @@ size_t InetStream::ReadFunction(void *ptr, size_t size, size_t nmemb, void *stre
 	return n;
 }
 
-static StaticRegex s_reStatus("\\d+\\s+(.*)");
+static StaticRegex s_reStatus("HTTP/[^ ]+ \\d+\\s+(.*)");
 
 size_t InetStream::HeaderFunction(void *ptr, size_t size, size_t nmemb, void *stream) {
 	InetStream& stm = *(InetStream*)stream;
 	size_t n = size*nmemb;
-	String line((const char*)ptr, n);
+	String line = String((const char*)ptr, n).Trim();
 	vector<String> v = line.Split(":", 2);
 	HttpWebResponse::Impl *respImpl = (HttpWebResponse::Impl*)stm.m_pResponseImpl;
 	if (v.size() >= 2) {
@@ -633,7 +633,12 @@ int64_t HttpWebResponse::get_ContentLength() {
 	CurlCheck(::curl_easy_getinfo(m_pImpl->m_conn.Session->m_h, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &r), m_pImpl->m_conn.Session);
 	return (int64_t)r;
 }
-#endif
+
+String HttpWebResponse::get_StatusDescription() {
+	return m_pImpl->m_statusDesc;
+}
+
+#endif // UCFG_USE_LIBCURL
 
 
 String HttpWebResponse::GetString(DWORD dwInfoLevel) {
@@ -718,7 +723,11 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 	if (!(statusCode>=200 && statusCode<=299)) {
 		String desc = m_response.StatusDescription;
 		WebException ex(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_HTTP, statusCode), "HTTP "+Convert::ToString(statusCode)+": "+desc);
+#if UCFG_USE_LIBCURL
+		ex.Result = Encoding::UTF8.GetChars(stm.ResultStream.Blob);
+#else
 		ex.Result = StreamReader(m_response.GetResponseStream()).ReadToEnd();
+#endif	
 //!!!?		ex.Response = m_response;
 		throw ex;
 	}
