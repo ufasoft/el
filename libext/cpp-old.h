@@ -175,10 +175,12 @@ inline int __cdecl uncaught_exceptions() noexcept {
 template <class T>
 class observer_ptr : public Ext::PtrBase<T> {
 	typedef Ext::PtrBase<T> base;
+
+	using base::m_p;
 public:
-	using base::element_type;
-	using base::pointer;
-	using base::reference;
+	using typename base::element_type;
+	using typename base::pointer;
+	using typename base::reference;
 
 	observer_ptr() noexcept
 		: base(0) {

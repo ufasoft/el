@@ -1036,7 +1036,7 @@ class NameValueCollection : public std::map<String, CStringVector, CaseInsensiti
 public:
 	CStringVector GetValues(RCString key) const {
 		CStringVector r;
-		base::iterator i = find(key);
+		base::const_iterator i = find(key);
 		return i!=end() ? i->second : CStringVector();
 	}
 
