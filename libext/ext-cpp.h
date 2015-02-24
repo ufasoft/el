@@ -112,6 +112,41 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 
 extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 
+namespace Ext {
+
+template <typename T>
+class PtrBase {
+public:
+	typedef T element_type;
+	typedef T *pointer;
+	typedef T &reference;
+
+	PtrBase(T *p = 0)
+		:	m_p(p)
+	{}
+
+	inline T *get() const EXT_FAST_NOEXCEPT { return m_p; }
+	inline T *operator->() const EXT_FAST_NOEXCEPT { return m_p; }
+
+	T *release() noexcept {
+		pointer r = m_p;
+		m_p = nullptr;
+		return r;
+
+		//!!!R		return exchange(m_p, nullptr);
+	}
+
+	void swap(PtrBase& p) noexcept {
+		std::swap(m_p, p.m_p);
+	}
+protected:
+	T *m_p;
+};
+
+} // Ext::
+
+
+
 //!!!R #ifndef _CRTBLD
 #	include "cpp-old.h"
 //!!! #endif

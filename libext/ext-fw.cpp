@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include <random>
@@ -604,7 +609,7 @@ String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 		else if (isalnum(ch) || strchr("!'()*-._", ch))
 			os << ch;
 		else
-			os << '%' << setw(2) << setfill('0') << hex << (int)(BYTE)ch;
+			os << '%' << setw(2) << setfill('0') << hex << (int)(byte)ch;
 	}		
 	return os.str();
 }
@@ -961,12 +966,12 @@ int AFXAPI Rand() {
 }
 
 Random::Random(int seed)
-	: m_prngeng(new std::default_random_engine(seed))
+	: m_prngeng(new default_random_engine(seed))
 {
 }
 
 static std::default_random_engine *Rngeng(Random& r) {
-	return static_cast<std::default_random_engine*>(r.m_prngeng);
+	return static_cast<default_random_engine*>(r.m_prngeng);
 }
 
 Random::~Random() {
@@ -1233,13 +1238,13 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	}
 
 #if UCFG_WIN32
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_ARGUMENT_ARRAY, 0, hr, 0, buf, sizeof buf, p))
+	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS, 0, hr, 0, buf, sizeof buf, p))
 		return String(hex)+ ":  " + buf;
 	switch (HRESULT_FACILITY(hr)) {
 	case FACILITY_INTERNET:
-		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(_T("urlmon.dll"))),
+		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("urlmon.dll"))),
 			hr, 0, buf, sizeof buf, 0))
-			return String(hex)+":  "+buf;
+			return String(hex) + ":  " + buf;
 		break;
 	case FACILITY_WIN32:
 		return win32_category().message(WORD(HRESULT_CODE(hr)));
@@ -1249,7 +1254,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	for (vector<CModuleInfo>::iterator i(m_vec.begin()); i!=m_vec.end(); ++i) {
 		String msg = i->GetMessage(hr);
 		if (!!msg)
-			return String(hex)+":  "+msg;
+			return String(hex) + ":  " + msg;
 	}
 	String msg = m_default.GetMessage(hr);
 	if (!!msg)
@@ -1257,12 +1262,12 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 #if UCFG_HAVE_STRERROR
 	if (HRESULT_FACILITY(hr) == FACILITY_C) {
 		if (const char *s = strerror(HRESULT_CODE(hr)))
-			return String(hex)+":  "+s;
+			return String(hex) + ":  " + s;
 	}
 #endif
 #if UCFG_WIN32
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle), hr, 0, buf, sizeof buf, 0))
-		return String(hex)+":  "+buf;
+	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle), hr, 0, buf, sizeof buf, 0))
+		return String(hex) + ":  " + buf;
 #endif
 	return hex;
 }
@@ -1580,8 +1585,9 @@ bool ProcessObj::Start() {
 }
 
 
-
 Process AFXAPI Process::Start(const ProcessStartInfo& psi) {
+	TRC(2, psi.FileName << " " << psi.Arguments);
+
 	Process r;
 	r.m_pimpl = new ProcessObj;
 	r.m_pimpl->StartInfo = psi;

@@ -266,12 +266,7 @@ public:
 	//!!!         m_evFinish;
 	atomic<int32_t> aRefCountActiveThreads;
 
-	thread_group(bool bSync = true)
-		:	m_aRef(0)
-		,	m_bSync(bSync)
-		,	aRefCountActiveThreads(0)
-	{}
-
+	thread_group(bool bSync = true);
 	virtual ~thread_group();	
 	int size() const;
 	void add_thread(ThreadBase *t);

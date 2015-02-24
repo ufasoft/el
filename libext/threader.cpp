@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -321,6 +326,13 @@ void ThreadBase::InitCOM() {
 
 #endif
 
+thread_group::thread_group(bool bSync)
+	:	m_aRef(0)
+	,	m_bSync(bSync)
+	,	aRefCountActiveThreads(0)
+{
+}
+
 thread_group::~thread_group() {
 	if (m_bSync)			//!!!?
 		StopChilds();
@@ -513,7 +525,7 @@ void ThreadBase::QueueUserAPC(PAPCFUNC pfnAPC, ULONG_PTR dwData) {
 		return;
 	if (winMajVersion >= 6)
 		Win32Check(false, ERROR_GEN_FAILURE);
-	else
+	else if (WaitForSingleObject(HandleAccess(_self), 0) == WAIT_TIMEOUT)
 		Throw(E_EXT_QueueUserAPC);				// No GetLastError value
 }
 

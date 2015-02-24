@@ -126,14 +126,12 @@ void CurlCheck(CURLcode rc, CurlSession *sess = 0);
 
 
 #if UCFG_USE_LIBCURL
-	class CInternetConnection {
-	public:
-		ptr<CurlSession> Session;
+class CInternetConnection {
+public:
+	ptr<CurlSession> Session;
 #else
-	class CInternetConnection : public SafeHandle {
-		void ReleaseHandle(intptr_t h) const override {
-			Win32Check(::InternetCloseHandle((HINTERNET)h));
-		}
+class CInternetConnection : public SafeHandle {
+	void ReleaseHandle(intptr_t h) const override;
 public:
 	void HttpOpen(CHttpInternetConnection& respConn, RCString verb, RCString objectName, RCString version, RCString referer, LPCTSTR* lplpszAcceptTypes = 0, DWORD dwFlags = 0, DWORD_PTR ctx = 0);
 	void AddHeaders(const WebHeaderCollection& headers, DWORD dwModifiers = HTTP_ADDREQ_FLAG_ADD);
@@ -402,7 +400,8 @@ friend class InetStream;
 class WebException : public Exception {
 	typedef Exception base;
 public:
-	HttpWebResponse Response;
+	String Result;
+//	HttpWebResponse Response;
 
 	WebException(HRESULT hr, RCString msg = nullptr)
 		:	base(hr, msg)
@@ -430,11 +429,7 @@ public:
 
 	HttpWebRequest(RCString url = nullptr);
 	
-	~HttpWebRequest() {
-#if UCFG_USE_LIBCURL
-		::curl_slist_free_all(m_headers);
-#endif
-	}
+	~HttpWebRequest();
 
 	HttpWebResponse GetResponse(const byte *p = 0, size_t size = 0);
 

@@ -267,6 +267,10 @@ CInternetConnection::~CInternetConnection() {
 
 #if !UCFG_USE_LIBCURL
 
+void CInternetConnection::ReleaseHandle(intptr_t h) const {
+	Win32Check(::InternetCloseHandle((HINTERNET)h));
+}
+
 void CInternetConnection::HttpOpen(CHttpInternetConnection& respConn, RCString verb, RCString objectName, RCString version, RCString referer, LPCTSTR* lplpszAcceptTypes, DWORD dwFlags, DWORD_PTR ctx) {
 	respConn.Attach(::HttpOpenRequest((HINTERNET)(intptr_t)BlockingHandle(_self), verb, objectName, version, referer, lplpszAcceptTypes, dwFlags, ctx));
 }
@@ -276,7 +280,7 @@ void CInternetConnection::AddHeaders(const WebHeaderCollection& headers, DWORD d
 		Win32Check(::HttpAddRequestHeaders((HINTERNET)(intptr_t)Handle(_self), headers.ToString(), DWORD(-1), dwModifiers));
 }
 
-#endif
+#endif // !UCFG_USE_LIBCURL
 
 
 #if UCFG_USE_LIBCURL
@@ -344,6 +348,12 @@ HttpWebRequest::HttpWebRequest(RCString url)
 		RequestUri = url;
 		SetPimpl(m_pimpl = new Impl);
 	}
+}
+
+HttpWebRequest::~HttpWebRequest() {
+#if UCFG_USE_LIBCURL
+	::curl_slist_free_all(m_headers);
+#endif
 }
 
 DWORD HttpWebRequest::get_Timeout() {
@@ -708,7 +718,8 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 	if (!(statusCode>=200 && statusCode<=299)) {
 		String desc = m_response.StatusDescription;
 		WebException ex(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_HTTP, statusCode), "HTTP "+Convert::ToString(statusCode)+": "+desc);
-		ex.Response = m_response;
+		ex.Result = StreamReader(m_response.GetResponseStream()).ReadToEnd();
+//!!!?		ex.Response = m_response;
 		throw ex;
 	}
 		

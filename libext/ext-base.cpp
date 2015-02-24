@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -251,7 +256,7 @@ String Exception::get_Message() const {
 #if !UCFG_WDM
 	os << setw(8) << hex << ToHResult(_self) << ": ";
 #endif
-	os << code() << " " << code().message();
+	os << dec << code() << " " << code().message();
 	return os.str();
 }
 

@@ -79,28 +79,6 @@ public:
 	}
 };
 
-template <typename T>
-class PtrBase {
-public:
-	typedef T element_type;
-	PtrBase(T *p = 0)
-		:	m_p(p)
-	{}
-
-	inline T *get() const noexcept { return m_p; }
-	inline T *operator->() const noexcept { return m_p; }
-
-	T *release() noexcept {
-		return exchange(m_p, nullptr);
-	}
-
-	void swap(PtrBase& p) noexcept {
-		std::swap(m_p, p.m_p);
-	}
-protected:
-	T *m_p;
-};
-
 template <typename T, typename L>
 class RefPtr : public PtrBase<T> {
 	typedef PtrBase<T> base;
@@ -153,7 +131,7 @@ public:
 		m_p = p;
 	}
 
-	operator T*() const { return get(); }
+	inline operator T*() const EXT_FAST_NOEXCEPT { return get(); }
 
 	T** AddressOf() {
 		if (m_p)

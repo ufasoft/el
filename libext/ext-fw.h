@@ -1034,13 +1034,13 @@ struct CaseInsensitiveEqual {
 class NameValueCollection : public std::map<String, CStringVector, CaseInsensitiveStringLess>, public CPrintable {
 	typedef std::map<String, CStringVector, CaseInsensitiveStringLess> base;
 public:
-	CStringVector GetValues(RCString key) {
+	CStringVector GetValues(RCString key) const {
 		CStringVector r;
 		base::iterator i = find(key);
 		return i!=end() ? i->second : CStringVector();
 	}
 
-	String Get(RCString key) {
+	String Get(RCString key) const {
 		return find(key)!=end() ? String::Join(",", GetValues(key)) : nullptr;
 	}
 
