@@ -724,7 +724,7 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 		String desc = m_response.StatusDescription;
 		WebException ex(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_HTTP, statusCode), "HTTP "+Convert::ToString(statusCode)+": "+desc);
 #if UCFG_USE_LIBCURL
-		ex.Result = Encoding::UTF8.GetChars(stm.ResultStream.Blob);
+		ex.Result = Encoding::UTF8.GetChars(ConstBuf(stm.ResultStream));
 #else
 		ex.Result = StreamReader(m_response.GetResponseStream()).ReadToEnd();
 #endif	
