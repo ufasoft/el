@@ -395,14 +395,31 @@ friend class WebClient;
 friend class InetStream;
 };
 
+ENUM_CLASS(http_error) {
+	continue_request = 100,
+	switching_protocols = 101,
+	ok = 200,
+	unauthorized = 401,	
+	gateway_timeout = 504,
+	version_not_supported = 505
+} END_ENUM_CLASS(http_error);
+
+
+const error_category& http_category();
+
+inline error_code make_error_code(http_error e) { return error_code(int(e), http_category()); }
+} namespace std {
+	template <> struct is_error_code_enum<http_error> : true_type {};
+} namespace Ext {
+
 class WebException : public Exception {
 	typedef Exception base;
 public:
 	String Result;
 //	HttpWebResponse Response;
 
-	WebException(HRESULT hr, RCString msg = nullptr)
-		:	base(hr, msg)
+	WebException(http_error errval, RCString msg = nullptr)
+		:	base(make_error_code(errval), msg)
 	{}
 
 	~WebException() noexcept {}

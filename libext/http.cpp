@@ -13,6 +13,28 @@ namespace Ext {
 
 using namespace std;
 
+static class CHttpCategory : public error_category {
+	const char *name() const noexcept override { return "HTTP"; }
+
+	string message(int errval) const override {
+#if UCFG_WIN32
+		return HResultToMessage(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_HTTP, errval));
+#else
+		switch ((http_error)errval) {
+		case http_error::unauthorized: return "Unauthorized";
+		default:
+			return "Unknown";
+		}
+#endif
+	}
+} s_http_category;
+
+const error_category& http_category() {
+	return s_http_category;
+}
+
+
+
 static StaticRegex s_reCharset("charset=([^()<>@,;:\\\\\"/\\[\\]?={} \t]+)");
 
 Encoding *CHttpHeader::GetEncoding() {
@@ -721,8 +743,7 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 
 	int statusCode = m_response.StatusCode;
 	if (!(statusCode>=200 && statusCode<=299)) {
-		String desc = m_response.StatusDescription;
-		WebException ex(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_HTTP, statusCode), "HTTP "+Convert::ToString(statusCode)+": "+desc);
+		WebException ex((http_error)statusCode, m_response.StatusDescription);
 #if UCFG_USE_LIBCURL
 		ex.Result = Encoding::UTF8.GetChars(ConstBuf(stm.ResultStream));
 #else
