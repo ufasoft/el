@@ -69,30 +69,18 @@ int AFXAPI CCheck(int i, int allowableError) {
 	int en = errno;
 	if (en == allowableError)
 		return i;
-#if UCFG_HAVE_STRERROR
-	ThrowS(HRESULT_FROM_C(en), strerror(en));
-#else
-	Throw(HRESULT_FROM_C(en));
-#endif
+	Throw(error_code(en, generic_category()));
 }
 
 int AFXAPI NegCCheck(int rc) {
 	if (rc >= 0)
 		return rc;
-#if UCFG_HAVE_STRERROR
-	ThrowS(HRESULT_FROM_C(-rc), strerror(-rc));
-#else
-	Throw(HRESULT_FROM_C(-rc));
-#endif
+	Throw(error_code(-rc, generic_category()));
 }
 
 EXTAPI void AFXAPI CFileCheck(int i) {
 	if (i) {
-#if UCFG_HAVE_STRERROR
-		ThrowS(HRESULT_FROM_C(i), strerror(i));
-#else
-		Throw(HRESULT_FROM_C(i));
-#endif
+		Throw(error_code(i, generic_category()));
 	}
 }
 
