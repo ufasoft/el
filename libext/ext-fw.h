@@ -1493,7 +1493,7 @@ protected:
 	void CommonInit();
 
 	int m_stat_loc;
-	mutable CInt<ptid_t> m_pid;
+	mutable CInt<pid_t> m_pid;
 };
 
 
