@@ -450,7 +450,7 @@ vector<String> ParseCommandLine(RCString s) {
 	String arg;
 	for (const char *p=s; *p; ++p) {
 		if (exchange(bSingleQuote, false))
-			arg += *p;
+			arg += String(*p);
 		else {
 			switch (*p) {
 			case '\"':
@@ -470,7 +470,7 @@ vector<String> ParseCommandLine(RCString s) {
 					break;
 				}
 			default:
-				arg += *p;
+				arg += String(*p);
 			}
 		}
 	}
