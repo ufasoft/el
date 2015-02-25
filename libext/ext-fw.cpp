@@ -1509,16 +1509,15 @@ bool ProcessObj::get_HasExited() {
 
 bool ProcessObj::Start() {
 #if UCFG_USE_POSIX
+	vector<const char *> argv;
+	String filename = StartInfo.FileName.native();
+	argv.push_back(filename);
+	vector<String> v = ParseCommandLine(StartInfo.Arguments);
+	TRC(5, "ARGs:\n" << v);
+	for (size_t i=0; i<v.size(); ++i)
+		argv.push_back(v[i]);
+	argv.push_back(nullptr);
 	if (!(m_pid = CCheck(::fork()))) {
-		vector<const char *> argv;
-		String filename = StartInfo.FileName.native();
-		argv.push_back(filename);
-		vector<String> v = ParseCommandLine(StartInfo.Arguments);
-		TRC(5, "Args:\n" << v << "----------------");
-		for (size_t i=0; i<v.size(); ++i)
-			argv.push_back(v[i]);
-		argv.push_back(nullptr);
-
 		execv(filename, (char**)&argv.front());
 		_exit(errno);           						// don't use any TRC() here, danger of Deadlock
 	}
@@ -1593,6 +1592,7 @@ bool ProcessObj::Start() {
 #else // UCFG_WIN32
 	Throw(E_NOTIMPL);
 #endif
+	TRC(4, "PID: " << m_pid);
 	return true;
 }
 
