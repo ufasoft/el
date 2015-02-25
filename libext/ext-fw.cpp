@@ -446,25 +446,40 @@ String Environment::GetEnvironmentVariable(RCString s) {
 
 vector<String> ParseCommandLine(RCString s) {
 	vector<String> r;
-	bool bQuoting = false, bSingleQuote = false, bHasArg = false;
+	bool bQuoting = false, bSingleQuoting = false, bBackSlashQuote = false, bHasArg = false;
 	String arg;
 	for (const char *p=s; *p; ++p) {
-		if (exchange(bSingleQuote, false))
+		if (exchange(bBackSlashQuote, false))
 			arg += String(*p);
 		else {
 			switch (*p) {
 			case '\"':
-				bQuoting = !bQuoting;
-				bHasArg = true;
+				if (!bSingleQuoting) {
+					bQuoting = !bQuoting;
+					bHasArg = true;
+				} else
+					arg += String(*p);
 				break;
+			case '\'':
+				if (!bQuoting) {
+					bSingleQuoting = !bSingleQuoting;
+					bHasArg = true;
+				} else
+					arg += String(*p);
+				break;
+#if UCFG_USE_POSIX
 			case '\\':
-				bSingleQuote = true;
+				if (bSingleQuoting)
+					arg += String(*p);
+				else
+					bBackSlashQuote = true;
 				break;			
+#endif
 			case ' ':
 			case '\t':
 			case '\r':
 			case '\n':
-				if (!bQuoting) {
+				if (!bQuoting && !bSingleQuoting) {
 					if (bHasArg || !arg.empty()) {
 						r.push_back(exchange(arg, String()));
 						bHasArg = false;
