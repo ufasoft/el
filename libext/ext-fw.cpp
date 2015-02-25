@@ -445,20 +445,18 @@ String Environment::GetEnvironmentVariable(RCString s) {
 }
 
 vector<String> ParseCommandLine(RCString s) {
+	TRC(2, s);
 	vector<String> r;
 	const char *p = s;
 	const char *q = 0;
 	bool bQuoting = false;
 	for (; *p; p++) {
-		char ch = *p;
-		switch (ch) {
+		switch (char ch = *p) {
 		case '\"':
-			if (bQuoting) {
+			if (q)
 				r.push_back(String(q, p-q));
-				bQuoting = false;
-			}
-			else
-				bQuoting = true;
+			bQuoting = !bQuoting;
+			if (bQuoting) {
 			q = 0;
 			break;
 		case ' ':
@@ -477,6 +475,7 @@ vector<String> ParseCommandLine(RCString s) {
 	}
 	if (q)
 		r.push_back(String(q, p-q));
+	TRC(2, r);
 	return r;
 }
 
