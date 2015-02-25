@@ -1501,13 +1501,14 @@ bool ProcessObj::Start() {
 #if UCFG_USE_POSIX
 	if (!(m_pid = CCheck(::fork()))) {
 		vector<const char *> argv;
-		argv.push_back(StartInfo.FileName.native());
+		String filename = StartInfo.FileName.native();
+		argv.push_back(filename);
 		vector<String> v = ParseCommandLine(StartInfo.Arguments);
 		for (size_t i=0; i<v.size(); ++i)
 			argv.push_back(v[i]);
 		argv.push_back(nullptr);
 
-		execv(StartInfo.FileName, &argv.front());
+		execv(filename, &argv.front());
 		_exit(errno);           						// don't use any TRC() here, danger of Deadlock
 	}
 #elif UCFG_WIN32
