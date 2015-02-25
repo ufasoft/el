@@ -802,6 +802,12 @@ void CTraceWriter::Init(const char* funname) {
 
 static InterlockedSingleton<mutex> s_pCs;
 
+#if UCFG_USE_POSIX
+#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "d"
+#else
+#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "x"
+#endi
+
 CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
 		m_os << '\n';
@@ -814,13 +820,13 @@ CTraceWriter::~CTraceWriter() noexcept {
 		long long tid = GetThreadNumber();
 		char buf[100];
 		if (m_bPrintDate)
-			sprintf(buf, "%" EXT_LL_PREFIX "x %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
 		else
-			sprintf(buf, "%" EXT_LL_PREFIX "x %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
-			sprintf(buf, "%" EXT_LL_PREFIX "x %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
 			time_str = buf + str;
 		}
 

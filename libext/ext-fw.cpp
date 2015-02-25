@@ -1151,6 +1151,8 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 	if (!m_mcat) {
 		if (exchange(m_bCheckedOpen, true))
 			return nullptr;
+		if (!exists(m_moduleName) && !exists(System.GetExeDir() / m_moduleName))
+			throw nullptr;
 		try {
 			m_mcat.Open(m_moduleName.c_str());
 		} catch (RCExc) {
@@ -1469,7 +1471,6 @@ DWORD ProcessObj::get_ExitCode() const {
 #endif
 }
 
-
 void ProcessObj::Kill() {
 #if UCFG_WIN32
 	Win32Check(::TerminateProcess((HANDLE)(intptr_t)HandleAccess(*this), 1));
@@ -1497,17 +1498,28 @@ bool ProcessObj::get_HasExited() {
 }
 
 bool ProcessObj::Start() {
-#if UCFG_WIN32_FULL
+#if UCFG_USE_POSIX
+	if (!(m_pid = CCheck(::fork()))) {
+		vector<const char *> argv;
+		argv.push_back(StartInfo.FileName);
+		vector<String> v = ParseCommandLine(StartInfo.Arguments);
+		for (size_t i=0; i<v.size(); ++i)
+			argv.push_back(v[i]);
+		argv.push_back(nullptr);
 
+		execv(StartInfo.FileName, &argv.front());
+		_exit(errno);           						// don't use any TRC() here, danger of Deadlock
+	}
+#elif UCFG_WIN32
 	STARTUPINFO si = {sizeof si};
 	static_assert(SW_SHOWNORMAL == 1, "Invalid SW SHOWNORMAL");
 	si.wShowWindow = SW_SHOWNORMAL; // same as SW_NORMAL Critical for running iexplore
 	SafeHandle hI, hO, hE;
-#if UCFG_WCE
+#	if UCFG_WCE
 	STARTUPINFO *psi = 0;
 	bool bInheritHandles = false;
 	LPCTSTR pCurrentDirectory = 0;
-#else
+#	else
 	if (StartInfo.RedirectStandardInput || StartInfo.RedirectStandardOutput || StartInfo.RedirectStandardError) {
 		si.hStdInput = StdHandle::Get(STD_INPUT_HANDLE);
 		si.hStdOutput = StdHandle::Get(STD_OUTPUT_HANDLE);
@@ -1538,40 +1550,39 @@ bool ProcessObj::Start() {
 	bool bInheritHandles = bool(si.dwFlags & STARTF_USESTDHANDLES);
 	String dir = StartInfo.WorkingDirectory.empty() ? String(nullptr) : String(StartInfo.WorkingDirectory);
 	LPCTSTR pCurrentDirectory = dir;
-#endif
+#	endif
 
 	PROCESS_INFORMATION pi;
 	String cls = StartInfo.FileName;
 	if (!StartInfo.Arguments.empty())
-		cls += " "+StartInfo.Arguments;
+		cls += " " + StartInfo.Arguments;
 	size_t len = (cls.length()+1)*sizeof(TCHAR);
 	TCHAR *cl = (TCHAR*)alloca(len);
 	memcpy(cl, (const TCHAR*)cls, len);
 	String fileName = StartInfo.FileName.empty() ? String(nullptr) : String(StartInfo.FileName);
 	DWORD flags = StartInfo.Flags;
 	void *pEnvironment = 0;
-#if !UCFG_WCE
+#	if !UCFG_WCE
 	if (StartInfo.CreateNoWindow)
 		flags |= CREATE_NO_WINDOW;
 	String sEnv;
 	for (map<String, String>::iterator it=StartInfo.EnvironmentVariables.begin(), e=StartInfo.EnvironmentVariables.end(); it!=e; ++it)
 		sEnv += it->first + "=" + it->second + String('\0', 1);
 	pEnvironment = (void*)(const TCHAR*)sEnv;
-#	ifdef _UNICODE
+#		ifdef _UNICODE
 	flags |= CREATE_UNICODE_ENVIRONMENT;
+#		endif
 #	endif
-#endif
 	Win32Check(::CreateProcess(0, cl, 0, 0, bInheritHandles, flags, pEnvironment, (LPTSTR)pCurrentDirectory, psi, &pi)); //!!! BOOL is not bool
 	Attach(pi.hProcess);
 	m_pid = pi.dwProcessId;
 	ptr<CWinThread> pThread(new CWinThread);
 	pThread->Attach((intptr_t)pi.hThread, pi.dwThreadId);
-	return true;
-#else
+#else // UCFG_WIN32
 	Throw(E_NOTIMPL);
-#endif // UCFG_WIN32
+#endif
+	return true;
 }
-
 
 Process AFXAPI Process::Start(const ProcessStartInfo& psi) {
 	TRC(2, psi.FileName << " " << psi.Arguments);

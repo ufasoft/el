@@ -1419,7 +1419,7 @@ struct ProcessStartInfo {
 		RedirectStandardInput,
 		RedirectStandardOutput,
 		RedirectStandardError;
-	DWORD Flags;
+	uint32_t Flags;
 
 	ProcessStartInfo(const path& fileName = path(), RCString arguments = String());
 };
@@ -1493,7 +1493,7 @@ protected:
 	void CommonInit();
 
 	int m_stat_loc;
-	mutable CInt<DWORD> m_pid;
+	mutable CInt<pitd_t> m_pid;
 };
 
 
