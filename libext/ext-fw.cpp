@@ -1501,7 +1501,7 @@ bool ProcessObj::Start() {
 #if UCFG_USE_POSIX
 	if (!(m_pid = CCheck(::fork()))) {
 		vector<const char *> argv;
-		argv.push_back(StartInfo.FileName);
+		argv.push_back(StartInfo.FileName.native());
 		vector<String> v = ParseCommandLine(StartInfo.Arguments);
 		for (size_t i=0; i<v.size(); ++i)
 			argv.push_back(v[i]);
