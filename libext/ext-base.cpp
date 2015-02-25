@@ -806,7 +806,7 @@ static InterlockedSingleton<mutex> s_pCs;
 #	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "d"
 #else
 #	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "x"
-#endià
+#endif
 
 CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
