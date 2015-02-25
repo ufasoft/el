@@ -525,20 +525,29 @@ String Environment::ExpandEnvironmentVariables(RCString name) {
 #endif
 }
 
-map<String, String> Environment::GetEnvironmentVariables() {
 #if UCFG_USE_POSIX
-	Throw(E_NOTIMPL);
-#else
+	extern "C" extern char **environ;
+#endif
+
+map<String, String> Environment::GetEnvironmentVariables() {
 	map<String, String> m;
-	CStringsKeeper sk;
-	for (LPTSTR p=sk.m_p; *p; p+=_tcslen(p)+1) {
-		if (TCHAR *q = _tcschr(p, '='))
-			m[String(p, q-p)] = q+1;
+#if UCFG_USE_POSIX
+	for (char **p = environ; *p; ++p) {
+		if (char *q = strchr(p, '='))
+			m[String(p, q-p)] = q + 1;
 		else
 			m[p] = "";			
 	}
-	return m;
+#else
+	CStringsKeeper sk;
+	for (LPTSTR p=sk.m_p; *p; p+=_tcslen(p)+1) {
+		if (TCHAR *q = _tcschr(p, '='))
+			m[String(p, q-p)] = q + 1;
+		else
+			m[p] = "";			
+	}
 #endif
+	return m;
 }
 
 
