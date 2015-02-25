@@ -1508,7 +1508,7 @@ bool ProcessObj::Start() {
 			argv.push_back(v[i]);
 		argv.push_back(nullptr);
 
-		execv(filename, &argv.front());
+		execv(filename, (char**)&argv.front());
 		_exit(errno);           						// don't use any TRC() here, danger of Deadlock
 	}
 #elif UCFG_WIN32
