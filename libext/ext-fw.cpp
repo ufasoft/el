@@ -464,9 +464,11 @@ vector<String> ParseCommandLine(RCString s) {
 			case '\t':
 			case '\r':
 			case '\n':
-				if (!bQuoting && (bHasArg || !arg.empty())) {
-					r.push_back(exchange(arg, String()));
-					bHasArg = false;
+				if (!bQuoting) {
+					if (bHasArg || !arg.empty())) {
+						r.push_back(exchange(arg, String()));
+						bHasArg = false;
+					}
 					break;
 				}
 			default:
