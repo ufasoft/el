@@ -526,7 +526,9 @@ String Environment::ExpandEnvironmentVariables(RCString name) {
 }
 
 #if UCFG_USE_POSIX
-	extern "C" extern char **environ;
+extern "C" {
+	extern char **environ;
+}
 #endif
 
 map<String, String> Environment::GetEnvironmentVariables() {
