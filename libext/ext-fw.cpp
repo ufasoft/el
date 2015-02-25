@@ -1149,10 +1149,8 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 		return nullptr;
 #if UCFG_USE_POSIX
 	if (!m_mcat) {
-		if (exchange(m_bCheckedOpen, true))
+		if (exchange(m_bCheckedOpen, true) || !exists(m_moduleName) && !exists(System.GetExeDir() / m_moduleName))
 			return nullptr;
-		if (!exists(m_moduleName) && !exists(System.GetExeDir() / m_moduleName))
-			throw nullptr;
 		try {
 			m_mcat.Open(m_moduleName.c_str());
 		} catch (RCExc) {
