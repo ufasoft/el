@@ -546,7 +546,7 @@ void AFXAPI ProcessExceptionInCatch() {
 #endif
 	}
 #if UCFG_USE_POSIX
-	_exit(ERR_UNHANDLED_EXCEPTION);
+	_Exit(ERR_UNHANDLED_EXCEPTION);
 #else
 	//!!! Error in DLLS ::ExitProcess(ERR_UNHANDLED_EXCEPTION);	
 	::TerminateProcess(::GetCurrentProcess(), ERR_UNHANDLED_EXCEPTION);
