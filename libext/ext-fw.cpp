@@ -448,11 +448,11 @@ vector<String> ParseCommandLine(RCString s) {
 	vector<String> r;
 	bool bQuoting = false, bSingleQuote = false, bHasArg = false;
 	String arg;
-	for (const char *p=s, ch; (ch = *p); ++p) {
+	for (const char *p=s; *p; ++p) {
 		if (exhange(bSingleQuote, false)
-			arg += ch;
+			arg += *p;
 		else {
-			switch (ch) {
+			switch (*p) {
 			case '\"':
 				bQuoting = !bQuoting;
 				bHasArg = true;
@@ -470,7 +470,7 @@ vector<String> ParseCommandLine(RCString s) {
 					break;
 				}
 			default:
-				arg += ch;
+				arg += *p;
 			}
 		}
 	}
