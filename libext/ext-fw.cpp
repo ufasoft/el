@@ -449,7 +449,7 @@ vector<String> ParseCommandLine(RCString s) {
 	bool bQuoting = false, bSingleQuote = false, bHasArg = false;
 	String arg;
 	for (const char *p=s; *p; ++p) {
-		if (exchange(bSingleQuote, false)
+		if (exchange(bSingleQuote, false))
 			arg += *p;
 		else {
 			switch (*p) {
