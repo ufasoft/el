@@ -535,10 +535,10 @@ map<String, String> Environment::GetEnvironmentVariables() {
 	map<String, String> m;
 #if UCFG_USE_POSIX
 	for (char **p = environ; *p; ++p) {
-		if (char *q = strchr(p, '='))
-			m[String(p, q-p)] = q + 1;
+		if (char *q = strchr(*p, '='))
+			m[String(*p, q-*p)] = q + 1;
 		else
-			m[p] = "";			
+			m[*p] = "";			
 	}
 #else
 	CStringsKeeper sk;
