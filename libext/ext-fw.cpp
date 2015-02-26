@@ -1528,7 +1528,7 @@ bool ProcessObj::Start() {
 	String filename = StartInfo.FileName.native();
 	argv.push_back(filename);
 	vector<String> v = ParseCommandLine(StartInfo.Arguments);
-	TRC(5, "ARGs:\n" << v);
+	TRC(5, "ARGs:\n" << v << "---");
 	for (size_t i=0; i<v.size(); ++i)
 		argv.push_back(v[i]);
 	argv.push_back(nullptr);
