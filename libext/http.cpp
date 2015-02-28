@@ -71,7 +71,7 @@ const error_category& curl_category() {
 void CurlCheck(CURLcode rc, CurlSession *sess) {
 	if (rc != CURLE_OK) {
 		if (sess) {
-			TRC(1, sess->m_errbuf);
+			TRC(1, "CURLcode: " << rc << "  " << sess->m_errbuf);
 			throw system_error(rc, curl_category(), sess->m_errbuf);
 		} else
 			Throw(error_code(rc, curl_category()));
