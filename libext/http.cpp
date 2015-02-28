@@ -62,6 +62,14 @@ static class curl_error_category : public error_category {
 	string message(int errval) const override {
 	     return ::curl_easy_strerror((CURLcode)errval);
 	}
+
+	bool equivalent(int errval, const error_condition& c) const noexcept override {			//!!!TODO
+		switch (errval) {
+		case CURLE_COULDNT_CONNECT:	return c==errc::connection_refused;
+		default:
+			return base::equivalent(errval, c);
+		}
+	}
 } s_curlErrorCategory;
 
 const error_category& curl_category() {
