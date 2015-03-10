@@ -242,6 +242,7 @@ public:
 	COleVariant(short nSrc, VARTYPE vtSrc = VT_I2);
 	COleVariant(int lSrc, VARTYPE vtSrc = VT_I4);
 	COleVariant(long lSrc, VARTYPE vtSrc = VT_I4);
+	COleVariant(uint64_t v);
 	COleVariant(const COleCurrency& curSrc);
 	COleVariant(float fltSrc);
 	COleVariant(double dblSrc);
@@ -271,6 +272,7 @@ public:
 	const COleVariant& operator=(BYTE nSrc);
 	const COleVariant& operator=(short nSrc);
 	const COleVariant& operator=(long lSrc);
+	const COleVariant& operator=(uint64_t v);
 
 	const COleVariant& operator=(int v) { return operator=((long)v); }
 
@@ -522,7 +524,7 @@ CUnknownHelper(IUnknown *unk)
 
 template <class T> class CComMem {
 public:
-	CPointer<T> m_p;
+	observer_ptr<T> m_p;
 
 	~CComMem() {
 		::CoTaskMemFree(m_p);
@@ -571,7 +573,7 @@ public:
 	void WriteBuffer(const void *buf, size_t count) override;
 	bool Eof() const override;
 	void Flush() override;
-	EXT_API Int64 Seek(Int64 offset, SeekOrigin origin) const override;
+	EXT_API int64_t Seek(int64_t offset, SeekOrigin origin) const override;
 
 	/*!!!R
 	Blob Read(int size);
@@ -808,7 +810,7 @@ struct _ATL_OBJMAP_ENTRY {
 
 class AFX_CLASS CComModule {
 public:
-	LONG m_nLockCount;
+	atomic<int> m_aLockCount;
 	std::unique_ptr<CComTypeLibHolder> m_tlHolder;
 	std::vector<ptr<CComGeneralClass>> m_classList;
 
@@ -905,7 +907,7 @@ public:
 
 
 struct AFX_CLASS _AFX_OCC_DIALOG_INFO {
-	CPointer<DLGTEMPLATE> m_pNewTemplate;
+	observer_ptr<DLGTEMPLATE> m_pNewTemplate;
 	DLGITEMTEMPLATE **m_ppOleDlgItems;
 
 	_AFX_OCC_DIALOG_INFO();
@@ -1007,13 +1009,13 @@ public:
 
 class ComExc : public Exception {
 	typedef Exception base;
-protected:
-	_com_error m_comError;
 public:
 	ComExc(HRESULT hr, IErrorInfo* perrinfo = 0)
 		:	base(hr)
 		,	m_comError(hr, perrinfo)
 	{}
+protected:
+	_com_error m_comError;
 
 	String get_Message() const override { return (LPCWSTR)m_comError.Description(); }
 };

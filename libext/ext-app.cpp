@@ -357,8 +357,38 @@ CConApp::CConApp() {
 }
 
 
-
 CConApp *CConApp::s_pApp;
+
+bool CConApp::OnSignal(int sig) {
+	s_bSigBreak = true;
+	return false;
+}
+
+#if !UCFG_WCE
+
+void CConApp::SetSignals() {
+	signal(SIGINT, OnSigInt);
+#if UCFG_USE_POSIX
+	signal(SIGPIPE, SIG_IGN);
+	signal(SIGTERM, OnSigInt);
+#endif
+#ifdef WIN32
+	signal(SIGBREAK, OnSigInt);
+#endif
+}
+
+void __cdecl CConApp::OnSigInt(int sig) {
+	TRC(2, sig);
+	if (s_pApp->OnSignal(sig))
+		signal(sig, OnSigInt);
+	else {
+		raise(sig);
+#ifdef WIN32
+		AfxEndThread(0, true); //!!!
+#endif
+	}
+}
+#endif // !UCFG_WCE
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
 	if (const char *slevel = getenv("UCFG_TRC")) {
@@ -415,32 +445,6 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 	return Environment::ExitCode;
 }
 
-bool CConApp::OnSignal(int sig) {
-	s_bSigBreak = true;
-	return false;
-}
-
-#if !UCFG_WCE
-
-void CConApp::SetSignals() {
-	signal(SIGINT, OnSigInt);
-#ifdef WIN32
-	signal(SIGBREAK, OnSigInt);
-#endif
-}
-
-void __cdecl CConApp::OnSigInt(int sig) {
-	TRC(2, sig);
-	if (s_pApp->OnSignal(sig))
-		signal(sig, OnSigInt);
-	else {
-		raise(sig);
-#ifdef WIN32
-		AfxEndThread(0, true); //!!!
-#endif
-	}
-}
-#endif // !UCFG_WCE
 
 } // Ext::
 

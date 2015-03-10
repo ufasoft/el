@@ -576,7 +576,7 @@ protected:
 
 class SocketThread : public SocketThreadWrap<Thread> {
 public:
-	SocketThread(thread_group *tr) {
+	SocketThread(thread_group *tr = 0) {
 		m_owner.reset(tr);
 	}
 };
@@ -585,6 +585,42 @@ public:
 typedef SocketThreadWrap<WorkItem> SocketWorkItem;
 #endif
 
+template <class T>
+class ListenerThread : public SocketThread {
+	typedef SocketThread base;
+public:
+	Socket m_sockListen;
+	SocketKeeper m_socketKeeper;
+	IPEndPoint m_ep;
+
+	ListenerThread(thread_group& tg, const IPEndPoint& ep)
+		: base(&tg)
+		, m_ep(ep)
+		, m_sockListen(ep.Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp)
+		, m_socketKeeper(_self, m_sockListen)
+	{
+	}
+protected:
+	void BeforeStart() override {
+		TRC(2, "Listening on " << m_ep);
+		
+		m_sockListen.Bind(m_ep);
+		m_sockListen.Listen();
+	}
+
+	void Execute() override {
+		Name = "CListenThread";
+
+		DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
+
+		while (!Ext::this_thread::interruption_requested()) {
+			ptr<T> p = new T;
+			p->m_owner.reset(&GetThreadRef());
+			p->m_sock = move(m_sockListen.Accept().first);
+			p->Start();
+		}
+	}
+};
 
 class CSocketLooper {
 public:
@@ -634,7 +670,7 @@ private:
 	mutable CBool m_bEof;
 };
 
-class TcpClient {
+class TcpClient : noncopyable {
 public:
 	Socket Client;
 	NetworkStream Stream;
@@ -643,7 +679,7 @@ public:
 		:	Stream(Client)
 	{}
 
-	void Connect(const IPEndPoint& ep) {
+	virtual void Connect(const IPEndPoint& ep) {
 		Client.Connect(ep);
 	}
 };

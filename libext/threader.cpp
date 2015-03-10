@@ -370,12 +370,11 @@ void thread_group::interrupt_all() {
 
 void thread_group::join_all() {
 	CThreadColl ar;
-	EXT_LOCK (m_cs) {
-		ar.swap(m_threads);
-	}
+	EXT_LOCKED(m_cs, ar.swap(m_threads));
 	for (CThreadColl::iterator i(ar.begin()), e(ar.end()); i!=e; ++i) {
-		if ((*i)->Valid())
-			(*i)->Join();
+		ptr<ThreadBase>& r = *i;
+		if (r->Valid())
+			r->Join();
 
 		//!!!    int ec = t->ExitCode;
 	}

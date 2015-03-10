@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <el/libext/ext-net.h>
 
 #if UCFG_WIN32
@@ -9,6 +10,7 @@
 #if UCFG_USE_LIBCURL
 #	include <curl/curl.h>
 #endif
+
 
 namespace Ext {
 
@@ -28,7 +30,6 @@ public:
 protected:
 	HINTERNET m_hInternet;
 };
-
 
 AFX_API int AFXAPI InetCheck(int i);
 
@@ -169,7 +170,7 @@ public:
 	}
 
 	WebProxy(RCString host, uint16_t port, ProxyType typ = ProxyType::Http)
-		:	Address("http://"+host+":"+Convert::ToString(port))					// http:// here only for Url conventions, because Proxy can be SOCKS
+		:	Address("http://" + host + ":" + Convert::ToString(port))					// http:// here only for Url conventions, because Proxy can be SOCKS
 		,	Type(typ)
 	{
 	}

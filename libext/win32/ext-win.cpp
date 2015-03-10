@@ -1,14 +1,9 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <windows.h>
+#include <wininet.h>
 #include <commctrl.h>
+
 
 #if UCFG_WND
 #	include <el/libext/win32/ext-wnd.h>
@@ -85,7 +80,7 @@ bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
 	return b;
 }
 
-void CSyncObject::AttachCreated(HANDLE h) {
+void CSyncObject::AttachCreated(intptr_t h) {
 	Attach(h);
 	m_bAlreadyExists = GetLastError()==ERROR_ALREADY_EXISTS;
 }
@@ -94,7 +89,7 @@ ProcessModule::ProcessModule(class Process& process, HMODULE hModule)
 	:	Process(process)
 	,	HModule(hModule)
 {
-	Win32Check(::GetModuleInformation(Handle(*process.m_pimpl), hModule, &m_mi, sizeof m_mi));
+	Win32Check(::GetModuleInformation((HANDLE)(intptr_t)Handle(*process.m_pimpl), hModule, &m_mi, sizeof m_mi));
 }
 
 #if !UCFG_WCE
@@ -117,13 +112,13 @@ vector<String> COperatingSystem::get_LogicalDriveStrings() {
 
 String ProcessModule::get_FileName() const {
 	TCHAR buf[MAX_PATH];
-	Win32Check(::GetModuleFileNameEx(Handle(*Process.m_pimpl), HModule, buf, _countof(buf)));
+	Win32Check(::GetModuleFileNameEx((HANDLE)(intptr_t)Handle(*Process.m_pimpl), HModule, buf, size(buf)));
 	return buf;
 }
 
 String ProcessModule::get_ModuleName() const {
 	TCHAR buf[MAX_PATH];
-	Win32Check(::GetModuleBaseName(Handle(*Process.m_pimpl), HModule, buf, _countof(buf)));
+	Win32Check(::GetModuleBaseName((HANDLE)(intptr_t)Handle(*Process.m_pimpl), HModule, buf, size(buf)));
 	return buf;
 }
 
@@ -131,7 +126,7 @@ vector<ProcessModule> GetProcessModules(Process& process) {
 	vector<HMODULE> ar(5);
 	for (bool bContinue=true; bContinue;) {
 		DWORD cbNeeded;
-		BOOL r = ::EnumProcessModules(Handle(*process.m_pimpl), &ar[0], ar.size()*sizeof(HMODULE), &cbNeeded);
+		BOOL r = ::EnumProcessModules((HANDLE)(intptr_t)Handle(*process.m_pimpl), &ar[0], ar.size()*sizeof(HMODULE), &cbNeeded);
 		Win32Check(r);
 		bContinue = cbNeeded > ar.size()*sizeof(HMODULE);
 		ar.resize(cbNeeded/sizeof(HMODULE));
@@ -151,7 +146,7 @@ static String ToDosPath(RCString lpath) {
 		if (v.size()) {
 			String lp = v[0];
 			if (lp.length() < lpath.length() && !lp.CompareNoCase(lpath.Left(lp.length()))) {
-				return ((ld.Right(1) == "\\" && lpath[0] == '\\') ? dd : ld) + lpath.substr(lp.length());
+				return ((ld.Right(1) == "\\" && lpath.at(0) == '\\') ? dd : ld) + lpath.substr(lp.length());
 			}
 		}
 	}
@@ -169,13 +164,13 @@ String ProcessObj::get_MainModuleFileName() {
 		DBG_LOCAL_IGNORE_WIN32(ERROR_PARTIAL_COPY);
 		DBG_LOCAL_IGNORE_WIN32(ERROR_INVALID_HANDLE);
 
-		Win32Check(::GetModuleFileNameEx(Handle(_self), 0, buf, _countof(buf)));
+		Win32Check(::GetModuleFileNameEx((HANDLE)(intptr_t)Handle(_self), 0, buf, size(buf)));
 		return buf;
 	} catch (RCExc) {
 	}
 	DlProcWrap<PFN_GetProcessImageFileName> pfnGetProcessImageFileName(s_dllPsapi, EXT_WINAPI_WA_NAME(GetProcessImageFileName));
 	if (pfnGetProcessImageFileName) {
-		Win32Check(pfnGetProcessImageFileName(Handle(_self), buf, _countof(buf)));
+		Win32Check(pfnGetProcessImageFileName((HANDLE)(intptr_t)Handle(_self), buf, size(buf)));
 		return ToDosPath(buf);
 	} else
 		Throw(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY));
@@ -189,7 +184,7 @@ ProcessObj::ProcessObj(pid_t pid, DWORD dwAccess, bool bInherit)
 {
 	CommonInit();
 	if (pid)
-		Attach(::OpenProcess(dwAccess, bInherit, pid));
+		Attach((intptr_t)::OpenProcess(dwAccess, bInherit, pid));
 	/*!!!
 	else
 	{
@@ -210,7 +205,7 @@ void COperatingSystem::MessageBeep(UINT uType) {
 
 DWORD File::GetOverlappedResult(OVERLAPPED& ov, bool bWait) {
 	DWORD r;
-	Win32Check(::GetOverlappedResult(HandleAccess(_self), &ov, &r, bWait));
+	Win32Check(::GetOverlappedResult((HANDLE)(intptr_t)HandleAccess(_self), &ov, &r, bWait));
 	return r;
 }
 
@@ -350,20 +345,6 @@ void AFXAPI AfxWinInit(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lp
 #endif
 	}
 }
-
-/*!!!R
-void CSingleLock::Lock(DWORD dwTimeOut) {
-	m_pObject->lock(dwTimeOut);
-	m_bAcquired = true;
-}
-
-void CSingleLock::Unlock() {
-	if (m_bAcquired) {
-		m_pObject->Unlock();
-		m_bAcquired = false;
-	}
-}
-*/
 
 BOOL CWinApp::InitInstance() {
 	return TRUE;
@@ -584,7 +565,7 @@ static int AfxWinMainEx(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString l
 			nReturnCode = pThread->RunLoop();
 		else {
 			if (pThread->m_pMainWnd) {
-				TRACE0("Warning: Destroying non-NULL m_pMainWnd\n");
+				TRC(0, "Warning: Destroying non-NULL m_pMainWnd");
 				pThread->m_pMainWnd->Destroy();
 			}
 			nReturnCode = pThread->ExitInstance();
@@ -604,7 +585,7 @@ static int AbortFilter() {
 #if UCFG_COMPLEX_WINAPP			//!!!?
 	AfxGetApp()->OnAbort();
 #endif
-	return EXCEPTION_CONTINUE_SEARCH ;
+	return EXCEPTION_CONTINUE_SEARCH;
 }
 
 int AFXAPI AfxWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lpCmdLine, int nCmdShow) {
@@ -680,6 +661,8 @@ static const Win32CodeErrc s_win32code2errc[] ={
 	ERROR_NOT_SAME_DEVICE,		errc::cross_device_link,
 	ERROR_WRITE_PROTECT,		errc::read_only_file_system,
 	ERROR_POSSIBLE_DEADLOCK,	errc::resource_deadlock_would_occur,
+	ERROR_PRIVILEGE_NOT_HELD,	errc::operation_not_permitted,
+	ERROR_INTERNET_CANNOT_CONNECT, errc::connection_refused,
 	WSAENOBUFS, 				errc::no_buffer_space,
 	WSAEINTR,					errc::interrupted,
 	WSAEBADF,					errc::bad_file_descriptor,
@@ -723,11 +706,23 @@ static class Win32Category : public error_category {			// outside function to el
 	const char *name() const noexcept override { return "Win32"; }
 
 	string message(int eval) const override {
-#if UCFG_WDM
-		return "Error";		//!!!
-#else
-		return explicit_cast<string>(AfxProcessError(eval));
+#if !UCFG_WDM
+		TCHAR buf[256];
+
+		if (eval >= INTERNET_ERROR_BASE && eval <= INTERNET_ERROR_LAST) {
+			if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("wininet.dll"))),
+				eval, 0, buf, sizeof buf, 0))
+				return "WinInet: " + String(buf);
+		} else if (eval >= WSABASEERR && eval<WSABASEERR + 1024) {
+			if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
+				LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle),
+				eval, 0, buf, sizeof buf, 0))
+				return String(buf);
+		}
+		if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, eval, 0, buf, sizeof buf, 0))
+			return String(buf);
 #endif
+		return Convert::ToString(eval, 16);
 	}
 
 	error_condition default_error_condition(int errval) const noexcept override {
