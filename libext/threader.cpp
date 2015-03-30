@@ -372,7 +372,7 @@ void thread_group::join_all() {
 	CThreadColl ar;
 	EXT_LOCKED(m_cs, ar.swap(m_threads));
 	for (CThreadColl::iterator i(ar.begin()), e(ar.end()); i!=e; ++i) {
-		ptr<ThreadBase>& r = *i;
+		const ptr<ThreadBase>& r = *i;
 		if (r->Valid())
 			r->Join();
 
