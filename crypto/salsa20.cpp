@@ -1,9 +1,7 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -63,63 +61,69 @@ const byte g_salsaIndices[32][4] = {
 
 namespace Ext { namespace Crypto {
 
+static void SalsaQuarterRound(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d) {
+	c ^= _rotl((b ^= _rotl(a + d, 7))  + a, 9);
+	a ^= _rotl((d ^= _rotl(c + b, 13)) + c, 18);
+}
 
-void Salsa20Core(uint32_t dst[16], const uint32_t src[16], int rounds) {
-	
-	uint32_t 
-		w0  = dst[0]  ^= src[0],
-		w5  = dst[1]  ^= src[1],
-		w10 = dst[2]  ^= src[2],
-		w15 = dst[3]  ^= src[3],
-		w12 = dst[4]  ^= src[4],
-		w1  = dst[5]  ^= src[5],
-		w6  = dst[6]  ^= src[6],
-		w11 = dst[7]  ^= src[7],
-		w8  = dst[8]  ^= src[8],
-		w13 = dst[9]  ^= src[9],
-		w2  = dst[10] ^= src[10],
-		w7  = dst[11] ^= src[11],
-		w4  = dst[12] ^= src[12],
-		w9  = dst[13] ^= src[13],
-		w14 = dst[14] ^= src[14],
-		w3  = dst[15] ^= src[15];
+void Salsa20Core(uint32_t dst[16], int rounds) noexcept {
+	uint32_t w[16];
+	memcpy(w, dst, sizeof w);
 
 	for (int i=0; i<rounds; ++i) {
-		w8  ^= _rotl((w4  ^= _rotl(w0  + w12, 7))  + w0,  9);
-		w13 ^= _rotl((w9  ^= _rotl(w5  + w1,  7))  + w5,  9);
-		w2  ^= _rotl((w14 ^= _rotl(w10 + w6,  7))  + w10, 9);
-		w7  ^= _rotl((w3  ^= _rotl(w15 + w11, 7))  + w15, 9);
+		SalsaQuarterRound(w[0], w[4], w[8], w[12]);
+		SalsaQuarterRound(w[5], w[9], w[13], w[1]);
+		SalsaQuarterRound(w[10], w[14], w[2], w[6]);
+		SalsaQuarterRound(w[15], w[3], w[7], w[11]);
 
-		w0  ^= _rotl((w12 ^= _rotl(w8  + w4,  13)) + w8,  18);
-		w5	^= _rotl((w1  ^= _rotl(w13 + w9,  13)) + w13, 18);
-		w10 ^= _rotl((w6  ^= _rotl(w2  + w14, 13)) + w2,  18);
-		w15 ^= _rotl((w11 ^= _rotl(w7  + w3,  13)) + w7,  18);
-
-		std::swap(w2, w8);
-		std::swap(w7, w13);
-		std::swap(w1, w4);
-		std::swap(w12, w3);
-		std::swap(w6, w9);
-		std::swap(w11, w14);
+		std::swap(w[1], w[4]);
+		std::swap(w[2], w[8]);
+		std::swap(w[3], w[12]);
+		std::swap(w[6], w[9]);
+		std::swap(w[7], w[13]);
+		std::swap(w[11], w[14]);
 	}
 
-	dst[0]  += w0;
-	dst[1]  += w5;
-	dst[2]  += w10;
-	dst[3]  += w15;
-	dst[4]  += w12;
-	dst[5]  += w1;
-	dst[6]  += w6;
-	dst[7]  += w11;
-	dst[8]  += w8;
-	dst[9]  += w13;
-	dst[10] += w2;
-	dst[11] += w7;
-	dst[12] += w4;
-	dst[13] += w9;
-	dst[14] += w14;
-	dst[15] += w3;
+	for (size_t i=0; i<size(w); ++i)
+		dst[i] += w[i];
 }
+
+static void ChaChaQuarterRound(uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d) {
+	b = _rotl(b ^ (c += d = _rotl(d ^ (a += b), 16)), 12);
+	b = _rotl(b ^ (c += d = _rotl(d ^ (a += b),  8)), 7);
+}
+
+void ChaCha20Core(uint32_t dst[16], int rounds) noexcept {	
+	uint32_t w[16];
+	memcpy(w, dst, sizeof w);
+
+	for (; rounds; rounds-=2) {
+		ChaChaQuarterRound(w[0], w[4], w[8], w[12]);
+		ChaChaQuarterRound(w[1], w[5], w[9], w[13]);
+		ChaChaQuarterRound(w[2], w[6], w[10], w[14]);
+		ChaChaQuarterRound(w[3], w[7], w[11], w[15]);
+		ChaChaQuarterRound(w[0], w[5], w[10], w[15]);
+		ChaChaQuarterRound(w[1], w[6], w[11], w[12]);
+		ChaChaQuarterRound(w[2], w[7], w[8], w[13]);
+		ChaChaQuarterRound(w[3], w[4], w[9], w[14]);
+	}
+
+	for (size_t i=0; i<size(w); ++i)
+		dst[i] += w[i];
+}
+
+
+void VectorMix(PFN_Salsa pfn, uint32_t x[][16], uint32_t tmp[][16], int r, int rounds) noexcept {
+	for (int i=0; i<2*r; ++i) {
+		VectorXor(x[i], x[(i-1 + 2*r) % (2*r)]);
+		pfn(x[i], rounds);
+		memcpy(tmp[(i & 1)*r + i/2], x[i], sizeof(x[i]));
+	}
+	memcpy(x, tmp, 2*r*sizeof(x[0]));
+}
+
+
+
 
 }} // Ext::Crypto::
 

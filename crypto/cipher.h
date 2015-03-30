@@ -5,10 +5,6 @@
 
 #pragma once 
 
-#ifndef UCFG_USE_OPENSSL
-#	define UCFG_USE_OPENSSL 1
-#endif
-
 #include "util.h"
 
 namespace Ext { namespace Crypto {

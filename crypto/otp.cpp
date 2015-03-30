@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "otp.h"
@@ -11,7 +16,7 @@ int GoogleAuthenticatorCode(const ConstBuf& key, int tim) {
 	SHA1 sha1;
 	hashval hv = HMAC(sha1, key, ConstBuf(&text, 8));
 	int n = hv.constData()[hv.size()-1] & 0xF;
-	UInt32 h = 0x7FFFFFFF & ((hv[n]<<24) | (hv[n+1]<<16) | (hv[n+2]<<8) | hv[n+3]);
+	uint32_t h = 0x7FFFFFFF & ((hv[n]<<24) | (hv[n+1]<<16) | (hv[n+2]<<8) | hv[n+3]);
 	return h % 1000000;
 }
 
@@ -30,5 +35,4 @@ bool GAuthVerify(RCString base32Key, int code) {
 
 
 }} // Ext::Crypto::
-
 

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once 
 
 #include EXT_HEADER_DYNAMIC_BITSET
@@ -12,27 +17,29 @@
 #	define EXT_HASH_API
 #endif
 
+#include "util.h"
+
 namespace Ext { namespace Crypto {
 using namespace std;
 
 extern "C" {
-	extern const UInt32 g_sha256_hinit[8];
-	extern const UInt64 g_sha512_hinit[8];
-	extern const UInt32 g_sha256_k[64];	
-	extern UInt32 g_4sha256_k[64][4];			// __m128i
+	extern const uint32_t g_sha256_hinit[8];
+	extern const uint64_t g_sha512_hinit[8];
+	extern const uint32_t g_sha256_k[64];	
+	extern uint32_t g_4sha256_k[64][4];			// __m128i
 
 	extern const byte g_blake_sigma[10][16];
-	extern const UInt32 g_blake256_c[16];
-	extern const UInt64 g_blake512_c[16];
+	extern const uint32_t g_blake256_c[16];
+	extern const uint64_t g_blake512_c[16];
 
 } // "C"
 
 
-__forceinline UInt32 Rotr32(UInt32 v, int n) {
+__forceinline uint32_t Rotr32(uint32_t v, int n) {
 	return _rotr(v, n);
 }
 
-__forceinline UInt64 Rotr64(UInt64 v, int n) {
+__forceinline uint64_t Rotr64(uint64_t v, int n) {
 	return _rotr64(v, n);
 }
 
@@ -46,12 +53,12 @@ public:
 
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
 class SHA256 : public HashAlgorithm {
 public:
-	static void Init4Way(UInt32 state[8][4]);
+	static void Init4Way(uint32_t state[8][4]);
 
 	SHA256() {
 		BlockSize = 64;
@@ -59,7 +66,7 @@ public:
 	}
 
 	void InitHash(void *dst) noexcept  override;
-	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
 class SHA512 : public HashAlgorithm {
@@ -71,7 +78,7 @@ public:
 	}
 protected:
 	void InitHash(void *dst) noexcept  override;
-	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
 #ifndef UCFG_IMP_SHA3
@@ -105,7 +112,7 @@ template<> class SHA3<512> : HashAlgorithm {
 
 class Blake256 : public HashAlgorithm {
 public:
-	UInt32 Salt[4];
+	uint32_t Salt[4];
 
 	Blake256() {
 		BlockSize = 128;	//!!!?
@@ -115,12 +122,12 @@ public:
 	}
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
 class Blake512 : public HashAlgorithm {
 public:
-	UInt64 Salt[4];
+	uint64_t Salt[4];
 
 	Blake512() {
 		BlockSize = 128;	//!!!?
@@ -131,7 +138,7 @@ public:
 	}
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, UInt64 counter) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
 class RIPEMD160 : public HashAlgorithm {
@@ -139,21 +146,18 @@ public:
 	RIPEMD160() {
 		BlockSize = 64;
 		HashSize = 20;
+		IsBigEndian = false;
 	}
 
+#if UCFG_USE_OPENSSL
 	hashval ComputeHash(Stream& stm) override;
 	hashval ComputeHash(const ConstBuf& mb) override;
+#endif
+protected:
+	void InitHash(void *dst) noexcept override;
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
-class Aes {
-public:
-	Blob Key;
-	Blob IV;
-
-	static std::pair<Blob, Blob> GetKeyAndIVFromPassword(RCString password, const byte salt[8], int nRounds);		// don't set default value for nRound
-	Blob Encrypt(const ConstBuf& cbuf);
-	Blob Decrypt(const ConstBuf& cbuf);
-};
 
 
 class Random : public Ext::Random {
@@ -163,19 +167,23 @@ public:
 };
 
 
-Random& RandomRef();
+//!!!R Random& RandomRef();
 
-typedef std::array<UInt32, 8> CArray8UInt32;
-hashval CalcPbkdf2Hash(const UInt32 *pIhash, const ConstBuf& data, int idx);
-void CalcPbkdf2Hash_80_4way(UInt32 dst[32], const UInt32 *pIhash, const ConstBuf& data);
-void ShuffleForSalsa(UInt32 w[32], const UInt32 src[32]);
-void UnShuffleForSalsa(UInt32 w[32], const UInt32 src[32]);
-void ScryptCore(UInt32 x[32], UInt32 alignedScratch[1024*32+32]);
+typedef std::array<uint32_t, 8> CArray8UInt32;
+hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx);
+void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, const ConstBuf& data);
+void ShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
+void UnShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
+
+typedef uint32_t(*SalsaBlockPtr)[16];
+void NeoScryptCore(uint32_t x[][16], uint32_t tmp[][16], uint32_t v[], int r, int rounds, int n, bool dblmix) noexcept;
+void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept;
 CArray8UInt32 CalcSCryptHash(const ConstBuf& password);
-std::array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const UInt32 input[20]);
+std::array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]);
+CArray8UInt32 CalcNeoSCryptHash(const ConstBuf& password, int profile = 0);
 
 #if UCFG_CPU_X86_X64
-extern "C" void _cdecl ScryptCore_x86x64(UInt32 x[32], UInt32 alignedScratch[1024*32+32]);
+extern "C" void _cdecl ScryptCore_x86x64(uint32_t x[32], uint32_t alignedScratch[1024*32+32]);
 #endif
 
 template <class T, class H2>
@@ -314,9 +322,10 @@ std::vector<T> BuildMerkleTree(const vector<U>& ar, H1 h1, H2 h2) {
 extern "C" {
 
 #if UCFG_CPU_X86_X64
-	void _cdecl Sha256Update_4way_x86x64Sse2(UInt32 state[8][4], const UInt32 data[16][4]);
-	void _cdecl Sha256Update_x86x64(UInt32 state[8], const UInt32 data[16]);
-	void _cdecl Blake512Round(int sigma0, int sigma1, UInt64& pa, UInt64& pb, UInt64& pc, UInt64& pd, const UInt64 m[16], const UInt64 blakeC[]);
+	void _cdecl Sha256Update_4way_x86x64Sse2(uint32_t state[8][4], const uint32_t data[16][4]);
+	void _cdecl Sha256Update_x86x64(uint32_t state[8], const uint32_t data[16]);
+	void _cdecl Blake512Round(int sigma0, int sigma1, uint64_t& pa, uint64_t& pb, uint64_t& pc, uint64_t& pd, const uint64_t m[16], const uint64_t blakeC[]);
 #endif
 
 } // "C"
+

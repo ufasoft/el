@@ -115,7 +115,13 @@ Blob BlockCipher::Decrypt(const ConstBuf& cbuf) {
 		if (Padding!=PaddingMode::None && pos+cbBlock==cbuf.Size) {
 			switch (Padding) {
 			case PaddingMode::PKCS7:
-				ms.WriteBuffer(block.constData(), cbBlock-block.constData()[cbBlock-1]);		
+				{
+					byte nPad = block.constData()[cbBlock-1];
+					for (int i=0; i<nPad; ++i)
+						if (block.constData()[cbBlock-1-i] != nPad)
+							Throw(E_EXT_Crypto);									//!!!TODO Must be EXT_Crypto_DecryptFailed
+					ms.WriteBuffer(block.constData(), cbBlock-nPad);
+				}
 				break;
 			default:
 				Throw(E_NOTIMPL);
@@ -315,7 +321,7 @@ Blob Aes::CalcInvExpandedKey() const {
 
 #endif // UCFG_USE_OPENSSL
 
-std::pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const byte salt[8], int nRounds) {
+pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const byte salt[8], int nRounds) {
 	pair<Blob, Blob> r(Blob(0, 32), Blob(0, 16));
 	const unsigned char *psz = (const unsigned char*)(const char*)password;
 
