@@ -495,6 +495,10 @@ public:
 		:	m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
 	{}
 
+	void Close() {
+		m_hMapFile.Close();
+	}
+
 	MemoryMappedFile& operator=(EXT_RV_REF(MemoryMappedFile) rv) {
 		m_hMapFile.Close();
 		m_hMapFile = static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile);
@@ -566,7 +570,7 @@ public:
 	intptr_t get_Handle() const;
 	DEFPROP_GET(intptr_t, Handle);
 
-	uint64_t get_Position() const override{
+	uint64_t get_Position() const override {
 		if (m_fstm) {
 			fpos_t r;
 			CFileCheck(fgetpos(m_fstm, &r));
@@ -609,6 +613,35 @@ public:
 
 	uint64_t get_Length() const override;
 	bool Eof() const override;
+};
+
+class PositionOwningFileStream : public FileStream {
+	typedef FileStream base;
+public:
+	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0)
+		:	base(file)
+		,	m_pos(pos)
+ 	{
+	}
+
+	uint64_t get_Position() const override { return m_pos; }
+	void put_Position(uint64_t pos) const override { m_pos = pos; }
+	bool Eof() const override {	return m_pos == m_pFile->Length; }
+
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override {
+		switch (origin) {
+		case SeekOrigin::Begin: m_pos = offset; break;
+		case SeekOrigin::End: m_pos = m_pFile->Length; break;
+		case SeekOrigin::Current: m_pos += offset; break;
+		}
+		return m_pos;
+	}
+
+	size_t Read(void *buf, size_t count) const override;
+	void ReadBuffer(void *buf, size_t count) const override;
+	void WriteBuffer(const void *buf, size_t count) override;
+protected:
+	mutable uint64_t m_pos;
 };
 
 class Guid : public GUID {
@@ -722,6 +755,10 @@ public:
 private:
 	uint16_t NextWord();
 };
+
+
+BinaryReader& AFXAPI GetSystemURandomReader();
+
 
 struct IAnnoy {
 	virtual void OnAnnoy() =0;
@@ -1076,10 +1113,12 @@ public:
 	size_t BlockSize,
 		HashSize;
 	CBool IsHaifa;
+	bool IsBigEndian;
 
 	HashAlgorithm()
 		:	BlockSize(0)
 		,	HashSize(0)
+		,	IsBigEndian(true)
 	{}
 
 	virtual ~HashAlgorithm() {}

@@ -832,6 +832,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 }
 
 void ThreadBase::Start(DWORD flags) {
+	ptr<ThreadBase> tSelf= this;		// to prevent Memory Leak if BeforeStart() throws an Exception
 	BeforeStart();
 	if (m_owner) {
 		m_owner->add_thread(this);

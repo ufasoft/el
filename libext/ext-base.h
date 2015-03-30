@@ -77,20 +77,19 @@ public:
 	~Exception() noexcept {}		//!!! necessary for GCC 4.6
 	String ToString() const override;
 
-	virtual String get_Message() const;
-	DEFPROP_VIRTUAL_GET_CONST(String, Message);
 
 	const char *what() const noexcept override;
+
+#if !UCFG_WCE
+	CStackTrace StackTrace;
+#endif	
+protected:
+	virtual String get_Message() const;
 private:
 
 #ifdef _WIN64
 	LONG dummy;
 #endif
-
-public:
-#if !UCFG_WCE
-	CStackTrace StackTrace;
-#endif	
 };
 
 class ExcLastStringArgKeeper {
@@ -242,6 +241,7 @@ public:
 
 	~ProcNotFoundExc() noexcept {}
 
+protected:
 	String get_Message() const override {
 		String r = base::get_Message();
 		if (!ProcName.empty())
@@ -273,20 +273,22 @@ extern "C" AFX_API void _cdecl AfxTestEHsStub(void *prevFrame);
 class AssertFailedExc : public Exception {
 	typedef Exception base;
 public:
+	String Exp;
 	String FileName;
 	int LineNumber;
 
 	AssertFailedExc(RCString exp, RCString fileName, int line)
-		:	base(HRESULT_FROM_WIN32(ERROR_ASSERTION_FAILURE), "Assertion Failed: "+exp)
+		:	base(HRESULT_FROM_WIN32(ERROR_ASSERTION_FAILURE))
+		,	Exp(exp)
 		,	FileName(fileName)
 		,	LineNumber(line)
 	{
 	}
 
 	~AssertFailedExc() noexcept {}
+protected:
+	String get_Message() const override;
 };
-
-
 
 
 template <typename H>

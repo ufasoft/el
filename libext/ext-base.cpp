@@ -590,11 +590,15 @@ void CTrace::InitTraceLog(RCString regKey) {
 #endif
 }
 
+void CTrace::SetOStream(void *os) {
+	s_pOstream = os;
+}
+
 #if !UCFG_WDM
 static struct CTraceInit {
 	CTraceInit() {
 		if (const char *slevel = getenv("UCFG_TRC")) {
-			CTrace::s_pOstream = &cerr;
+			CTrace::SetOStream(&cerr);
 			CTrace::s_nLevel = atoi(slevel);
 		}
 	}
@@ -907,6 +911,10 @@ String CEscape::Unescape(CEscape& esc, RCString s) {
 	if (v.empty())
 		return String();
 	return utf8.GetChars(ConstBuf(&v[0], v.size()));
+}
+
+String AssertFailedExc::get_Message() const {
+	return EXT_STR(FileName << "(" << LineNumber << "): Assertion Failed: " << Exp);
 }
 
 AFX_API bool AFXAPI AfxAssertFailedLine(const char* sexp, const char*fileName, int nLine) {

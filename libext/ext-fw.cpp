@@ -1016,6 +1016,38 @@ int Random::Next(int maxValue) {
 
 double Random::NextDouble() {
 	return uniform_real_distribution<double>(0, 1) (*Rngeng(_self));
+}
+
+static class SystemURandomStream : public Stream {
+public:
+#if UCFG_USE_POSIX
+	int m_fdsDevURandom;
+
+	SystemURandomStream()
+		: m_fdsDevURandom(open("/dev/urandom", O_RDONLY))
+	{}
+#endif
+
+	size_t Read(void *buf, size_t count) const override {
+#if UCFG_USE_POSIX
+		ssize_t rc = ::read(m_fdsDevURandom, buf, count);
+		CCheck(rc < 0 ? -1 : 0);
+		return (size_t)rc;
+#else
+		unsigned u;
+		CCheck(rand_s(&u));
+		size_t r = (min)(sizeof u, count);
+		memcpy(buf, &u, r);
+		return r;
+#endif
+	}
+} s_systemURandomStream;
+
+static BinaryReader s_systemURandomReader(s_systemURandomStream);
+
+BinaryReader& AFXAPI GetSystemURandomReader() {
+	return s_systemURandomReader;
+}
 
 /*!!!R
 	STATIC_ASSERT(DBL_MANT_DIG < 64);
@@ -1026,7 +1058,6 @@ double Random::NextDouble() {
 	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
 	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
 	*/
-}
 
 void CAnnoyer::OnAnnoy() {
 	if (m_iAnnoy)
@@ -1046,7 +1077,7 @@ template <typename W>
 hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 	W hash[8];
 	algo.InitHash(hash);
-	byte buf[16*sizeof(W)];
+	W buf[16];
 	uint64_t len = 0, counter;
 	bool bLast = false;
 	while (true) {
@@ -1057,7 +1088,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 		}
 		size_t cb = stm.Read(buf, sizeof buf);
 		if (cb < sizeof buf) {
-			buf[cb] = 0x80;
+			((byte*)buf)[cb] = 0x80;
 			bLast = true;
 		}
 		len += cb;
@@ -1067,20 +1098,33 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 				counter = 0;
 			break;
 		}
-		for (int j=0; j<16; ++j)
-			((W*)buf)[j] = betoh(((W*)buf)[j]);
-		algo.HashBlock(hash, buf, counter);
+		if (algo.IsBigEndian) {
+			for (int j=0; j<16; ++j)
+				buf[j] = betoh(buf[j]);
+		} else {
+			for (int j=0; j<16; ++j)
+				buf[j] = letoh(buf[j]);
+		}
+		algo.HashBlock(hash, (byte*)buf, counter);
 	}
 	if (algo.IsHaifa)
-		buf[sizeof buf - sizeof(W)*2- 1] = 1;
+		((byte*)buf)[sizeof buf - sizeof(W)*2 - 1] = 1;
 	len <<= 3;
-	for (int i=0; i<8; ++i)
-		buf[sizeof buf - 1 -i] = byte(len>>(i*8));
-	for (int j=0; j<16; ++j)
-		((W*)buf)[j] = betoh(((W*)buf)[j]);
-	algo.HashBlock(hash, buf, counter);
-	for (int j=0; j<8; ++j)
-		hash[j] = htobe(hash[j]);
+	*(uint64_t*)((byte*)buf + sizeof(buf) - 8) = algo.IsBigEndian ? htobe(len) : htole(len);
+	if (algo.IsBigEndian) {
+		for (int j=0; j<16; ++j)
+			buf[j] = betoh(buf[j]);
+	} else {
+		for (int j=0; j<16; ++j)
+			buf[j] = letoh(buf[j]);
+	}
+	algo.HashBlock(hash, (byte*)buf, counter);
+	if (algo.IsBigEndian)
+		for (int j=0; j<8; ++j)
+			hash[j] = htobe(hash[j]);
+	else
+		for (int j=0; j<8; ++j)
+			hash[j] = htole(hash[j]);
 	return hashval((const byte*)hash, algo.HashSize);
 }
 

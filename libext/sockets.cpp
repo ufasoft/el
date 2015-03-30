@@ -108,9 +108,11 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 				_self = move(s);
 				return true;
 			}
+			if (WSAGetLastError() != WSA(EWOULDBLOCK))
+				ThrowWSALastError();
+			return false;
 		}
 	}
-
 
 	if (WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
@@ -138,7 +140,7 @@ pair<Socket, IPEndPoint> Socket::Accept() {
 		r.first.Attach(s);
 		r.second = IPEndPoint(*(const sockaddr*)sa);
 
-		TRC(4, "from " << r.second);
+		TRC(5, "from " << r.second);
 	} else if (WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
 	return move(r);

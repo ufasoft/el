@@ -5,6 +5,12 @@
 #	include <glob.h>
 #endif
 
+#if UCFG_NTAPI && UCFG_WIN32
+#	include <el/win/nt.h>
+#	pragma comment(lib, "ntdll")
+using namespace NT;
+#endif // UCFG_WIN32_FULL
+
 #if UCFG_WIN32
 #	include <shlwapi.h>
 
@@ -409,10 +415,22 @@ uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
 	CCheck(r>=0 ? 0 : -1);
 	return r;
+#elif UCFG_NTAPI
+	IO_STATUS_BLOCK iost;
+	LARGE_INTEGER li;
+	li.QuadPart = offset;
+	switch (NTSTATUS st = ::NtReadFile(HandleAccess(_self), 0, 0, 0, &iost, buf, size, &li, 0)) {
+	case STATUS_END_OF_FILE:
+	case STATUS_PIPE_BROKEN:
+		return 0;
+	default:
+		NtCheck(st);
+	}
+	return (uint32_t)iost.Information;	//!!!?
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nRead;
-	Win32Check(::ReadFile((HANDLE)(intptr_t)HandleAccess(_self), buf, std::min(size, (size_t)0xFFFFFFFF), &nRead, pov), ERROR_BROKEN_PIPE);
+	Win32Check(::ReadFile(HandleAccess(_self), buf, std::min(size, (size_t)0xFFFFFFFF), &nRead, pov), ERROR_BROKEN_PIPE);
 	return nRead;
 #endif
 }
@@ -430,7 +448,7 @@ void File::Lock(uint64_t pos, uint64_t len, bool bExclusive, bool bFailImmediate
 	DWORD flags = bExclusive ? LOCKFILE_EXCLUSIVE_LOCK : 0;
 	if (bFailImmediately)
 		flags |= LOCKFILE_FAIL_IMMEDIATELY;
-	Win32Check(::LockFileEx((HANDLE)(intptr_t)HandleAccess(_self), flags, 0, DWORD(len), DWORD(len >> 32), &ovl));
+	Win32Check(::LockFileEx(HandleAccess(_self), flags, 0, DWORD(len), DWORD(len >> 32), &ovl));
 #endif
 }
 
@@ -479,7 +497,7 @@ void File::Flush() {
 #if UCFG_USE_POSIX
 	CCheck(::fsync((int)(intptr_t)HandleAccess(_self)));
 #else
-	Win32Check(::FlushFileBuffers((HANDLE)(intptr_t)HandleAccess(_self)));
+	Win32Check(::FlushFileBuffers(HandleAccess(_self)));
 #endif
 }  
 
@@ -725,6 +743,23 @@ void FileStream::Flush() {
 		Throw(E_FAIL);
 }
 
+size_t PositionOwningFileStream::Read(void *buf, size_t count) const {
+	uint32_t cb = m_pFile->Read(buf, count, m_pos);
+	m_pos += cb;
+	return cb;
+}
+
+void PositionOwningFileStream::ReadBuffer(void *buf, size_t count) const {
+	uint32_t cb = m_pFile->Read(buf, count, m_pos);
+	m_pos += cb;
+	if (cb != count)
+		Throw(E_EXT_EndOfStream);
+}
+
+void PositionOwningFileStream::WriteBuffer(const void *buf, size_t count) {
+	m_pFile->Write(buf, count, m_pos);
+	m_pos += count;
+}
 
 #ifdef WIN32
 WIN32_FIND_DATA FileSystemInfo::GetData() const {

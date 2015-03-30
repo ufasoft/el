@@ -595,6 +595,16 @@ public:
 };
 
 template <typename T, class L>
+bool between(const T& v, const T& lo, const T& hi, L pred) {
+	return !pred(v, lo) && !pred(hi, v);
+}
+
+template <typename T>
+bool between(const T& v, const T& lo, const T& hi) {
+	return between<T, std::less<T>>(v, lo, hi, std::less<T>());
+}
+
+template <typename T, class L>
 T clamp(const T& v, const T& lo, const T& hi, L pred) {
 	return pred(v, lo) ? lo : pred(hi, v) ? hi : v;
 }
