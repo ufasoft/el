@@ -168,7 +168,7 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 const char *String::c_str() const {  //!!! optimize
 	if (Blob::impl_class *pData = m_blob.m_pData) {
 		atomic<char*> &apChar = pData->AsStringBlobBuf()->m_apChar;
-		if (!apChar) {
+		if (!apChar.load()) {
 			Encoding& enc = Encoding::Default();
 			for (size_t n=(pData->GetSize()/sizeof(value_type))+1, len=n+1;; len<<=1) {
 				Array<char> p(len);

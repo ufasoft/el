@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 
@@ -10,6 +15,14 @@
 #endif
 
 #include <psapi.h>
+
+#if (!defined(_CRTBLD) || UCFG_CRT=='U') && UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
+#	ifdef _DEBUG
+#		pragma comment(lib, "comsuppwd")
+#	else
+#		pragma comment(lib, "comsuppw")
+#	endif
+#endif
 
 #if UCFG_COM && defined(_MSC_VER) && !UCFG_MINISTL
 //!!!R#	include <windows.h>
@@ -252,19 +265,6 @@ typedef Rectangle Rect;
 
 
 
-
-//!!!D #include "ext_messages.h"
-
-
-
-
-
-
-/*!!!#include <vector>
-#include <map>
-using namespace std;*/
-
-
 #if !UCFG_WCE
 //	#define offsetofclass(base, derived) ((DWORD_PTR)(static_cast<base*>((derived*)_AFX_PACKING))-_AFX_PACKING)
 #endif
@@ -290,10 +290,10 @@ namespace Ext
 	inline size_t hash_value(long v) { return stdext::hash_value(int(v)); }
 	inline size_t hash_value(unsigned long v) { return stdext::hash_value(int(v)); }
 
-	inline size_t hash_value(const Int64& v) { return stdext::hash_value(int(v)) + stdext::hash_value(int(v >> 32)); }
-	inline size_t hash_value(const UInt64& v) { return hash_value(*(const Int64*)&v); }
+	inline size_t hash_value(const int64_t& v) { return stdext::hash_value(int(v)) + stdext::hash_value(int(v >> 32)); }
+	inline size_t hash_value(const uint64_t& v) { return hash_value(*(const int64_t*)&v); }
 
-	inline size_t hash_value(double v) { return hash_value(*(Int64*)&v); }
+	inline size_t hash_value(double v) { return hash_value(*(int64_t*)&v); }
 	*/
 
 	/*!!!
@@ -371,7 +371,7 @@ public:
 		:	m_ha(m_ev)
 	{
 		ZeroStruct(*static_cast<OVERLAPPED*>(this));
-		hEvent = m_ha;
+		hEvent = (HANDLE)(intptr_t)m_ha;
 	}
 
 	COvlEvent(bool)
@@ -379,13 +379,14 @@ public:
 		,	m_ha(m_ev)
 	{
 		ZeroStruct(*static_cast<OVERLAPPED*>(this));
-		hEvent = m_ha;
+		hEvent = (HANDLE)(intptr_t)m_ha;
 	}
 };
 
 ENUM_CLASS(DialogResult) {
 	Yes = IDYES,
 		No = IDNO,
+		Cancel = IDCANCEL
 } END_ENUM_CLASS(DialogResult)
 
 ENUM_CLASS(MessageBoxButtons) {
@@ -709,7 +710,7 @@ class AFX_MODULE_THREAD_STATE {
 public:
 	_PNH m_pfnNewHandler;
 	//!!!  COwnerArray<CComTypeLibHolder> m_tlList;
-//!!!R	CPointer<ThreadBase> m_pCurrentThread;
+//!!!R	observer_ptr<ThreadBase> m_pCurrentThread;
 
 #if UCFG_COM_IMPLOBJ
 	typedef std::vector<std::unique_ptr<CComClassFactoryImpl>> CFactories;
@@ -755,7 +756,7 @@ public:
 	CFactories m_factoryList;
 #endif
 #if UCFG_OCC
-	CPointer<COccManager> m_pOccManager;	
+	observer_ptr<COccManager> m_pOccManager;	
 #endif
 	void (AFXAPI *m_pfnFilterToolTipMessage)(MSG*, CWnd*);
 #if defined(_AFXDLL) && UCFG_EXTENDED
@@ -806,24 +807,24 @@ public:
 //!!!?	AFX_MODULE_STATE *m_pModuleState;
 //!!!?	AFX_MODULE_STATE *m_pPrevModuleState;
 	const MSG *m_pLastSentMsg;
-	CPointer<CWnd> m_pWndInit;
+	observer_ptr<CWnd> m_pWndInit;
 #if UCFG_EXTENDED && UCFG_GUI
-	CPointer<CToolTipCtrl> m_pToolTip;
-	CPointer<CControlBarBase> m_pLastStatus; // last flyby status control bar
+	observer_ptr<CToolTipCtrl> m_pToolTip;
+	observer_ptr<CControlBarBase> m_pLastStatus; // last flyby status control bar
 #endif
 	HWND m_hTrackingWindow;         // see CWnd::TrackPopupMenu
 	HMENU m_hTrackingMenu;
 	MSG m_msgCur;
 	String m_szTempClassName;
 #if !UCFG_WCE && UCFG_EXTENDED
-	CPointer<CFrameWnd> m_pRoutingFrame;
+	observer_ptr<CFrameWnd> m_pRoutingFrame;
 	CWindowsHook m_hookCbt,
 		m_hookMsg;
-	CPointer<CView> m_pRoutingView;          // see CCmdTarget::GetRoutingView
+	observer_ptr<CView> m_pRoutingView;          // see CCmdTarget::GetRoutingView
 #endif
-	CPointer<CWnd> m_pAlternateWndInit;
+	observer_ptr<CWnd> m_pAlternateWndInit;
 	HWND m_hLockoutNotifyWindow;    // see CWnd::OnCommand
-	CPointer<CWnd> m_pLastHit;
+	observer_ptr<CWnd> m_pLastHit;
 	int m_nLastHit;
 	void *m_pLastInfo;			//	TOOLINFO
 	int m_nLastStatus;      // last flyby status message
@@ -926,21 +927,6 @@ void AFXAPI AfxInitRichEdit();
 AFX_API int AFXAPI AfxMessageBox(RCString text, UINT nType = MB_OK, UINT nIDHelp = 0);
 AFX_API int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType = MB_OK, UINT nIDHelp = (UINT)-1);
 
-//!!!O
-class AFX_CLASS CSingleLock {
-public:
-	CSingleLock(CSyncObject *pObject, bool bInitialLock = false);
-	~CSingleLock();
-	void Lock(DWORD dwTimeOut = INFINITE);
-	void Unlock();
-	bool IsLocked();
-protected:
-	CSyncObject *m_pObject;
-	CBool m_bAcquired;
-};
-
-
-
 
 } // Ext::
 
@@ -954,5 +940,6 @@ protected:
 //!!!#ifndef ASSERT //!!!
 //!!!#	define ASSERT(f) ((void*)0)
 //!!!#endif
+
 
 

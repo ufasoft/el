@@ -1207,7 +1207,7 @@ public:
 #if UCFG_COM
 	static HRESULT AFXAPI Process(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif
-	String ProcessInst(HRESULT hr);
+	String ProcessInst(HRESULT hr, bool bWithErrorCode = true);
 
 	thread_specific_ptr<String> m_param;
 
@@ -1216,7 +1216,7 @@ public:
 
 extern CMessageProcessor g_messageProcessor;
 
-AFX_API String AFXAPI HResultToMessage(HRESULT hr);
+AFX_API String AFXAPI HResultToMessage(HRESULT hr, bool bWithErrorCode = true);
 #if UCFG_COM
 AFX_API HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif

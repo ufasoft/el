@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 #include <wincon.h>
@@ -16,7 +9,7 @@ namespace Ext {
 class AFX_CLASS Console : public SafeHandle {
 public:
 	Console(HANDLE h)
-		:	SafeHandle(h)
+		:	SafeHandle((intptr_t)h)
 	{}
 
 	static void AFXAPI Beep(DWORD dwFreq = 800, DWORD dwDuration = 200);
@@ -117,7 +110,7 @@ struct NamedPipeCreateInfo {
 	String Name;
 	CInt<DWORD> OpenMode, PipeMode;
 	uint32_t MaxInstances;
-	CPointer<SECURITY_ATTRIBUTES> Sa;
+	observer_ptr<SECURITY_ATTRIBUTES> Sa;
 
 	NamedPipeCreateInfo()
 		:	MaxInstances(PIPE_UNLIMITED_INSTANCES)
@@ -130,7 +123,7 @@ public:
 	void Create(const NamedPipeCreateInfo& ci);
 
 	void SetHandleState(DWORD mode) {
-		Win32Check(::SetNamedPipeHandleState(Handle(*this), &mode, 0, 0));
+		Win32Check(::SetNamedPipeHandleState((HANDLE)(intptr_t)Handle(*this), &mode, 0, 0));
 	}
 
 	bool Connect(LPOVERLAPPED ovl = NULL);

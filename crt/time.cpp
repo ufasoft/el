@@ -37,7 +37,7 @@ tm * __cdecl gmtime_r(const time_t *timer, tm *result) {
 #if UCFG_WIN32_FULL
 
 int __stdcall gettimeofday(struct timeval *tp, void *) {
-	Ext::Int64 res = DateTime::UtcNow().Ticks-Unix_DateTime_Offset;	
+	int64_t res = DateTime::UtcNow().Ticks-Unix_DateTime_Offset;	
 	tp->tv_sec = (long)(res/10000000);	//!!! can be overflow
 	tp->tv_usec = (long)(res % 10000000) / 10; // Micro Seconds
 	return 0;

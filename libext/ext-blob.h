@@ -38,7 +38,7 @@ public:
 		: m_aRef(1)
 	{}
 
-	void AddRef() noexcept {
+	void AddRef() EXT_FAST_NOEXCEPT {
 		++m_aRef;
 	}
 
@@ -53,8 +53,8 @@ public:
 	virtual void Attach(Char *bstr); //!!!was BSTR
 	virtual Char *Detach(); //!!!was BSTR
 
-	void Release() {
-		if (!--m_aRef)			// Allowed only of destrucotr is virtual
+	void Release() EXT_FAST_NOEXCEPT {
+		if (this && !--m_aRef)			// Allowed only of destrucotr is virtual
 			delete this;
 	}
 #endif
@@ -76,8 +76,8 @@ public:
 	CStringBlobBuf(size_t len, const void *buf, size_t copyLen);
 
 	~CStringBlobBuf() noexcept {
-		if (m_apChar)
-			free(m_apChar);
+		if (char *p = m_apChar)
+			free(p);
 	}
 
 	void * AFXAPI operator new(size_t sz);
@@ -87,16 +87,16 @@ public:
 
 	CStringBlobBuf *AsStringBlobBuf() { return this; }
 
-	Char *GetBSTR() noexcept { return (Char*)(this+1); } //!!! was BSTR
-	size_t GetSize() noexcept { return m_size; }
+	Char *GetBSTR() EXT_FAST_NOEXCEPT { return (Char*)(this+1); } //!!! was BSTR
+	size_t GetSize() EXT_FAST_NOEXCEPT { return m_size; }
 
 	CStringBlobBuf *Clone();
 	CStringBlobBuf *SetSize(size_t size);
 	static CStringBlobBuf* AFXAPI RefEmptyBlobBuf();
 
 #if !UCFG_BLOB_POLYMORPHIC
-	void Release() noexcept {
-		if (!--m_aRef)
+	void Release() EXT_FAST_NOEXCEPT {
+		if (this && !--m_aRef)
 			delete this;
 	}
 #endif
@@ -137,13 +137,14 @@ public:
 	typedef CStringBlobBuf impl_class;
 #endif
 
-	impl_class * volatile m_pData;				// atomic only for some rare operations
+//!!!?	impl_class * volatile m_pData;				//!!!  not optimal  atomic only for some rare operations
+	impl_class * m_pData;				// atomic only for some rare operations
 
 	Blob()
 		:	m_pData(CStringBlobBuf::RefEmptyBlobBuf())
 	{}
 
-	Blob(const Blob& blob);
+	Blob(const Blob& blob) noexcept;
 
 	Blob(impl_class *pData)
 		:	m_pData(pData)
@@ -172,6 +173,16 @@ public:
 
 	~Blob();
 
+	Blob(EXT_RV_REF(Blob) rv)
+		:	m_pData(exchange(rv.m_pData, nullptr))
+	{
+	}
+
+	Blob& operator=(EXT_RV_REF(Blob) rv) {
+		exchange(m_pData, exchange(rv.m_pData, nullptr))->Release();
+		return *this;
+	}
+
 	void swap(Blob& x) noexcept {
 		std::swap(m_pData, x.m_pData);
 	}
@@ -197,7 +208,7 @@ public:
 	
 	static Blob AFXAPI FromHexString(RCString s);
 
-	size_t get_Size() const noexcept { return m_pData->GetSize(); }
+	size_t get_Size() const EXT_FAST_NOEXCEPT { return m_pData->GetSize(); }
 	void put_Size(size_t size);
 	DEFPROP_CONST(size_t, Size);
 

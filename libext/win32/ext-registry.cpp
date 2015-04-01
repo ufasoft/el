@@ -1,9 +1,7 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -141,7 +139,7 @@ void AFXAPI RegCheck(LONG v, LONG allowableError) {
 		Throw(HRESULT_FROM_WIN32(v));
 }
 
-void RegistryKey::ReleaseHandle(HANDLE h) const {
+void RegistryKey::ReleaseHandle(intptr_t h) const {
 	RegCheck(::RegCloseKey((HKEY)h));
 }
 
@@ -229,7 +227,7 @@ void RegistryKey::SetValue(RCString name, const CRegistryValue& rv) {
 
 void RegistryKey::GetSubKey(int idx, RegistryKey& sk) {
 	TCHAR subKey[255];
-	DWORD subKeyLen = _countof(subKey);
+	DWORD subKeyLen = size(subKey);
 	RegCheck(::RegEnumKeyEx(_self, idx, subKey, &subKeyLen, 0, 0, 0, 0));
 	sk.Open(_self, subKey);
 }
@@ -238,7 +236,7 @@ CStringVector RegistryKey::GetSubKeyNames() {
 	vector<String> ar;
 	for (int i=0;; i++) {
 		TCHAR subKey[256];
-		DWORD subKeyLen = _countof(subKey);
+		DWORD subKeyLen = size(subKey);
 		LONG rr = ::RegEnumKeyEx(_self, i, subKey, &subKeyLen, 0, 0, 0, 0);
 		switch (rr)
 		{
@@ -286,7 +284,7 @@ void RegistryKey::Create() const {
 		ULONG disposition;
 		NtCheck(::ZwCreateKey(&hKey, AccessRights, &oa, 0, 0, REG_OPTION_NON_VOLATILE, &disposition));
 #endif
-		const_cast<RegistryKey*>(this)->Attach(hKey);
+		const_cast<RegistryKey*>(this)->Attach((intptr_t)hKey);
 	}
 }
 
@@ -302,7 +300,7 @@ void RegistryKey::Open(bool create) {
 		InitializeObjectAttributes(&oa, m_subKey, OBJ_KERNEL_HANDLE, m_parent, nullptr);
 		NtCheck(::ZwOpenKey(&hKey, AccessRights, &oa));
 #endif
-		Attach(hKey);
+		Attach((intptr_t)hKey);
 	}
 }
 

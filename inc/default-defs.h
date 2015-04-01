@@ -84,6 +84,18 @@
 #	define UCFG_PLATFORM_X64 0
 #endif
 
+#ifdef _M_X64
+#	define UCFG_PLATFORM_SHORT_NAME "x64"
+#elif defined(_M_IX86)
+#	define UCFG_PLATFORM_SHORT_NAME "x86"
+#elif defined(_M_MIPS)
+#	define UCFG_PLATFORM_SHORT_NAME "mips"
+#elif defined(_M_ARM)
+#	define UCFG_PLATFORM_SHORT_NAME "arm"
+#else
+#	define UCFG_PLATFORM_SHORT_NAME "platform"
+#endif
+
 #if defined(_M_X64) || defined(__ppc64__) || defined(__mips64__) || defined(__arm64__) || defined(_WIN64) || (defined(__LP64__) && __LP64__)
 #	define UCFG_64 1
 #else
@@ -119,6 +131,8 @@
 #	endif
 #endif
 
+#define _CRT_RAND_S
+
 #ifndef __STDC_VERSION__
 #	if UCFG_MSC_VERSION >= 1700
 #		define __STDC_VERSION__ 199901L
@@ -147,6 +161,8 @@
 
 #define _CORECRT_WIN32_WINNT  _WIN32_WINNT_WINXP	// To be compatible with XP
 #define _VCRT_WIN32_WINNT  _WIN32_WINNT_WINXP
+
+#define _MSVCRT_WINDOWS
 
 #define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!?
 
@@ -227,6 +243,10 @@
 #endif
 
 #define UCFG_WIN32_FULL (UCFG_WIN32 && !UCFG_WCE)
+
+#ifndef UCFG_NTAPI
+#	define UCFG_NTAPI (UCFG_WDM || UCFG_WIN32_FULL)
+#endif
 
 #ifndef WINVER
 #	define WINVER 0x0600 //!!! 0x400
@@ -356,7 +376,7 @@
 #	endif
 
 #	ifndef UCFG_STD_DYNAMIC_BITSET
-#		define UCFG_STD_DYNAMIC_BITSET (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCPP_VERSION < 1200) && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1800))
+#		define UCFG_STD_DYNAMIC_BITSET (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCPP_VERSION < 1200) && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1900))
 #	endif
 
 #	ifndef UCFG_STD_MUTEX

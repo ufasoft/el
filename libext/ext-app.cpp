@@ -101,7 +101,7 @@ String CAppBase::GetCompanyName() {
 	String companyName = UCFG_MANUFACTURER;
 	DWORD dw;
 	try {
-		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName.native(), &dw)) //!!!
+		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)String(AfxGetModuleState()->FileName.native()), &dw)) //!!!
 			companyName = FileVersionInfo().CompanyName;
 	} catch (RCExc){
 	}
@@ -143,7 +143,7 @@ path AFXAPI GetAppDataManufacturerFolder() {
 	path r;
 #	if !UCFG_WCE
 	try {
-		r = Environment::GetEnvironmentVariable("APPDATA");
+		r = path(Environment::GetEnvironmentVariable("APPDATA").c_str());
 		if (r.empty())
 			r = Environment::GetFolderPath(SpecialFolder::ApplicationData);
 	} catch (RCExc) {
@@ -151,7 +151,7 @@ path AFXAPI GetAppDataManufacturerFolder() {
 	}
 #	endif
 #if UCFG_COMPLEX_WINAPP
-	r /= AfxGetApp()->GetCompanyName();
+	r /= path(AfxGetApp()->GetCompanyName().c_str());
 #else
 	r /= UCFG_MANUFACTURER;
 #endif
@@ -166,7 +166,7 @@ String CAppBase::GetInternalName() {
 		return m_internalName;
 #if UCFG_WIN32
 	DWORD dw;
-	if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)AfxGetModuleState()->FileName.native(), &dw))
+	if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)String(AfxGetModuleState()->FileName.native()), &dw))
 		return FileVersionInfo().InternalName;
 #endif
 #ifdef VER_INTERNALNAME_STR
@@ -179,7 +179,7 @@ String CAppBase::GetInternalName() {
 path CAppBase::get_AppDataDir() {
 	if (m_appDataDir.empty()) {
 #if UCFG_WIN32
-		path dir = GetAppDataManufacturerFolder() / GetInternalName();
+		path dir = GetAppDataManufacturerFolder() / path(GetInternalName().c_str());
 #elif UCFG_USE_POSIX
 		path dir = Environment::GetFolderPath(SpecialFolder::ApplicationData) / ("."+GetInternalName());
 #endif
@@ -392,7 +392,8 @@ void __cdecl CConApp::OnSigInt(int sig) {
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
 	if (const char *slevel = getenv("UCFG_TRC")) {
-		CTrace::s_pOstream = &cerr;
+		if (!CTrace::s_pOstream)
+			CTrace::SetOStream(&cerr);
 		CTrace::s_nLevel = atoi(slevel);
 	}
 

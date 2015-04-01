@@ -90,7 +90,7 @@ pair<String, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uU
 	return pair<String, UINT>(buf, 1);
 #else
 	TCHAR buf[MAX_PATH];
-	UINT r = Win32Check(::GetTempFileName(p.native(), prefix, uUnique, buf));
+	UINT r = Win32Check(::GetTempFileName(String(p.native()), prefix, uUnique, buf));
 	return pair<String, UINT>(buf, r);
 #endif
 }
@@ -106,7 +106,7 @@ path Path::GetPhysicalPath(const path& p) {
 		path = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
 	}
 #endif
-	return path;
+	return path.c_str();
 }
 
 #if UCFG_WIN32_FULL && UCFG_USE_REGEX
@@ -127,7 +127,7 @@ path Path::GetTruePath(const path& p) {
 	}
 #elif UCFG_WIN32_FULL
 	TCHAR buf[_MAX_PATH];
-	DWORD len = ::GetLongPathName(p.native(), buf, size(buf)-1);
+	DWORD len = ::GetLongPathName(String(p.native()), buf, size(buf)-1);
 	Win32Check(len != 0);
 	buf[len] = 0;
 
@@ -145,7 +145,7 @@ path Path::GetTruePath(const path& p) {
 #if UCFG_USE_REGEX
 	wcmatch m;
 	if (regex_search(buf2, m, s_reDosName))
-		return m[1];
+		return String(m[1]).c_str();
 #else
 	String sbuf(buf2);				//!!! incoplete check, better to use Regex
 	int idx = sbuf.Find(':');
@@ -257,7 +257,7 @@ void File::Open(const File::OpenInfo& oi) {
 		| (bool(oi.Options & FileOptions::DeleteOnClose) ? FILE_FLAG_DELETE_ON_CLOSE : 0)
 		| (bool(oi.Options & FileOptions::WriteThrough) ? FILE_FLAG_WRITE_THROUGH : 0);		
 
-	Attach(::CreateFile(ExcLastStringArgKeeper(oi.Path), dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlagsAndAttributes, NULL));
+	Attach(::CreateFile(ExcLastStringArgKeeper(oi.Path.native()), dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlagsAndAttributes, NULL));
 	if (oi.Mode == FileMode::Append)
 		SeekToEnd(); 
 #endif	// UCFG_USE_POSIX
@@ -764,14 +764,14 @@ void PositionOwningFileStream::WriteBuffer(const void *buf, size_t count) {
 #ifdef WIN32
 WIN32_FIND_DATA FileSystemInfo::GetData() const {
 	WIN32_FIND_DATA findFileData;
-	HANDLE hFind = FindFirstFile(FullPath.native(), &findFileData);
+	HANDLE hFind = FindFirstFile(String(FullPath.native()), &findFileData);
 	Win32Check(hFind != INVALID_HANDLE_VALUE);
 	Win32Check(FindClose(hFind));
 	return findFileData;
 }
 
 DWORD FileSystemInfo::get_Attributes() const {
-	DWORD r = ::GetFileAttributes(ExcLastStringArgKeeper(FullPath));
+	DWORD r = ::GetFileAttributes(ExcLastStringArgKeeper(FullPath.native()));
 	Win32Check(r != INVALID_FILE_ATTRIBUTES);
 	return r;
 }
@@ -792,7 +792,7 @@ void FileSystemInfo::put_CreationTime(const DateTime& dt) {
 	Throw(E_NOTIMPL);
 #else
 	File file;
-	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), &ft, 0, 0));
 #endif
@@ -819,7 +819,7 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 	CCheck(::utime(FullPath.native(), &ut));
 #else
 	File file;
-	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, &ft, 0));
 #endif
@@ -846,7 +846,7 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 	CCheck(::utime(FullPath.native(), &ut));
 #else
 	File file;
-	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, 0, &ft));
 #endif

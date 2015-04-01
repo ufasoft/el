@@ -291,7 +291,7 @@ static class HResultCategory : public error_category {		// outside function to e
 #if UCFG_WDM
 		return "Error";		//!!!
 #else
-		return explicit_cast<string>(HResultToMessage(eval));
+		return explicit_cast<string>(HResultToMessage(eval, false));
 #endif
 	}
 
@@ -425,7 +425,7 @@ static int s_initThrowImp = (SetThrowImp(&ThrowImp), 1);
 DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
 #if UCFG_EH_SUPPORT_IGNORE
 	if (!CLocalIgnoreBase::ErrorCodeIsIgnored(ec)) {
-		TRC(1, funname <<  "(Ln" << nLine << "): " << ec << " " << ec.message());
+		TRC(1, funname <<  "(Ln" << nLine << "): " << (ec.category()==hresult_category() ? EXT_STR("HRESULT:" << hex << ec.value()) : EXT_STR(ec)) << " " << ec.message());
 	}
 #endif
 	ThrowImp(ec);

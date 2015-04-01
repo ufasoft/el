@@ -30,6 +30,10 @@ namespace std {
 
 #include EXT_HEADER_FILESYSTEM
 
+#if UCFG_MSC_VERSION>=1900 && UCFG_CRT=='S'
+namespace std { namespace sys = tr2::sys; }
+#endif
+
 namespace Ext {
 using std::sys::exists;
 using std::sys::path;

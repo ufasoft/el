@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(list)
@@ -540,7 +545,7 @@ public:
 	InterlockedSingleton() {}
 
 	T *operator->() {
-		if (!s_p) {
+		if (!s_p.load()) {
 			T *p = new T;
 			for (T *prev=0; !s_p.compare_exchange_weak(prev, p);)
 				if (prev) {
@@ -577,7 +582,7 @@ public:
 	}
 
 	const T& operator*() const {
-		if (!m_p) {
+		if (!m_p.load()) {
 			T *p = new T(m_a, m_b);
 			CAlloc::DbgIgnoreObject(p);
 			for (T *prev=0; !m_p.compare_exchange_weak(prev, p);)

@@ -71,7 +71,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 	CStringBlobBuf *d;
 	size_t copyLen = min(size, size_t(m_size));
 	if (m_aRef == 1) {
-		if (m_apChar)
+		if (m_apChar.load())
 			free(m_apChar.exchange(nullptr));
 #if UCFG_HAS_REALLOC
 		d = (CStringBlobBuf*)Realloc(this, size+sizeof(CStringBlobBuf)+sizeof(String::value_type));
@@ -104,7 +104,7 @@ CStringBlobBuf *CStringBlobBuf::RefEmptyBlobBuf() {
 	return r;
 }
 
-Blob::Blob(const Blob& blob)
+Blob::Blob(const Blob& blob) noexcept
 	:	m_pData(blob.m_pData)
 {
 	if (m_pData)
@@ -124,8 +124,7 @@ Blob::Blob(const Buf& mb) {
 }
 
 Blob::~Blob() {
-	if (m_pData)
-		m_pData->Release();
+	m_pData->Release();
 }
 
 void Blob::AssignIfNull(const Blob& val) {
@@ -136,8 +135,7 @@ void Blob::AssignIfNull(const Blob& val) {
 
 Blob& Blob::operator=(const Blob& val) {
 	if (m_pData != val.m_pData) {
-		if (m_pData)
-			m_pData->Release();
+		m_pData->Release();
 		if (m_pData = val.m_pData)
 			m_pData->AddRef();
 	}

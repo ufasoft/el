@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <wincon.h>
@@ -35,13 +28,13 @@ using namespace std;
 void NamedPipe::Create(const NamedPipeCreateInfo& ci) {
 	HANDLE h = ::CreateNamedPipe(ci.Name, ci.OpenMode, ci.PipeMode, ci.MaxInstances, 4096, 4096, 0, ci.Sa);
 	Win32Check(h != INVALID_HANDLE_VALUE);
-	Attach(h);
+	Attach((intptr_t)h);
 }
 
 bool NamedPipe::Connect(LPOVERLAPPED ovl) {
 	if (ovl)
 		Win32Check(::ResetEvent(ovl->hEvent));
-	bool r = ::ConnectNamedPipe(Handle(_self), ovl) || ::GetLastError() == ERROR_PIPE_CONNECTED;
+	bool r = ::ConnectNamedPipe((HANDLE)(intptr_t)Handle(_self), ovl) || ::GetLastError() == ERROR_PIPE_CONNECTED;
 	if (ovl) {
 		if (!r) {
 			int dw = ::WaitForSingleObjectEx(ovl->hEvent, INFINITE, TRUE);
@@ -61,7 +54,7 @@ bool NamedPipe::Connect(LPOVERLAPPED ovl) {
 
 
 FileVersionInfo::FileVersionInfo(RCString fileName) {
-	String s = fileName != nullptr ? fileName : AfxGetModuleState()->FileName;
+	String s = fileName != nullptr ? fileName : AfxGetModuleState()->FileName.native();
 	DWORD dw;
 	int size = GetFileVersionInfoSize((TCHAR*)(const TCHAR*)s, &dw);
 	if (!size && !fileName)
@@ -148,13 +141,13 @@ CStringVector AsciizArrayToStringArray(const TCHAR *p) {
 
 SIZE_T ProcessObj::ReadMemory(LPCVOID base, LPVOID buf, SIZE_T size) {
 	SIZE_T r;
-	Win32Check(::ReadProcessMemory(HandleAccess(_self), base, buf, size, &r));
+	Win32Check(::ReadProcessMemory((HANDLE)(intptr_t)HandleAccess(_self), base, buf, size, &r));
 	return r;
 }
 
 SIZE_T ProcessObj::WriteMemory(LPVOID base, LPCVOID buf, SIZE_T size) {
 	SIZE_T r;
-	Win32Check(::WriteProcessMemory(HandleAccess(_self), base, (void*)buf, size, &r)); //!!!CE
+	Win32Check(::WriteProcessMemory((HANDLE)(intptr_t)HandleAccess(_self), base, (void*)buf, size, &r)); //!!!CE
 	return r;
 }
 
@@ -166,7 +159,7 @@ DWORD ProcessObj::VirtualProtect(void *addr, size_t size, DWORD flNewProtect) {
 #if UCFG_WCE
 		Throw(E_FAIL);
 #else
-		Win32Check(::VirtualProtectEx(HandleAccess(_self), addr, size, flNewProtect, &r));
+		Win32Check(::VirtualProtectEx((HANDLE)(intptr_t)HandleAccess(_self), addr, size, flNewProtect, &r));
 #endif
 	return r;
 }
@@ -180,7 +173,7 @@ MEMORY_BASIC_INFORMATION ProcessObj::VirtualQuery(const void *addr) {
 #if UCFG_WCE
 		Throw(E_FAIL);
 #else
-		size = ::VirtualQueryEx(HandleAccess(_self), addr, &r, sizeof r);
+		size = ::VirtualQueryEx((HANDLE)(intptr_t)HandleAccess(_self), addr, &r, sizeof r);
 #endif
 	if (!size)
 		ZeroStruct(r);
@@ -227,13 +220,13 @@ bool ProcessObj::get_IsWow64() {
 	BOOL r = FALSE;
 	DlProcWrap<PFN_IsWow64Process> pfnIsWow64Process("KERNEL32.DLL", "IsWow64Process");
 	if (pfnIsWow64Process)
-		Win32Check(pfnIsWow64Process(HandleAccess(_self), &r));
+		Win32Check(pfnIsWow64Process((HANDLE)(intptr_t)HandleAccess(_self), &r));
 	return r;
 }
 
 CTimesInfo ProcessObj::get_Times() const {
 	CTimesInfo r;
-	Win32Check(::GetProcessTimes(HandleAccess(_self), &r.m_tmCreation, &r.m_tmExit, &r.m_tmKernel, &r.m_tmUser));
+	Win32Check(::GetProcessTimes((HANDLE)(intptr_t)HandleAccess(_self), &r.m_tmCreation, &r.m_tmExit, &r.m_tmKernel, &r.m_tmUser));
 	return r;
 }
 
@@ -245,7 +238,7 @@ CTimesInfo ProcessObj::get_Times() const {
 String AFXAPI AfxLoadString(uint32_t nIDS) {
 	HINSTANCE h = AfxFindResourceHandle(MAKEINTRESOURCE(nIDS/16+1), RT_STRING);
 	TCHAR buf[255];
-	int nLen = ::LoadString(h, nIDS , buf, _countof(buf));
+	int nLen = ::LoadString(h, nIDS , buf, size(buf));
 	Win32Check(nLen != 0);
 	return buf;
 }
@@ -253,7 +246,7 @@ String AFXAPI AfxLoadString(uint32_t nIDS) {
 String AFXAPI AfxLoadString(uint32_t nIDS) {
 	HINSTANCE h = GetModuleHandle(0);		//!!! only this module
 	TCHAR buf[255];
-	int nLen = ::LoadString(h, nIDS , buf, _countof(buf));
+	int nLen = ::LoadString(h, nIDS , buf, size(buf));
 	Win32Check(nLen != 0);
 	return buf;
 }

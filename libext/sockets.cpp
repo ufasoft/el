@@ -72,7 +72,6 @@ void Socket::Bind(const IPEndPoint& ep) {
 
 bool Socket::ConnectHelper(const IPEndPoint& ep) {
 	TRC(4, "Connecting to " << ep);
-
 	if (Valid()) {
 		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
 			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
@@ -87,6 +86,10 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 			Throw(errc::timed_out);
 		} else if (::connect(BlockingHandleAccess(_self), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR)
 			return true;
+		else if (WSAGetLastError() != WSA(EWOULDBLOCK))
+			ThrowWSALastError();
+		else
+			return false;
 	} else {
 		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
 			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
@@ -107,16 +110,11 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 			if (::connect(BlockingHandleAccess(s), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR) {
 				_self = move(s);
 				return true;
-			}
-			if (WSAGetLastError() != WSA(EWOULDBLOCK))
+			} else if (WSAGetLastError() != WSA(EWOULDBLOCK))
 				ThrowWSALastError();
 			return false;
 		}
 	}
-
-	if (WSAGetLastError() != WSA(EWOULDBLOCK))
-		ThrowWSALastError();
-	return false;
 }
 
 bool Socket::Connect(RCString hostAddress, uint16_t hostPort) {

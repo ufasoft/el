@@ -1237,7 +1237,7 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 	return m_mcat.GetMessage((hr>>16) & 0xFF, hr & 0xFFFF);
 #elif UCFG_WIN32
 	TCHAR buf[256];
-	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(m_moduleName.native())), hr, 0, buf, sizeof buf, 0))
+	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY, LPCVOID(GetModuleHandle(String(m_moduleName.native()))), hr, 0, buf, sizeof buf, 0))
 		return buf;
 	else
 		return nullptr;
@@ -1274,14 +1274,20 @@ HRESULT CMessageProcessor::Process(HRESULT hr, EXCEPINFO *pexcepinfo) {
 void CMessageProcessor::RegisterModule(DWORD lowerCode, DWORD upperCode, RCString moduleName) {
 	g_messageProcessor.CheckStandard();
 	CModuleInfo info;
-	info.Init(lowerCode, upperCode, moduleName);
+	info.Init(lowerCode, upperCode, moduleName.c_str());
 	g_messageProcessor.m_vec.push_back(info);
 }
 
-String CMessageProcessor::ProcessInst(HRESULT hr) {
+static String CombineErrorMessages(const char hex[], RCString msg, bool bWithErrorCode) {
+	return bWithErrorCode ? String(hex) + ":  " + msg
+		: msg;
+}
+
+String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 	CheckStandard();
-	char hex[30];
-	sprintf(hex, "Error %8.8X", hr);
+	char hex[30] = "";
+	if (bWithErrorCode)
+		sprintf(hex, "Error %8.8X", hr);
 	TCHAR buf[256];
 	char *ar[5] = {0, 0, 0, 0, 0};
 	char **p = 0;
@@ -1293,17 +1299,16 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	for (size_t i = 0; i<m_ranges.size(); i++) {
 		String msg = m_ranges[i]->CheckMessage(hr);
 		if (!msg.empty())
-			return String(hex) + L":  " + msg;
+			return CombineErrorMessages(hex, msg, bWithErrorCode);
 	}
 
 #if UCFG_WIN32
 	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS, 0, hr, 0, buf, sizeof buf, p))
-		return String(hex)+ ":  " + buf;
+		return CombineErrorMessages(hex, buf, bWithErrorCode);
 	switch (HRESULT_FACILITY(hr)) {
 	case FACILITY_INTERNET:
-		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("urlmon.dll"))),
-			hr, 0, buf, sizeof buf, 0))
-			return String(hex) + ":  " + buf;
+		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("urlmon.dll"))), hr, 0, buf, sizeof buf, 0))
+			return CombineErrorMessages(hex, buf, bWithErrorCode);
 		break;
 	case FACILITY_WIN32:
 		return win32_category().message(WORD(HRESULT_CODE(hr)));
@@ -1313,7 +1318,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 	for (vector<CModuleInfo>::iterator i(m_vec.begin()); i!=m_vec.end(); ++i) {
 		String msg = i->GetMessage(hr);
 		if (!!msg)
-			return String(hex) + ":  " + msg;
+			return CombineErrorMessages(hex, msg, bWithErrorCode);
 	}
 	String msg = m_default.GetMessage(hr);
 	if (!!msg)
@@ -1321,18 +1326,18 @@ String CMessageProcessor::ProcessInst(HRESULT hr) {
 #if UCFG_HAVE_STRERROR
 	if (HRESULT_FACILITY(hr) == FACILITY_C) {
 		if (const char *s = strerror(HRESULT_CODE(hr)))
-			return String(hex) + ":  " + s;
+			return CombineErrorMessages(hex, s, bWithErrorCode);
 	}
 #endif
 #if UCFG_WIN32
 	if (::FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle), hr, 0, buf, sizeof buf, 0))
-		return String(hex) + ":  " + buf;
+		return CombineErrorMessages(hex, buf, bWithErrorCode);
 #endif
 	return hex;
 }
 
-String AFXAPI HResultToMessage(HRESULT hr) {
-	return g_messageProcessor.ProcessInst(hr);
+String AFXAPI HResultToMessage(HRESULT hr, bool bWithErrorCode) {
+	return g_messageProcessor.ProcessInst(hr, bWithErrorCode);
 }
 
 void CMessageProcessor::CheckStandard() {
@@ -1354,7 +1359,7 @@ void CMessageProcessor::CheckStandard() {
 }
 
 bool PersistentCache::Lookup(RCString key, Blob& blob) {
-	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key;
+	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key.c_str();
 	create_directories(fn.parent_path());
 	if (!exists(fn))
 		return false;
@@ -1365,7 +1370,7 @@ bool PersistentCache::Lookup(RCString key, Blob& blob) {
 }
 
 void PersistentCache::Set(RCString key, const ConstBuf& mb) {
-	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key;
+	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key.c_str();
 	create_directories(fn.parent_path());
 	FileStream fs(fn, FileMode::Create, FileAccess::Write);
 	fs.WriteBuffer(mb.P, mb.Size);
@@ -1675,7 +1680,7 @@ String Process::get_ProcessName() {
 	TCHAR buf[MAX_PATH];
 	Win32Check(::GetModuleBaseName((HANDLE)(intptr_t)Handle(*m_pimpl), 0, buf, size(buf)));
 	path r = buf;
-	String ext = ToLower(r.extension());
+	String ext = ToLower(String(r.extension().native()));
 	return ext==".exe" || ext==".bat" || ext==".com" || ext==".cmd" ? r.parent_path() / r.stem() : r;
 #endif
 }
