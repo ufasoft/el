@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "hash.h"
@@ -7,8 +12,8 @@ using namespace Ext;
 
 namespace Ext { namespace Crypto {
 
-__forceinline UInt32 Rotr(UInt32 v, int n) { return _rotr(v, n); }		//!!! move to .h
-__forceinline UInt64 Rotr(UInt64 v, int n) { return _rotr64(v, n); }
+__forceinline uint32_t Rotr(uint32_t v, int n) { return _rotr(v, n); }		//!!! move to .h
+__forceinline uint64_t Rotr(uint64_t v, int n) { return _rotr64(v, n); }
 
 const byte g_blake_sigma[10][16] = {
 	{	0,	1,	2,	3,	4,	5,	6,	7,	8,	9,	10,	11,	12,	13,	14,	15	},
@@ -23,12 +28,12 @@ const byte g_blake_sigma[10][16] = {
 	{	10,	2,	8,	4,	7,	6,	1,	5,	15,	11,	9,	14,	3,	12,	13,	0	}
 };
 
-const UInt32 g_blake256_c[16] = {		// first digits of PI
+const uint32_t g_blake256_c[16] = {		// first digits of PI
 	0x243F6A88, 0x85A308D3, 0x13198A2E, 0x03707344, 0xA4093822, 0x299F31D0, 0x082EFA98, 0xEC4E6C89,
 	0x452821E6, 0x38D01377, 0xBE5466CF, 0x34E90C6C, 0xC0AC29B7, 0xC97C50DD, 0x3F84D5B5, 0xB5470917,
 };
 
-const UInt64 g_blake512_c[16] = {		// first digits of PI
+const uint64_t g_blake512_c[16] = {		// first digits of PI
 	0x243F6A8885A308D3, 0x13198A2E03707344, 0xA4093822299F31D0, 0x082EFA98EC4E6C89,
 	0x452821E638D01377, 0xBE5466CF34E90C6C, 0xC0AC29B7C97C50DD, 0x3F84D5B5B5470917,
 	0x9216D5D98979FB1B, 0xD1310BA698DFB5AC, 0x2FFD72DBD01ADFB7, 0xB8E1AFED6A267E96,
@@ -45,20 +50,20 @@ void CalcBlakeGImp(int sigma0, int sigma1, W& a, W& b, W& c, W& d, const W m[16]
 	b = Rotr((b ^ c), N3);
 }
 
-void CalcBlakeG(int sigma0, int sigma1, UInt32& a, UInt32& b, UInt32& c, UInt32& d, const UInt32 m[16]) {
-	CalcBlakeGImp<UInt32, 16, 12, 8, 7>(sigma0, sigma1, a, b, c, d, m, g_blake256_c);
+void CalcBlakeG(int sigma0, int sigma1, uint32_t& a, uint32_t& b, uint32_t& c, uint32_t& d, const uint32_t m[16]) {
+	CalcBlakeGImp<uint32_t, 16, 12, 8, 7>(sigma0, sigma1, a, b, c, d, m, g_blake256_c);
 }
 
-void CalcBlakeG(int sigma0, int sigma1, UInt64& a, UInt64& b, UInt64& c, UInt64& d, const UInt64 m[16]) {
+void CalcBlakeG(int sigma0, int sigma1, uint64_t& a, uint64_t& b, uint64_t& c, uint64_t& d, const uint64_t m[16]) {
 #if UCFG_USE_MASM && defined(_M_IX86)
 	Blake512Round(sigma0, sigma1, a, b, c, d, m, g_blake512_c);
 #else
-	CalcBlakeGImp<UInt64, 32, 25, 16, 11>(sigma0, sigma1, a, b, c, d, m, g_blake512_c);
+	CalcBlakeGImp<uint64_t, 32, 25, 16, 11>(sigma0, sigma1, a, b, c, d, m, g_blake512_c);
 #endif
 }
 
 template <typename W, int R>
-void CalcHashBlock(void *dst, const byte *src, UInt64 counter, const W salt[4], const W blakeC[], W t0, W t1) {
+void CalcHashBlock(void *dst, const byte *src, uint64_t counter, const W salt[4], const W blakeC[], W t0, W t1) {
 	const W *m = (const W*)src;
 	W *h = (W*)dst;
 
@@ -87,16 +92,16 @@ void Blake256::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha256_hinit, sizeof(g_sha256_hinit));
 }
 
-void Blake256::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
-	CalcHashBlock<UInt32, 14>(dst, src, counter, Salt, g_blake256_c, UInt32(counter), counter >> 32);
+void Blake256::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+	CalcHashBlock<uint32_t, 14>(dst, src, counter, Salt, g_blake256_c, uint32_t(counter), counter >> 32);
 }
 
 void Blake512::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha512_hinit, sizeof(g_sha512_hinit));
 }
 
-void Blake512::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
-	CalcHashBlock<UInt64, 16>(dst, src, counter, Salt, g_blake512_c, counter, 0);
+void Blake512::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+	CalcHashBlock<uint64_t, 16>(dst, src, counter, Salt, g_blake512_c, counter, 0);
 }
 
 }} // Ext::Crypto::
