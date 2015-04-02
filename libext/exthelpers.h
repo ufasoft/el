@@ -734,6 +734,7 @@ private:
 };
 
 
+
 //!!!#if UCFG_FRAMEWORK && !defined(_CRTBLD)
 
 class AFX_CLASS CTrace {
@@ -743,10 +744,16 @@ public:
 
 	EXT_DATA static bool s_bShowCategoryNames;
 	EXT_DATA static int s_nLevel;
-	EXT_DATA static void *s_pOstream, *s_pSecondStream;
 	EXT_DATA static bool s_bPrintDate;
 
 	static void AFXAPI InitTraceLog(RCString regKey);
+	static Stream* AFXAPI GetOStream();
+	static void AFXAPI SetOStream(Stream *os);
+	static void AFXAPI SetSecondOStream(Stream *os);
+private:
+	static Stream *s_pOstream, *s_pSecondStream;
+
+	friend class CTraceWriter;
 };
 
 

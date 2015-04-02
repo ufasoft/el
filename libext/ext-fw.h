@@ -644,6 +644,14 @@ protected:
 	mutable uint64_t m_pos;
 };
 
+class TraceStream : public FileStream {
+	typedef FileStream base;
+public:
+	TraceStream(const path& p, bool bAppend = false);
+private:
+	File m_file;
+};
+
 class Guid : public GUID {
 public:
 	Guid() { ZeroStruct(*this); }

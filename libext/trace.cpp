@@ -5,12 +5,78 @@
 
 #include <el/ext.h>
 
+#if UCFG_WIN32
+#	include <windows.h>
+#endif
+
 #pragma warning(disable: 4073)
 #pragma init_seg(lib)				// to initialize CTrace early
 
 namespace Ext {
 using namespace std;
 
+
+class CDebugStreambuf : public streambuf {
+	static const int MAX_BUFSIZE = 1024;
+
+	vector<char> m_buf;
+
+	void FlushBuffer() {
+		m_buf.push_back(0);
+		const char *s = &m_buf[0];
+#ifdef WIN32
+#	if UCFG_WCE
+		OutputDebugString(String(s));
+#	else		
+		OutputDebugStringA(s);
+#	endif
+#elif defined WDM_DRIVER
+		KdPrint(("%s", s));
+#else
+		fprintf(stderr, "%s", s);
+#endif
+		m_buf.clear();
+	}
+
+	int overflow(int c) {
+		if (c != EOF) {
+			if (m_buf.size() >= MAX_BUFSIZE)
+				FlushBuffer();
+			m_buf.push_back((char)c);
+			if (c == '\n')
+				FlushBuffer();
+		}
+		return c;
+	}
+};
+
+class CDebugStream : public Stream {
+public:
+	void WriteBuffer(const void *buf, size_t count) override {
+		String s((const char*)buf, count);
+#ifdef WIN32
+#	if UCFG_WCE
+		OutputDebugString(String(s));
+#	else		
+		OutputDebugStringA(s);
+#	endif
+#elif defined WDM_DRIVER
+		KdPrint(("%s", s));
+#else
+		fprintf(stderr, "%s", s);
+#endif
+	}
+};
+
+TraceStream::TraceStream(const path& p, bool bAppend)
+	:	base(m_file)
+{
+	File::OpenInfo oi;
+	oi.Path = p;
+	oi.Mode = bAppend ? FileMode::Append : FileMode::Create;
+	oi.Share = FileShare::ReadWrite;
+	m_file.Open(oi);
+}
 
 String TruncPrettyFunction(const char *fn) {
 	const char *e = strchr(fn, '('), *b;
@@ -21,9 +87,11 @@ String TruncPrettyFunction(const char *fn) {
 }
 
 bool CTrace::s_bShowCategoryNames;
-static CDebugStreambuf s_debugStreambuf;
-Stream *CTrace::s_pOstream = new ostream(&s_debugStreambuf);	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
-void *CTrace::s_pSecondStream;
+//static CDebugStreambuf s_debugStreambuf;
+//Stream *CTrace::s_pOstream = new ostream(&s_debugStreambuf);	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
+Stream *CTrace::s_pOstream = new CDebugStream;	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
+
+Stream *CTrace::s_pSecondStream;
 bool CTrace::s_bPrintDate;
 
 #if UCFG_WDM && defined(_DEBUG)
@@ -47,15 +115,24 @@ void CTrace::InitTraceLog(RCString regKey) {
 #endif
 }
 
-void CTrace::SetOStream(void *os) {
+Stream* CTrace::GetOStream() {
+	return s_pOstream;
+}
+
+void CTrace::SetOStream(Stream *os) {
 	s_pOstream = os;
 }
+
+void CTrace::SetSecondOStream(Stream *os) {
+	s_pSecondStream = os;
+}
+
 
 #if !UCFG_WDM
 static struct CTraceInit {
 	CTraceInit() {
 		if (const char *slevel = getenv("UCFG_TRC")) {
-			CTrace::SetOStream(&cerr);
+			CTrace::SetOStream(new CIosStream(clog));
 			CTrace::s_nLevel = atoi(slevel);
 		}
 	}
@@ -106,6 +183,243 @@ union TinyThreadInfo {
 	void *P;
 };
 
+typedef void (*PFNTrace)(const char *, ...);
+
+#if UCFG_WDM
+
+struct TraceThreadContext {
+	LIST_ENTRY list_entry;
+	PETHREAD pethread;
+	int id;
+	int indent;
+};
+
+BOOLEAN Is_In_List(LIST_ENTRY *list, LIST_ENTRY *entry, KSPIN_LOCK *spin)
+{
+	KIRQL oldIrql;
+	LIST_ENTRY *le;
+	KeAcquireSpinLock(spin, &oldIrql);
+	for (le=list->Flink; le!=list; le=le->Flink)
+		if (le == entry)
+			break;
+	KeReleaseSpinLock(spin, oldIrql);
+	return le != list;
+}
+
+LIST_ENTRY g_list_trace;
+KSPIN_LOCK st_spin_trace;
+
+TraceThreadContext *GetThreadContext()
+{
+	KIRQL oldIrql;
+	PETHREAD pethread = PsGetCurrentThread();
+	LIST_ENTRY *le;
+	TraceThreadContext *ctx;
+	KeAcquireSpinLock(&st_spin_trace, &oldIrql);
+	for (le=g_list_trace.Flink; le!=&g_list_trace; le=le->Flink)
+		if ((ctx = (TraceThreadContext*)le)->pethread == pethread)
+			break;
+	if (le == &g_list_trace)
+	{
+		ctx = new TraceThreadContext;
+		ctx->pethread = pethread;
+		ctx->id = ++s_nThreadNumber;
+		ctx->indent = 1;
+		InsertHeadList(&g_list_trace, &ctx->list_entry);
+	}
+	KeReleaseSpinLock(&st_spin_trace, oldIrql);
+	return ctx;
+}
+
+
+
+//!!! #pragma comment(lib, "wdmsec.lib")
+
+UNICODE_STRING g_registryPath;
+
+
+#if DBG
+PFNTrace g_pfnTrace = (PFNTrace)DbgPrint;
+#else
+PFNTrace g_pfnTrace;
+#endif
+
+typedef ULONG (* PFNvDbgPrintExWithPrefix)(PCCH  Prefix, IN ULONG  ComponentId, IN ULONG  Level, IN PCCH  Format, IN va_list  arglist);
+PFNvDbgPrintExWithPrefix g_pfnPFNvDbgPrintExWithPrefix;
+
+ULONG __cdecl DrvTrace(PCH format, ...) {
+	va_list arglist;
+	char fmt[20];
+	char prefix[50];
+	TraceThreadContext *ctx  = GetThreadContext();
+	int indent = std::min(ctx->indent, (int)(sizeof(prefix)-10));
+	va_start(arglist, format);
+	sprintf(fmt, "%d%% %ds", ctx->id, indent);
+	sprintf(prefix, fmt, "");
+	return g_pfnPFNvDbgPrintExWithPrefix(prefix, DPFLTR_IHVDRIVER_ID, 0xFFFFFFFF, format, arglist);
+}
+
+#else
+
+CTls CFunTrace::s_level;
+static CTls t_threadNumber;
+
+CFunTrace::CFunTrace(const char *funName, int trclevel)
+	:   m_trclevel(trclevel)
+	,	m_funName(funName)
+{
+	intptr_t level = (intptr_t)(void*)s_level.Value;
+	TRC(m_trclevel, String(' ', level*2)+">"+m_funName);
+	s_level.Value = (void*)(level+1);
+}
+
+CFunTrace::~CFunTrace() {
+	intptr_t level = (intptr_t)(void*)s_level.Value-1;
+	s_level.Value = (void*)level;
+	TRC(m_trclevel, String(' ', level*2)+"<"+m_funName);
+}
+
+class TraceBlocker {
+public:
+	bool Trace;
+
+	TraceBlocker() {
+		TinyThreadInfo tti;
+		tti.P = t_threadNumber.Value;
+		Trace = !tti.TraceLocks;
+		++tti.TraceLocks;
+		t_threadNumber.Value = tti.P;
+	}
+
+	~TraceBlocker() {
+		TinyThreadInfo tti;
+		tti.P = t_threadNumber.Value;
+		--tti.TraceLocks;
+		t_threadNumber.Value = tti.P;
+	}
+};
+
+
+#endif // UCFG_WDM
+
+inline intptr_t AFXAPI GetThreadNumber() {
+#ifdef WDM_DRIVER
+	return (intptr_t)PsGetCurrentThreadId();
+#elif UCFG_WIN32
+	return ::GetCurrentThreadId();
+#elif defined(__linux__)
+	return syscall(SYS_gettid);
+#else
+	intptr_t r = (intptr_t)(void*)t_threadNumber.Value;
+	if (!(r & 0xFFFFFF))
+		t_threadNumber.Value = (void*)(uintptr_t)(r |= ++s_nThreadNumber);
+	return r & 0xFFFFFF;
+#endif
+}
+
+CTraceWriter::CTraceWriter(int level, const char* funname) noexcept
+	:	m_pos(level & CTrace::s_nLevel ? CTrace::s_pOstream : 0)
+{
+	if (m_pos) {
+		m_bPrintDate = CTrace::s_bPrintDate;
+		Init(funname);
+	}
+}
+
+CTraceWriter::CTraceWriter(Ext::Stream *pos) noexcept
+	:	m_pos(pos)
+	,	m_bPrintDate(true)
+{
+	Init(0);
+}
+
+void CTraceWriter::Init(const char* funname) {
+	if (funname)
+		m_os << funname << " ";
+}
+
+#if UCFG_USE_POSIX
+#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "d"
+#else
+#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "x"
+#endif
+
+CTraceWriter::~CTraceWriter() noexcept {
+	if (m_pos) {
+		m_os << '\n';
+		string str = m_os.str();		
+		DateTime dt = DateTime::Now();
+		int h = dt.Hour,
+			m = dt.Minute,
+			s = dt.Second,
+			ms = dt.Millisecond;
+		long long tid = GetThreadNumber();
+		char buf[100];
+		if (m_bPrintDate)
+			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
+		else
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+		string date_s = buf + str;
+		string time_str;
+		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			time_str = buf + str;
+		}
+
+#if !UCFG_WDM
+		TraceBlocker traceBlocker;
+		if (traceBlocker.Trace)
+#endif
+		{
+			try {
+				m_pos->WriteBuffer(date_s.data(), date_s.size());
+			} catch (RCExc) {}
+			if (Ext::Stream *pSecondStream = CTrace::s_pSecondStream) {
+				try {
+					pSecondStream->WriteBuffer(time_str.data(), time_str.size());
+				} catch (RCExc) {}
+			}
+		}
+	}
+}
+
+ostream& CTraceWriter::Stream() noexcept {
+	return m_pos ? static_cast<ostream&>(m_os) : s_nullStream;
+}
+
+void CTraceWriter::VPrintf(const char* fmt, va_list args) {
+	if (m_pos) {
+		char buf[1000];
+#if UCFG_USE_POSIX
+		vsnprintf(buf, sizeof(buf), fmt, args );
+#else
+		_vsnprintf(buf, sizeof(buf), fmt, args );
+#endif
+		m_os << buf;
+	}
+}
+
+void CTraceWriter::Printf(const char* fmt, ...) {
+	if (m_pos) {
+		va_list args;
+		va_start(args, fmt);
+		VPrintf(fmt, args);
+	}
+}
+
+CTraceWriter& CTraceWriter::CreatePreObject(char *obj, int level, const char* funname) {
+	CTraceWriter& w = *new(obj) CTraceWriter(level);
+	w.Stream() << funname << ":\t";
+	return w;
+}
+
+void CTraceWriter::StaticPrintf(int level, const char* funname, const char* fmt, ...) {
+	CTraceWriter w(level);
+	w.Stream() << funname << ":\t";
+	va_list args;
+	va_start(args, fmt);
+	w.VPrintf(fmt, args);	
+}
 
 
 } // Ext::

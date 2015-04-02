@@ -1086,11 +1086,13 @@ namespace std {
 
 namespace Ext {
 
+class Stream;
+
 #if !UCFG_MINISTL && !defined(_CRTBLD)
 class EXT_CLASS CTraceWriter {
 public:
 	CTraceWriter(int level, const char* funname = 0) noexcept;
-	CTraceWriter(std::ostream *pos) noexcept;
+	CTraceWriter(Stream *pos) noexcept;
 	~CTraceWriter() noexcept;
 	std::ostream& Stream() noexcept;
 	void VPrintf(const char* fmt, va_list args);
@@ -1099,7 +1101,7 @@ public:
 	static void AFXAPI StaticPrintf(int level, const char* funname, const char* fmt, ...);
 private:
 	std::ostringstream m_os;
-	std::ostream *m_pos;
+	Ext::Stream *m_pos;
 	bool m_bPrintDate;
 
 	void Init(const char* funname);

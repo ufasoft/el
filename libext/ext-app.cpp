@@ -392,8 +392,8 @@ void __cdecl CConApp::OnSigInt(int sig) {
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
 	if (const char *slevel = getenv("UCFG_TRC")) {
-		if (!CTrace::s_pOstream)
-			CTrace::SetOStream(&cerr);
+		if (!CTrace::GetOStream())
+			CTrace::SetOStream(new CIosStream(clog));
 		CTrace::s_nLevel = atoi(slevel);
 	}
 
