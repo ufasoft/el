@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(stack)
@@ -122,7 +127,7 @@ void AFXAPI ThrowXmlException(IXMLDOMDocument *doc);
 
 class ComXmlException : public CComPtr<IXMLDOMParseError>, public XmlException {
 public:
-	long get_LineNumber() const {
+	long get_LineNumber() const override {
 		long r;
 		XmlCheck((*this)->get_line(&r));
 		return r;
@@ -145,7 +150,7 @@ public:
 		XmlCheck((*this)->get_reason(&bstr));
 		return bstr;
 	}
-
+protected:
 	String get_Message() const override;
 };
 
@@ -620,22 +625,11 @@ public:
 		xmlResetError(&m_xmlError);
 	}
 
-	long get_LineNumber() const {
-		return m_xmlError.line;
-	}
-
-	long get_LinePosition() const {
-		return m_xmlError.int2;
-	}
-
-	String get_Url() const {
-		return m_xmlError.file;
-	}
-
-	String get_Reason() const {
-		return m_xmlError.message;
-	}
-
+	long get_LineNumber() const override { return m_xmlError.line; }
+	long get_LinePosition() const override { return m_xmlError.int2; }
+	String get_Url() const override { return m_xmlError.file; }
+	String get_Reason() const override { return m_xmlError.message; }
+protected:
 	String get_Message() const override;
 private:
 	xmlError m_xmlError;
@@ -755,7 +749,7 @@ ENUM_CLASS(XmlFormatting) {
 
 class XmlTextWriter : public XmlWriter {
 public:
-	CPointer<Ext::Encoding> Encoding;
+	observer_ptr<Ext::Encoding> Encoding;
 	int Indentation;
 	char IndentChar;
 
@@ -907,7 +901,7 @@ public:
 
 	ptr<XPathNavigator> CreateNavigator();
 private:
-	CPointer<Ext::Encoding> m_pEncoding;
+	observer_ptr<Ext::Encoding> m_pEncoding;
 	xmlDocPtr m_doc;		
 
 };
