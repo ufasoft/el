@@ -1,17 +1,15 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #include <el/ext.h>
 
 
 #if UCFG_WIN32_FULL
-	#include <el/win/nt.h>
-	using namespace NT;
+#	include <el/win/nt.h>
 #	pragma comment(lib, "ntdll")
+	using namespace NT;
 #endif // UCFG_WIN32_FULL
 
 
@@ -221,14 +219,17 @@ void SqliteCommand::Dispose() {
 
 sqlite_(stmt) *SqliteCommand::Handle() {
 	if (!m_stmt) {
+		sqlite_(stmt) *pst;
 #if UCFG_USE_SQLITE==3
 		const void *tail = 0;
-		SqliteCheck(m_con, ::sqlite3_prepare16_v2(m_con, (const String::value_type*)CommandText, -1, &m_stmt, &tail));
+		SqliteCheck(m_con, ::sqlite3_prepare16_v2(m_con, (const String::value_type*)CommandText, -1, &pst, &tail));
+		m_stmt.reset(pst);
 #else
 		const char *tail = 0;
 		Blob utf = Encoding::UTF8.GetBytes(CommandText);
-		SqliteCheck(m_con, ::sqlite4_prepare(m_con, (const char*)utf.constData(), -1, &m_stmt, &tail));
+		SqliteCheck(m_con, ::sqlite4_prepare(m_con, (const char*)utf.constData(), -1, &pst, &tail));
 #endif
+		m_stmt.reset(pst);
 	}
 	return m_stmt;
 }
@@ -340,16 +341,18 @@ void SqliteConnection::ExecuteNonQuery(RCString sql) {
 	if (s.length() > 1 && s[s.length()-1] != ';')
 		s += ";";
 
+	sqlite_(stmt) *pst;
 #if UCFG_USE_SQLITE==3
 	for (const void *tail=(const Char16*)s; SqliteIsComplete16(tail);) {
 		SqliteCommand cmd(_self);
-		SqliteCheck(_self, ::sqlite3_prepare16_v2(_self, tail, -1, &cmd.m_stmt, &tail));
+		SqliteCheck(_self, ::sqlite3_prepare16_v2(_self, tail, -1, &pst, &tail));
 #else
 	Blob utf = Encoding::UTF8.GetBytes(s);
 	for (const char *tail=(const char*)utf.constData(); SqliteIsComplete(tail);) {
 		SqliteCommand cmd(_self);
-		SqliteCheck(_self, ::sqlite_prepare(_self, tail, -1, &cmd.m_stmt, &tail));
+		SqliteCheck(_self, ::sqlite_prepare(_self, tail, -1, &pst, &tail));
 #endif
+		cmd.m_stmt.reset(pst);
 		cmd.ExecuteNonQuery();
 	}
 }
@@ -384,13 +387,16 @@ void SqliteConnection::SetProgressHandler(int(*pfn)(void*), void*p, int n) {
 }
 
 void SqliteConnection::Create(RCString file) {
+	sqlite_db *pdb;
 #if UCFG_USE_SQLITE==3
-	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)file, &m_db));
+	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)file, &pdb));
+	m_db.reset(pdb);
 	::sqlite_extended_result_codes(m_db, true);	//!!!? only Sqlite3?
 #else
 	Blob utf = Encoding::UTF8.GetBytes(file);
-	SqliteCheck(m_db, ::sqlite4_open(0, (const char*)utf.constData(), &m_db));
-#endif
+	SqliteCheck(m_db, ::sqlite4_open(0, (const char*)utf.constData(), &pdb));
+	m_db.reset(pdb);
+#endif	
 	ExecuteNonQuery("PRAGMA encoding = \"UTF-8\"");
 	ExecuteNonQuery("PRAGMA foreign_keys = ON");
 
@@ -415,11 +421,14 @@ void SqliteConnection::Open(RCString file, FileAccess fileAccess, FileShare shar
 	default:
 		Throw(E_INVALIDARG);
 	}
+	sqlite_db *pdb;
 #if UCFG_USE_SQLITE==3
-	SqliteCheck(m_db, ::sqlite3_open_v2(file, &m_db, flags, 0));
+	SqliteCheck(m_db, ::sqlite3_open_v2(file, &pdb, flags, 0));
+	m_db.reset(pdb);
 	::sqlite3_extended_result_codes(m_db, true);
 #else
-	SqliteCheck(m_db, ::sqlite4_open(0, (const char*)utf.constData(), &m_db));
+	SqliteCheck(m_db, ::sqlite4_open(0, (const char*)utf.constData(), &pdb));
+	m_db.reset(pdb);
 #endif
 	ExecuteNonQuery("PRAGMA foreign_keys = ON");
 }
@@ -427,7 +436,7 @@ void SqliteConnection::Open(RCString file, FileAccess fileAccess, FileShare shar
 void SqliteConnection::Close() {
 	if (m_db) {
 		DisposeCommands();
-		sqlite_db *db = exchange(m_db, (sqlite_db*)0);
+		sqlite_db *db = m_db.release();
 		SqliteCheck(db, ::sqlite_close(db));
 	}
 }
