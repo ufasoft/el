@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext { namespace Inet {
@@ -19,6 +24,7 @@ private:
 	String m_user, m_host;
 };
 
+void SendEmail(RCString recipient, RCString subj, RCString msg, RCString from = nullptr);
 	
 
 
