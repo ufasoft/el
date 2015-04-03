@@ -389,7 +389,7 @@ void SqliteConnection::SetProgressHandler(int(*pfn)(void*), void*p, int n) {
 void SqliteConnection::Create(const path& file) {
 	sqlite_db *pdb;
 #if UCFG_USE_SQLITE==3
-	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)file, &pdb));
+	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)String(file), &pdb));
 	m_db.reset(pdb);
 	::sqlite_extended_result_codes(m_db, true);	//!!!? only Sqlite3?
 #else
@@ -413,7 +413,7 @@ void SqliteConnection::Open(const path& file, FileAccess fileAccess, FileShare s
 	if (share == FileShare::None)
 		flags = SQLITE_OPEN_EXCLUSIVE;
 #else
-	Blob utf = Encoding::UTF8.GetBytes(file);
+	Blob utf = Encoding::UTF8.GetBytes(String(file));
 #endif
 	switch (fileAccess) {
 	case FileAccess::ReadWrite: flags |= SQLITE_OPEN_READWRITE; break;
