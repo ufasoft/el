@@ -8,11 +8,11 @@ using namespace Ext;
 
 namespace Ext { namespace Crypto {
 
-const UInt64 g_sha512_hinit[8] = {
+const uint64_t g_sha512_hinit[8] = {
 	0x6A09E667F3BCC908, 0xBB67AE8584CAA73B, 0x3C6EF372FE94F82B, 0xA54FF53A5F1D36F1, 0x510E527FADE682D1, 0x9B05688C2B3E6C1F, 0x1F83D9ABFB41BD6B, 0x5BE0CD19137E2179
 };
 
-const UInt64 g_sha512_k[80] = {
+const uint64_t g_sha512_k[80] = {
 	0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc, 0x3956c25bf348b538, 
 	0x59f111f1b605d019, 0x923f82a4af194f9b, 0xab1c5ed5da6d8118, 0xd807aa98a3030242, 0x12835b0145706fbe, 
     0x243185be4ee4b28c, 0x550c7dc3d5ffb4e2, 0x72be5d74f27b896f, 0x80deb1fe3b1696b1, 0x9bdc06a725c71235, 
@@ -37,24 +37,24 @@ void SHA512::InitHash(void *dst) noexcept {
 
 #pragma optimize( "t", on)
 
-void SHA512::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
-	UInt64 *p = (UInt64*)dst;
-	UInt64 w[16];
+void SHA512::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+	uint64_t *p = (uint64_t*)dst;
+	uint64_t w[16];
 	memcpy(w, src, sizeof(w));
 
-	UInt64 a = p[0], b = p[1], c = p[2], d = p[3], e = p[4], f = p[5], g = p[6], h = p[7];
+	uint64_t a = p[0], b = p[1], c = p[2], d = p[3], e = p[4], f = p[5], g = p[6], h = p[7];
 
-	UInt64 b_c = b ^ c;
+	uint64_t b_c = b ^ c;
 	for (int i=0; i<80; ++i) {
 		if (i >= 16) {
-			UInt64 w_15 = w[(i-15) & 15], w_2 = w[(i-2) & 15];
+			uint64_t w_15 = w[(i-15) & 15], w_2 = w[(i-2) & 15];
 			w[i & 15] += (Rotr64(w_15, 1) ^ Rotr64(w_15, 8) ^ (w_15 >> 7)) + w[(i-7) & 15] + (Rotr64(w_2, 19) ^ Rotr64(w_2, 61) ^ (w_2 >> 6));
 		}
 
-		UInt64 t1 = h + (Rotr64(e, 14) ^ Rotr64(e, 18) ^ Rotr64(e, 41)) + ((e & f) ^ (~e & g)) + g_sha512_k[i] + w[i & 15];
+		uint64_t t1 = h + (Rotr64(e, 14) ^ Rotr64(e, 18) ^ Rotr64(e, 41)) + ((e & f) ^ (~e & g)) + g_sha512_k[i] + w[i & 15];
 		h = g; g = f; f = e;
 		e = d + t1;
-		UInt64 a_b = a ^ b;
+		uint64_t a_b = a ^ b;
 		d = c; c = b; b = a;
 		a = t1 + (Rotr64(a, 28) ^ Rotr64(a, 34) ^ Rotr64(a, 39)) + ((a_b & exchange(b_c, a_b)) ^ c);											//	((a & c) ^ (a & d) ^ (c & d));
 	}

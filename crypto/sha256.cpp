@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 // This file should be included in each module, which uses it because problems with exporting constant data
@@ -8,11 +13,11 @@ using namespace Ext;
 
 namespace Ext { namespace Crypto {
 
-const UInt32 g_sha256_hinit[8] = {
+const uint32_t g_sha256_hinit[8] = {
 	0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 };
 
-const UInt32 g_sha256_k[64] = {
+const uint32_t g_sha256_k[64] = {
     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, //  0
     0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, //  8
@@ -31,7 +36,7 @@ const UInt32 g_sha256_k[64] = {
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
 };
 
-DECLSPEC_ALIGN(64) UInt32 g_4sha256_k[64][4];
+DECLSPEC_ALIGN(64) uint32_t g_4sha256_k[64][4];
 
 static struct Sha256SSEInit {
 	Sha256SSEInit() {
@@ -41,7 +46,7 @@ static struct Sha256SSEInit {
 } s_sha256SSEInit;
 
 
-void SHA256::Init4Way(UInt32 state[8][4]) {
+void SHA256::Init4Way(uint32_t state[8][4]) {
 	for (int i=0; i<8; ++i)
 		state[i][0] = state[i][1] = state[i][2] = state[i][3] = g_sha256_hinit[i];
 }
@@ -52,39 +57,39 @@ void SHA256::InitHash(void *dst) noexcept {
 
 #pragma optimize( "t", on)
 
-void SHA256::HashBlock(void *dst, const byte *src, UInt64 counter) noexcept {
-	UInt32 *p = (UInt32*)dst;
+void SHA256::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+	uint32_t *p = (uint32_t*)dst;
 #if UCFG_USE_MASM
-	Sha256Update_x86x64(p, (const UInt32*)src);
+	Sha256Update_x86x64(p, (const uint32_t*)src);
 #else
-	UInt32 w[16];
+	uint32_t w[16];
 	memcpy(w, src, sizeof(w));
 
-	UInt32 a = p[0], b = p[1], c = p[2], d = p[3], e = p[4], f = p[5], g = p[6], h = p[7];
+	uint32_t a = p[0], b = p[1], c = p[2], d = p[3], e = p[4], f = p[5], g = p[6], h = p[7];
 
-	UInt32 b_c = b ^ c;
+	uint32_t b_c = b ^ c;
 	for (int i=0; i<64; ++i) {
 		if (i >= 16) {
-			UInt32 w_15 = w[(i-15) & 15], w_2 = w[(i-2) & 15];
+			uint32_t w_15 = w[(i-15) & 15], w_2 = w[(i-2) & 15];
 			w[i & 15] += (Rotr32(w_15, 7) ^ Rotr32(w_15, 18) ^ (w_15 >> 3)) + w[(i-7) & 15] + (Rotr32(w_2, 17) ^ Rotr32(w_2, 19) ^ (w_2 >> 10));
 		}
 
-		UInt32 t1 = h + (Rotr32(e, 6) ^ Rotr32(e, 11) ^ Rotr32(e, 25)) + ((e & f) ^ (~e & g)) + g_sha256_k[i] + w[i & 15];
+		uint32_t t1 = h + (Rotr32(e, 6) ^ Rotr32(e, 11) ^ Rotr32(e, 25)) + ((e & f) ^ (~e & g)) + g_sha256_k[i] + w[i & 15];
 		h = g; g = f; f = e;
 		e = d + t1;
-		UInt32 a_b = a ^ b;
+		uint32_t a_b = a ^ b;
 		d = c; c = b; b = a;
 		a = t1 + (Rotr32(a, 2) ^ Rotr32(a, 13) ^ Rotr32(a, 22)) + ((a_b & exchange(b_c, a_b)) ^ c);											//	((a & c) ^ (a & d) ^ (c & d));
 	}
 	
 	p[0] += a; p[1] += b; p[2] += c; p[3] += d; p[4] += e; p[5] += f; p[6] += g; p[7] += h;
-#endif
+#endif // !UCFG_USE_MASM
 }
 
 #if UCFG_CPU_X86_X64 && !UCFG_USE_MASM
-extern "C" void _cdecl Sha256Update_4way_x86x64Sse2(UInt32 state[8][4], const UInt32 data[16][4]) {
+extern "C" void _cdecl Sha256Update_4way_x86x64Sse2(uint32_t state[8][4], const uint32_t data[16][4]) {
 	SHA256 sha;
-	UInt32 p[8], q[16];
+	uint32_t p[8], q[16];
 	for (int i=0; i<4; ++i) {
 		for (int j=0; j<8; ++j) {
 			p[j] = state[j][i];
