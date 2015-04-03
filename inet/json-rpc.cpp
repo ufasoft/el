@@ -22,7 +22,7 @@ const error_category& json_rpc_category() {
 			case  json_rpc_errc::MethodNotFound: return "Method not Found";
 			case  json_rpc_errc::InvalidRequest: return "Invalid Request";
 			default:
-				return system_error(error_code(errval, json_rpc_category())).what();
+				return "Unknown";
 			}
 		}
 	} s_json_rpc_category;
