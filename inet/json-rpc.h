@@ -19,12 +19,12 @@ typedef unordered_map<String, VarValue> CJsonNamedParams;
 class JsonRpcException : public Exception {
 	typedef Exception base;
 public:
-	int Code;
+//	int Code;
 	VarValue Data;
 
-	JsonRpcException(int code)
-		:	base(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_JSON_RPC, UInt16(code)))
-		,	Code(code)
+	JsonRpcException(int code, RCString msg)
+		:	base(error_code(code, json_rpc_category()), msg)		
+//		,	Code(code)
 	{}
 
 	~JsonRpcException() noexcept {}
@@ -32,7 +32,7 @@ public:
 
 class JsonRpcRequest : public Object {
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
 	VarValue Id;
 	String Method;
@@ -72,7 +72,7 @@ public:
 	CBool V20;
 
 	JsonRpc()
-		:	m_nextId(1)
+		: m_aNextId(1)
 	{}
 
 	static bool TryAsRequest(const VarValue& v, JsonRpcRequest& req);
@@ -96,7 +96,7 @@ private:
 	typedef LruMap<int, ptr<JsonRpcRequest>> CRequests;
 	CRequests m_reqs;
 
-	volatile Int32 m_nextId;
+	atomic<int> m_aNextId;
 
 	void PrepareRequest(JsonRpcRequest *req);
 	VarValue ProcessRequest(const VarValue& v);
