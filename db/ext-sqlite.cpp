@@ -423,7 +423,7 @@ void SqliteConnection::Open(const path& file, FileAccess fileAccess, FileShare s
 	}
 	sqlite_db *pdb;
 #if UCFG_USE_SQLITE==3
-	SqliteCheck(m_db, ::sqlite3_open_v2(file, &pdb, flags, 0));
+	SqliteCheck(m_db, ::sqlite3_open_v2(String(file), &pdb, flags, 0));
 	m_db.reset(pdb);
 	::sqlite3_extended_result_codes(m_db, true);
 #else
