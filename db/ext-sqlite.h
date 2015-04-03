@@ -153,8 +153,8 @@ public:
 	operator sqlite_db*() { return m_db; }
 
 	void SetProgressHandler(int(*pfn)(void*), void* p = 0, int n = 1);
-	void Create(RCString file) override;
-	void Open(RCString file, FileAccess fileAccess = FileAccess::ReadWrite, FileShare share = FileShare::ReadWrite) override;
+	void Create(const path& file) override;
+	void Open(const path& file, FileAccess fileAccess = FileAccess::ReadWrite, FileShare share = FileShare::ReadWrite) override;
 	void Close() override;
 
 	ptr<IDbCommand> CreateCommand() override;

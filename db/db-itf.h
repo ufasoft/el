@@ -101,8 +101,8 @@ private:
 interface IDbConn : public Object {
 	typedef IDbConn class_type;
 public:
-	virtual void Create(RCString file) =0;
-	virtual void Open(RCString file, FileAccess fileAccess, FileShare share = FileShare::ReadWrite) =0;
+	virtual void Create(const path& file) =0;
+	virtual void Open(const path& file, FileAccess fileAccess, FileShare share = FileShare::ReadWrite) =0;
 	virtual void Close() =0;
 	virtual ptr<IDbCommand> CreateCommand() =0;
 

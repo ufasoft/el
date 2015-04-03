@@ -386,7 +386,7 @@ void SqliteConnection::SetProgressHandler(int(*pfn)(void*), void*p, int n) {
 	::sqlite_progress_handler(m_db, n, pfn, p);
 }
 
-void SqliteConnection::Create(RCString file) {
+void SqliteConnection::Create(const path& file) {
 	sqlite_db *pdb;
 #if UCFG_USE_SQLITE==3
 	SqliteCheck(m_db, ::sqlite3_open16((const String::value_type*)file, &pdb));
@@ -407,7 +407,7 @@ void SqliteConnection::Create(RCString file) {
 	*/
 }
 
-void SqliteConnection::Open(RCString file, FileAccess fileAccess, FileShare share) {
+void SqliteConnection::Open(const path& file, FileAccess fileAccess, FileShare share) {
 	int flags = 0;
 #if UCFG_USE_SQLITE==3
 	if (share == FileShare::None)
