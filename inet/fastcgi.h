@@ -1,4 +1,9 @@
-﻿#pragma once
+﻿/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
+#pragma once
 
 #include <el/libext/ext-net.h>
 
@@ -38,7 +43,7 @@ ostream& operator<<(ostream& os, RecordType typ);
 class Record : public Object, public CPersistent {
 public:
    	RecordType Type;
-   	UInt16 RequestId;
+   	uint16_t RequestId;
    	mutable Blob Content;
 
 	Record(RecordType type = RecordType::FCGI_UNKNOWN_TYPE)
@@ -57,7 +62,7 @@ public:
 class EndRequestRecord : public Record {
 	typedef Record base;
 public:
-   	UInt32 Status;
+   	uint32_t Status;
    	ProtocolStatus ProtocolStatus;
 
    	EndRequestRecord()
@@ -251,7 +256,7 @@ private:
 }}}
 
 template <> struct ptr_traits<Ext::Inet::FastCGI::ServerConnection> {
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 };
 
 namespace Ext { namespace Inet { namespace FastCGI {
@@ -261,7 +266,7 @@ class CgiRequest : public Thread {
 public:
 	ptr<ServerConnection> Connection;
 	NameValueCollection Params;
-	UInt16 RequestId;
+	uint16_t RequestId;
 	CBool KeepConn;
 
 	CgiStreambuf InputStream, OutputStream, ErrorStream;
@@ -328,7 +333,7 @@ class ServerConnection : public Thread {
 public:
    	FastCgiServer& Server;
 	mutex MtxRequests;
-	unordered_map<UInt16, ptr<CgiRequest>> Requests;
+	unordered_map<uint16_t, ptr<CgiRequest>> Requests;
 
 	Socket m_sock;
 	NetworkStream m_stm;
@@ -337,7 +342,7 @@ public:
    	BinaryReader Reader;
    	BinaryWriter Writer;
 
-	ServerConnection(FastCgiServer& server);
+	ServerConnection(FastCgiServer& server, Socket&& sock);
 
    	void Send(const Record& rec);
 protected:
@@ -358,9 +363,10 @@ public:
 	
 	CInt<int> PerSecondLimit, PerMinuteLimit, PerHourLimit;
 
-	FastCgiServer(thread_group& tr)
+	FastCgiServer(thread_group& tr, const IPEndPoint& ep = IPEndPoint(IPAddress::Loopback, 900))
 		:	base(&tr)
-		,	ListeningEndpoint(IPAddress::Loopback, 900)
+		,	ListeningEndpoint(ep)
+		,	m_sock(ep.AddressFamily)
 	{}
 protected:
 	Socket m_sock;

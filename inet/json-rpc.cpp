@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "json-rpc.h"
@@ -17,7 +22,7 @@ const error_category& json_rpc_category() {
 			case  json_rpc_errc::MethodNotFound: return "Method not Found";
 			case  json_rpc_errc::InvalidRequest: return "Invalid Request";
 			default:
-				return static_cast<string>(AfxProcessError(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_JSON_RPC, UInt16(errval))));
+				return system_error(error_code(errval, json_rpc_category())).what();
 			}
 		}
 	} s_json_rpc_category;
@@ -77,7 +82,7 @@ bool JsonRpc::TryAsRequest(const VarValue& v, JsonRpcRequest& req) {
 
 void JsonRpc::PrepareRequest(JsonRpcRequest *req) {
 	req->V20 = V20;
-	int id = Interlocked::Increment(m_nextId);
+	int id = ++m_aNextId;
 	req->Id = VarValue(id);
 	EXT_LOCKED(MtxReqs, m_reqs.insert(make_pair(id, req)));
 }
@@ -147,8 +152,7 @@ VarValue JsonRpc::ProcessResponse(const VarValue& vjresp) {
 	JsonResponse resp = Response(vjresp);
 	if (resp.Success)
 		return resp.Result;
-	JsonRpcException exc(resp.Code);
-	exc.m_message = resp.JsonMessage;
+	JsonRpcException exc(resp.Code, resp.JsonMessage);
 	exc.Data = resp.Data;
 	throw exc;
 }

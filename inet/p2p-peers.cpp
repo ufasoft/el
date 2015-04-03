@@ -1,4 +1,11 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
+
+#include <random>
 
 #include "p2p-peers.h"
 #include "p2p-net.h"
@@ -16,7 +23,9 @@ bool Peer::IsTerrible(const DateTime& now) const {
 
 double Peer::GetChance(const DateTime& now) const {
 	TimeSpan sinceLastSeen = std::max(TimeSpan(), now-LastPersistent);
-	double r = 1 - sinceLastSeen.TotalSeconds/(600 + sinceLastSeen.TotalSeconds);
+	
+	double r = (double)duration_cast<seconds>(sinceLastSeen).count();
+	r = 1 - r / (600 + r);
 	if (now-LastTry < TimeSpan::FromMinutes(10))
 		r /= 100;
 	return r * pow(0.6, Attempts);
@@ -110,11 +119,15 @@ vector<ptr<Peer>> PeerManager::GetPeers(int nMax) {
 	}
 }
 
+static default_random_engine g_rng(Rand());
+
+
 ptr<Peer> PeerManager::Select() {
 	int size = TriedBuckets.size() + NewBuckets.size();
 	if (!size)
 		return nullptr;
-	PeerBuckets& buckets = Ext::Random().Next(size) < TriedBuckets.size() ? TriedBuckets : NewBuckets;
+
+	PeerBuckets& buckets = uniform_int_distribution<int>(0, size - 1) (g_rng) < TriedBuckets.size() ? TriedBuckets : NewBuckets;
 	return buckets.Select();
 }
 
@@ -188,7 +201,7 @@ bool PeerManager::IsRoutable(const IPAddress& ip) {
 		&& !NetManager.IsLocal(ip);
 }
 
-ptr<Peer> PeerManager::Add(const IPEndPoint& ep, UInt64 services, DateTime dt, TimeSpan penalty) {
+ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty) {
 //	TRC(3, ep);
 
 	if (!IsRoutable(ep.Address))
@@ -199,7 +212,7 @@ ptr<Peer> PeerManager::Add(const IPEndPoint& ep, UInt64 services, DateTime dt, T
 		return nullptr;
 	}
 
-	m_nPeersDirty = true;
+	m_aPeersDirty = true;
 	ptr<Peer> peer;
 	EXT_LOCK (MtxPeers) {
 		if (peer = Find(ep.Address)) {
@@ -253,7 +266,7 @@ void PeerManager::OnPeriodic() {
 			if (ptr<Peer> peer = Select()) {
 				if (setConnectedSubnet.insert(peer->GetGroup()).second) {
 					ptr<Link> link = NetManager.CreateLink(*m_owner);
-					link->Net = dynamic_cast<Net*>(this);
+					link->Net.reset(dynamic_cast<Net*>(this));
 					link->Peer = peer;
 					peer->LastTry = now;
 					try {
@@ -268,7 +281,8 @@ void PeerManager::OnPeriodic() {
 		}
 	}
 
-	if (Interlocked::CompareExchange(m_nPeersDirty, 0, 1))
+	int expected = true;
+	if (m_aPeersDirty.compare_exchange_weak(expected, false))
 		SavePeers();
 }
 

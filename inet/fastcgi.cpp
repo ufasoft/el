@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "fastcgi.h"
@@ -34,7 +39,7 @@ ptr<Record> Record::ReadFromStream(BinaryReader& rd) {
 		{
 			RecordType type = (RecordType)rd.BaseStream.ReadByte();
 
-			TRC(4, type);
+			TRC(9, type);
 
 			switch (type) {
 			case RecordType::FCGI_PARAMS:			r = new NameValueRecord();		break;
@@ -65,10 +70,10 @@ ptr<Record> Record::ReadFromStream(BinaryReader& rd) {
 }
 
 void Record::Write(BinaryWriter& wr) const {
-	TRC(4, "Type: " << Type);
+	TRC(8, "Type: " << Type);
 
 	MemoryStream ms;
-	BinaryWriter(ms) << byte(1) << byte(Type) << htons(RequestId) << htons((UInt16)Content.Size) << byte(0) << byte(0);
+	BinaryWriter(ms).Ref() << byte(1) << byte(Type) << htons(RequestId) << htons((uint16_t)Content.Size) << byte(0) << byte(0);
 	ms.WriteBuf(Content);
 	wr.BaseStream.WriteBuf(ms);
 }
@@ -101,6 +106,8 @@ void NameValueRecord::ProcessRecord(CgiRequest& cgi, ServerConnection& connectio
    		if (valLen != 0)
    			value = Encoding::UTF8.GetChars(rd.ReadBytes(valLen));
    		cgi.Params.Set(name, value);
+
+		TRC(10, name << ": " << value);
    	}
 }
 
@@ -173,7 +180,7 @@ int CgiStreambuf::underflow() {
 	if (!m_pMemoryStream) {
 		if (Eof)
 			return EOF;
-		m_ev.Lock();
+		m_ev.lock();
 	}
 	EXT_LOCK (m_mtx) {
 		m_buf = m_pMemoryStream->Blob;
@@ -253,7 +260,7 @@ bool CgiRequest::CheckForDoSAttack() {
 }
 
 void CgiRequest::OnDoSAttack() {
-	TRC(1, "DoS from " << UserHostAddress);
+	TRC(1, "DoS from " << get_UserHostAddress());
 
 	Out << "Content-type: text/plain\r\n"
 		"Status: 429 Too Many Requests\r\n"		
@@ -262,12 +269,12 @@ void CgiRequest::OnDoSAttack() {
 		"Please, try later" << endl;
 }
 
-ServerConnection::ServerConnection(FastCgiServer& server)
+ServerConnection::ServerConnection(FastCgiServer& server, Socket&& sock)
 	:	Server(server)
 	,	m_stm(m_sock)
 	,	Reader(m_stm)
 	,	Writer(m_stm)
-
+	,	m_sock(move(sock))
 {
 }
 
@@ -306,30 +313,23 @@ void ServerConnection::Execute() {
 }
 
 void FastCgiServer::BeforeStart() {
-	m_sock.Open();
+	m_sock.ReuseAddress = true;
 	m_sock.Bind(ListeningEndpoint);
 	TRC(2, "Listening on FastCGI endpoint  " << ListeningEndpoint);
+	m_sock.Listen();
 }
 
 void FastCgiServer::Execute() {
 	Name = "FastCgiServer";
 
-	m_sock.Listen();
-
 	SocketKeeper sk(_self, m_sock);
-	Socket s;
-	IPEndPoint ep;
-	try {
-		DBG_LOCAL_IGNORE_WIN32(WSAEINTR);
 
-		while (m_sock.Accept(s, ep)) {
-			TRC(2, "FastCGI connect from " << ep);
+	DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
 
-			ptr<ServerConnection> conn = new ServerConnection(_self);
-			conn->m_sock = move(s);
-			conn->Start();
-   		}
-	} catch (RCExc) {
+	while (!Ext::this_thread::interruption_requested()) {
+		pair<Socket, IPEndPoint> sep = m_sock.Accept();
+		TRC(2, "FastCGI from " << sep.second);
+		(new ServerConnection(_self, move(sep.first)))->Start();
 	}
 }
 

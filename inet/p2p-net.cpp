@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -36,7 +41,7 @@ void LinkSendThread::Execute() {
 						Link.Stop();
 				}
 			} else {
-				if (now-m_dtLastSend > TimeSpan::FromSeconds(PING_SECONDS))
+				if (now-m_dtLastSend > seconds(PING_SECONDS))
 					if (ptr<Message> m = Link.CreatePingMessage())
 						Link.Send(m);
 				m_ev.Lock(PERIODIC_SEND_SECONDS * 1000);
@@ -149,10 +154,10 @@ void Link::Execute() {
 		if (Incoming)
 			epRemote = Tcp.Client.RemoteEndPoint;
 
-		DBG_LOCAL_IGNORE_WIN32(WSAECONNREFUSED);	
-		DBG_LOCAL_IGNORE_WIN32(WSAECONNABORTED);	
-		DBG_LOCAL_IGNORE_WIN32(WSAECONNRESET);
-		DBG_LOCAL_IGNORE_WIN32(WSAENOTSOCK);
+		DBG_LOCAL_IGNORE_CONDITION(errc::connection_refused);	
+		DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
+		DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
+		DBG_LOCAL_IGNORE_CONDITION(errc::not_a_socket);
 
 		if (!OnStartConnection())
 			goto LAB_EOF;
@@ -162,18 +167,18 @@ void Link::Execute() {
 			DBG_LOCAL_IGNORE(E_EXT_EndOfStream);
 
 			if (UseMagic) {
-				UInt32 magic = BinaryReader(Tcp.Stream).ReadUInt32();
+				uint32_t magic = BinaryReader(Tcp.Stream).ReadUInt32();
 				EXT_LOCK (NetManager->MtxNets) {
 					EXT_FOR (P2P::Net *net, NetManager->m_nets) {
 						if (net->Listen && net->ProtocolMagic == magic) {
-							Net = net;
+							Net.reset(net);
 							goto LAB_FOUND;
 						}
 					}
 					return;
 LAB_FOUND:
 					ThreadBase::Delete();
-					m_owner = &Net->m_tr;
+					m_owner.reset(&Net->m_tr);
 					m_owner->add_thread(this);
 				}
 				bMagicReceived = true;
@@ -186,17 +191,20 @@ LAB_FOUND:
 		} else {
 			epRemote = Peer->EndPoint;
 			TRC(3, "Connecting to " << epRemote);
-			DBG_LOCAL_IGNORE_WIN32(WSAETIMEDOUT);
-			DBG_LOCAL_IGNORE_WIN32(WSAEADDRNOTAVAIL);
-			DBG_LOCAL_IGNORE_WIN32(WSAENETUNREACH);
+			DBG_LOCAL_IGNORE_CONDITION(errc::timed_out);
+			DBG_LOCAL_IGNORE_CONDITION(errc::address_not_available);
+			DBG_LOCAL_IGNORE_CONDITION(errc::network_unreachable);
+			DBG_LOCAL_IGNORE_CONDITION(errc::host_unreachable);
 			
-			Tcp.Client.ReuseAddress = true;
-			Tcp.Client.Bind(epRemote.Address.AddressFamily==AddressFamily::InterNetwork ? IPEndPoint(IPAddress::Any, NetManager->LocalEp4.Port) : IPEndPoint(IPAddress::IPv6Any, NetManager->LocalEp6.Port));
+			if (Tcp.ProxyString.empty()) {
+				Tcp.Client.ReuseAddress = true;
+				Tcp.Client.Bind(epRemote.Address.AddressFamily==AddressFamily::InterNetwork ? IPEndPoint(IPAddress::Any, NetManager->LocalEp4.Port) : IPEndPoint(IPAddress::IPv6Any, NetManager->LocalEp6.Port));
+			}
 			Tcp.Client.ReceiveTimeout = P2P_CONNECT_TIMEOUT;
 #ifdef X_DEBUG//!!!D
 			epRemote = IPEndPoint::Parse("192.168.0.103:8668");
 #endif
-			Tcp.Client.Connect(epRemote);
+			Tcp.Connect(epRemote);
 			Tcp.Client.ReceiveTimeout = 0;
 			m_dtCheckLastRecv = DateTime::UtcNow()+TimeSpan::FromMinutes(1);
 			Net->Attempt(Peer);
@@ -226,8 +234,8 @@ LAB_FOUND:
 		}
 
 		if (bMagicReceived) {
-			cbReceived = sizeof(UInt32);
-			*(UInt32*)blobMessage.data() = Net->ProtocolMagic;
+			cbReceived = sizeof(uint32_t);
+			*(uint32_t*)blobMessage.data() = Net->ProtocolMagic;
 		}
 
 		if (LineBased)
@@ -244,8 +252,8 @@ LAB_FOUND:
 			FD_SET((SOCKET)hp, &writefds);
 
 			timeval timeout;
-			TimeSpan::FromSeconds(std::min(std::min(int(PingTimeout.TotalSeconds), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timeout);
-			SocketCheck(::select(2, &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
+			TimeSpan::FromSeconds(std::min(std::min((int)duration_cast<seconds>(PingTimeout).count(), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timeout);
+			SocketCheck(::select(int(1+(SOCKET)hp), &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
 
 			DateTime now = DateTime::UtcNow();
 
@@ -317,7 +325,7 @@ LAB_FOUND:
 	} catch (RCExc) {
 	}
 LAB_EOF:
-	TRC(3, "Disconnecting " << epRemote << "  Socket " << (Int64)Tcp.Client.DangerousGetHandleEx());
+	TRC(3, "Disconnecting " << epRemote << "  Socket " << (int64_t)Tcp.Client.DangerousGetHandleEx());
 #if UCFG_P2P_SEND_THREAD
 	if (SendThread) {
 		if (!SendThread->m_bStop)
@@ -361,35 +369,37 @@ void ListeningThread::BeforeStart() {
 			sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 			if (NetManager.SoftPortRestriction) {
 				try {
-					DBG_LOCAL_IGNORE_WIN32(WSAEADDRINUSE);
+					DBG_LOCAL_IGNORE_CONDITION(errc::address_in_use);
 
-					sock.Bind(IPEndPoint(IPAddress::Any, (UInt16)NetManager.ListeningPort));
-				} catch (RCExc ex) {
-					if (HResultInCatch(ex) != HRESULT_FROM_WIN32(WSAEADDRINUSE))
+					sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
+				} catch (system_error& ex) {
+					if (ex.code() != errc::address_in_use)
 						throw;
 					sock.Bind(IPEndPoint(IPAddress::Any, 0));
 				}
 				NetManager.ListeningPort = sock.get_LocalEndPoint().Port;
 			} else {
-				sock.Bind(IPEndPoint(IPAddress::Any, (UInt16)NetManager.ListeningPort));
+				sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
 			}
 		}
 
-		DBG_LOCAL_IGNORE_WIN32(WSAEAFNOSUPPORT);
+		DBG_LOCAL_IGNORE_CONDITION(errc::address_family_not_supported);
 		if (Socket::OSSupportsIPv6) {
 			(new ListeningThread(NetManager, *m_owner, AddressFamily::InterNetworkV6))->Start();
 		}
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
-		m_sock.Bind(IPEndPoint(IPAddress::Any, (UInt16)NetManager.ListeningPort));
+		m_sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
 		TRC(2, "Listening on TCP IPv6 port " << NetManager.ListeningPort);
 	} else {
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
-		m_sock.Bind(IPEndPoint(IPAddress::IPv6Any, (UInt16)NetManager.ListeningPort));
+		m_sock.Bind(IPEndPoint(IPAddress::IPv6Any, (uint16_t)NetManager.ListeningPort));
 		NetManager.LocalEp6 = m_sock.LocalEndPoint;
 		TRC(2, "Listening on TCP IPv4 port " << NetManager.ListeningPort);
 	}
+
+	m_sock.Listen();
 }
 
 void ListeningThread::Execute() {
@@ -397,42 +407,26 @@ void ListeningThread::Execute() {
 
 	try {
 		SocketKeeper sockKeeper(_self, m_sock);
-		DBG_LOCAL_IGNORE_WIN32(WSAEINTR);
+		DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
 
-		m_sock.Listen();
-		while (!m_bStop) {
-			Socket s;
-			m_sock.Accept(s);
-			IPEndPoint epRemote = s.RemoteEndPoint;
-			if (NetManager.IsBanned(epRemote.Address)) {
-				TRC(2, "Denied connect from banned " << epRemote);
+		while (!Ext::this_thread::interruption_requested()) {
+			pair<Socket, IPEndPoint> sep = m_sock.Accept();
+			if (NetManager.IsBanned(sep.second.Address)) {
+				TRC(2, "Denied connect from banned " << sep.second.Address);
 			} else if (NetManager.IsTooManyLinks()) {
 				TRC(2, "Incoming connection refused: Too many links");
 			} else {
-				TRC(3, "Connected from " << epRemote << "  Socket " << (Int64)s.DangerousGetHandle());
+				TRC(3, "Connected from " << sep.second << "  Socket " << sep.first.DangerousGetHandle());
 
 				ptr<Link> link = NetManager.CreateLink(*m_owner);
 				link->Incoming = true;
-				link->Tcp.Client = move(s);
+				link->Tcp.Client = move(sep.first);
 				link->Start();
 			}
 		}
 	} catch (RCExc) {
 	}
 }
-
-/*!!!R
-ptr<Peer> Net::GetPeer(const IPEndPoint& ep) {
-	ptr<Peer> r;
-	EXT_LOCK (MtxPeers) {
-		if (!Lookup(Peers, ep.Address, r)) {
-			r = CreatePeer();
-			r->LastLive = DateTime::UtcNow();
-			Peers[(r->EndPoint = ep).Address] = r;
-		}
-	}
-	return r;
-}*/
 
 Link *NetManager::CreateLink(thread_group& tr) {
 	return new Link(this, &tr);

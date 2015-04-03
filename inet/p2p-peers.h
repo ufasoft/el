@@ -1,4 +1,10 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
+
 
 #include <el/libext/ext-net.h>
 
@@ -33,7 +39,7 @@ class PeerManager;
 class Peer : public Object, public CPersistent {
 	typedef Peer class_type;
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
 	CInt<int> Misbehavings;
 	CInt<int> Attempts;
@@ -58,12 +64,12 @@ public:
 	Blob GetGroup() const;
 	size_t GetHash() const;
 
-	UInt64 get_Services() const { return m_services; }
-	void put_Services(UInt64 v) {
+	uint64_t get_Services() const { return m_services; }
+	void put_Services(uint64_t v) {
 		m_services = v;
 		IsDirty = true;
 	}
-	DEFPROP(UInt64, Services);
+	DEFPROP(uint64_t, Services);
 
 	IPEndPoint get_EndPoint() const { return m_endPoint; }
 	void put_EndPoint(const IPEndPoint& ep) {
@@ -102,7 +108,7 @@ public:
 protected:
 	IPEndPoint m_endPoint;
 
-	UInt64 m_services;	
+	uint64_t m_services;	
 	DateTime m_lastLive, 
 			m_lastPersistent,
 			m_lastTry;			// non-persistent
@@ -113,9 +119,9 @@ protected:
 class LinkBase : public Thread {
 	typedef Thread base;
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 	
-	CPointer<P2P::NetManager> NetManager;
+	observer_ptr<P2P::NetManager> NetManager;
 
 	mutex Mtx;
 	ptr<P2P::Peer> Peer;
@@ -185,7 +191,7 @@ protected:
 
 class PeerBucket {
 public:
-	CPointer<PeerBuckets> Buckets;
+	observer_ptr<PeerBuckets> Buckets;
 
 	vector<ptr<Peer>> m_peers;
 
@@ -203,7 +209,7 @@ public:
 		,	m_vec(size)
 	{
 		for (int i=0; i<m_vec.size(); ++i)
-			m_vec[i].Buckets = this;
+			m_vec[i].Buckets.reset(this);
 	}
 
 	size_t size() const;
@@ -227,7 +233,7 @@ public:
 		:	NetManager(netManager)
 		,	MaxLinks(MAX_LINKS)
 		,	MaxOutboundConnections(MAX_OUTBOUND_CONNECTIONS)
-		,	m_nPeersDirty(0)
+		,	m_aPeersDirty(0)
 		,	DefaultPort(0)
 		,	TriedBuckets(_self, ADDRMAN_TRIED_BUCKET_COUNT)
 		,	NewBuckets(_self, ADDRMAN_NEW_BUCKET_COUNT)
@@ -248,7 +254,7 @@ public:
 	void Attempt(Peer *peer);
 	void Good(Peer *peer);
 	bool IsRoutable(const IPAddress& ip);
-	ptr<Peer> Add(const IPEndPoint& ep, UInt64 services, DateTime dt, TimeSpan penalty = TimeSpan(0));
+	ptr<Peer> Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty = TimeSpan(0));
 
 	vector<ptr<Peer>> GetAllPeers() {
 		EXT_LOCK (MtxPeers) {
@@ -256,9 +262,9 @@ public:
 		}
 	}
 protected:
-	UInt16 DefaultPort;
-	CPointer<thread_group> m_owner;
-	Int32 m_nPeersDirty;	
+	uint16_t DefaultPort;
+	observer_ptr<thread_group> m_owner;
+	atomic<int> m_aPeersDirty;	
 
 	virtual void OnPeriodic();
 private:
@@ -270,6 +276,7 @@ private:
 
 	ptr<Peer> Find(const IPAddress& ip);
 	void Remove(Peer *peer);
+
 
 	friend class PeerBucket;
 };
