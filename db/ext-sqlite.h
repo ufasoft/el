@@ -142,7 +142,7 @@ public:
 	SqliteConnection() {
 	}
 
-	SqliteConnection(RCString file) {
+	SqliteConnection(const path& file) {
 		Open(file);
 	}
 
