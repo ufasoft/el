@@ -1,4 +1,11 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
+
+#include <el/inet/proxy-client.h>
 
 #include "p2p-peers.h"
 
@@ -14,7 +21,7 @@ class Link;
 
 namespace Ext {
 	template <> struct ptr_traits<Ext::Inet::P2P::Link> {
-		typedef Interlocked interlocked_policy;
+		typedef InterlockedPolicy interlocked_policy;
 	};
 }
 
@@ -26,7 +33,7 @@ const int PERIODIC_SEND_SECONDS = 10;
 
 class Message : public Object, public CPersistent {
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
 	DateTime Timestamp;
 	ptr<P2P::Link> Link;
@@ -64,15 +71,15 @@ protected:
 class Link : public LinkBase {
 	typedef LinkBase base;
 public:
-	typedef Interlocked interlocked_policy;
+	typedef InterlockedPolicy interlocked_policy;
 
-	CPointer<P2P::Net> Net;
+	observer_ptr<P2P::Net> Net;
 #if UCFG_P2P_SEND_THREAD
 	ptr<LinkSendThread> SendThread;
 #endif
 	
 	vector<ptr<Message>> OutQueue;
-	TcpClient Tcp;
+	ProxyClient Tcp;
 	DateTime m_dtCheckLastRecv,
 			m_dtLastRecv,
 			m_dtLastSend;
@@ -142,7 +149,7 @@ class Net : public PeerManager {
 public:
 	thread_group m_tr;
 	CBool Runned;
-	UInt32 ProtocolMagic;
+	uint32_t ProtocolMagic;
 	bool Listen;
 
 	Net(P2P::NetManager& netManager)
@@ -152,7 +159,7 @@ public:
 	{}
 
 	virtual void Start() {
-		PeerManager::m_owner = &m_tr;
+		PeerManager::m_owner.reset(&m_tr);
 //!!!		(MsgThread = new MsgLoopThread(_self, tr))->Start();
 
 		Runned = true;
