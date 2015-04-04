@@ -129,8 +129,18 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\stl\mutex.cpp" />
-    <ClCompile Include="..\stl\thread.cpp" />
+    <ClCompile Include="..\stl\mutex.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\stl\thread.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-static|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-static|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release-static|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug-static|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="bignum.cpp" />
     <ClCompile Include="binary-reader-writer.cpp" />
     <ClCompile Include="datetime.cpp" />
@@ -160,6 +170,7 @@
     <ClCompile Include="sockets.cpp" />
     <ClCompile Include="stack-trace.cpp" />
     <ClCompile Include="threader.cpp" />
+    <ClCompile Include="trace.cpp" />
     <ClCompile Include="varvalue.cpp" />
     <ClCompile Include="win32\com-module.cpp" />
     <ClCompile Include="win32\excom.cpp" />

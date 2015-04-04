@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_WIN32
@@ -337,6 +342,10 @@ public:
 				return 0;
 			return m_hp->DangerousGetHandle();
 		}
+
+#if UCFG_WIN32
+		operator HANDLE() { return (HANDLE)operator SafeHandle::handle_type(); }
+#endif
 	};
 
 	class BlockingHandleAccess : public HandleAccess {
