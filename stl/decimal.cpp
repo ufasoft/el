@@ -23,7 +23,6 @@ long long decimal_to_long_long(const decimal64& v) {
 	return r;
 }
 
-static const double _M_LN10 = log(10.);
 
 
 // Algorithm FPP2 by
@@ -74,7 +73,7 @@ decimal64_::decimal64_(double v)
 }
 
 double decimal_to_double(const decimal64_& v) {
-	return double(v.m_val) * exp(v.m_exp * _M_LN10);
+	return double(v.m_val) * pow10(double(v.m_exp));
 }
 
 decimal64 make_decimal64(int64_t val, int exp) {

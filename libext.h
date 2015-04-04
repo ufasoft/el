@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include <el/inc/ext_config.h>
@@ -127,7 +132,7 @@
 
 #ifdef _MSC_VER
 
-#	ifndef __cplusplus
+#	if !defined(__cplusplus) && _MSC_VER < 1900
 #		define inline __inline
 #	endif
 
@@ -161,7 +166,10 @@
 #	define DECLSPEC_ARTIFICIAL
 #endif
 
-#define DECLSPEC_NOINLINE 	DECLSPEC(noinline)
+#ifndef DECLSPEC_NOINLINE
+#	define DECLSPEC_NOINLINE 	DECLSPEC(noinline)
+#endif
+
 #define DECLSPEC_DLLEXPORT 	DECLSPEC(dllexport)
 #define DECLSPEC_DLLIMPORT 	DECLSPEC(dllimport)
 
@@ -359,23 +367,6 @@ __END_DECLS
 
 #endif // UCFG_WIN32 && UCFG_STAT64
 
-/*!!!R
-
-#if UCFG_USE_OLD_MSVCRTDLL
-#	define _fstat64i32 C__fstat64i32
-#	define _wstat64i32 C__wstat64i32
-#	define _strtoi64 C_strtoi64
-#	define _strtoui64 C_strtoui64
-
-#		include <wchar.h>
-#	undef fstat
-#	undef _fstat
-#	undef  _fstat64i32
-#	undef _wstat64i32
-#endif
-
-*/
-
 #if !defined(_MSC_VER) || (_MSC_VER >= 1600)
 #	if 	!UCFG_STDSTL && defined(_MSC_VER) && (_MSC_VER >= 1700)
 #		pragma push_macro("_YVALS")
@@ -456,13 +447,6 @@ typedef unsigned long u_long;
 
 
 		typedef byte UCHAR;
-//!!!R		typedef uint16_t WORD;	
-//!!!R		typedef uint32_t UINT32;
-		//!!!	typedef int32_t LONG;
-//!!!R		typedef uint32_t ULONG;
-//!!!R		typedef uint32_t UINT;
-//!!!R		typedef wchar_t *BSTR;
-//!!!R		typedef void *HANDLE;
 		typedef int SOCKET;
 //#	define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
 #	define EXT_INVALID_HANDLE_VALUE (-1)
@@ -579,7 +563,7 @@ typedef uint32_t guint32;
 
 #	if UCFG_LIB_DECLS
 #		if defined(USE_ONLY_LIBEXT) && !defined(_EXT)
-			#pragma comment(lib, "libext")
+#			pragma comment(lib, "libext")
 #		elif defined(_EXT)
 #			if UCFG_EXTENDED && UCFG_CRT!='U'
 #				pragma comment(lib, "elrt")
@@ -1185,6 +1169,7 @@ __END_DECLS
 
 __BEGIN_DECLS
 char * _cdecl API_getcwd(char *buf, int n);
+
 __END_DECLS
 #				define getcwd API_getcwd
 #			endif
@@ -1420,6 +1405,10 @@ const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8);			//!!! chang
 #if UCFG_WDM
 long __cdecl strtol(const char *str, char **endptr, int base);
 long long __cdecl _strtoi64(const char *str, char **endptr, int base);
+#endif
+
+#ifdef _MSC_VER
+	double _cdecl pow10(double v);
 #endif
 
 __END_DECLS

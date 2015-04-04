@@ -1,6 +1,10 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
-#include <random>
 
 typedef uintptr_t BASEWORD;
 typedef intptr_t S_BASEWORD;
@@ -37,6 +41,8 @@ void __stdcall ImpXorBignums(const BASEWORD *a, const BASEWORD *b, BASEWORD *c, 
 __END_DECLS
 
 #ifdef __cplusplus
+
+#include <random>
 
 const size_t BASEWORD_BITS = sizeof(BASEWORD) * 8;
 
@@ -320,7 +326,7 @@ public:
 
 
 	friend int AFXAPI Sign(const BigInteger& v);
-	friend EXT_API std::pair<BigInteger, BigInteger> AFXAPI div(const BigInteger& x, const BigInteger& y);
+	friend EXT_API pair<BigInteger, BigInteger> AFXAPI div(const BigInteger& x, const BigInteger& y);
 	uint32_t NMod(unsigned int d) const;
 	friend BigInteger AFXAPI operator>>(const BigInteger& x, size_t v);
 	friend BigInteger AFXAPI operator<<(const BigInteger& x, size_t v);
