@@ -6,7 +6,7 @@ namespace Ext {
 using namespace std;
 
 CComModule::CComModule()
-	:	m_nLockCount(0)
+	: m_aLockCount(0)
 {
 }
 
@@ -16,11 +16,11 @@ void CComModule::Init(_ATL_OBJMAP_ENTRY* objMap) {
 }
 
 void CComModule::Lock() {
-	Interlocked::Increment(m_nLockCount);
+	++m_aLockCount;
 }
 
 void CComModule::Unlock() {
-	Interlocked::Decrement(m_nLockCount);
+	--m_aLockCount;
 }
 
 HRESULT CComModule::ProcessError(HRESULT hr, RCString desc) {
@@ -30,7 +30,7 @@ HRESULT CComModule::ProcessError(HRESULT hr, RCString desc) {
 	OleCheck(::CreateErrorInfo(&iCEI));
 	String s = desc;
 	if (s.empty())
-		s = AfxProcessError(hr);
+		s = HResultToMessage(hr);
 	OleCheck(iCEI->SetDescription(Bstr(s)));
 	CComPtr<IErrorInfo> iEI = iCEI;
 	OleCheck(::SetErrorInfo(0, iEI));
@@ -39,7 +39,7 @@ HRESULT CComModule::ProcessError(HRESULT hr, RCString desc) {
 }
 
 LONG CComModule::GetLockCount() {
-	return m_nLockCount;
+	return m_aLockCount;
 }
 
 
@@ -120,11 +120,11 @@ CComObjectRootBase::~CComObjectRootBase() {
 
 
 DWORD CComObjectRootBase::InternalAddRef() {
-	return Interlocked::Increment(m_dwRef);
+	return ++m_aRef;
 }
 
 DWORD CComObjectRootBase::InternalRelease() {
-	LONG r = Interlocked::Decrement(m_dwRef);
+	LONG r = --m_aRef;
 	if (!r) {
 		AFX_MANAGE_STATE(m_pClass->m_pModuleState);
 		OnFinalRelease();
@@ -211,7 +211,7 @@ METHOD_BEGIN {
 
 STDMETHODIMP CIStreamWrap::Seek(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition)
 METHOD_BEGIN {
-	UInt64 newPos = m_stm.Seek(dlibMove.QuadPart, (SeekOrigin)dwOrigin);
+	uint64_t newPos = m_stm.Seek(dlibMove.QuadPart, (SeekOrigin)dwOrigin);
 	if (plibNewPosition)
 		plibNewPosition->QuadPart = newPos;
 } METHOD_END
@@ -292,7 +292,7 @@ CComClassFactoryImpl::CComClassFactoryImpl()
 }
 
 DWORD CComClassFactoryImpl::InternalAddRef() {
-	if (!m_dwRef)
+	if (!m_aRef)
 		AfxGetModuleState()->m_comModule.Lock();
 	return CComObjectRootBase::InternalAddRef();
 }
@@ -466,9 +466,9 @@ CComGeneralClass::CComGeneralClass(const CLSID& clsid, EXT_ATL_CREATORFUNC *pfn,
 	if (indProgID != nullptr)
 		m_indProgID = indProgID;
 	else {
-		for (size_t i=m_progID.Length; i--;) {
+		for (size_t i=m_progID.length(); i--;) {
 			if (!isdigit(m_progID[i])) {
-				if (i == m_progID.Length-1)
+				if (i == m_progID.length()-1)
 					m_indProgID = m_progID;
 				else
 					m_indProgID = m_progID.Left(i);
