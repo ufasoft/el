@@ -1,14 +1,8 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 //#include "ntdll.h"
+
+#include <winternl.h>
 
 #if !UCFG_WDM
 #	define ZwPowerInformation	NtPowerInformation
@@ -20,6 +14,7 @@ namespace NT {
     extern "C" {
 
 #	define STATUS_END_OF_FILE               ((NTSTATUS)0xC0000011L)
+#	define STATUS_PIPE_BROKEN               ((NTSTATUS)0xC000014BL)
 
 typedef struct _SYSTEM_POWER_INFORMATION {
     ULONG                   MaxIdlenessAllowed;
@@ -42,7 +37,39 @@ typedef CLIENT_ID *PCLIENT_ID;
 
 #define WIN32_CLIENT_INFO_LENGTH 31
 
+typedef enum _FSINFOCLASS {
+	FileFsVolumeInformation       = 1,
+	FileFsLabelInformation,      // 2
+	FileFsSizeInformation,       // 3
+	FileFsDeviceInformation,     // 4
+	FileFsAttributeInformation,  // 5
+	FileFsControlInformation,    // 6
+	FileFsFullSizeInformation,   // 7
+	FileFsObjectIdInformation,   // 8
+	FileFsDriverPathInformation, // 9
+	FileFsVolumeFlagsInformation,// 10
+	FileFsSectorSizeInformation, // 11
+	FileFsDataCopyInformation,   // 12
+	FileFsMaximumInformation
+} FS_INFORMATION_CLASS, *PFS_INFORMATION_CLASS;
 
+typedef struct _FILE_FS_VOLUME_INFORMATION {
+	LARGE_INTEGER VolumeCreationTime;
+	ULONG VolumeSerialNumber;
+	ULONG VolumeLabelLength;
+	UCHAR Unknown;
+	WCHAR VolumeLabel[1];
+} FILE_FS_VOLUME_INFORMATION, *PFILE_FS_VOLUME_INFORMATION;
+
+typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {
+	ULONG LogicalBytesPerSector;
+	ULONG PhysicalBytesPerSectorForAtomicity;
+	ULONG PhysicalBytesPerSectorForPerformance;
+	ULONG FileSystemEffectivePhysicalBytesPerSectorForAtomicity;
+	ULONG Flags;
+	ULONG ByteOffsetForSectorAlignment;
+	ULONG ByteOffsetForPartitionAlignment;
+} FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
 
 NTSYSAPI
 NTSTATUS
@@ -69,16 +96,24 @@ NTSTATUS NTAPI ZwReadFile(
     );
 
 NTSTATUS NTAPI ZwWriteFile(
-    IN HANDLE FileHandle,
-    IN HANDLE Event OPTIONAL,
-    IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
-    IN PVOID ApcContext OPTIONAL,
-    OUT PIO_STATUS_BLOCK IoStatusBlock,
-    IN PVOID Buffer,
-    IN ULONG Length,
-    IN PLARGE_INTEGER ByteOffset OPTIONAL,
-    IN PULONG Key OPTIONAL
-    );
+	IN HANDLE FileHandle,
+	IN HANDLE Event OPTIONAL,
+	IN PIO_APC_ROUTINE ApcRoutine OPTIONAL,
+	IN PVOID ApcContext OPTIONAL,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	IN PVOID Buffer,
+	IN ULONG Length,
+	IN PLARGE_INTEGER ByteOffset OPTIONAL,
+	IN PULONG Key OPTIONAL
+	);
+
+NTSYSAPI NTSTATUS NTAPI ZwQueryVolumeInformationFile(
+	IN HANDLE FileHandle,
+	OUT PIO_STATUS_BLOCK IoStatusBlock,
+	OUT PVOID VolumeInformation,
+	IN ULONG VolumeInformationLength,
+	IN FS_INFORMATION_CLASS VolumeInformationClass
+	);
 
 
 PVOID NTAPI RtlImageDirectoryEntryToData(IN PVOID Base, IN BOOLEAN MappedAsImage, IN USHORT DirectoryEntry, OUT PULONG Size);
