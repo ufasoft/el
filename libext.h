@@ -1408,7 +1408,7 @@ long long __cdecl _strtoi64(const char *str, char **endptr, int base);
 #endif
 
 #ifdef _MSC_VER
-	double _cdecl pow10(double v);
+	double _cdecl exp10(double v);
 #endif
 
 __END_DECLS
