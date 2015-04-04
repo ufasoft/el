@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "prime.h"
@@ -6,7 +11,7 @@
 
 namespace Ext { namespace Num {
 
-class PrimeNumbers : public vector<UInt32> {
+class PrimeNumbers : public vector<uint32_t> {
 	typedef dynamic_bitset<> base;
 public:
 	PrimeNumbers() {
@@ -14,14 +19,14 @@ public:
 
 		size_t lim = PRIME_LIMIT/2;
 		dynamic_bitset<> vComposite(lim );
-		for (UInt32 n=3; n<MAX_PRIME_FACTOR; n+=2) {
+		for (uint32_t n=3; n<MAX_PRIME_FACTOR; n+=2) {
 			if (!vComposite[n/2]) {
-				for (UInt32 m=n*n/2; m<lim; m+=n)
+				for (uint32_t m=n*n/2; m<lim; m+=n)
 					vComposite.set(m);
 			}
 		}
 		push_back(2);
-		for (UInt32 p=3; p<PRIME_LIMIT; p+=2)
+		for (uint32_t p=3; p<PRIME_LIMIT; p+=2)
 			if (!vComposite[p/2])
 				push_back(p);
 	}
@@ -29,14 +34,14 @@ public:
 
 static InterlockedSingleton<PrimeNumbers> s_primeNumbers;
 
-const vector<UInt32>& PrimeTable() {
+const vector<uint32_t>& PrimeTable() {
 	return *s_primeNumbers;
 }
 
-BigInteger Primorial(UInt32 n) {
-	const vector<UInt32>& primes = PrimeTable();
+BigInteger Primorial(uint32_t n) {
+	const vector<uint32_t>& primes = PrimeTable();
 	BigInteger r = 1;
-	EXT_FOR (UInt32 p, primes) {
+	EXT_FOR (uint32_t p, primes) {
 		if (p > n)
 			break;
 		r *= BigInteger(p);

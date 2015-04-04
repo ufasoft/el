@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "mod.h"
@@ -23,7 +28,7 @@ ModNum inverse(const ModNum& mn) {
 #endif
 }
 
-UInt32 inverse(UInt32 a, UInt32 nPrime) {
+uint32_t inverse(uint32_t a, uint32_t nPrime) {
 	if (a == 2)
 		return (nPrime+1)/2;
     
@@ -56,7 +61,7 @@ UInt32 inverse(UInt32 a, UInt32 nPrime) {
         quotient = rem2 / rem0;
         aux1 = -quotient * aux0 + aux2;
     }
-	ASSERT(UInt64(inverse + nPrime) * a % nPrime == 1);
+	ASSERT(uint64_t(inverse + nPrime) * a % nPrime == 1);
     return (inverse + nPrime) % nPrime;
 }
 

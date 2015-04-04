@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 // Modular arithmetic
@@ -18,7 +23,7 @@ public:
 };
 
 ModNum inverse(const ModNum& mn);
-UInt32 inverse(UInt32 x, UInt32 mod);
+uint32_t inverse(uint32_t x, uint32_t mod);
 
 Bn PowM(const Bn& x, const Bn& e, const Bn& mod);
 ModNum pow(const ModNum& mn, const BigInteger& p);
