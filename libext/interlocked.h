@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 
@@ -55,16 +60,16 @@ long  __cdecl _InterlockedExchangeAdd(long * volatile Addend, long Value);
 
 #if defined(_MSC_VER) && !defined(__INTRIN_H_)
 	extern "C" long __cdecl _InterlockedCompareExchange(long volatile *, long, long);
-	extern "C" char __cdecl _InterlockedCompareExchange8(char volatile *, char, char);
+	extern "C" char  _InterlockedCompareExchange8(char volatile *, char, char);
 	extern "C" long __cdecl _InterlockedIncrement(long volatile *Destination);
 	extern "C" long __cdecl _InterlockedDecrement(long volatile *Destination);
 	extern "C" long _InterlockedAnd(long volatile *Destination, long Value);
 	extern "C" long _InterlockedOr(long volatile *Destination, long Value);
 	extern "C" long _InterlockedXor(long volatile *Destination, long Value);
 	extern "C" long __cdecl _InterlockedExchange(long volatile *Destination, long Value);
-	extern "C" char __cdecl _InterlockedExchange8(char volatile *Destination, char Value);
+	extern "C" char _InterlockedExchange8(char volatile *Destination, char Value);
 	extern "C" long __cdecl _InterlockedExchangeAdd(long volatile *, long);
-	extern "C" int64_t __cdecl _InterlockedCompareExchange64(int64_t volatile *, int64_t, int64_t);
+	extern "C" int64_t _InterlockedCompareExchange64(int64_t volatile *, int64_t, int64_t);
 
 #	ifdef _M_ARM
 #	define _InterlockedCompareExchange InterlockedCompareExchange

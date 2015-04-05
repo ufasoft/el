@@ -85,7 +85,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 		return d;
 	} else {
 		d = new(size) CStringBlobBuf(size, this+1, copyLen);
-		Release();
+		Release(this);
 		return d;
 	}
 }
@@ -124,7 +124,7 @@ Blob::Blob(const Buf& mb) {
 }
 
 Blob::~Blob() {
-	m_pData->Release();
+	Release(m_pData);
 }
 
 void Blob::AssignIfNull(const Blob& val) {
@@ -135,7 +135,7 @@ void Blob::AssignIfNull(const Blob& val) {
 
 Blob& Blob::operator=(const Blob& val) {
 	if (m_pData != val.m_pData) {
-		m_pData->Release();
+		Release(m_pData);
 		if (m_pData = val.m_pData)
 			m_pData->AddRef();
 	}
@@ -201,7 +201,7 @@ bool Blob::operator<(const Blob& blob) const noexcept {
 
 void Blob::Cow() {
 	if (m_pData->m_aRef > 1)
-		exchange(m_pData, m_pData->Clone())->Release();
+		Release(exchange(m_pData, m_pData->Clone()));
 }
 
 byte *Blob::data() {

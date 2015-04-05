@@ -52,11 +52,6 @@ public:
 	virtual CStringBlobBuf *AsStringBlobBuf();
 	virtual void Attach(Char *bstr); //!!!was BSTR
 	virtual Char *Detach(); //!!!was BSTR
-
-	void Release() EXT_FAST_NOEXCEPT {
-		if (this && !--m_aRef)			// Allowed only of destrucotr is virtual
-			delete this;
-	}
 #endif
 };
 
@@ -94,13 +89,17 @@ public:
 	CStringBlobBuf *SetSize(size_t size);
 	static CStringBlobBuf* AFXAPI RefEmptyBlobBuf();
 
-#if !UCFG_BLOB_POLYMORPHIC
-	void Release() EXT_FAST_NOEXCEPT {
-		if (this && !--m_aRef)
-			delete this;
-	}
-#endif
 };
+
+#if UCFG_BLOB_POLYMORPHIC
+	inline void Release(CBlobBufBase *bb) EXT_FAST_NOEXCEPT {				// Allowed only if destructor is virtual
+#else
+	inline void Release(CStringBlobBuf *bb) EXT_FAST_NOEXCEPT {
+#endif
+		if (bb && !--(bb->m_aRef))
+			delete bb;
+	}
+
 
 #if UCFG_WIN32 && UCFG_BLOB_POLYMORPHIC && UCFG_COM
 class COleBlobBuf : public CBlobBufBase {

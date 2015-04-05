@@ -319,11 +319,8 @@ String& String::operator=(const value_type *lpsz) {
 		else
 			m_blob.Size = len;
 		memcpy(m_blob.data(), lpsz, len);
-	} else {
-		if (m_blob.m_pData)
-			m_blob.m_pData->Release();
-		m_blob.m_pData = 0;
-	}
+	} else
+		Release(exchange(m_blob.m_pData, nullptr));
 	return _self;
 }
 
