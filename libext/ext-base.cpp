@@ -9,10 +9,6 @@
 #	include <windows.h>
 #endif
 
-#ifdef __linux__
-#	include <sys/syscall.h>
-#endif
-
 #if UCFG_WIN32 && !UCFG_MINISTL
 #	include <shlwapi.h>
 

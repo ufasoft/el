@@ -5,6 +5,10 @@
 
 #include <el/ext.h>
 
+#ifdef __linux__
+#	include <sys/syscall.h>
+#endif
+
 #if UCFG_WIN32
 #	include <windows.h>
 #endif
