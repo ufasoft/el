@@ -178,7 +178,7 @@ public:
 	}
 
 	Blob& operator=(EXT_RV_REF(Blob) rv) {
-		exchange(m_pData, exchange(rv.m_pData, nullptr))->Release();
+		Release(exchange(m_pData, exchange(rv.m_pData, nullptr)));
 		return *this;
 	}
 
