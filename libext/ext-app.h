@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext {
@@ -130,7 +135,7 @@ public:
 	virtual void Execute() {}	
 	virtual bool OnSignal(int sig);
 
-	static void AFXAPI SetSignals();
+	virtual void SetSignals();
 };
 
 #ifdef WIN32

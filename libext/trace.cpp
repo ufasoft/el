@@ -54,16 +54,14 @@ class CDebugStream : public Stream {
 public:
 	void WriteBuffer(const void *buf, size_t count) override {
 		String s((const char*)buf, count);
-#ifdef WIN32
-#	if UCFG_WCE
-		OutputDebugString(String(s));
-#	else		
-		OutputDebugStringA(s);
-#	endif
+#if UCFG_WCE
+	OutputDebugString(s);
+#elif defined(WIN32)
+	OutputDebugStringA(s);
 #elif defined WDM_DRIVER
-		KdPrint(("%s", s));
+	KdPrint(("%s", s.c_str()));
 #else
-		fprintf(stderr, "%s", s);
+	fprintf(stderr, "%s", s.c_str());
 #endif
 	}
 };
