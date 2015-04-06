@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 
@@ -1338,6 +1343,11 @@ public:
 	virtual void Print(std::ostream& os, const VarValue& v) =0;
 	
 	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf = ConstBuf()) { Throw(E_NOTIMPL); }
+
+	VarValue Parse(RCString s) {
+		istringstream iss(s.c_str());
+		return Parse(iss);
+	}
 
 	static ptr<MarkupParser> AFXAPI CreateJsonParser();
 };
