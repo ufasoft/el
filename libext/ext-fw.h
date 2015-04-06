@@ -19,7 +19,7 @@ typedef struct tagEXCEPINFO EXCEPINFO;
 
 namespace Ext {
 
-using std::stringstream;
+using std::istringstream;
 
 class Stream;
 class DirectoryInfo;
