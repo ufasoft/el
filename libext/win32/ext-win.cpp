@@ -760,6 +760,18 @@ const error_category& win32_category() {
 }
 
 
+bool AFXAPI AfxHasResource(const CResID& name, const CResID& typ) {
+	if (FindResource(AfxGetResourceHandle(), name, typ))
+		return true;
+#ifdef _AFXDLL
+	AFX_MODULE_STATE* pModuleState = AfxGetModuleState();
+	for (AFX_MODULE_STATE::CLibraryList::iterator i(pModuleState->m_libraryList.begin()); i!=pModuleState->m_libraryList.end(); ++i)
+		if (FindResource((*i)->m_hModule, name, typ))
+			return true;
+#endif
+	return false;
+}
+
 } // Ext::
 
 
