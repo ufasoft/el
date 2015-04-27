@@ -927,6 +927,9 @@ void AFXAPI AfxInitRichEdit();
 AFX_API int AFXAPI AfxMessageBox(RCString text, UINT nType = MB_OK, UINT nIDHelp = 0);
 AFX_API int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType = MB_OK, UINT nIDHelp = (UINT)-1);
 
+inline MSG& AFXAPI AfxGetCurrentMessage() {
+	return AfxGetThreadState()->m_msgCur;
+}
 
 } // Ext::
 
@@ -935,11 +938,5 @@ AFX_API int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType = MB_OK, UINT nIDHel
 #else
 	typedef HINSTANCE HINST;
 #endif
-
-
-//!!!#ifndef ASSERT //!!!
-//!!!#	define ASSERT(f) ((void*)0)
-//!!!#endif
-
 
 
