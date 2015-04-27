@@ -931,6 +931,10 @@ inline MSG& AFXAPI AfxGetCurrentMessage() {
 	return AfxGetThreadState()->m_msgCur;
 }
 
+AFX_API void * AFXAPI AfxGetResource(const CResID& resID, const CResID& lpszType);
+AFX_API bool AFXAPI AfxHasResourceString(UINT nIDS);
+AFX_API bool AFXAPI AfxHasResource(const CResID& lpszName, const CResID& lpszType);
+
 } // Ext::
 
 #if UCFG_WCE

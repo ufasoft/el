@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <ddeml.h>
@@ -61,7 +53,7 @@ void CWinThread::Execute() {
 	{
 		// just attach the HWND
 		hwnd = pApp->m_pMainWnd->m_hWnd;
-		m_pMainWnd = &threadWnd;
+		m_pMainWnd.reset(&threadWnd);
 	}
 	CWndAttachKeeper wndAttachKeeper(threadWnd, hwnd);
 	/*!!!  catch (RCExc e)
@@ -97,12 +89,6 @@ void CWinThread::OnEnd() {
 
 #if UCFG_WIN_MSG
 #	include "win32/mfcimpl.h"
-
-
-MSG * AFXAPI AfxGetCurrentMessage() {
-	return &AfxGetThreadState()->m_msgCur;
-}
-
 
 
 bool CWinThread::IsIdleMessage(MSG& msg) {
@@ -356,7 +342,7 @@ BOOL CWinThread::ProcessMessageFilter(int code, MSG *lpMsg) {
 		pMainWnd->SendMessage(WM_COMMAND, ID_HELP);
 		return TRUE;
 		}*/
-		if (code == MSGF_DIALOGBOX && m_pActiveWnd != NULL &&
+		if (code == MSGF_DIALOGBOX && m_pActiveWnd &&
 			lpMsg->message >= WM_KEYFIRST && lpMsg->message <= WM_KEYLAST)
 		{
 			// need to translate messages for the in-place container

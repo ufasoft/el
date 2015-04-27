@@ -279,19 +279,6 @@ DWORD COperatingSystem::GetSysColor(int nIndex) {
 	return r;
 }
 
-bool COperatingSystem::Is64BitNativeSystem() {
-#if UCFG_WIN32_FULL
-	typedef void (__stdcall *PFN)(SYSTEM_INFO *psi);
-	CDynamicLibrary dll("kernel32.dll");
-	if (PFN pfn = (PFN)GetProcAddress(dll.m_hModule, String("GetNativeSystemInfo"))) {
-		SYSTEM_INFO si;
-		pfn(&si);
-		return si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64;
-	}
-#endif
-	return false;
-}
-
 
 void AFXAPI WinExecAndWait(RCString name) {
 	STARTUPINFO info = { sizeof info };

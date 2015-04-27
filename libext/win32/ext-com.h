@@ -429,7 +429,9 @@ public:
 	void *GetData();
 };
 
-class AFX_CLASS COleString {
+#endif // UCFG_FRAMEWORK
+
+class AFX_CLASS COleString : noncopyable {
 public:
 	LPOLESTR m_str;
 
@@ -441,15 +443,9 @@ public:
 		::CoTaskMemFree(m_str);
 	}
 
-	operator String() {
-		return m_str;
-	}
-
-	LPOLESTR* operator &() {
-		return &m_str;
-	}
+	operator String() { return m_str; }
+	LPOLESTR* operator &() { return &m_str; }
 };
-#endif // UCFG_FRAMEWORK
 
 class AFX_CLASS CRegisterClassObject {
 	DWORD m_dw;
