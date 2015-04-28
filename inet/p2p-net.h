@@ -136,6 +136,8 @@ public:
 	P2P::NetManager& NetManager;
 
 	ListeningThread(P2P::NetManager& netManager, thread_group& tr, AddressFamily af = AddressFamily::InterNetwork);
+
+	static void StartListeners(P2P::NetManager& netManager, thread_group& tr);
 protected:
 	void BeforeStart() override;
 	void Execute() override;

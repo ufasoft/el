@@ -142,8 +142,8 @@ void Link::OnCloseLink() {
 }
 
 void Link::BeforeStart() {
-	if (!Incoming)
-		Tcp.Client.Create(Peer->get_EndPoint().Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+//!!!R?	if (!Incoming)
+//!!!R		Tcp.Client.Create(Peer->get_EndPoint().Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
 }
 
 void Link::Execute() {
@@ -163,8 +163,8 @@ void Link::Execute() {
 			goto LAB_EOF;
 
 		bool bMagicReceived = false;
-		if (Incoming) {			
-			DBG_LOCAL_IGNORE(E_EXT_EndOfStream);
+		if (Incoming) {
+			DBG_LOCAL_IGNORE_CONDITION(ExtErr::EndOfStream);
 
 			if (UseMagic) {
 				uint32_t magic = BinaryReader(Tcp.Stream).ReadUInt32();
@@ -197,10 +197,11 @@ LAB_FOUND:
 			DBG_LOCAL_IGNORE_CONDITION(errc::host_unreachable);
 			
 			if (Tcp.ProxyString.empty()) {
+				Tcp.Client.Create(Peer->get_EndPoint().Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
 				Tcp.Client.ReuseAddress = true;
 				Tcp.Client.Bind(epRemote.Address.AddressFamily==AddressFamily::InterNetwork ? IPEndPoint(IPAddress::Any, NetManager->LocalEp4.Port) : IPEndPoint(IPAddress::IPv6Any, NetManager->LocalEp6.Port));
+				Tcp.Client.ReceiveTimeout = P2P_CONNECT_TIMEOUT;	//!!!?
 			}
-			Tcp.Client.ReceiveTimeout = P2P_CONNECT_TIMEOUT;
 #ifdef X_DEBUG//!!!D
 			epRemote = IPEndPoint::Parse("192.168.0.103:8668");
 #endif
@@ -222,7 +223,7 @@ LAB_FOUND:
 			Net->OnInitLink(_self);
 		Tcp.Client.Blocking = false;
 
-		DateTime dtNextPeriodic = DateTime::UtcNow()+TimeSpan::FromSeconds(P2P::PERIODIC_SEND_SECONDS);
+		DateTime dtNextPeriodic = DateTime::UtcNow() + seconds(P2P::PERIODIC_SEND_SECONDS);
 		const size_t cbHdr = GetMessageHeaderSize();
 		Blob blobMessage(0, cbHdr);
 		bool bReceivingPayload = false;
@@ -243,6 +244,8 @@ LAB_FOUND:
 
 		Socket::BlockingHandleAccess hp(Tcp.Client);
 
+		timeval timevalTimeOut;
+		TimeSpan::FromSeconds(std::min(std::min((int)duration_cast<seconds>(PingTimeout).count(), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timevalTimeOut);
 		while (!m_bStop) {
 			bool bHasToSend = EXT_LOCKED(Mtx, DataToSend.Size);
 			fd_set readfds, writefds;
@@ -251,8 +254,7 @@ LAB_FOUND:
 			FD_SET((SOCKET)hp, &readfds);
 			FD_SET((SOCKET)hp, &writefds);
 
-			timeval timeout;
-			TimeSpan::FromSeconds(std::min(std::min((int)duration_cast<seconds>(PingTimeout).count(), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timeout);
+			timeval timeout = timevalTimeOut;
 			SocketCheck(::select(int(1+(SOCKET)hp), &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
 
 			DateTime now = DateTime::UtcNow();
@@ -312,12 +314,12 @@ LAB_FOUND:
 			}
 
 			EXT_LOCK (Mtx) {
-				if (Peer && now - Peer->LastLive > TimeSpan::FromSeconds(INACTIVE_PEER_SECONDS))
+				if (Peer && now - Peer->LastLive > seconds(INACTIVE_PEER_SECONDS))
 					break;
 			}
 			if (now > dtNextPeriodic) {
 				OnPeriodic();
-				dtNextPeriodic = now+TimeSpan::FromSeconds(P2P::PERIODIC_SEND_SECONDS);
+				dtNextPeriodic =  now + seconds(P2P::PERIODIC_SEND_SECONDS);
 			}
 			if (now-m_dtLastSend > PingTimeout)
 				OnPingTimeout();
@@ -362,6 +364,23 @@ ListeningThread::ListeningThread(P2P::NetManager& netManager, thread_group& tr, 
 //	StackSize = UCFG_THREAD_STACK_SIZE;
 }
 
+void ListeningThread::StartListeners(P2P::NetManager& netManager, thread_group& tr) {
+	DBG_LOCAL_IGNORE_CONDITION(errc::address_family_not_supported);
+
+	if (Socket::OSSupportsIPv4) {
+		try {
+			(new P2P::ListeningThread(netManager, tr, AddressFamily::InterNetwork))->Start();
+		} catch (RCExc) {
+		}
+	}
+	if (Socket::OSSupportsIPv6) {
+		try {
+			(new P2P::ListeningThread(netManager, tr, AddressFamily::InterNetworkV6))->Start();
+		} catch (RCExc) {
+		}
+	}
+}
+
 void ListeningThread::BeforeStart() {
 	if (m_af == AddressFamily::InterNetwork) {
 		{
@@ -382,21 +401,17 @@ void ListeningThread::BeforeStart() {
 				sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
 			}
 		}
-
-		DBG_LOCAL_IGNORE_CONDITION(errc::address_family_not_supported);
-		if (Socket::OSSupportsIPv6) {
-			(new ListeningThread(NetManager, *m_owner, AddressFamily::InterNetworkV6))->Start();
-		}
+	
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
 		m_sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
-		TRC(2, "Listening on TCP IPv6 port " << NetManager.ListeningPort);
+		TRC(2, "Listening on TCP IPv4 port " << NetManager.ListeningPort);
 	} else {
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
 		m_sock.Bind(IPEndPoint(IPAddress::IPv6Any, (uint16_t)NetManager.ListeningPort));
 		NetManager.LocalEp6 = m_sock.LocalEndPoint;
-		TRC(2, "Listening on TCP IPv4 port " << NetManager.ListeningPort);
+		TRC(2, "Listening on TCP IPv6 port " << NetManager.ListeningPort);
 	}
 
 	m_sock.Listen();
