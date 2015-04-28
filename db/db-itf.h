@@ -132,8 +132,8 @@ protected:
 class DbException : public Exception {
 	typedef Exception base;
 public:
-	DbException(HRESULT hr, RCString s)
-		:	base(hr, s)
+	DbException(const error_code& ec, RCString s)
+		:	base(ec, s)
 	{
 	}
 };
