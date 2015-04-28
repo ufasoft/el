@@ -190,7 +190,7 @@ public:
 		:	base()
 	{}
 
-	XmlNodeType get_NodeType() {
+	XmlNodeType get_NodeType() const {
 		DOMNodeType r;
 		XmlCheck(R.get_nodeType(&r));
 		return (XmlNodeType)r;

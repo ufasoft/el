@@ -127,9 +127,6 @@
 #	endif
 #endif
 
-#include "ext_messages.h"
-
-
 #ifdef _MSC_VER
 
 #	if !defined(__cplusplus) && _MSC_VER < 1900
@@ -571,7 +568,7 @@ typedef uint32_t guint32;
 #		else
 #			ifdef _AFXDLL
 #				pragma comment(lib, "libext")
-#				pragma comment(lib, "ext")     // we need these #pragmas before comment(lib) of C++ libs
+#				pragma comment(lib, "ext.lib")     // we need these #pragmas before comment(lib) of C++ libs
 #				if UCFG_WCE
 #					pragma comment(lib, "libext")     // can't merge it with ext.lib because /QMFPE warning
 #				endif
@@ -1150,7 +1147,7 @@ __END_DECLS
 #	if UCFG_WCE
 #		include <connmgr.h>
 #	else
-#		include <conio.h>
+//#		include <conio.h>
 //!!!R#		include <stdlib.h>
 
 #		if defined(_MSC_VER) && !UCFG_MINISTL
