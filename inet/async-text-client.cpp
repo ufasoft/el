@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "async-text-client.h"
@@ -5,10 +10,10 @@
 namespace Ext { namespace Inet { 
 
 void AsyncTextClient::Execute() {
-	DBG_LOCAL_IGNORE_WIN32(WSAECONNREFUSED);
-	DBG_LOCAL_IGNORE_WIN32(WSAECONNABORTED);
-	DBG_LOCAL_IGNORE_WIN32(WSAECONNRESET);
-	DBG_LOCAL_IGNORE(E_EXT_EndOfStream);
+	DBG_LOCAL_IGNORE_CONDITION(errc::connection_refused);
+	DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
+	DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
+	DBG_LOCAL_IGNORE_CONDITION(ExtErr::EndOfStream);
 
 	for (pair<String, bool> pp; !m_bStop && (pp=R.ReadLineEx()).first!=nullptr;) {
 		if (FirstByte != -1)
