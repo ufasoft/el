@@ -71,12 +71,12 @@ class XmlException : public SystemException {
 public:
 	typedef XmlException class_type;
 
-	XmlException(HRESULT hr = E_EXT_XMLError, RCString message = String())
-		:	base(hr, message)
+	XmlException(const error_code& ec = ExtErr::XMLError, RCString message = String())
+		:	base(ec, message)
 	{}
 
 	XmlException(RCString message)
-		:	base(E_EXT_XMLError, message)
+		:	base(ExtErr::XMLError, message)
 	{}
 
 	virtual long get_LineNumber() const { Throw(E_NOTIMPL); }
@@ -164,7 +164,7 @@ public:
 protected:
   	I **operator&() {
     	if (m_unk)
-      		Throw(E_EXT_InterfaceAlreadyAssigned);
+      		Throw(ExtErr::InterfaceAlreadyAssigned);
     	return (I**)&m_unk;
   	}
 

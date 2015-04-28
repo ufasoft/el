@@ -1,10 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #include <el/ext.h>
 
@@ -141,6 +138,7 @@ bool XmlNodeReader::Read() const {
 		m_readState = Ext::ReadState::Interactive;
 		return bool(m_cur);
 	}
+//	TRC(4, int(m_cur.NodeType) << "  " << &m_cur.R << "   StartNode type: " << int(m_startNode.NodeType) << "  " << &m_startNode.R);
 	MoveToElement();
 
 	if (XmlNode firstChild = !m_bEndElement ? m_cur.FirstChild : XmlNode()) {
@@ -156,13 +154,18 @@ bool XmlNodeReader::Read() const {
 		m_linkedNode = m_cur;
 		return m_bEndElement;
 	}
-	if (!m_bEndElement && !IsEmptyElement() && m_cur.NodeType==XmlNodeType::Element)
+	XmlNodeType curType = m_cur.NodeType;
+	if (!m_bEndElement && !IsEmptyElement() && curType==XmlNodeType::Element)
 		return m_bEndElement = true;
 	if (XmlNode next = m_cur.NextSibling) {
 		m_linkedNode = m_cur = next;
 		return !(m_bEndElement = false);
 	}
-	XmlNode parent = m_cur.ParentNode;
+	XmlNode parent;
+	if (curType != XmlNodeType::Document) {
+		parent = m_cur.ParentNode;
+	//	TRC(4, "Parent: " << int(parent.NodeType) << "  " << &parent.R);
+	}
 	if (m_bEndElement = parent && parent!=m_startNode) {
 		m_cur = parent;
 		--m_depth;
