@@ -11,7 +11,7 @@ class BdbReader {
 public:
 	FileStream m_fs;
 
-	BdbReader(RCString path);	
+	BdbReader(const path& p);	
 	bool Read(Blob& key, Blob& value);
 protected:
 	Blob m_curPage;

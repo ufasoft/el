@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include <el/libext/ext-os-api.h>
@@ -58,6 +50,8 @@ AFX_MODULE_STATE* AFXAPI AfxGetStaticModuleState() {
 
 } // Ext::
 
+static AFX_MODULE_STATE *s_prevModuleState;
+
 extern "C" BOOL WINAPI RawDllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID) {
 
 #if UCFG_OS_IMPTLS
@@ -70,18 +64,14 @@ extern "C" BOOL WINAPI RawDllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID) {
 
 
 #ifdef _AFXDLL
-	switch (dwReason)
-	{
+	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
-		AfxGetThreadState()->m_pPrevModuleState = AfxSetModuleState(&afxModuleState);
+		afxModuleState.m_hCurrentInstanceHandle = (HMODULE)hInstance;
+		afxModuleState.m_hCurrentResourceHandle = (HMODULE)hInstance;
+		AfxSetModuleState(&afxModuleState);
 		break;
 	case DLL_PROCESS_DETACH:
-		// restore module state after cleanup
-		_AFX_THREAD_STATE* pState = AfxGetThreadState();
-		AfxSetModuleState(pState->m_pPrevModuleState);
-#ifdef _DEBUG
-		pState->m_pPrevModuleState = NULL;
-#endif
+		AfxRestoreModuleState();
 	}
 #endif
 	return TRUE;
@@ -93,22 +83,15 @@ extern "C" BOOL WINAPI DllMain(HINST hInstance, DWORD dwReason, LPVOID ) {		//!!
 	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
 		{
-	#ifdef _AFXDLL
-			// wire up resources from core DLL
-			AfxCoreInitModule();
-
-			AFX_MODULE_STATE *pModuleState = AfxGetStaticModuleState(); //!!!
-			pModuleState->m_hCurrentInstanceHandle = (HMODULE)hInstance;
-			pModuleState->m_hCurrentResourceHandle = (HMODULE)hInstance;
+#ifdef _AFXDLL			
+			AfxCoreInitModule();										// wire up resources from core DLL
 #endif
-	//!!!		AfxGetThreadState()->m_pPrevModuleState = AfxSetModuleState(pModuleState);
 			AfxWinInit((HINSTANCE)hInstance, 0, _T(""), 0);
 			CWinApp *pApp = AfxGetApp();
 			if (pApp)
 				pApp->InitInstance();
 	#ifdef _AFXDLL
-			AfxSetModuleState(AfxGetThreadState()->m_pPrevModuleState);
-			AfxGetThreadState()->m_pPrevModuleState = 0;
+			AfxRestoreModuleState();
 	#else
 			AfxInitLocalData(hInstance);
 	#endif
@@ -117,7 +100,7 @@ extern "C" BOOL WINAPI DllMain(HINST hInstance, DWORD dwReason, LPVOID ) {		//!!
 	case DLL_PROCESS_DETACH:
 		{
 #	ifdef _AFXDLL
- 			AfxGetThreadState()->m_pPrevModuleState = AfxSetModuleState(&afxModuleState);
+ 			AfxSetModuleState(&afxModuleState);
 #	endif
 			CWinApp* pApp = AfxGetApp();
 			if (pApp)
@@ -178,8 +161,8 @@ STDAPI DllRegisterServer() {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 	try {
 		return CDllServer::I->OnRegister();
-	} catch (RCExc e) {
-		return e.HResult;
+	} catch (RCExc ex) {
+		return HResultInCatch(ex);
 	}
 }
 
@@ -187,13 +170,12 @@ STDAPI DllUnregisterServer() {
 	AFX_MANAGE_STATE(AfxGetStaticModuleState());
 	try {
 		return CDllServer::I->OnUnregister();
-	} catch (RCExc e) {
-		return e.HResult;
+	} catch (RCExc ex) {
+		return HResultInCatch(ex);
 	}
 }
 
-void __cdecl AfxTermDllState()
-{
+void __cdecl AfxTermDllState() {
 	AfxTlsRelease();
 }
 

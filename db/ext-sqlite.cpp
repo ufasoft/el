@@ -71,11 +71,6 @@ static struct CSqliteExceptionFabric : CExceptionFabric {
 	}
 } s_exceptionFabric(FACILITY_SQLITE);
 
-SqliteException::SqliteException(int errval, RCString s)
-	:	base(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_SQLITE, errval), "SQLite Error: "+s)
-{
-}
-
 int SqliteCheck(sqlite_db *db, int code) {
 	switch (code) {
 	case SQLITE_OK:
@@ -91,10 +86,12 @@ int SqliteCheck(sqlite_db *db, int code) {
 	throw SqliteException(code, s);
 }
 
-static class sqlite_error_category : public error_category {
-	typedef error_category base;
-
-	const char *name() const noexcept override { return "SQLite"; }
+static class sqlite_error_category : public ErrorCategoryBase {
+	typedef ErrorCategoryBase base;
+public:
+	sqlite_error_category()
+		:	base("SQLite", FACILITY_SQLITE)
+	{}
 
 	string message(int errval) const override {
 		return sqlite3_errstr(errval);
@@ -106,6 +103,10 @@ const error_category& sqlite_category() {
 	return s_sqliteErrorCategory;
 }
 
+SqliteException::SqliteException(int errval, RCString s)
+	:	base(error_code(errval, sqlite_error_category()), s)
+{
+}
 
 bool SqliteIsComplete(const char *sql) {
 	switch (int rc = ::sqlite_complete(sql)) {
@@ -316,20 +317,20 @@ DbDataReader SqliteCommand::ExecuteReader() {
 DbDataReader SqliteCommand::ExecuteVector() {
 	DbDataReader r = SqliteCommand::ExecuteReader();
 	if (!r.Read())
-		Throw(E_EXT_DB_NoRecord);
+		Throw(ExtErr::DB_NoRecord);
 	return r;
 }
 
 String SqliteCommand::ExecuteScalar() {
 	if (SqliteCheck(m_con, ::sqlite_step(ResetHandle(true))) == SQLITE_ROW)
 		return (const Char16*)sqlite_column_text16(m_stmt, 0);
-	Throw(E_EXT_DB_NoRecord);
+	Throw(ExtErr::DB_NoRecord);
 }
 
 int64_t SqliteCommand::ExecuteInt64Scalar() {
 	if (SqliteCheck(m_con, ::sqlite_step(ResetHandle(true))) == SQLITE_ROW)
 		return ::sqlite_column_int64(m_stmt, 0);
-	Throw(E_EXT_DB_NoRecord);
+	Throw(ExtErr::DB_NoRecord);
 }
 
 ptr<IDbCommand> SqliteConnection::CreateCommand() {

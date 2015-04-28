@@ -24,8 +24,8 @@ struct BTreeMainPage {
 };
 
 
-BdbReader::BdbReader(RCString path)
-	:	m_fs(path, FileMode::Open, FileAccess::Read)
+BdbReader::BdbReader(const path& p)
+	:	m_fs(p, FileMode::Open, FileAccess::Read)
 {
 	BTreeMainPage mainPage;
 	m_fs.ReadBuffer(&mainPage, sizeof mainPage);
