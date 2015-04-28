@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -51,7 +56,7 @@ Socket::~Socket() {
 
 void Socket::Create(AddressFamily af, SocketType socktyp, ProtocolType protoTyp) {
 	if (Valid())
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	SOCKET h = ::socket((int)af, (int)socktyp, (int)protoTyp);
 	if (h == INVALID_SOCKET)
 		ThrowWSALastError();

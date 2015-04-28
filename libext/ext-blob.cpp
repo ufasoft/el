@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -6,15 +11,15 @@ using namespace std;
 
 #if UCFG_BLOB_POLYMORPHIC
 CStringBlobBuf *CBlobBufBase::AsStringBlobBuf() {
-	Throw(E_EXT_BlobIsNotString);
+	Throw(ExtErr::BlobIsNotString);
 }
 
 void CBlobBufBase::Attach(CBlobBufBase::Char *bstr) {
-	Throw(E_EXT_BlobIsNotString);
+	Throw(ExtErr::BlobIsNotString);
 }
 
 CBlobBufBase::Char *CBlobBufBase::Detach() {
-	Throw(E_EXT_BlobIsNotString);
+	Throw(ExtErr::BlobIsNotString);
 }
 #endif
 
@@ -59,7 +64,7 @@ void * AFXAPI CStringBlobBuf::operator new(size_t sz) {
 
 void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len) {
 	if ((ssize_t)len < 0)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	return Malloc(sz + len + sizeof(String::value_type));
 }
 
@@ -73,11 +78,11 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 	if (m_aRef == 1) {
 		if (m_apChar.load())
 			free(m_apChar.exchange(nullptr));
+		size_t cbNew = size + sizeof(CStringBlobBuf) + sizeof(String::value_type);
 #if UCFG_HAS_REALLOC
-		d = (CStringBlobBuf*)Realloc(this, size+sizeof(CStringBlobBuf)+sizeof(String::value_type));
+		d = (CStringBlobBuf*)Realloc(this, cbNew);
 #else
-		d = (CStringBlobBuf*)Malloc(size+sizeof(CStringBlobBuf)+sizeof(String::value_type));
-		memcpy(d, this, std::min((size_t)d->m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), size+sizeof(CStringBlobBuf)+sizeof(String::value_type)));
+		memcpy((d = (CStringBlobBuf*)Malloc(cbNew)), this, std::min((size_t)d->m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), cbNew));
 		free(this);
 #endif
 		d->m_size = size;	
@@ -210,10 +215,11 @@ byte *Blob::data() {
 }
 
 Blob Blob::FromHexString(RCString s) {
-	int len = s.length() / 2;
+	size_t len = s.length() / 2;
 	Blob blob(0, len);
-	for (int i=0; i<len; ++i)
-		blob.data()[i] = Convert::ToByte(s.substr(i*2, 2), 16);
+	byte *p = blob.data();
+	for (size_t i=0; i<len; ++i)
+		p[i] = (byte)stoi(s.substr(i*2, 2), 0, 16);
 	return blob;
 }
 
@@ -238,16 +244,17 @@ void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
 	memcpy(data+offset, mb.P, mb.Size);
 }
 
+
 ostream& __stdcall operator<<(ostream& os, const ConstBuf& cbuf) {
-	if (const byte *p = cbuf.P) {
-		const char *fmt = os.flags() & ios::uppercase ? "%02X" : "%02x";
-		for (size_t i=0, size=cbuf.Size; i<size; ++i) {
-			char buf[5];
-			sprintf(buf, fmt, int(p[i]));
-			os << buf;
-		}
-	} else
-		os << "NULL";
+	static const char s_upperHexDigits[] = "0123456789ABCDEF",
+ 					  s_lowerHexDigits[] = "0123456789abcdef";
+	if (!cbuf.P)
+		return os << "<#nullptr>";
+	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
+	for (size_t i=0, size=cbuf.Size; i<size; ++i) {
+		byte n = cbuf.P[i];
+		os.put(digits[n >> 4]).put(digits[n & 15]);
+	}
 	return os;
 }
 

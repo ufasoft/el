@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_COM
@@ -14,6 +19,8 @@
 //!!!#include "libext.h"
 
 
+namespace std { template<> struct std::is_error_code_enum<Ext::ExtErr> : true_type {}; }
+
 namespace Ext {
 
 using std::atomic;
@@ -21,6 +28,8 @@ using std::atomic;
 class CStringBlobBuf;
 
 class COleVariant;
+
+
 
 class CBlobBufBase {
 public:
@@ -223,13 +232,13 @@ public:
 
 	byte operator[](size_t idx) const {
 		if (idx >= Size)
-			Throw(E_EXT_IndexOutOfRange);
+			Throw(ExtErr::IndexOutOfRange);
 		return constData()[idx];
 	}
 
 	byte& operator[](size_t idx) {
 		if (idx >= Size)
-			Throw(E_EXT_IndexOutOfRange);
+			Throw(ExtErr::IndexOutOfRange);
 		return data()[idx];
 	}
 
@@ -263,6 +272,45 @@ inline std::ostream& __stdcall operator<<(std::ostream& os, const Blob& blob) {
 }
 
 typedef const Blob& RCBlob;
+
+template <class T>
+class StaticList {
+public:
+	static T *Root;
+
+	T *Next;
+
+	StaticList()
+		:	Next(0)
+	{}
+protected:
+	explicit StaticList(bool)
+		:	Next(Root)
+	{
+		Root = static_cast<T*>(this);
+	}
+};
+
+class ErrorCategoryBase : public std::error_category, public StaticList<ErrorCategoryBase> {
+	typedef StaticList<ErrorCategoryBase> base;
+public:
+	int Facility;
+
+	ErrorCategoryBase(int facility)
+		:	base(true)
+		,	Facility(facility)
+	{}
+
+	static ErrorCategoryBase* AFXAPI GetRoot();
+	static const error_category* AFXAPI Find(int fac);
+};
+
+
+const std::error_category& AFXAPI ext_category();
+
+inline std::error_code make_error_code(ExtErr v) { return std::error_code(int(v), ext_category()); }
+inline std::error_condition make_error_condition(ExtErr v) { return std::error_condition(int(v), ext_category()); }
+
 
 
 } // Ext::

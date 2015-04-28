@@ -147,7 +147,7 @@ Win32Check(::CloseHandle(exchange(m_handle, (HANDLE)0)));
 
 intptr_t SafeHandle::DangerousGetHandle() const {
 	if (!m_aInUse)
-		Throw(E_EXT_ObjectDisposed);
+		Throw(ExtErr::ObjectDisposed);
 	return m_aHandle.load();
 }
 
@@ -176,7 +176,7 @@ void SafeHandle::ThreadSafeAttach(intptr_t handle, bool bOwn) {
 
 void SafeHandle::Attach(intptr_t handle, bool bOwn) {
 	if (Valid())
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	m_aHandle = handle;
 	AfterAttach(bOwn);
 }
@@ -191,7 +191,7 @@ intptr_t SafeHandle::Detach() { //!!!
 void SafeHandle::Duplicate(intptr_t h, uint32_t dwOptions) {
 #if UCFG_WIN32
 	if (Valid())
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	HANDLE hMy;
 	Win32Check(::DuplicateHandle(GetCurrentProcess(), (HANDLE)h, GetCurrentProcess(), &hMy, 0, FALSE, dwOptions));
 	m_aHandle = intptr_t(hMy);
@@ -337,24 +337,26 @@ DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec) {
 #if UCFG_WDM && !_HAS_EXCEPTIONS
 	KeBugCheck(hr);
 #else
+	if (ec == ExtErr::EndOfStream)
+		throw EndOfStreamException();
+	if (ec == ExtErr::FileFormat)
+		throw FileFormatException();
+	if (ec == ExtErr::ThreadInterrupted)
+		throw thread_interrupted();
+	if (ec == ExtErr::InvalidCast)
+		throw bad_cast();
+	if (ec == ExtErr::IndexOutOfRange)
+		throw out_of_range(ec.message());
+
+
 	if (ec.category() != hresult_category())
 		throw Exception(ec);
 	switch (hr) {
 	case E_ACCESSDENIED:			throw AccessDeniedException();
 	case E_OUTOFMEMORY:				throw bad_alloc();
 	case E_INVALIDARG:				throw ArgumentExc();
-	case E_EXT_EndOfStream:			throw EndOfStreamException();
-	case E_EXT_FileFormat:			throw FileFormatException();
 	case E_NOTIMPL:					throw NotImplementedExc();
 	case E_FAIL:					throw UnspecifiedException();
-	case E_EXT_ThreadInterrupted:	throw thread_interrupted();
-	case E_EXT_InvalidCast:			throw bad_cast();
-	case E_EXT_IndexOutOfRange:
-#if UCFG_WDM
-		throw out_of_range("Out of range");
-#else
-		throw out_of_range(explicit_cast<string>(HResultToMessage(E_EXT_IndexOutOfRange)));
-#endif
 	case HRESULT_OF_WIN32(ERROR_STACK_OVERFLOW):	throw StackOverflowExc();
 
 /*!!!R

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext {
@@ -12,6 +17,8 @@ ENUM_CLASS(SeekOrigin) {
 class EXTCLASS Stream {
 public:
 	typedef Stream class_type;
+
+	static const size_t DEFAULT_BUF_SIZE = 8192;
 
 	virtual ~Stream();
 	virtual void WriteBuffer(const void *buf, size_t count) { Throw(E_NOTIMPL); }
@@ -44,11 +51,42 @@ public:
 	}
 	DEFPROP_VIRTUAL_CONST_CONST(uint64_t, Position);	
 
-	void CopyTo(Stream& dest, size_t bufsize = 8192) const;
-
+	void CopyTo(Stream& dest, size_t bufsize = DEFAULT_BUF_SIZE) const;
 protected:
 	Stream();
 };
+
+class BufferedStream : public Stream {
+	typedef Stream base;
+public:
+	Stream& Stm;
+
+	BufferedStream(Stream& stm, size_t bufferSize = DEFAULT_BUF_SIZE)
+		:	Stm(stm)
+		,	m_buf(0, bufferSize)
+		,	m_cur(0)
+		,	m_end(0)
+	{}
+
+	void Close() const override { Stm.Close(); }
+	void Flush() override { Stm.Flush(); }
+	bool Eof() const override { return m_cur==m_end && Stm.Eof(); }
+	uint64_t get_Length() const override { return Stm.Length; }
+	uint64_t get_Position() const override { return Stm.Position - (m_end - m_cur); }
+
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override {
+		m_cur = m_end = 0;
+		return Stm.Seek(offset, origin);
+	}
+
+	size_t Read(void *buf, size_t count) const override;
+private:
+	mutable Blob m_buf;
+	mutable size_t m_cur, m_end;
+};
+
+
+const std::error_category& AFXAPI zlib_category();
 
 ENUM_CLASS(CompressionMode) {
 	Decompress, Compress

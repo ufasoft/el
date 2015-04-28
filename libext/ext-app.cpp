@@ -420,21 +420,22 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 		}
 		Execute();
 	} catch (const Exception& ex) {
-		switch (ex.code().value()) {
-		case 1:
-			Usage();
-		case 0:
-		case int(E_EXT_NormalExit):
-			break;
-		case int(E_EXT_SignalBreak):
-			Environment::ExitCode = 1;
-			break;
-		case 3:
-			Environment::ExitCode = 3;  // Compilation error
-			break;
-		default:
-			wcerr << ex << endl;
-			Environment::ExitCode = 2;
+		if (ex.code() != ExtErr::NormalExit) {
+			if (ex.code() == ExtErr::SignalBreak)
+				Environment::ExitCode = 1;
+			else {
+				switch (ex.code().value()) {
+				case 1:
+					Usage();
+				case 0:
+				case 3:
+					Environment::ExitCode = 3;  // Compilation error
+					break;
+				default:
+					wcerr << ex << endl;
+					Environment::ExitCode = 2;
+				}
+			}
 		}
 	} catch (const exception& ex) {
 		cerr << ex.what() << endl;

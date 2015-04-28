@@ -1,5 +1,9 @@
-#include <el/ext.h>
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
+#include <el/ext.h>
 
 
 namespace Ext {
@@ -24,7 +28,7 @@ void Stream::ReadBuffer(void *buf, size_t count) const {
 	byte *p = (byte*)buf;
 	for (size_t cb; count; count-=cb, p+=cb) {
 		if (!(cb = Read(p, count)))
-			Throw(E_EXT_EndOfStream);
+			Throw(ExtErr::EndOfStream);
 	}
 }
 
@@ -32,6 +36,21 @@ void Stream::CopyTo(Stream& dest, size_t bufsize) const {
 	vector<byte> buf(bufsize);
 	for (size_t cb; cb = Read(&buf[0], buf.size());)
 		dest.WriteBuffer(&buf[0], cb);
+}
+
+size_t BufferedStream::Read(void *buf, size_t count) const {
+	size_t cb = (min)(count, m_end-m_cur);
+	memcpy(buf, m_buf.constData()+exchange(m_cur, m_cur+cb), cb);
+	if (count -= cb) {
+		buf = (byte*)buf + cb;
+		if (count >= m_buf.Size)
+			cb += Stm.Read(buf, count);
+		else {
+			cb += (m_cur = (min)(count, m_end = Stm.Read(m_buf.data(), m_buf.Size)));
+			memcpy(buf, m_buf.constData(), m_cur);
+		}
+	}
+	return cb;
 }
 
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
@@ -60,7 +79,7 @@ Blob MemoryStream::get_Blob() {
 
 void CMemReadStream::ReadBufferAhead(void *buf, size_t count) const {
 	if (count > m_mb.Size-m_pos)
-		Throw(E_EXT_EndOfStream);
+		Throw(ExtErr::EndOfStream);
 	if (buf)
 		memcpy(buf, m_mb.P+m_pos, count);
 }
@@ -74,7 +93,10 @@ size_t CMemReadStream::Read(void *buf, size_t count) const {
 }
 
 void CMemReadStream::ReadBuffer(void *buf, size_t count) const {
-	ReadBufferAhead(buf, count);
+	if (count > m_mb.Size-m_pos)
+		Throw(ExtErr::EndOfStream);
+	if (buf)
+		memcpy(buf, m_mb.P+m_pos, count);
 	m_pos += count;
 }
 
@@ -101,7 +123,7 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 			break;
 		}
 	}
-	Throw(E_PROXY_VeryLongLine);
+	Throw(ExtErr::PROXY_VeryLongLine);
 }
 
 vector<String> AFXAPI ReadHttpHeader(const Stream& stm, Stream *pDupStream) {

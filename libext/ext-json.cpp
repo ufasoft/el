@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_JSON == UCFG_JSON_JANSSON
@@ -95,7 +100,7 @@ public:
 	String ToString() const override {
 		if (const char *s = ::json_string_value(m_json))
 			return Encoding::UTF8.GetChars(ConstBuf(s, strlen(s)));
-		Throw(E_EXT_InvalidCast);
+		Throw(ExtErr::InvalidCast);
 	}
 
 	int64_t ToInt64() const override {
@@ -158,7 +163,7 @@ public:
 	json_error_t m_err;
 
 	JsonExc(const json_error_t& err)
-		:	base(E_EXT_JSON_Parse)
+		:	base(ExtErr::JSON_Parse)
 		,	m_err(err)
 	{}
 

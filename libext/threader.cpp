@@ -465,7 +465,7 @@ void ThreadBase::OnEnd() {
 
 void ThreadBase::interruption_point() {
 	if (m_bInterruptionEnabled && m_bStop)
-		Throw(E_EXT_ThreadInterrupted);
+		Throw(ExtErr::ThreadInterrupted);
 }
 
 void ThreadBase::OnAPC() {
@@ -525,7 +525,7 @@ void ThreadBase::QueueUserAPC(PAPCFUNC pfnAPC, ULONG_PTR dwData) {
 	if (winMajVersion >= 6)
 		Win32Check(false, ERROR_GEN_FAILURE);
 	else if (WaitForSingleObject(HandleAccess(_self), 0) == WAIT_TIMEOUT)
-		Throw(E_EXT_QueueUserAPC);				// No GetLastError value
+		Throw(ExtErr::QueueUserAPC);				// No GetLastError value
 }
 
 void ThreadBase::QueueAPC() {
@@ -718,7 +718,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 				}
 			} actveThreadKeeper(m_owner);
 
-			DBG_LOCAL_IGNORE(E_EXT_ThreadInterrupted);
+			DBG_LOCAL_IGNORE_CONDITION(ExtErr::ThreadInterrupted);
 
 			Execute();
 			exitCode = m_exitCode;
@@ -1152,7 +1152,7 @@ bool g_bProcessDetached;
 
 int CWinThread::ExitInstance() {
 #if UCFG_WIN_MSG
-	return (int)AfxGetCurrentMessage()->wParam;
+	return (int)AfxGetCurrentMessage().wParam;
 #else
 	return true;
 #endif

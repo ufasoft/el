@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -61,7 +66,7 @@ MemoryMappedView& MemoryMappedView::operator=(EXT_RV_REF(MemoryMappedView) rv) {
 
 void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size, void *desiredAddress) {
 	if (Address)
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	Offset = offset;
 	Size = size;
 #if UCFG_USE_POSIX
@@ -130,6 +135,7 @@ MemoryMappedView MemoryMappedFile::CreateView(uint64_t offset, size_t size, Memo
 MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
 	int prot = MemoryMappedFileAccessToInt(access);
 	MemoryMappedFile r;
+	r.Access = access;
 #if UCFG_WIN32	
 	r.m_hMapFile.Attach((intptr_t)::CreateFileMapping((HANDLE)file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));	
 #else

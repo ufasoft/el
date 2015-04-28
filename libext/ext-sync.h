@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_WIN32
@@ -259,7 +264,7 @@ public:
 
 template <class T> CScopedLock<T> ScopedLock(T& sync) { return CScopedLock<T>(sync); }
 
-#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) Ext::ThrowImp(E_EXT_CodeNotReachable); else
+#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) Ext::ThrowImp(Ext::ExtErr::CodeNotReachable); else
 //#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) ; else
 
 #if defined(_MSC_VER) && _MSC_VER>=1600

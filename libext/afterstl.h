@@ -139,7 +139,7 @@ public:
 
 	const T& front() const {
 		if (m_r == m_w)
-			Throw(E_EXT_IndexOutOfRange);
+			Throw(ExtErr::IndexOutOfRange);
 		return *m_r;
 	}
 
@@ -155,14 +155,14 @@ public:
 	void push_back(const T& v) {
 		T *n = Inc(m_w);
 		if (n == m_r)
-			Throw(E_EXT_QueueOverflow);
+			Throw(ExtErr::QueueOverflow);
 		new(m_w) T(v);
 		m_w = n;
 	}
 
 	void pop_front() {
 		if (empty())
-			Throw(E_EXT_IndexOutOfRange);
+			Throw(ExtErr::IndexOutOfRange);
 		m_r->~T();
 		m_r = Inc(m_r);
 	}
@@ -521,23 +521,6 @@ template<typename T> inline size_t hash_value(const T& _Keyval) {
 */
 
 
-template <class T>
-class StaticList {
-public:
-	static T *Root;
-
-	T *Next;
-
-	StaticList()
-		:	Next(0)
-	{}
-protected:
-	explicit StaticList(bool)
-		:	Next(Root)
-	{
-		Root = static_cast<T*>(this);
-	}
-};
 
 template <class T>
 class InterlockedSingleton {

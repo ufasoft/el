@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "ext-http.h"
@@ -16,7 +21,10 @@ int AFXAPI InetCheck(int i) {
 			code = code;
 			//!!!! todo
 		}
-		Throw(dw ? HRESULT_FROM_WIN32(dw) : E_EXT_UnknownWin32Error);
+		if (dw)
+			Throw(HRESULT_FROM_WIN32(dw));
+		else
+			Throw(ExtErr::UnknownWin32Error);
 	}
 	return i;
 }

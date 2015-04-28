@@ -424,7 +424,7 @@ String::size_type String::rfind(value_type ch, size_type pos) const noexcept {
 
 String String::substr(size_type pos, size_type count) const {
 	if (pos > size())
-		Throw(E_EXT_IndexOutOfRange);
+		Throw(ExtErr::IndexOutOfRange);
 	return !pos && count>=size() ? _self : String((const value_type*)_self + pos, min(count, size()-pos));
 }
 

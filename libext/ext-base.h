@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(map)
@@ -140,12 +145,13 @@ public:
 };
 
 #define EXT_DEFINE_EXC(c, b, code) class c : public b { public: c(HRESULT hr = code) : b(hr) {} };
+#define EXT_DEFINE_EXC_EC(c, b, code) class c : public b { public: c(ExtErr ec = code) : b(ec) {} };
 
-EXT_DEFINE_EXC(ArithmeticExc, Exception, E_EXT_Arithmetic)
-EXT_DEFINE_EXC(OverflowExc, ArithmeticExc, E_EXT_Overflow)
+EXT_DEFINE_EXC_EC(ArithmeticExc, Exception, ExtErr::Arithmetic)
+EXT_DEFINE_EXC_EC(OverflowExc, ArithmeticExc, ExtErr::Overflow)
 EXT_DEFINE_EXC(ArgumentExc, Exception, E_INVALIDARG)
-EXT_DEFINE_EXC(EndOfStreamException, Exception, E_EXT_EndOfStream)
-EXT_DEFINE_EXC(FileFormatException, Exception, E_EXT_FileFormat)
+EXT_DEFINE_EXC_EC(EndOfStreamException, Exception, ExtErr::EndOfStream)
+EXT_DEFINE_EXC_EC(FileFormatException, Exception, ExtErr::FileFormat)
 EXT_DEFINE_EXC(NotImplementedExc, Exception, E_NOTIMPL)
 EXT_DEFINE_EXC(UnspecifiedException, Exception, E_FAIL)
 EXT_DEFINE_EXC(AccessDeniedException, Exception, E_ACCESSDENIED)
@@ -198,7 +204,7 @@ public:
 class thread_interrupted : public Exception {
 public:
 	thread_interrupted()
-		:	Exception(E_EXT_ThreadInterrupted)
+		:	Exception(ExtErr::ThreadInterrupted)
 	{}
 };
 
@@ -357,7 +363,7 @@ public:
 
 	handle_type& OutRef() {
 		if (Valid())
-			Throw(E_EXT_AlreadyOpened);
+			Throw(ExtErr::AlreadyOpened);
 		return m_h;
 	}
 
@@ -410,6 +416,7 @@ struct CExceptionFabric {
 };
 
 DECLSPEC_NORETURN void AFXAPI ThrowS(HRESULT hr, RCString msg);
+
 
 
 } // Ext::

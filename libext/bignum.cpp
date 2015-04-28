@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 using namespace std;
@@ -358,7 +363,7 @@ unsigned int BigInteger::NMod(unsigned int d) const {
 
 pair<BigInteger, BigInteger> AFXAPI div(const BigInteger& x, const BigInteger& y) {
 	if (!y)
-		Throw(E_EXT_DivideByZero);
+		Throw(ExtErr::DivideByZero);
 #if UCFG_BIGNUM!='A'
 	pair<BigInteger, BigInteger> r;
 	r.first.m_zz = x.m_zz/y.m_zz;
@@ -750,7 +755,7 @@ BigInteger AFXAPI operator<<(const BigInteger& x, size_t v) {
 BASEWORD *BigInteger::ExtendTo(BASEWORD *p, size_t size) const {
 	size_t count = GetBaseWords();
 	if (count > size)
-		Throw(E_InvalidExtendOfNumber);
+		Throw(ExtErr::InvalidExtendOfNumber);
 #if UCFG_BIGNUM!='A'
 	ToBytes((byte*)p, size*sizeof(BASEWORD));
 #else
@@ -805,7 +810,7 @@ void ImpShld(const BASEWORD *s, BASEWORD *d, size_t siz, size_t amt) {
 int64_t BigInteger::ToInt64() const
 {
 	if (_self < BigInteger(LLONG_MIN) || _self > BigInteger(LLONG_MAX))
-		Throw(E_EXT_BigNumConversion);
+		Throw(ExtErr::BigNumConversion);
 	BigInteger v = _self;
 	v.Extend(2);
 	return *(int64_t*)v.m_p;

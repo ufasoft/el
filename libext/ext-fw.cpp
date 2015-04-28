@@ -201,6 +201,23 @@ String Environment::GetMachineVersion() {
 #endif
 }
 
+bool Environment::Is64BitOperatingSystem() {
+#if UCFG_64
+	return true;
+#elif UCFG_USE_POSIX
+	return GetMachineType().find("X86_64") != String::npos;
+#elif UCFG_WIN32_FULL
+	typedef void (__stdcall *PFN)(SYSTEM_INFO *psi);
+	CDynamicLibrary dll("kernel32.dll");
+	if (PFN pfn = (PFN)GetProcAddress(dll.m_hModule, String("GetNativeSystemInfo"))) {
+		SYSTEM_INFO si;
+		pfn(&si);
+		return si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64;
+	}
+#endif
+	return false;
+}
+
 /*!!!
 
 ULONGLONG AFXAPI StrToVersion(RCString s) {
@@ -311,10 +328,10 @@ String OperatingSystem::get_PlatformName() const {
 }
 
 String OperatingSystem::get_VersionString() const {
-	String r = get_PlatformName()+" "+get_VersionName();
-	r += " "+Version.ToString();
+	String r = get_PlatformName() + " " + Version.ToString() + "  " + get_VersionName();
 	if (!ServicePack.empty())
-		r += " "+ServicePack;
+		r += " " + ServicePack;
+	r += (Environment::Is64BitOperatingSystem() ? "  64-bit" : "  32-bit");
 	return r;
 }
 
@@ -322,27 +339,20 @@ String OperatingSystem::get_VersionName() const {
 #ifdef _WIN32
 	String s;
 	switch (int osver = GetOsVersion()) {
-#if UCFG_WIN32_FULL
+	case OSVER_CE_5:	s = "CE 5";		break;
+	case OSVER_CE_6:	s = "CE 5";		break;
+	case OSVER_CE_FUTURE:	s = "CE Future";	break;
+#	if UCFG_WIN32_FULL
 	case OSVER_95:		s = "95";			break;
 	case OSVER_98:		s = "98";			break;
 	case OSVER_ME:		s = "Millenium";	break;
 	case OSVER_NT4:		s = "NT 4";			break;
-	case OSVER_2000:	s = "2000";			break;
-	case OSVER_XP:		s = "XP";			break;
-	case OSVER_SERVER_2003:	s = "Server 2003";	break;
-	case OSVER_VISTA:	s = "Vista";		break;
-	case OSVER_2008:	s = "Server 2008";	break;
-	case OSVER_7:		s = "7";			break;
-	case OSVER_2008_R2:	s = "Server 2008 R2";	break;
-	case OSVER_8:		s = "8";			break;
-	case OSVER_8_1:		s = "8.1";			break;
-	case OSVER_10:		s = "10";			break;
-	case OSVER_FUTURE:	s = "Unknown Future Version";	break;
-#endif
-	case OSVER_CE_5:	s = "CE 5";		break;
-	case OSVER_CE_6:	s = "CE 5";		break;
-	case OSVER_CE_FUTURE:	s = "CE Future";	break;
-	default:			s = "Unknown new";	break;
+	default:
+		s = RegistryKey(HKEY_LOCAL_MACHINE, "Software\\Microsoft\\Windows NT\\CurrentVersion", false).TryQueryValue("ProductName", "Unknown Windows");
+		break;
+#	else
+	default:			s = "Unknown Future Version";	break;
+#	endif
 	}
 	return s;
 #else
@@ -364,7 +374,7 @@ Environment::CStringsKeeper::CStringsKeeper()
 	:	m_p(0)
 {
 	if (!(m_p = (LPTSTR)::GetEnvironmentStrings()))
-		Throw(E_EXT_UnknownWin32Error);
+		Throw(ExtErr::UnknownWin32Error);
 }
 
 Environment::CStringsKeeper::~CStringsKeeper() {
@@ -397,16 +407,30 @@ path Environment::GetFolderPath(SpecialFolder folder) {
 #elif UCFG_WIN32
 	TCHAR path[_MAX_PATH];
 #	if UCFG_OLE
-	LPITEMIDLIST pidl;
-	OleCheck(SHGetSpecialFolderLocation(0, (int)folder, &pidl));
-	Win32Check(SHGetPathFromIDList(pidl, path));
-	CComPtr<IMalloc> aMalloc;
-	OleCheck(::SHGetMalloc(&aMalloc));
-	aMalloc->Free(pidl);
-#	else
-	if (!SHGetSpecialFolderPath(0, path, (int)folder, false))
-		Throw(E_FAIL);
-#	endif
+	switch (folder) {
+	case SpecialFolder::Downloads:
+		{
+			typedef HRESULT (STDAPICALLTYPE *PFN_SHGetKnownFolderPath)(REFKNOWNFOLDERID, DWORD, HANDLE, PWSTR *);
+			static DlProcWrap<PFN_SHGetKnownFolderPath> pfn("SHELL32.DLL", "SHGetKnownFolderPath");
+			if (pfn) {
+				COleString oleStr;
+				OleCheck(pfn(FOLDERID_Downloads, 0, 0, &oleStr));
+				return oleStr;
+			}
+		}
+		return GetFolderPath(SpecialFolder::UserProfile) / "Downloads";
+	default:
+		LPITEMIDLIST pidl;
+		OleCheck(SHGetSpecialFolderLocation(0, (int)folder, &pidl));
+		Win32Check(SHGetPathFromIDList(pidl, path));
+		CComPtr<IMalloc> aMalloc;
+		OleCheck(::SHGetMalloc(&aMalloc));
+		aMalloc->Free(pidl);
+	#	else
+		if (!SHGetSpecialFolderPath(0, path, (int)folder, false))
+			Throw(E_FAIL);
+	#	endif
+	}
 	return path;
 #else
 	Throw(E_NOTIMPL);
@@ -522,7 +546,7 @@ path Environment::SystemDirectory() {
 
 void Environment::SetEnvironmentVariable(RCString name, RCString val) {
 #if UCFG_USE_POSIX
-	String s = name+"="+val;
+	String s = name + "=" + val;
 	CCheck(::putenv(strdup(s)) != 0 ? -1 : 0);
 #else
 	Win32Check(::SetEnvironmentVariable(name, val));
@@ -1184,14 +1208,8 @@ hashval Crc32::ComputeHash(Stream& stm) {
 
 CMessageProcessor g_messageProcessor;
 
-const DWORD //!!!E_EXT_BASE = 0x80040000 | 10000,
-	E_EXT_UPPER = E_EXT_BASE+0xFFFF;
-
 CMessageProcessor::CMessageProcessor() {
 	m_default.Init(0, uint32_t(-1), System.get_ExeFilePath().stem());
-#ifdef X_AFXDLL	 //!!!
-	RegisterModule(E_EXT_BASE, E_EXT_UPPER, Path::GetFileName(AfxGetModuleState()->FileName));
-#endif
 }
 
 CMessageRange::CMessageRange() {
@@ -1302,10 +1320,17 @@ String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 			return CombineErrorMessages(hex, msg, bWithErrorCode);
 	}
 
+
+	int fac = HRESULT_FACILITY(hr);
+	if (const error_category *cat = ErrorCategoryBase::Find(fac)) {
+		return cat->message(hr & 0xFFFF);
+	}
+
+
 #if UCFG_WIN32
 	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS, 0, hr, 0, buf, sizeof buf, p))
 		return CombineErrorMessages(hex, buf, bWithErrorCode);
-	switch (HRESULT_FACILITY(hr)) {
+	switch (fac) {
 	case FACILITY_INTERNET:
 		if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("urlmon.dll"))), hr, 0, buf, sizeof buf, 0))
 			return CombineErrorMessages(hex, buf, bWithErrorCode);
@@ -1343,7 +1368,7 @@ String AFXAPI HResultToMessage(HRESULT hr, bool bWithErrorCode) {
 void CMessageProcessor::CheckStandard() {
 #if UCFG_EXTENDED
 	if (m_vec.size() == 0) {
-		CModuleInfo info;
+/*!!!R		CModuleInfo info;
 		info.m_lowerCode = E_EXT_BASE;
 		info.m_upperCode = (DWORD)E_EXT_UPPER;
 
@@ -1354,6 +1379,7 @@ void CMessageProcessor::CheckStandard() {
 #endif
 		info.m_moduleName = pMS->FileName.filename();
 		m_vec.push_back(info);
+		*/
 	}
 #endif
 }
@@ -1783,9 +1809,9 @@ HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
 	} catch (invalid_argument&) {
 		return E_INVALIDARG;
 	} catch (bad_cast&) {
-		return E_EXT_InvalidCast;
+		return MAKE_HRESULT(SEVERITY_ERROR, FACILITY_EXT, int(ExtErr::InvalidCast));
 	} catch (const out_of_range&) {
-		return E_EXT_IndexOutOfRange;
+		return MAKE_HRESULT(SEVERITY_ERROR, FACILITY_EXT, int(ExtErr::IndexOutOfRange));
 	} catch (const exception&) {
 		return E_FAIL;
 	}
