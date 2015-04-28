@@ -360,7 +360,7 @@
 #	endif
 
 #	ifndef UCFG_STD_SHARED_MUTEX
-#		define UCFG_STD_SHARED_MUTEX (UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || !(UCFG_CLANG_VERSION && UCFG_CLANG_VERSION <= 305)))
+#		define UCFG_STD_SHARED_MUTEX (UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || UCFG_MSC_VERSION >= 1700 || UCFG_CLANG_VERSION >= 306))
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX
@@ -495,20 +495,21 @@
 #define _COMPLEX_DEFINED
 
 #ifdef _MSC_VER
-#	define HAVE_SNPRINTF 1
+#	define HAVE_SNPRINTF 	1
+#	define HAVE_STRSTR 		1
 #	define HAVE_STRLCPY
-#	define HAVE_STRDUP 1
-#	define HAVE_VSNPRINTF 1
-#	define HAVE_MEMMOVE  1
-#	define HAVE_FCNTL_H 1
+#	define HAVE_STRDUP 		1
+#	define HAVE_VSNPRINTF 	1
+#	define HAVE_MEMMOVE  	1
+#	define HAVE_FCNTL_H 	1
 #	define HAVE_STRSEP
 #	define HAVE_SOCKADDR_STORAGE
-#	define HAVE_SQLITE3 1
-#	define HAVE_LIBGMP 1
-#	define HAVE_LIBNTL 1
+#	define HAVE_SQLITE3		1
+#	define HAVE_LIBGMP		1
+#	define HAVE_LIBNTL		1
 #	define HAVE_BERKELEY_DB 1
-#	define HAVE_JANSSON 1
-#	define HAVE_PCRE2 1
+#	define HAVE_JANSSON		1
+#	define HAVE_PCRE2		1
 #endif	// _MSC_VER
 
 #ifndef UCFG_DEFINE_NOMINMAX
