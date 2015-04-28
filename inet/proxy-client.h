@@ -8,7 +8,7 @@
 #include <el/libext/ext-net.h>
 
 #ifndef UCFG_USE_TOR
-#	define UCFG_USE_TOR UCFG_WIN32
+#	define UCFG_USE_TOR 0
 #endif
 
 namespace Ext {
