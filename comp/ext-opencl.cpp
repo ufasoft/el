@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "ext-opencl.h"
@@ -19,11 +24,13 @@ const char * const s_errorTable[] = {
 };
 
 
-static class opencl_error_category : public error_category {
-	typedef error_category base;
+static class opencl_error_category : public ErrorCategoryBase {
+	typedef ErrorCategoryBase base;
+public:
+	opencl_error_category()
+		:	base("OpenCL", FACILITY_OPENCL)
+	{}
 
-	const char *name() const noexcept override { return "OpenCL"; }
-	
 	string message(int errval) const override {
 		if (errval < size(s_errorTable) && s_errorTable[errval])
   			return string(errval<30 ? "" : "INVALID_") + s_errorTable[errval];

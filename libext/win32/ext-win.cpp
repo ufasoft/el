@@ -75,7 +75,7 @@ int AFXAPI Win32Check(LRESULT i) {
 		ec = error_code(dw, system_category());
 	else {
 		HRESULT hr = GetLastHResult();
-		ec = error_code(hr ? hr : E_EXT_UnknownWin32Error, hresult_category());
+		ec = hr ? error_code(hr,  hresult_category()) : ExtErr::UnknownWin32Error;
 	}
 	Throw(ec);
 }
@@ -402,7 +402,7 @@ CVirtualMemory::~CVirtualMemory() {
 
 void CVirtualMemory::Allocate(void *lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect) {
 	if (m_address)
-		Throw(E_EXT_NonEmptyPointer);
+		Throw(ExtErr::NonEmptyPointer);
 	Win32Check((m_address = ::VirtualAlloc(lpAddress, dwSize, flAllocationType, flProtect)) != 0);
 }
 

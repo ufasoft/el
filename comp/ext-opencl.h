@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #ifdef __APPLE__
@@ -385,10 +390,13 @@ const error_category& opencl_category();
 class OpenclException : public Exception {
 	typedef Exception base;
 public:
+	OpenclException(const error_code& ec)
+		:	base(ec)
+	{}
+
 	OpenclException(int errval)
 		:	base(error_code(errval, opencl_category()))
 	{}
-
 };
 
 class BuildException : public OpenclException {
@@ -396,8 +404,8 @@ class BuildException : public OpenclException {
 public:
 	String Log;
 
-	BuildException(HRESULT hr, RCString log)
-		:	base(hr)
+	BuildException(const error_code& ec, RCString log)
+		:	base(ec)
 		,	Log(log)
 	{}
 };

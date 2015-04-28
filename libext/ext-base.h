@@ -210,8 +210,8 @@ public:
 
 class SystemException : public Exception {
 public:
-	SystemException(HRESULT hr = 0, RCString message = "")
-		:	Exception(hr, message)
+	SystemException(const error_code& ec = error_code(), RCString message = "")
+		:	Exception(ec, message)
 	{
 	}
 };
@@ -220,8 +220,8 @@ public:
 class CryptoException : public Exception {
 	typedef Exception base;
 public:
-	explicit CryptoException(HRESULT hr, RCString message)
-		:	base(hr, message)
+	explicit CryptoException(const error_code& ec, RCString message)
+		:	base(ec, message)
 	{}
 };
 

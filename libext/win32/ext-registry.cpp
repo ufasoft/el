@@ -94,7 +94,7 @@ CRegistryValue::operator uint32_t() const {
 	if (m_type == REG_SZ)
 		return Convert::ToUInt32(operator String());
 	if (m_type != REG_DWORD)
-		Throw(E_EXT_REGISTRY);
+		Throw(ExtErr::Registry);
 	return *(DWORD*)m_blob.constData();
 }
 
@@ -105,24 +105,24 @@ CRegistryValue::operator uint64_t() const {
 		return *(DWORD*)m_blob.constData();
 	if (m_type == REG_QWORD)
 		return *(uint64_t*)m_blob.constData();
-	Throw(E_EXT_REGISTRY);
+	Throw(ExtErr::Registry);
 }
 
 CRegistryValue::operator String() const {
 	if (m_type != REG_SZ)
-		Throw(E_EXT_REGISTRY);
+		Throw(ExtErr::Registry);
 	return (const TCHAR*)m_blob.constData();
 }
 
 CRegistryValue::operator Blob() const {
 	if (m_type != REG_BINARY)
-		Throw(E_EXT_REGISTRY);
+		Throw(ExtErr::Registry);
 	return m_blob;
 }
 
 CRegistryValue::operator CStringVector() const {
 	if (m_type != REG_MULTI_SZ)
-		Throw(E_EXT_REGISTRY);
+		Throw(ExtErr::Registry);
 	vector<String> vec;
 	for (TCHAR *p=(TCHAR*)m_blob.constData(); *p;) {
 		String s = p;

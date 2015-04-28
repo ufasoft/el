@@ -294,12 +294,16 @@ protected:
 class ErrorCategoryBase : public std::error_category, public StaticList<ErrorCategoryBase> {
 	typedef StaticList<ErrorCategoryBase> base;
 public:
+	const char *Name;
 	int Facility;
 
-	ErrorCategoryBase(int facility)
+	ErrorCategoryBase(const char *name, int facility = FACILITY_UNKNOWN)
 		:	base(true)
 		,	Facility(facility)
+		,	Name(name)
 	{}
+	
+	const char *name() const noexcept override { return Name; }
 
 	static ErrorCategoryBase* AFXAPI GetRoot();
 	static const error_category* AFXAPI Find(int fac);

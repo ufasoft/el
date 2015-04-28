@@ -143,10 +143,8 @@ static class ExtCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
 	ExtCategory()
-		:	base(FACILITY_EXT)
+		:	base("Ext", FACILITY_EXT)
 	{}
-
-	const char *name() const noexcept override { return "Ext"; }
 
 	string message(int errval) const override {
 		if (const char *s = FindInCodeMessageTable(s_extMessageTable, errval))
