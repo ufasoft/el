@@ -20,7 +20,7 @@ DECLSPEC_NORETURN void AFXAPI ThrowWSALastError() {
 	if (DWORD dw = WSAGetLastError())
 		Throw(error_code((int)dw, system_category()));
 	else
-		Throw(E_EXT_UnknownSocketsError);
+		Throw(ExtErr::UnknownSocketsError);
 #else
 	CCheck(-1);
 	Throw(E_FAIL);

@@ -194,7 +194,7 @@ public:
 
 	const value_type& at(size_type idx) const {
 		if 	(idx >= length())
-			Throw(E_EXT_IndexOutOfRange);
+			Throw(ExtErr::IndexOutOfRange);
 		return (*this)[idx];
 	}
 

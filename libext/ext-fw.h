@@ -27,6 +27,8 @@ class DirectoryInfo;
 
 typedef uint32_t (*AFX_THREADPROC)(void *);
 
+
+
 bool AFXAPI GetSilentUI();
 void AFXAPI SetSilentUI(bool b);
 
@@ -492,14 +494,17 @@ class MemoryMappedFile {
 
 public:
 	SafeHandle m_hMapFile;
+	MemoryMappedFileAccess Access;
 //!!!R	size_t Size;
 
 	MemoryMappedFile()
-//!!!R		,	Size(0)
-	{}
+		:	Access(MemoryMappedFileAccess::None)
+	{
+	}
 
 	MemoryMappedFile(EXT_RV_REF(MemoryMappedFile) rv)
 		:	m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
+		,	Access(rv.Access)
 	{}
 
 	void Close() {
@@ -509,6 +514,7 @@ public:
 	MemoryMappedFile& operator=(EXT_RV_REF(MemoryMappedFile) rv) {
 		m_hMapFile.Close();
 		m_hMapFile = static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile);
+		Access = rv.Access;
 		return *this;
 	}
 
@@ -523,7 +529,9 @@ public:
 	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI CreateFromFile(RCString path, FileMode mode = FileMode::Open, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI OpenExisting(RCString mapName, MemoryMappedFileRights rights = MemoryMappedFileRights::ReadWrite, HandleInheritability inheritability = HandleInheritability::None);
-	MemoryMappedView CreateView(uint64_t offset, size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	
+	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access);
+	MemoryMappedView CreateView(uint64_t offset, size_t size = 0) { return CreateView(offset, size, Access); }
 };
 
 class FileStream : public Stream {
@@ -967,6 +975,7 @@ public:
 
 #define CSIDL_PROGRAM_FILES             0x0026        // C:\Program Files
 #define CSIDL_MYPICTURES                0x0027        // C:\Program Files\My Pictures
+#define CSIDL_PROFILE                   0x0028
 
 ENUM_CLASS(SpecialFolder) {
 #ifdef CSIDL_DESKTOP
@@ -1011,8 +1020,11 @@ ENUM_CLASS(SpecialFolder) {
 	System					= CSIDL_SYSTEM,
 #endif
 	Templates				= CSIDL_TEMPLATES,
+	UserProfile				= CSIDL_PROFILE,
 
 #endif // CSIDL_DESKTOP
+
+	Downloads				= 257,			// Non-standard
 } END_ENUM_CLASS(SpecialFolder);
 
 
@@ -1053,6 +1065,7 @@ public:
 	EXT_API static path AFXAPI GetFolderPath(SpecialFolder folder);
 	static String AFXAPI GetMachineType();
 	static String AFXAPI GetMachineVersion();
+	static bool AFXAPI Is64BitOperatingSystem();
 	
 	int get_ProcessorCount();
 	DEFPROP_GET(int, ProcessorCount);
@@ -1641,7 +1654,24 @@ private:
 };
 
 
+template <typename T>
+struct CodeMessage {
+	T Code;
+	const char *Msg;
+};
+
+template <typename T, int N>
+const char *FindInCodeMessageTable(const CodeMessage<T> (&table)[N], int errval) {
+	for (const CodeMessage<T> *p=table; p!=end(table); ++p)
+		if (int(p->Code) == errval)
+			return p->Msg;
+	return nullptr;
+}
+
+
+
 } // Ext::
+
 
 #if UCFG_USE_REGEX
 #	include "ext-regex.h"

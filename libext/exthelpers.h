@@ -837,12 +837,14 @@ inline HRESULT HResult(unsigned long err) { return (HRESULT)err; }
 
 #if UCFG_EH_SUPPORT_IGNORE
 #	define DBG_LOCAL_IGNORE(hr)					CLocalIgnore<std::error_code> EXT_CONCAT(_localIgnore, __COUNTER__)(error_code(Ext::HResult(hr), Ext::hresult_category()));
-#	define DBG_LOCAL_IGNORE_CONDITION(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(econd);
+#	define DBG_LOCAL_IGNORE_CONDITION(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(make_error_condition(econd));
+#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(econd);
 #	define DBG_LOCAL_IGNORE_WIN32(name)			CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(error_condition(name, Ext::win32_category()));
 //!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)	CLocalIgnore<std::error_code> _localIgnore##name(error_code(Ext::HResult(hr), Ext::hresult_category()));
 #else
 #	define DBG_LOCAL_IGNORE(hr)
 #	define DBG_LOCAL_IGNORE_CONDITION(econd)
+#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)
 #	define DBG_LOCAL_IGNORE_WIN32(name)
 //!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)
 #endif
@@ -851,8 +853,6 @@ String TruncPrettyFunction(const char *fn);
 
 } // Ext::
 
-
-#define OUTPUT_DEBUG(s) ((*(ostream*)Ext::CTrace::s_pOstream << s), 0)
 
 #ifdef _MSC_VER
 #	define EXT_TRC_FUNCNAME __FUNCTION__
@@ -872,8 +872,8 @@ String TruncPrettyFunction(const char *fn);
 		w.~CTraceWriter(); }}												
 
 
-#	define TRC_SHORT(level, s) ( (1<<level) & Ext::CTrace::s_nLevel ? OUTPUT_DEBUG(' ' << s) : 0)
-#	define D_TRACE(cat, level, args) ( ((1<<level) & Ext::CTrace::s_nLevel) && cat.Enabled ? OUTPUT_DEBUG(cat.m_name << ": " << args << endl):0)
+#	define TRC_SHORT(level, s) //!!!? ( (1<<level) & Ext::CTrace::s_nLevel ? OUTPUT_DEBUG(' ' << s) : 0)
+#	define D_TRACE(cat, level, args) //!!!?( ((1<<level) & Ext::CTrace::s_nLevel) && cat.Enabled ? OUTPUT_DEBUG(cat.m_name << ": " << args << endl):0)
 #	define FUN_TRACE  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 0);
 #	define FUN_TRACE_1  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 1);
 #	define FUN_TRACE_2  Ext::CFunTrace _funTrace(EXT_TRC_FUNCNAME, 2);

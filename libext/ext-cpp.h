@@ -151,6 +151,9 @@ protected:
 #	include "cpp-old.h"
 //!!! #endif
 
+#include "ext-err.h"
+
+
 #if UCFG_STDSTL
 #	include <cstddef>			// to define std::nullptr_t in GCC
 #endif
@@ -1299,7 +1302,7 @@ inline int BitScanReverse64(uint64_t v) {
 
 
 #define EXT_STR(expr) (static_cast<std::ostringstream&>(const_cast<std::ostringstream &>(static_cast<const std::ostringstream &>(std::ostringstream())) << expr)).str()
-#define EXT_BIN(expr) ConstBuf(static_cast<Ext::StreamToBlob&>(StreamToBlob().Ref() << expr))
+#define EXT_BIN(expr) ConstBuf(static_cast<Ext::StreamToBlob&>(Ext::StreamToBlob().Ref() << expr))
 
 
 #	if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !defined(WDM_DRIVER)

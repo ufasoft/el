@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 
@@ -59,7 +64,7 @@ public:
 
 	void Attach(HINTERNET h) {
 		if (_self)
-			Throw(E_EXT_AlreadyOpened);
+			Throw(ExtErr::AlreadyOpened);
 		InetCheck(h != 0);
 		m_hSession = h;
 	}*/
@@ -512,6 +517,8 @@ public:
 
 	DEFPROP_GET(WebHeaderCollection, ResponseHeaders);
 
+	Stream& OpenRead(const Uri& uri);
+
 	Blob DownloadData(RCString address);
 	Blob UploadData(RCString address, const ConstBuf& data);
 	Blob UploadFile(RCString address, const path& fileName);
@@ -523,7 +530,7 @@ protected:
 
 	virtual void OnHttpWebRequest(HttpWebRequest& req) {}
 private:
-	Blob DoRequest(HttpWebRequest& req, const ConstBuf data);
+	InetStream& DoRequest(HttpWebRequest& req, const ConstBuf data);
 	Blob DoRequest(HttpWebRequest& req, RCString data = nullptr);
 };
 

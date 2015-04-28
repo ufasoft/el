@@ -118,7 +118,7 @@ typedef BeInt<uint64_t> BeUInt64;
 
 inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
 	const char *p = (const char*)s;
-	return os << (p ? p : "<#nullptr>");	
+	return os << (p ? p : "<#nullptr>");
 }
 
 inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
@@ -289,7 +289,7 @@ public:
 
 	void WriteBuffer(const void *buf, size_t count) override {
 		if (count >m_mb.Size-m_pos)
-			Throw(E_EXT_EndOfStream);
+			Throw(ExtErr::EndOfStream);
 		memcpy(m_mb.P+m_pos, buf, count);
 		m_pos += count;
 	}
@@ -356,20 +356,20 @@ public:
 	size_t Read(void *buf, size_t count) const override {
 		m_pis->read((char*)buf, (std::streamsize)count);
 		if (!*m_pis)
-			Throw(E_EXT_NoInputStream);
+			Throw(ExtErr::NoInputStream);
 		return (size_t)m_pis->gcount();
 	}
 
 	void ReadBuffer(void *buf, size_t count) const override {
 		m_pis->read((char*)buf, (std::streamsize)count);
 		if (!*m_pis)
-			Throw(E_EXT_NoInputStream);
+			Throw(ExtErr::NoInputStream);
 	}
 
 	void WriteBuffer(const void *buf, size_t count) override {
 		m_pos->write((const char*)buf, (std::streamsize)count);
 		if (!*m_pos)
-			Throw(E_EXT_NoOutputStream);
+			Throw(ExtErr::NoOutputStream);
 	}
 
 	uint64_t get_Position() const override {
@@ -380,12 +380,12 @@ public:
 		if (m_pis) {
 			m_pis->seekg((long)pos);
 			if (!*m_pis)
-				Throw(E_EXT_NoInputStream);
+				Throw(ExtErr::NoInputStream);
 		}
 		if (m_pos) {
 			m_pos->seekp((long)pos);
 			if (!*m_pos)
-				Throw(E_EXT_NoOutputStream);
+				Throw(ExtErr::NoOutputStream);
 		}
 	}
 

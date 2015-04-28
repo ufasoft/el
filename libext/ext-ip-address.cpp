@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -181,7 +186,7 @@ IPAddress::IPAddress(const ConstBuf& mb)
 		memcpy(&m_sin6.sin6_addr, mb.P, 16);
 		break;
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 }
 void IPAddress::CreateCommon() {
@@ -217,7 +222,7 @@ size_t IPAddress::GetHashCode() const {
 		r += hash_value(ConstBuf(&m_sin6.sin6_addr, 16));		
 		break;
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 	return r;
 }
@@ -313,7 +318,7 @@ bool IPAddress::operator<(const IPAddress& ha) const {
 	case AF_INET6:
 		return memcmp(&m_sin6.sin6_addr, &ha.m_sin6.sin6_addr, 16) < 0;
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 }
 
@@ -329,21 +334,21 @@ bool IPAddress::operator==(const IPAddress& ha) const {
 	case AF_INET6:
 		return !memcmp(&m_sin6.sin6_addr, &ha.m_sin6.sin6_addr, 16);
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 }
 
 Blob IPAddress::GetAddressBytes() const {
 	int size = FamilySize(AddressFamily);
 	if (!size)
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	switch ((int)get_AddressFamily()) {
 	case AF_INET:
 		return Blob(&m_sin.sin_addr, 4);
 	case AF_INET6:
 		return Blob(&m_sin6.sin6_addr, 16);
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 }
 
@@ -358,7 +363,7 @@ uint32_t IPAddress::GetIP() const {
 		nhost = ntohl(m_sin.sin_addr.s_addr);
 		break;
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 	return nhost;
 }
@@ -468,7 +473,7 @@ size_t IPEndPoint::sockaddr_len() const {
 	case AF_INET: return sizeof(sockaddr_in);
 	case AF_INET6: return sizeof(sockaddr_in6);
 	default:
-		Throw(E_EXT_UnknownHostAddressType);
+		Throw(ExtErr::UnknownHostAddressType);
 	}
 }
 
@@ -591,7 +596,7 @@ IPHostEntry::IPHostEntry(hostent *phost) {
 				ip = IPAddress(ConstBuf(*p, 16));
 				break;
 			default:
-				Throw(E_EXT_UnknownHostAddressType);
+				Throw(ExtErr::UnknownHostAddressType);
 			}
 			AddressList.push_back(ip);
 		}

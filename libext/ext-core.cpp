@@ -123,7 +123,7 @@ int64_t Convert::ToInt64(RCString s, int fromBase) {
 template <typename T>
 T CheckBounds(int64_t v) {
 	if (v > numeric_limits<T>::max() || v < numeric_limits<T>::min())
-		Throw(E_EXT_Overflow);
+		Throw(ExtErr::Overflow);
 	return (T)v;
 }
 

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #if UCFG_WIN32
@@ -511,7 +516,7 @@ public:
 	{
 		EXT_LOCK (m_tr.MtxCallingAPI) {
 			if (tr.m_bStop)
-				Throw(E_EXT_ThreadInterrupted);
+				Throw(ExtErr::ThreadInterrupted);
 			m_tr.m_arKeepers.push_back(this);
 //!!!R			if (!m_sock.Valid() && nPort!=-1)
 //!!!R				m_sock.Create((WORD)nPort, nSocketType, host);

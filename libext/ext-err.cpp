@@ -134,7 +134,6 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::SOCKS_TTLExpired								, "TTL expired"		 }
 	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 }
 	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 }
-	, { ExtErr::HTTP_Base										, "HTTP error code"		 }
 };
 	
 

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -126,7 +131,7 @@ Encoding *Encoding::GetEncoding(RCString name) {
 			OleCheck(CComPtr<IMultiLanguage>(CreateComObject(__uuidof(CMultiLanguage)))->GetCharsetInfo(name.Bstr, &mi));
 			r = new CodePageEncoding(mi.uiCodePage);
 #else
-			Throw(E_EXT_EncodingNotSupported);
+			Throw(ExtErr::EncodingNotSupported);
 #endif
 		}
 		s_encodingMap[upper] = r;
@@ -253,7 +258,7 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bo
 		int n = 0;
 		if (b >= 0xFE) {
 			if (!t_IgnoreIncorrectChars)
-				Throw(E_EXT_InvalidUTF8String);
+				Throw(ExtErr::InvalidUTF8String);
 			n = 1;
 			b = '?';			
 		}
@@ -269,7 +274,7 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bo
 			n = 1;
 		else if (b >= 0x80) {
 			if (!t_IgnoreIncorrectChars)
-				Throw(E_EXT_InvalidUTF8String);
+				Throw(ExtErr::InvalidUTF8String);
 			n = 1;
 			b = '?';			
 		}
@@ -277,7 +282,7 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bo
 		while (n--) {
 			if (!len--) {
 				if (!t_IgnoreIncorrectChars)
-					Throw(E_EXT_InvalidUTF8String);
+					Throw(ExtErr::InvalidUTF8String);
 				++len;
 				wc = '?';
 				break;
@@ -285,7 +290,7 @@ void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bo
 			b = *p++;
 			if ((b & 0xC0) != 0x80) {
 				if (!t_IgnoreIncorrectChars)
-					Throw(E_EXT_InvalidUTF8String);
+					Throw(ExtErr::InvalidUTF8String);
 				wc = '?';
 				break;
 			} else

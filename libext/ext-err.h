@@ -142,7 +142,6 @@ ENUM_CLASS(ExtErr) {
 	, SOCKS_CommandNotSupported
 	, SOCKS_AddressTypeNotSupported
 
-	, HTTP_Base						= 9000
 } END_ENUM_CLASS(ExtErr);
 
 

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 // Smart Pointers
@@ -56,7 +61,7 @@ public:
 
 template <class T, class L> class CCounterIncDec {
 public:
-	static int __fastcall AddRef(T *p) noexcept {
+	static int __fastcall AddRef(T *p) EXT_FAST_NOEXCEPT {
 		return L::Increment(p->m_aRef);
 	}
 
@@ -127,7 +132,7 @@ public:
 
 	void Attach(T *p) {
 		if (m_p)
-			Throw(E_EXT_NonEmptyPointer);
+			Throw(ExtErr::NonEmptyPointer);
 		m_p = p;
 	}
 
@@ -135,7 +140,7 @@ public:
 
 	T** AddressOf() {
 		if (m_p)
-			Throw(E_EXT_NonEmptyPointer);
+			Throw(ExtErr::NonEmptyPointer);
 		return &m_p;
 	}
 
@@ -151,7 +156,7 @@ protected:
 			L::Release(m_p);
 	}
 
-	void AddRef() noexcept {
+	void AddRef() EXT_FAST_NOEXCEPT {
 		if (m_p)
 			L::AddRef(m_p);
 	}

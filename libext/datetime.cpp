@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #pragma warning(disable: 4073)
@@ -210,7 +215,7 @@ DateTime DateTime::FromAsctime(RCString s) {
 		if (const char *p = strstr(s_months, month))
 			return DateTime(year, int(p-s_months)/3+1, day);
 	}
-	Throw(E_EXT_InvalidInteger);
+	Throw(ExtErr::InvalidInteger);
 #endif
 }
 
@@ -303,7 +308,7 @@ bool CPreciseTimeBase::Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, in
 				m_period = std::min(int64_t(m_period)*2, MAX_PERIOD);
 
 		} else if (stPeriod < 0 || cntPeriod < 0) {
-			TRC(5, "Some period is Negative");
+			TRC(5, "Some period is Negative. stPeriod: " << stPeriod << "     cntPeriod: " << cntPeriod);
 		}
 
 		if (bResetBase) {

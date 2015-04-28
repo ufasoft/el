@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_WIN32
@@ -53,7 +58,7 @@ void BinaryWriter::WriteVariantOfType(const VARIANT& v, VARTYPE vt) {
 		_self << v;
 		break;
 	default:
-		Throw(E_EXT_VartypeNotSupported);
+		Throw(ExtErr::VartypeNotSupported);
 	}
 }
 
@@ -109,10 +114,10 @@ void BinaryWriter::Write(const VARIANT& v) {
 					break;
 				}
 			default:
-				Throw(E_EXT_InvalidDimCount);
+				Throw(ExtErr::InvalidDimCount);
 			}
 		} else
-			Throw(E_EXT_VartypeNotSupported);
+			Throw(ExtErr::VartypeNotSupported);
 	}
 }
 #endif	// UCFG_OLE

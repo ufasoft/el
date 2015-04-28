@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_USE_POSIX
@@ -641,7 +646,7 @@ size_t FileStream::Read(void *buf, size_t count) const {
 		if (!m_pFile->Read(buf, count, &n, m_ovl)) {
 			int r = ::WaitForSingleObjectEx(m_ovl->hEvent, INFINITE, TRUE);
 			if (r == WAIT_IO_COMPLETION)
-				Throw(E_EXT_ThreadInterrupted);
+				Throw(ExtErr::ThreadInterrupted);
 			if (r != 0)
 				Throw(E_FAIL);
 			try {
@@ -664,7 +669,7 @@ void FileStream::ReadBuffer(void *buf, size_t count) const {
 		size_t r = fread(buf, 1, count, m_fstm);
 		if (r != count) {
 			if (feof(m_fstm))
-				Throw(E_EXT_EndOfStream);
+				Throw(ExtErr::EndOfStream);
 			else {
 				CFileCheck(ferror(m_fstm));
 				Throw(E_FAIL);
@@ -682,7 +687,7 @@ void FileStream::ReadBuffer(void *buf, size_t count) const {
 			if (!b) {
 				int r = ::WaitForSingleObjectEx(m_ovl->hEvent, INFINITE, TRUE);
 				if (r == WAIT_IO_COMPLETION)
-					Throw(E_EXT_ThreadInterrupted);
+					Throw(ExtErr::ThreadInterrupted);
 				if (r != 0)
 					Throw(E_FAIL);
 				n = m_pFile->GetOverlappedResult(*m_ovl);
@@ -694,7 +699,7 @@ void FileStream::ReadBuffer(void *buf, size_t count) const {
 			count -= n;
 			(BYTE*&)buf += n;
 		} else
-			Throw(E_EXT_EndOfStream);
+			Throw(ExtErr::EndOfStream);
 	}
 }
 
@@ -715,7 +720,7 @@ void FileStream::WriteBuffer(const void *buf, size_t count) {
 		if (!b) {
 				int r = ::WaitForSingleObjectEx(m_ovl->hEvent, INFINITE, TRUE);
 			if (r == WAIT_IO_COMPLETION)
-				Throw(E_EXT_ThreadInterrupted);
+				Throw(ExtErr::ThreadInterrupted);
 			if (r != 0)
 				Throw(E_FAIL);
 			n = m_pFile->GetOverlappedResult(*m_ovl);
@@ -753,7 +758,7 @@ void PositionOwningFileStream::ReadBuffer(void *buf, size_t count) const {
 	uint32_t cb = m_pFile->Read(buf, count, m_pos);
 	m_pos += cb;
 	if (cb != count)
-		Throw(E_EXT_EndOfStream);
+		Throw(ExtErr::EndOfStream);
 }
 
 void PositionOwningFileStream::WriteBuffer(const void *buf, size_t count) {
