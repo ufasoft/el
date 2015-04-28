@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #define OPENSSL_NO_SCTP
@@ -16,15 +21,32 @@
 
 namespace Ext { namespace Crypto {
 
+static class OpensslCategory : public ErrorCategoryBase {
+	typedef ErrorCategoryBase base;
+public:
+	OpensslCategory()
+		:	base("OpenSSL", FACILITY_OPENSSL)
+	{}
+
+	string message(int errval) const override {
+		char buf[256];
+		ERR_error_string_n(errval, buf, sizeof buf);
+		return buf;
+	}
+} s_openssl_category;
+
+const error_category& openssl_category() {
+	return s_openssl_category;
+}
+
 void SslCheck(bool b) {
 	if (!b) {
 #ifdef OPENSSL_NO_ERR
-		throw OpenSslException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENSSL, 1), "OpenSSL Error"); //!!! code?
+		throw OpenSslException(1, "OpenSSL Error"); //!!! code?
 #else
 		ERR_load_crypto_strings();
 		int rc = ::ERR_get_error();
-		String sErr = ERR_error_string(rc, 0);
-		throw OpenSslException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENSSL, ERR_GET_REASON(rc)), sErr);
+		throw OpenSslException(ERR_GET_REASON(rc));
 #endif
 	}
 }
@@ -94,16 +116,16 @@ static struct RANDCleanup {
 Random::Random() {
 	s_randCleanup.Inited = true;
 
-	Int64 ticks = DateTime::UtcNow().Ticks;
+	int64_t ticks = DateTime::UtcNow().Ticks;
 	::RAND_add(&ticks, sizeof ticks, 2);
 
 #if UCFG_CPU_X86_X64
-	Int64 tsc = __rdtsc();
+	int64_t tsc = __rdtsc();
 	::RAND_add(&tsc, sizeof tsc, 4);
 #endif
 
 #ifdef _WIN32
-	Int64 cnt = System.PerformanceCounter;
+	int64_t cnt = System.PerformanceCounter;
 	::RAND_add(&cnt, sizeof cnt, 4);
 #endif
 

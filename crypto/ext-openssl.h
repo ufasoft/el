@@ -19,11 +19,17 @@ public:
 	OpenSslMalloc();
 };
 
+const error_category& openssl_category();
+
 class OpenSslException : public CryptoException {
 	typedef CryptoException base;
 public:
-	OpenSslException(HRESULT hr, RCString s)
-		:	base(hr, s)
+	OpenSslException(const error_code& ec, RCString s = "")
+		:	base(ec, s)
+	{}
+
+	OpenSslException(int errval, RCString s = "")
+		:	base(error_code(errval, openssl_category()), s)
 	{}
 };
 
