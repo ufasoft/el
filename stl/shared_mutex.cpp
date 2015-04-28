@@ -1,11 +1,3 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #include <el/ext.h>
 
 #include EXT_HEADER(mutex)
@@ -30,22 +22,22 @@ class SharedMutexImp {
 public:
 	mutex m_mtxWriters;
 	ManualResetEvent m_noReadsEvent;
-	volatile Int32 m_nActiveReaders;
+	atomic<int> m_aActiveReaders;
 
 	SharedMutexImp()
-		:	m_nActiveReaders(0)
+		:	m_aActiveReaders(0)
 		,	m_noReadsEvent(true)	// Initially Set
 	{}
 
 	void lock() {
 		m_mtxWriters.lock();
-		m_noReadsEvent.Lock();
+		m_noReadsEvent.lock();
 	}
 
 	bool try_lock() {
 		if (!m_mtxWriters.try_lock())
 			return false;
-		m_noReadsEvent.Lock();
+		m_noReadsEvent.lock();
 		return true;
 	}
 
@@ -55,7 +47,7 @@ public:
 
 	void lock_shared() {
 		EXT_LOCK (m_mtxWriters) {
-			if (Interlocked::Increment(m_nActiveReaders) == 1)
+			if (++m_aActiveReaders == 1)
 				m_noReadsEvent.Reset();
 		}
 	}
@@ -64,13 +56,13 @@ public:
 		unique_lock<mutex> lk(m_mtxWriters, try_to_lock);
 		if (!lk)
 			return false;
-		if (Interlocked::Increment(m_nActiveReaders) == 1)
+		if (++m_aActiveReaders == 1)
 			m_noReadsEvent.Reset();
 		return true;
 	}
 
 	void unlock_shared() {
-		if (!Interlocked::Decrement(m_nActiveReaders))
+		if (!--m_aActiveReaders)
 			m_noReadsEvent.Set();
 	}
 };
@@ -79,7 +71,7 @@ class RecursiveSharedMutexImp : public SharedMutexImp {
 	typedef SharedMutexImp base;
 public:
 	DWORD m_tidWriter;
-	CInt<Int32> m_nWriterDeep;
+	CInt<int32_t> m_nWriterDeep;
 	CTls m_tls;
 
 	RecursiveSharedMutexImp()
