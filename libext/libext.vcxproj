@@ -177,9 +177,16 @@
     <ClCompile Include="win32\com-module.cpp" />
     <ClCompile Include="win32\excom.cpp" />
     <ClCompile Include="win32\ext-com.cpp" />
+    <ClCompile Include="win32\ext-nt.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='D_St|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="win32\ext-registry.cpp" />
     <ClCompile Include="win32\ext-win.cpp" />
     <ClCompile Include="win32\ext2.cpp" />
+    <ClCompile Include="win32\getopt.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h" />
@@ -277,6 +284,7 @@
       <AdditionalIncludeDirectories>.;../..;../../..;../../include;../../../foreign</AdditionalIncludeDirectories>
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

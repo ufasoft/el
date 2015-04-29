@@ -182,6 +182,12 @@
     <ClCompile Include="ext-err.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="win32\ext-nt.cpp">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="win32\getopt.cpp">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">
