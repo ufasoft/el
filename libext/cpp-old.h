@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 // compatibility hacks for old compilers
@@ -81,6 +86,11 @@ namespace std {
 #	define EXT_OPERATOR_BOOL operator _Bool_type
 #	define EXT_CONVERTIBLE_TO_TRUE (&_Boolean::i)
 #endif
+
+#if !UCFG_STD_UNCAUGHT_EXCEPTIONS && defined(_MSC_VER) && UCFG_STDSTL
+extern "C" int* __cdecl __processing_throw();
+#endif
+
 
 namespace std {
 
@@ -166,7 +176,11 @@ constexpr inline size_t size(T (&ar)[sz]) {
 
 #if !UCFG_STD_UNCAUGHT_EXCEPTIONS
 inline int __cdecl uncaught_exceptions() noexcept {
+#	if defined(_MSC_VER) && UCFG_STDSTL
+	return *__processing_throw();
+#	else
 	return API_uncaught_exceptions();
+#	endif
 }
 #endif // !UCFG_STD_UNCAUGHT_EXCEPTIONS
 
