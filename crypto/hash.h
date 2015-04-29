@@ -125,6 +125,22 @@ protected:
 	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
+class Groestl512Hash : public HashAlgorithm {
+public:
+
+	Groestl512Hash() {
+		BlockSize = 64;
+		HashSize = 64;
+	}
+
+	hashval ComputeHash(const ConstBuf& mb) override;
+	hashval ComputeHash(Stream& stm) override { Throw(E_NOTIMPL); }
+protected:
+	void InitHash(void *dst) noexcept override { Throw(E_NOTIMPL); }
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override { Throw(E_NOTIMPL); }
+};
+
+
 class Blake512 : public HashAlgorithm {
 public:
 	uint64_t Salt[4];
