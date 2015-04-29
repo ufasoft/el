@@ -415,7 +415,7 @@ path Environment::GetFolderPath(SpecialFolder folder) {
 			if (pfn) {
 				COleString oleStr;
 				OleCheck(pfn(FOLDERID_Downloads, 0, 0, &oleStr));
-				return wstring(explicit_cast<wstring>(oleStr));
+				return wstring(explicit_cast<wstring>(String(oleStr)));
 			}
 		}
 		return GetFolderPath(SpecialFolder::UserProfile) / "Downloads";
