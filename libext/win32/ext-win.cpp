@@ -705,10 +705,12 @@ static const Win32CodeErrc s_win32code2errc[] ={
 	0
 };
 
-static class Win32Category : public error_category {			// outside function to eliminate thread-safe static machinery
-	typedef error_category base;
-
-	const char *name() const noexcept override { return "Win32"; }
+static class Win32Category : public ErrorCategoryBase {			// outside function to eliminate thread-safe static machinery
+	typedef ErrorCategoryBase base;
+public:
+	Win32Category()
+		:	base("Win32", FACILITY_WIN32)
+	{}
 
 	string message(int eval) const override {
 #if !UCFG_WDM
@@ -747,6 +749,8 @@ static class Win32Category : public error_category {			// outside function to el
 	}
 
 	bool equivalent(const error_code& ec, int errval) const noexcept override {
+		if (ec.category()==system_category())
+			return errval == ex.value();
 		if (ec.category()==hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
 			return errval == (ec.value() & 0xFFFF);
 		else
