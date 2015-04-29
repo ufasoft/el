@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #if UCFG_USE_LIBCURL
@@ -13,8 +18,12 @@ namespace Ext {
 
 using namespace std;
 
-static class CHttpCategory : public error_category {
-	const char *name() const noexcept override { return "HTTP"; }
+static class HttpCategory : public ErrorCategoryBase {
+	typedef ErrorCategoryBase base;
+public:
+	HttpCategory()
+		:	base("HTTP", FACILITY_HTTP)
+	{}
 
 	string message(int errval) const override {
 #if UCFG_WIN32
@@ -65,7 +74,10 @@ static class curl_error_category : public error_category {
 
 	bool equivalent(int errval, const error_condition& c) const noexcept override {			//!!!TODO
 		switch (errval) {
-		case CURLE_COULDNT_CONNECT:	return c==errc::connection_refused;
+		case CURLE_COULDNT_CONNECT:		return c==errc::connection_refused;
+		case CURLE_OPERATION_TIMEDOUT:	return c==errc::timed_out;
+		case CURLE_REMOTE_ACCESS_DENIED:return c==errc::permission_denied;
+		case CURLE_OUT_OF_MEMORY:		return c==not_enough_memory;
 		default:
 			return base::equivalent(errval, c);
 		}
@@ -507,7 +519,7 @@ String HttpWebRequest::GetHeadersString() {
 		Headers.Set("Connection", "close");
 	String sHeaders;
 	for (WebHeaderCollection::iterator i=Headers.begin(), e=Headers.end(); i!=e; ++i)
-		sHeaders += i->first+": " + String::Join(";", i->second)+"\r\n";
+		sHeaders += i->first+": " + String::Join(";", i->second) + "\r\n";
 	return sHeaders;
 }
 
@@ -570,9 +582,11 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 			}
 
 			DWORD flags = 0;
+			if (RequestUri.Scheme == "https")
+				flags |= INTERNET_FLAG_SECURE;
 			if (Method == "GET") {
 				if (CacheLevel == RequestCacheLevel::BypassCache)
-					flags |= INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_NO_CACHE_WRITE;
+					flags |= INTERNET_FLAG_PRAGMA_NOCACHE | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_RELOAD;
 			} else if (Method=="POST" || Method=="PUT") {
 				flags |= INTERNET_FLAG_NO_CACHE_WRITE;		// to prevent ERROR_INTERNET_INCORRECT_HANDLE_STATE [KB177190]
 				if (ContentLength != -1)
@@ -713,7 +727,7 @@ WebClient::WebClient()
 	,	Proxy(new WebProxy(nullptr))
 {}
 
-Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
+InetStream& WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 	OnHttpWebRequest(req);
 	WebRequestKeeper keeper(CurrentRequest, req);
 	req.Credentials = Credentials;
@@ -760,19 +774,24 @@ Blob WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 //!!!?		ex.Response = m_response;
 		throw ex;
 	}
-		
-#if UCFG_USE_LIBCURL
-	return stm.ResultStream.Blob;
-#else
-	return BinaryReader(stm).ReadToEnd();
-#endif
+	return stm;
+}
+
+Stream& WebClient::OpenRead(const Uri& uri) {
+	return DoRequest(m_request = HttpWebRequest(uri.ToString()), ConstBuf());
 }
 
 Blob WebClient::DoRequest(HttpWebRequest& req, RCString data) {
 	Blob bdata(nullptr);
 	if (data != nullptr)
 		bdata = Encoding->GetBytes(data);
-	return DoRequest(req, bdata);}
+	InetStream& stm = DoRequest(req, bdata);
+#if UCFG_USE_LIBCURL
+	return stm.ResultStream.Blob;
+#else
+	return BinaryReader(stm).ReadToEnd();
+#endif
+}
 
 Blob WebClient::DownloadData(RCString address) {
 	return DoRequest(m_request = HttpWebRequest(address));
@@ -782,7 +801,12 @@ Blob WebClient::UploadData(RCString address, const ConstBuf& data) {
 	m_request = HttpWebRequest(address);
 	WebRequestKeeper keeper(CurrentRequest, m_request);
 	m_request.Method = "POST";
-	return DoRequest(m_request, data);
+	InetStream& stm = DoRequest(m_request, data);
+#if UCFG_USE_LIBCURL
+	return stm.ResultStream.Blob;
+#else
+	return BinaryReader(stm).ReadToEnd();
+#endif
 }
 
 Blob WebClient::UploadFile(RCString address, const path& fileName) {
@@ -806,7 +830,12 @@ Blob WebClient::UploadFile(RCString address, const path& fileName) {
 
 	WebRequestKeeper keeper(CurrentRequest, m_request);
 	m_request.Method = "POST";	
-	return DoRequest(m_request, ms);
+	InetStream& stm = DoRequest(m_request, ms);
+#if UCFG_USE_LIBCURL
+	return stm.ResultStream.Blob;
+#else
+	return BinaryReader(stm).ReadToEnd();
+#endif
 }
 
 String WebClient::DownloadString(RCString address) {
