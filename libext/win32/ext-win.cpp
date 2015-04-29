@@ -750,7 +750,7 @@ public:
 
 	bool equivalent(const error_code& ec, int errval) const noexcept override {
 		if (ec.category()==system_category())
-			return errval == ex.value();
+			return errval == ec.value();
 		if (ec.category()==hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
 			return errval == (ec.value() & 0xFFFF);
 		else
