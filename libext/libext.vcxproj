@@ -150,6 +150,7 @@
     <ClCompile Include="ext-blob.cpp" />
     <ClCompile Include="ext-core.cpp" />
     <ClCompile Include="ext-encoding.cpp" />
+    <ClCompile Include="ext-err.cpp" />
     <ClCompile Include="ext-file.cpp" />
     <ClCompile Include="ext-fw.cpp" />
     <ClCompile Include="ext-handlers.cpp">
