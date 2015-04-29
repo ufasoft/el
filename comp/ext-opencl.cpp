@@ -379,7 +379,7 @@ void Program::build() {
 		ClCheck(::clGetProgramBuildInfo(Handle(), dev(), CL_PROGRAM_BUILD_LOG, 0, 0, &size));
 		vector<char> buf(size);
 		ClCheck(::clGetProgramBuildInfo(Handle(), dev(), CL_PROGRAM_BUILD_LOG, size, &buf[0], 0));
-		throw BuildException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENCL, -rc), &buf[0]);
+		throw BuildException(error_code(-rc, opencl_category()), &buf[0]);
 	}
 }
 
@@ -410,7 +410,7 @@ void Program::build(const vector<Device>& devs) {
 		ClCheck(::clGetProgramBuildInfo(Handle(), dev(), CL_PROGRAM_BUILD_LOG, 0, 0, &size));
 		vector<char> buf(size);
 		ClCheck(::clGetProgramBuildInfo(Handle(), dev(), CL_PROGRAM_BUILD_LOG, size, &buf[0], 0));
-		throw BuildException(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_OPENCL, -rc), &buf[0]);
+		throw BuildException(error_code(-rc, opencl_category()), &buf[0]);
 	}
 }
 

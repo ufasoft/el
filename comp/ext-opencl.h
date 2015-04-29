@@ -200,7 +200,7 @@ public:
 
 	handle_type& OutRef() {
 		if (Valid())
-			Throw(E_EXT_AlreadyOpened);
+			Throw(ExtErr::AlreadyOpened);
 		return m_h;
 	}
 
