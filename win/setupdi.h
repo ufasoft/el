@@ -1,10 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #pragma once
 
@@ -131,8 +128,8 @@ class DiDeviceInfo {
 		try {
 			DBG_LOCAL_IGNORE(HRESULT_FROM_WIN32(ERROR_INVALID_DATA));
 			return GetRegistryProperty(prop);
-		} catch (RCExc e) {
-			if (e.HResult == HRESULT_FROM_WIN32(ERROR_INVALID_DATA))
+		} catch (RCExc ex) {
+			if (HResultInCatch(ex) == HRESULT_FROM_WIN32(ERROR_INVALID_DATA))
 				return vector<String>();
 			throw;
 		}
@@ -277,10 +274,10 @@ public:
 	}
 	DEFPROP_GET(String, MfgName);
 
-	String get_InfFileName() {
+	path get_InfFileName() {
 		return GetDetailData().InfFileName;
 	}
-	DEFPROP_GET(String, InfFileName);
+	DEFPROP_GET(path, InfFileName);
 private:
 	ptr<Obj_DiClassDevs> m_pDCD;	
 	Blob m_blobDetailData;
