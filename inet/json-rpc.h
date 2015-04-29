@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext { namespace Inet {
@@ -89,7 +94,7 @@ public:
 	
 protected:
 	virtual void SendChunk(Stream& stm, const ConstBuf& cbuf);
-	virtual VarValue CallMethod(RCString name, const VarValue& params) { Throw(E_EXT_JSON_RPC_MethodNotFound); }
+	virtual VarValue CallMethod(RCString name, const VarValue& params) { Throw(ExtErr::JSON_RPC_MethodNotFound); }
 private:
 	std::mutex MtxReqs;
 
