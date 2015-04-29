@@ -71,6 +71,9 @@
     <ClCompile Include="datetime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="dl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="varvalue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

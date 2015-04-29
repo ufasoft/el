@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include <el/libext/win32/ext-com.h>
@@ -44,7 +49,7 @@ public:
 	T** operator&()
 	{
 		if (p)
-			Throw(E_EXT_NonEmptyPointer);
+			Throw(ExtErr::NonEmptyPointer);
 		return &p;
 	}
 	T* operator->() const { ASSERT(p!=NULL); return p; }

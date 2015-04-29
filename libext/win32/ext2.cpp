@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include <wincon.h>
@@ -39,7 +44,7 @@ bool NamedPipe::Connect(LPOVERLAPPED ovl) {
 		if (!r) {
 			int dw = ::WaitForSingleObjectEx(ovl->hEvent, INFINITE, TRUE);
 			if (dw == WAIT_IO_COMPLETION)
-				Throw(E_EXT_ThreadInterrupted);		//!!!?
+				Throw(ExtErr::ThreadInterrupted);		//!!!?
 			if (dw != 0)
 				Throw(E_FAIL);
 			dw = GetOverlappedResult(*ovl);		//!!!

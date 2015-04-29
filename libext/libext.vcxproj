@@ -144,6 +144,7 @@
     <ClCompile Include="bignum.cpp" />
     <ClCompile Include="binary-reader-writer.cpp" />
     <ClCompile Include="datetime.cpp" />
+    <ClCompile Include="dl.cpp" />
     <ClCompile Include="ext-app.cpp" />
     <ClCompile Include="ext-base.cpp" />
     <ClCompile Include="ext-blob.cpp" />

@@ -415,7 +415,7 @@ path Environment::GetFolderPath(SpecialFolder folder) {
 			if (pfn) {
 				COleString oleStr;
 				OleCheck(pfn(FOLDERID_Downloads, 0, 0, &oleStr));
-				return oleStr;
+				return wstring(explicit_cast<wstring>(oleStr));
 			}
 		}
 		return GetFolderPath(SpecialFolder::UserProfile) / "Downloads";
@@ -1320,12 +1320,7 @@ String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 			return CombineErrorMessages(hex, msg, bWithErrorCode);
 	}
 
-
 	int fac = HRESULT_FACILITY(hr);
-	if (const error_category *cat = ErrorCategoryBase::Find(fac)) {
-		return cat->message(hr & 0xFFFF);
-	}
-
 
 #if UCFG_WIN32
 	if (::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM|FORMAT_MESSAGE_IGNORE_INSERTS, 0, hr, 0, buf, sizeof buf, p))
@@ -1339,6 +1334,10 @@ String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 		return win32_category().message(WORD(HRESULT_CODE(hr)));
 	}
 #endif // UCFG_WIN32
+
+	if (const error_category *cat = ErrorCategoryBase::Find(fac)) {
+		return cat->message(hr & 0xFFFF);
+	}
 
 	for (vector<CModuleInfo>::iterator i(m_vec.begin()); i!=m_vec.end(); ++i) {
 		String msg = i->GetMessage(hr);
@@ -1787,16 +1786,20 @@ HRESULT AFXAPI ToHResult(const system_error& ex) {
 	int ecode = ec.value();
 	if (cat == generic_category())
 		return HRESULT_FROM_C(ecode);
-#if UCFG_WIN32
-	else if (cat == win32_category())
-		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_WIN32 << 16) | 0x80000000);
-#endif
 	else if (cat == system_category())														// == win32_category() on Windows
 		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_OS << 16) | 0x80000000);
 	else if (cat == hresult_category())
 		return ecode;
-	else
-		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_UNKNOWN << 16) | 0x80000000);			//!!! category info lost here
+	else {
+		int fac = FACILITY_UNKNOWN;
+		for (const ErrorCategoryBase *p=ErrorCategoryBase::Root; p; p=p->Next) {
+			if (p == &cat) {
+				fac = p->Facility;
+				break;
+			}
+		}
+		return (HRESULT)(((ecode)& 0x0000FFFF) | (fac << 16) | 0x80000000);
+	}
 }
 
 HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
