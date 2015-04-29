@@ -126,7 +126,7 @@ void CUnkPtr::Attach(IUnknown *unk)
 
 IUnknown **CUnkPtr::operator&() {
 	if (m_unk)
-		Throw(E_EXT_InterfaceAlreadyAssigned);
+		Throw(ExtErr::InterfaceAlreadyAssigned);
 	return &m_unk;
 }
 
@@ -147,7 +147,7 @@ CUnkPtr& CUnkPtr::operator=(IUnknown *unk) {
 
 IUnknown **CComPtrBase::operator&() {
 	if (m_unk)
-		Throw(E_EXT_InterfaceAlreadyAssigned);
+		Throw(ExtErr::InterfaceAlreadyAssigned);
 	return &m_unk;
 }
 
@@ -159,7 +159,7 @@ size_t CIStream::Read(void *buf, size_t count) const {
 
 void CIStream::ReadBuffer(void *buf, size_t count) const {
 	if (Read(buf, count) != count)
-		Throw(E_EXT_EndOfStream);
+		Throw(ExtErr::EndOfStream);
 }
 
 void CIStream::WriteBuffer(const void *buf, size_t count) {
@@ -181,7 +181,7 @@ Blob CIStream::Read(int size) {
 	DWORD dw;
 	OleCheck(m_stream->Read(blob.data(), size, &dw));
 	if (size != dw)
-		Throw(E_EXT_EndOfStream);
+		Throw(ExtErr::EndOfStream);
 	return blob;
 }
 
@@ -211,13 +211,13 @@ DateTime CIStream::get_ModTime() {
 
 void CIStorage::CreateFile(RCString name, DWORD grfMode) {
 	if (m_storage)
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	OleCheck(StgCreateDocfile(name, grfMode, 0, &m_storage));
 }
 
 void CIStorage::OpenFile(RCString name, DWORD grfMode) {
 	if (m_storage)
-		Throw(E_EXT_AlreadyOpened);
+		Throw(ExtErr::AlreadyOpened);
 	OleCheck(StgOpenStorage(name, 0, grfMode, 0, 0, &m_storage));
 }
 
@@ -308,7 +308,7 @@ void Blob::SetVariant(const VARIANT& v) {
 		}
 		break;
 	default:
-		Throw(E_EXT_IncorrectVariant);
+		Throw(ExtErr::IncorrectVariant);
 	}
 }
 
@@ -424,7 +424,7 @@ CUnkPtr AFXAPI AsUnknown(const VARIANT& v) {
 	case VT_DISPATCH:
 		return v.pdispVal;
 	default:
-		Throw(E_EXT_IncorrectVariant);
+		Throw(ExtErr::IncorrectVariant);
 		return 0;    
 	}
 }
@@ -528,7 +528,7 @@ void CUsingCOM::Initialize(DWORD dwCoInit) {
 		else if (dwCoInit == COINIT_APARTMENTTHREADED)
 			OleCheck(::CoInitialize(0));
 		else
-			Throw(E_EXT_DCOMnotInstalled);
+			Throw(ExtErr::DCOMnotInstalled);
 #endif
 		m_bInitialized = true;
 	}
@@ -977,7 +977,7 @@ bool COleVariant::operator==(const VARIANT& var) const {
 		if (vt & VT_ARRAY && !(vt & VT_BYREF))
 			return _AfxCompareSafeArrays(var.parray, parray);
 		else
-			Throw(E_EXT_UnsupportedVariantType);  // VT_BYREF not supported
+			Throw(ExtErr::UnsupportedVariantType);  // VT_BYREF not supported
 		// fall through
 	}
 	return false;
@@ -1200,7 +1200,7 @@ CStringVector AFXAPI AsStringArray(const VARIANT& v) {
 			r.push_back(Convert::ToString(s));
 		}
 		else
-			Throw(E_EXT_VarTypeInNotStringCompatible);
+			Throw(ExtErr::VarTypeInNotStringCompatible);
 	}
 	ar.Detach();
 	return r;
@@ -1298,12 +1298,12 @@ COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 					return sa;
 				}
 			default:
-				Throw(E_EXT_InvalidDimCount);
+				Throw(ExtErr::InvalidDimCount);
 			}
 			break;
 		}
 	default:
-		Throw(E_EXT_VartypeNotSupported);
+		Throw(ExtErr::VartypeNotSupported);
 	}
 	return result;
 }
@@ -1377,7 +1377,7 @@ void COleDispatchDriver::InvokeHelperV(DISPID dwDispID, WORD wFlags, VARTYPE vtR
 	void* pvRet, const BYTE* pbParamInfo, va_list argList)
 {
 	if (!m_lpDispatch)
-		Throw(E_EXT_DispatchIsNull);
+		Throw(ExtErr::DispatchIsNull);
 
 	DISPPARAMS dispparams; ZeroStruct(dispparams);
 
@@ -1746,10 +1746,10 @@ CVariantIterator::CVariantIterator(const VARIANT& ar)
 		CUnkPtr unk;
 		dr.GetProperty(DISPID_NEWENUM, VT_UNKNOWN, &unk);
 		if (!unk)
-			Throw(E_EXT_IncorrectVariant);
+			Throw(ExtErr::IncorrectVariant);
 		m_en = unk;
 	} else
-		Throw(E_EXT_IncorrectVariant);
+		Throw(ExtErr::IncorrectVariant);
 }
 
 bool CVariantIterator::Next(COleVariant& v) {
