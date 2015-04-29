@@ -1405,7 +1405,11 @@ long long __cdecl _strtoi64(const char *str, char **endptr, int base);
 #endif
 
 #ifdef _MSC_VER
+#	if UCFG_STDSTL
+	inline double _cdecl exp10(double v) { return exp(v * 2.30258509299404568402); }		// * M_LN10
+#	else
 	double _cdecl exp10(double v);
+#	endif
 #endif
 
 __END_DECLS
