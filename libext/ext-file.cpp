@@ -92,11 +92,11 @@ pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUni
 	ZeroStruct(buf);
 	int fd = CCheck(::mkstemp(strncpy(buf, (p / (prefix+"XXXXXX")).c_str(), _countof(buf)-1)));
 	close(fd);
-	return pair<String, UINT>(buf, 1);
+	return pair<path, UINT>(buf, 1);
 #else
 	TCHAR buf[MAX_PATH];
 	UINT r = Win32Check(::GetTempFileName(String(p.native()), prefix, uUnique, buf));
-	return pair<String, UINT>(ToPath(buf), r);
+	return pair<path, UINT>(ToPath(buf), r);
 #endif
 }
 
