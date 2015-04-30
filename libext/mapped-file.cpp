@@ -144,9 +144,9 @@ MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, 
 	return std::move(r);
 }
 
-MemoryMappedFile MemoryMappedFile::CreateFromFile(RCString path, FileMode mode, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
+MemoryMappedFile MemoryMappedFile::CreateFromFile(const path& p, FileMode mode, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
 	File file;
-	file.Open(path, mode);
+	file.Open(p, mode);
 	return CreateFromFile(file, mapName, capacity, access);
 };
 
