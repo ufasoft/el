@@ -1165,7 +1165,12 @@ __END_DECLS
 #				undef getcwd
 
 __BEGIN_DECLS
+
+#if defined(_MSC_VER) && UCFG_STDSTL
+inline char * _cdecl API_getcwd(char *buf, int n) { return _getcwd(buf, n); }
+#else
 char * _cdecl API_getcwd(char *buf, int n);
+#endif
 
 __END_DECLS
 #				define getcwd API_getcwd
