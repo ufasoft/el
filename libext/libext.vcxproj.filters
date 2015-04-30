@@ -18,9 +18,6 @@
     <Filter Include="Source Files\jansson">
       <UniqueIdentifier>{98ef0fea-bf78-41ed-8fef-555429b667d7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\crypto">
-      <UniqueIdentifier>{5c802b61-b136-4524-8446-5005be6bc92b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="stl">
       <UniqueIdentifier>{7fdfb2db-6b42-4a06-8590-e5518cac6bfe}</UniqueIdentifier>
     </Filter>
@@ -29,6 +26,12 @@
     </Filter>
     <Filter Include="x86x64">
       <UniqueIdentifier>{c18b3222-15cc-42f2-94d1-cb2d6f257173}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\zlib">
+      <UniqueIdentifier>{61509c9b-470e-4d53-b4c6-bf6ffe0a5c15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\zlib\H">
+      <UniqueIdentifier>{631cf925-6208-45d3-a760-0cd829e74759}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -140,6 +143,9 @@
     <ClCompile Include="..\crt\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\crt\crt-file.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\foreign\jansson\dump.c">
       <Filter>Source Files\jansson</Filter>
     </ClCompile>
@@ -200,21 +206,75 @@
     <ClCompile Include="ext-posix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\adler32.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\compress.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\crc32.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\deflate.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\infback.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\inffast.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\inflate.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\inftrees.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\trees.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\foreign\zlib\zutil.c">
+      <Filter>Source Files\zlib</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\crc32.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\deflate.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\gzguts.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\inffast.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\inffixed.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\inftrees.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\inflate.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\zutil.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\foreign\zlib\trees.h">
+      <Filter>Source Files\zlib\H</Filter>
+    </ClInclude>
+    <ClInclude Include="..\libext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\bignum\x86x64\bignum-x86x64.asm">
       <Filter>Source Files</Filter>
-    </MASM>
-    <MASM Include="..\crypto\x86x64\scrypt_x86x64.asm">
-      <Filter>Source Files\crypto</Filter>
-    </MASM>
-    <MASM Include="..\crypto\x86x64\sha256_x86x64.asm">
-      <Filter>Source Files\crypto</Filter>
     </MASM>
     <MASM Include="x86x64\memcpy_aligned_x86x64.asm">
       <Filter>x86x64</Filter>
