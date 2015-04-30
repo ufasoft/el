@@ -164,6 +164,7 @@
     <ClCompile Include="ext-json.cpp" />
     <ClCompile Include="ext-net.cpp" />
     <ClCompile Include="ext-os.cpp" />
+    <ClCompile Include="ext-posix.cpp" />
     <ClCompile Include="ext-protocols.cpp" />
     <ClCompile Include="ext-stream.cpp" />
     <ClCompile Include="ext-string.cpp" />
@@ -237,6 +238,7 @@
     <UseOfMfc>Static</UseOfMfc>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="..\..\cfg\vs\vs-inc.props" />
   <ImportGroup Label="ExtensionSettings">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>

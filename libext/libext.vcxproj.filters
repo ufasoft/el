@@ -197,6 +197,9 @@
     <ClCompile Include="..\stl\shared_mutex.cpp">
       <Filter>stl</Filter>
     </ClCompile>
+    <ClCompile Include="ext-posix.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">
