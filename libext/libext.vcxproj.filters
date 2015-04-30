@@ -188,6 +188,12 @@
     <ClCompile Include="win32\getopt.cpp">
       <Filter>Source Files\win32</Filter>
     </ClCompile>
+    <ClCompile Include="mapped-file.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\stl\shared_mutex.cpp">
+      <Filter>stl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">

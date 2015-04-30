@@ -135,6 +135,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\stl\shared_mutex.cpp" />
     <ClCompile Include="..\stl\thread.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">true</ExcludedFromBuild>
@@ -168,6 +169,7 @@
     <ClCompile Include="ext-string.cpp" />
     <ClCompile Include="http.cpp" />
     <ClCompile Include="internet.cpp" />
+    <ClCompile Include="mapped-file.cpp" />
     <ClCompile Include="murmurhash.cpp" />
     <ClCompile Include="sockets.cpp" />
     <ClCompile Include="stack-trace.cpp" />
