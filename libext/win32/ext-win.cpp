@@ -759,7 +759,7 @@ public:
 
 } s_win32Category;
 
-const error_category& win32_category() {
+const error_category& AFXAPI win32_category() {
 	return s_win32Category;
 }
 

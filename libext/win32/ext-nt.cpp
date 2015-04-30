@@ -64,7 +64,7 @@ static class Ntos_error_category : public error_category {
 
 } s_ntosErrorCategory;
 
-const error_category& ntos_category() { return s_ntosErrorCategory; }
+const error_category& AFXAPI ntos_category() { return s_ntosErrorCategory; }
 
 NTSTATUS AFXAPI NtCheck(NTSTATUS status, NTSTATUS allowableError) {
 	if (status < 0 && status != allowableError)
