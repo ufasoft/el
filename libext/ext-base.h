@@ -60,8 +60,9 @@ public:
 };
 #endif
 
-const error_category& win32_category();
-const error_category& hresult_category();
+const error_category& AFXAPI win32_category();
+const error_category& AFXAPI ntos_category();
+const error_category& AFXAPI hresult_category();
 
 class Exception : public system_error, public CPrintable {
 	typedef std::system_error base;

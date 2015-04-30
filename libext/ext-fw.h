@@ -19,6 +19,7 @@ typedef struct tagEXCEPINFO EXCEPINFO;
 
 namespace Ext {
 
+using std::wstring;
 using std::istringstream;
 
 class Stream;
@@ -841,6 +842,10 @@ private:
 
 #endif // !UCFG_WCE
 
+inline path ToPath(RCString s) {
+	return wstring(explicit_cast<wstring>(s));
+}
+
 class Path {
 public:
 	struct CSplitPath {
@@ -860,8 +865,8 @@ public:
 	static const char PathSeparator = ':';
 #endif
 
-	EXT_API static std::pair<String, UINT> AFXAPI GetTempFileName(const path& p, RCString prefix, UINT uUnique = 0);
-	EXT_API static String AFXAPI GetTempFileName() { return GetTempFileName(temp_directory_path(), "tmp").first; }
+	EXT_API static std::pair<path, UINT> AFXAPI GetTempFileName(const path& p, RCString prefix, UINT uUnique = 0);
+	EXT_API static path AFXAPI GetTempFileName() { return GetTempFileName(temp_directory_path(), "tmp").first; }
 
 	static CSplitPath AFXAPI SplitPath(RCString path);
 

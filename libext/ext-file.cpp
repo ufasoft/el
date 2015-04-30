@@ -86,7 +86,7 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 	return sp;
 }
 
-pair<String, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUnique) {
+pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUnique) {
 #if UCFG_USE_POSIX
 	char buf[PATH_MAX+1];
 	ZeroStruct(buf);
@@ -96,7 +96,7 @@ pair<String, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uU
 #else
 	TCHAR buf[MAX_PATH];
 	UINT r = Win32Check(::GetTempFileName(String(p.native()), prefix, uUnique, buf));
-	return pair<String, UINT>(buf, r);
+	return pair<String, UINT>(ToPath(buf), r);
 #endif
 }
 

@@ -10,12 +10,12 @@ namespace Ext {
 
 ENUM_CLASS(ExtErr) {
 	EndOfStream								= 1
+	, IndexOutOfRange						= 2
 	, VartypeNotSupported
 	, InvalidDimCount
 	, BlobNotInitialized
 	, Compress
 	, Registry
-	, IndexOutOfRange
 	, InvalidFlags
 	, IncorrectVariant
 	, ItemNotFound

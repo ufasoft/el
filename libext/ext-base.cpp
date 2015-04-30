@@ -304,7 +304,7 @@ static class HResultCategory : public error_category {		// outside function to e
 	bool equivalent(const error_code& ec, int errval) const noexcept override { return base::equivalent(ec, errval); }
 } s_hresultCategory;
 
-const error_category& hresult_category() {
+const error_category& AFXAPI hresult_category() {
 	return s_hresultCategory;
 }
 
