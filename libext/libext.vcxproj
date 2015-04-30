@@ -203,6 +203,7 @@
     </MASM>
     <MASM Include="..\crypto\x86x64\scrypt_x86x64.asm" />
     <MASM Include="..\crypto\x86x64\sha256_x86x64.asm" />
+    <MASM Include="x86x64\memcpy_aligned_x86x64.asm" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D57346A0-D0B6-4E23-9256-DB4034B5B0DB}</ProjectGuid>
