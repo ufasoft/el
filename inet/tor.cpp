@@ -288,7 +288,7 @@ void TorThread::Execute() {
 	args.push_back("tor");
 	
 	args.push_back("-f");
-	args.push_back(m_torParams.torrc.native());
+	args.push_back(String(m_torParams.torrc.native()));
 	
 	args.push_back("-SocksPort");
 	args.push_back(m_torParams.sPortSocks);
