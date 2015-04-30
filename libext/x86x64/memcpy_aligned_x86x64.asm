@@ -1,33 +1,37 @@
-;########## Copyright (c) 1997-2013 Ufasoft   http://ufasoft.com   mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com    ###################################################################################################
-;                                                                                                                                                                                                                                          #
-; This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3, or (at your option) any later version.         #
-; This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. #
-; You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                    #
-;###########################################################################################################################################################################################################################################
+;/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+;#                                                                                                                                     #
+;# 		See LICENSE for licensing information                                                                                         #
+;#####################################################################################################################################*/
 
 ; Memcpy implementations
 
-include el/comp/x86x64.inc
-
-OPTION_LANGUAGE_C
+INCLUDE el/x86x64.inc
 
 IF X64
 ELSE
 .XMM
 ENDIF
 
-.CODE
 
 EXTRN g_bHasSse2:PTR BYTE
 
 IF X64
-	MemcpyAligned32	PROC PUBLIC USES ZSI ZDI, d:QWORD, s:QWORD, sz:QWORD
+IFDEF __JWASM__			; UNIX calling convention
+	MemcpyAligned32	PROC PUBLIC USES ZSI ZDI
+	mov		rax, rdi
+	mov		rcx, rdx
+ELSE
+	MemcpyAligned32	PROC PUBLIC USES ZSI ZDI
+	mov		rax, rcx
+	mov		rsi, rdx
+	mov		rcx, r8
+ENDIF
 ELSE
 	MemcpyAligned32	PROC PUBLIC USES ZSI ZDI, d:DWORD, s:DWORD, sz:DWORD
-ENDIF
 	mov		zsi, s
 	mov		zcx, sz
 	mov		zax, d
+ENDIF
 	mov		zdi, zax
 	cmp		zcx, 8
 	jb		$MovsImp
@@ -39,13 +43,13 @@ ENDIF
 $Loop:
 	prefetchnta [zsi+64*8]
 	movdqa	xmm0, [zsi]
-	movdqa	[zdi],		xmm0 
 	movdqa	xmm1, [zsi+16]
-	movdqa	[zdi+16],	xmm1 
 	movdqa	xmm2, [zsi+16*2]
-	movdqa	[zdi+16*2],	xmm2 
 	movdqa	xmm3, [zsi+16*3]
-	movdqa	[zdi+16*3],	xmm3 
+	movntdq	[zdi],		xmm0		;!!! was movdqa
+	movntdq	[zdi+16],	xmm1 
+	movntdq	[zdi+16*2],	xmm2 
+	movntdq	[zdi+16*3],	xmm3 
 	add		zsi, 64
 	add		zdi, 64
 	loop	$Loop
