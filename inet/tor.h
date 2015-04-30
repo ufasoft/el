@@ -7,11 +7,18 @@
 
 #include <el/libext/ext-http.h>
 
-#ifdef _LIBTOR
-#	define AFX_TOR_CLASS __declspec(dllexport)
+#ifdef _AFXDLL
+#	ifdef _LIBTOR
+#		define AFX_TOR_CLASS __declspec(dllexport)
+#	else
+#		define AFX_TOR_CLASS __declspec(dllimport)
+#	endif
 #else
+#	define AFX_TOR_CLASS
+#endif
+
+#ifndef _LIBTOR
 #	pragma comment(lib, "tor")
-#	define AFX_TOR_CLASS __declspec(dllimport)
 #endif
 
 namespace Ext {
