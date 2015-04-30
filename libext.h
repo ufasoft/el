@@ -1174,6 +1174,9 @@ inline char * _cdecl API_getcwd(char *buf, int n) { return _getcwd(buf, n); }
 char * _cdecl API_getcwd(char *buf, int n);
 #endif
 
+int __cdecl API_close(int fh);
+
+
 __END_DECLS
 #				define getcwd API_getcwd
 #			endif
@@ -1195,11 +1198,14 @@ __END_DECLS
 #		define isatty C_isatty
 #		undef getpid
 #		define getpid C_getpid
+#		define close C_close
 #			include <io.h>
 #			include <process.h>
 #		undef isatty
 #		undef getpid
 #		define getpid() _getpid()
+#		undef close
+#		define close API_close
 
 #		ifndef NOGDI
 /*!!!R
