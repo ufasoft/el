@@ -601,7 +601,9 @@ typedef uint32_t guint32;
 	#endif
 
 
-#	pragma comment(linker, "/NODEFAULTLIB:oldnames.lib")
+#	if !UCFG_STDSTL
+#		pragma comment(linker, "/NODEFAULTLIB:oldnames.lib")
+#	endif
 	
 //#	if UCFG_WIN32_FULL //!!!R?
 #	if !UCFG_WCE
