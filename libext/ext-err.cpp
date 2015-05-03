@@ -158,6 +158,12 @@ const error_category& AFXAPI ext_category() {
 
 template<> ErrorCategoryBase * StaticList<ErrorCategoryBase>::Root = 0;
 
+ErrorCategoryBase::ErrorCategoryBase(const char *name, int facility)
+	: base(true)
+	, Facility(facility)
+	, Name(name)
+{}
+
 ErrorCategoryBase* ErrorCategoryBase::GetRoot() {
 	return Root;
 }

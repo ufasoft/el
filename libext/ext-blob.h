@@ -297,11 +297,7 @@ public:
 	const char *Name;
 	int Facility;
 
-	ErrorCategoryBase(const char *name, int facility = FACILITY_UNKNOWN)
-		:	base(true)
-		,	Facility(facility)
-		,	Name(name)
-	{}
+	ErrorCategoryBase(const char *name, int facility = FACILITY_UNKNOWN);
 	
 	const char *name() const noexcept override { return Name; }
 
