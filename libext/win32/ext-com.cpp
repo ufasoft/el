@@ -275,7 +275,7 @@ void CIStorage::Revert() {
 
 Blob::Blob(BSTR bstr) {
 	int len = SysStringByteLen(bstr);
-	m_pData = new(len) CStringBlobBuf(bstr, len);
+	m_pData = new(len, false) CStringBlobBuf(bstr, len);
 }
 
 Blob::operator COleVariant() const {
