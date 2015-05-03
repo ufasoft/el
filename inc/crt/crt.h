@@ -175,6 +175,7 @@ return _stat(name, (struct _stat32 *)s);
 #	define _open C_open
 #endif
 
+#undef close
 #define close C_close
 
 #if !UCFG_WDM
