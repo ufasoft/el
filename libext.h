@@ -81,6 +81,10 @@
 #	error PREFAST not supported
 #endif
 
+#if UCFG_MSC_VERSION>=1900 && UCFG_MSC_FULL_VERSION<190022816
+#	error youtr version of Visual Studio 2015 is obsolete. At least Visual Studio 2015 RC (14.0.22823) or later required
+#endif
+
 #if defined(_MSC_VER) && !defined(_DEBUG) && !defined(_CHAR_UNSIGNED) && !defined(_CRTBLD)
 #	error this library requires /J for VC, or -funsigned-char for GCC compiler option
 #endif
@@ -1141,6 +1145,7 @@ __END_DECLS
 #	define _TIMESPEC_DEFINED
 #endif
 
+
 #ifdef WIN32
 
 #	include <el/libext/win32/win-defines.h>
@@ -1168,14 +1173,12 @@ __END_DECLS
 
 __BEGIN_DECLS
 
+
 #if defined(_MSC_VER) && UCFG_STDSTL
 inline char * _cdecl API_getcwd(char *buf, int n) { return _getcwd(buf, n); }
 #else
 char * _cdecl API_getcwd(char *buf, int n);
 #endif
-
-int __cdecl API_close(int fh);
-
 
 __END_DECLS
 #				define getcwd API_getcwd
@@ -1253,6 +1256,8 @@ __END_DECLS
 
 __BEGIN_DECLS
 
+
+
 #	define RAND_MAX 0x7fff
 
 #		if !UCFG_WDM
@@ -1300,6 +1305,12 @@ __END_DECLS
 #endif
 
 __BEGIN_DECLS
+
+#if defined(_MSC_VER)
+	inline int __cdecl API_close(int fh) { return _close(fh); }
+#endif
+
+
 	void (__cdecl * __cdecl API_signal(int _SigNum, void (__cdecl * _Func)(int)))(int);
 __END_DECLS
 

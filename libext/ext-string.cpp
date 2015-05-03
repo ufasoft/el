@@ -96,7 +96,7 @@ void String::Init(const value_type *lpch, ssize_t nLength) {
 		m_blob.m_pData = 0; //!!! = new CStringBlobBuf;
 	else {
 		size_t bytes = nLength * sizeof(value_type);
-		m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
+		m_blob.m_pData = new(bytes, false) CStringBlobBuf(bytes);
 		if (lpch)
 			memcpy(m_blob.data(), lpch, bytes);				//!!! was wcsncpy((BSTR)m_blob.get_Data(), lpch, nLength);
 	}
@@ -152,7 +152,7 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 				ConstBuf mb(lpch, nLength);
 				len = enc->GetCharCount(mb);
 				size_t bytes = len * sizeof(value_type);
-				m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
+				m_blob.m_pData = new(bytes, false) CStringBlobBuf(bytes);
 				enc->GetChars(mb, (value_type*)m_blob.data(), len);
 			} else {
 				Init((const value_type *)nullptr, nLength);
@@ -160,7 +160,7 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 			}
 		} else {
 			size_t bytes = len * sizeof(value_type);
-			m_blob.m_pData = new(bytes) CStringBlobBuf(bytes);
+			m_blob.m_pData = new(bytes, false) CStringBlobBuf(bytes);
 		}
 	}
 }
@@ -315,7 +315,7 @@ String& String::operator=(const value_type *lpsz) {
 	if (lpsz) {
 		size_t len = traits_type::length(lpsz)*sizeof(value_type);
 		if (!m_blob.m_pData)
-			m_blob.m_pData = new(len) CStringBlobBuf(len);
+			m_blob.m_pData = new(len, false) CStringBlobBuf(len);
 		else
 			m_blob.Size = len;
 		memcpy(m_blob.data(), lpsz, len);
@@ -342,7 +342,9 @@ int String::compare(size_type p1, size_type c1, const value_type *s, size_type c
 }
 
 int String::compare(const String& s) const noexcept {
-	return compare(0, length(), (const value_type*)s.m_blob.constData(), s.length());
+	return !m_blob ? (!s.m_blob ? 0 : -1)
+		: !s.m_blob ? 1
+		: compare(0, length(), (const value_type*)s.m_blob.constData(), s.length());
 }
 
 #if UCFG_WDM

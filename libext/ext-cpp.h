@@ -104,7 +104,7 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 #	define noexcept throw()
 #endif
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) &&  _MSC_VER<1900
 #	define EXT_FAST_NOEXCEPT				//	noexcept prevents inline expansion in VC
 #else
 #	define EXT_FAST_NOEXCEPT	noexcept
@@ -145,7 +145,7 @@ protected:
 
 } // Ext::
 
-
+#include <vcruntime_exception.h>
 
 //!!!R #ifndef _CRTBLD
 #	include "cpp-old.h"

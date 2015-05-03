@@ -845,7 +845,7 @@ void BigInteger::Init(const byte *p, size_t count) {
 	BASEWORD *data;
 	if ((m_count=(n+sizeof(BASEWORD)-1)/sizeof(BASEWORD)) > size(m_data)) {
 		size_t size = m_count*sizeof(BASEWORD);
-		m_blob.m_pData = new(size) CStringBlobBuf(0, size);
+		m_blob.m_pData = new(size, false) CStringBlobBuf(0, size);
 		data = (BASEWORD*)m_blob.data();
 	} else
 		data = m_data;

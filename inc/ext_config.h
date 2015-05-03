@@ -263,7 +263,7 @@
 #endif
 
 #ifndef UCFG_WIN_MSG
-#	define UCFG_WIN_MSG (UCFG_EXTENDED && UCFG_WIN32)
+#	define UCFG_WIN_MSG (UCFG_WIN32  && UCFG_EXTENDED)
 #endif
 
 #ifndef UCFG_USE_RESOURCES

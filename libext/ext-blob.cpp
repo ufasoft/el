@@ -62,14 +62,14 @@ void * AFXAPI CStringBlobBuf::operator new(size_t sz) {
 	return Malloc(sz + sizeof(String::value_type));
 }
 
-void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len) {
+void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len, bool) {
 	if ((ssize_t)len < 0)
 		Throw(errc::invalid_argument);
 	return Malloc(sz + len + sizeof(String::value_type));
 }
 
 CStringBlobBuf *CStringBlobBuf::Clone() {
-	return new(m_size) CStringBlobBuf(this+1, m_size);
+	return new(m_size, false) CStringBlobBuf(this+1, m_size);
 }
 
 CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
@@ -89,7 +89,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 		memset((byte*)(d+1)+copyLen, 0, size-copyLen+sizeof(String::value_type));
 		return d;
 	} else {
-		d = new(size) CStringBlobBuf(size, this+1, copyLen);
+		d = new(size, false) CStringBlobBuf(size, this+1, copyLen);
 		Release(this);
 		return d;
 	}
@@ -117,15 +117,15 @@ Blob::Blob(const Blob& blob) noexcept
 }
 
 Blob::Blob(const void *buf, size_t len) {
-	m_pData = new(len) CStringBlobBuf(buf, len);
+	m_pData = new(len, false) CStringBlobBuf(buf, len);
 }
 
 Blob::Blob(const ConstBuf& mb) {
-	m_pData = new(mb.Size) CStringBlobBuf(mb.P, mb.Size);
+	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
 }
 
 Blob::Blob(const Buf& mb) {
-	m_pData = new(mb.Size) CStringBlobBuf(mb.P, mb.Size);
+	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
 }
 
 Blob::~Blob() {
@@ -224,7 +224,7 @@ Blob Blob::FromHexString(RCString s) {
 }
 
 void Blob::put_Size(size_t size) {
-	m_pData = m_pData ? m_pData->SetSize(size) : new(size) CStringBlobBuf(size);
+	m_pData = m_pData ? m_pData->SetSize(size) : new(size, false) CStringBlobBuf(size);
 }
 
 void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
