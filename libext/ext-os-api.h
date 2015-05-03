@@ -1,10 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #pragma once
 
@@ -14,10 +11,12 @@
 #if defined(__cplusplus)
 #	include <eh.h>
 
+#define NTAPI __stdcall
+
 #	if UCFG_WDM
 
-typedef LONG (__stdcall *PTOP_LEVEL_EXCEPTION_FILTER)(
-	__in struct _EXCEPTION_POINTERS *ExceptionInfo
+typedef long (__stdcall *PTOP_LEVEL_EXCEPTION_FILTER)(
+	struct _EXCEPTION_POINTERS *ExceptionInfo
 	);
 typedef PTOP_LEVEL_EXCEPTION_FILTER LPTOP_LEVEL_EXCEPTION_FILTER;
 
@@ -26,6 +25,10 @@ typedef int                 BOOL;
 #	endif
 
 struct EHExceptionRecord;
+
+#if UCFG_MSC_VERSION >= 1900
+#	pragma warning(disable: 5025)
+#endif
 
 namespace Ext {
 
@@ -41,11 +44,11 @@ struct ExcRefs {
 #ifdef _M_X64
 	void *&      _curexception;  /* current exception */
 	void *&      _curcontext;    /* current exception context */
-	UInt64&		ImageBase;
-	UInt64&		ThrowImageBase;
+	uint64_t&		ImageBase;
+	uint64_t&		ThrowImageBase;
 #endif
 #if defined (_M_X64) || defined (_M_ARM)
-	EHExceptionRecord*& ForeignException;		
+	EHExceptionRecord*& ForeignException;
 #endif
 
 	ExcRefs(EHExceptionRecord*& er, void*& ctx, void*& frameInfoChain, void *&curexcspec
@@ -56,8 +59,8 @@ struct ExcRefs {
 #ifdef _M_X64
 		, void *&      curexception
 		, void *&      curcontext
-		, UInt64&      imageBase
-		, UInt64&      throwImageBase
+		, uint64_t&      imageBase
+		, uint64_t&      throwImageBase
 #endif		
 #if defined (_M_X64) || defined (_M_ARM)
 		,	EHExceptionRecord*& foreignException
@@ -96,7 +99,8 @@ bool __stdcall InitTls(void *hInst);
 #if defined(__cplusplus)
 
 namespace Ext {
-	bool __stdcall HOOK_SelectFastRaiseException(void* pExceptionObject, void  *_pThrowInfo, void *imageBase);
+	typedef bool (__stdcall *PFN_HOOK_SelectFastRaiseException)(void* pExceptionObject, void  *_pThrowInfo, void *imageBase);
+	PFN_HOOK_SelectFastRaiseException __cdecl SetExceptionHookHandler(PFN_HOOK_SelectFastRaiseException h);
 
 #ifdef _WIN32
 	typedef BOOLEAN (NTAPI *PFN_RtlDispatchException)(IN PEXCEPTION_RECORD ExceptionRecord, IN PCONTEXT ContextRecord);
@@ -111,6 +115,7 @@ namespace Ext {
 __BEGIN_DECLS
 
 void _stdcall API_RtlRaiseException(EXCEPTION_RECORD *e);
+void _stdcall API_TryMyRtlRaiseException(EXCEPTION_RECORD *e);
 void _stdcall API_RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags, DWORD nNumberOfArguments, const ULONG_PTR *lpArguments);
 
 
@@ -161,11 +166,8 @@ typedef int jmp_buf[_JBLEN];
 
 
 __declspec(noreturn) void __cdecl API_longjmp(jmp_buf env, int val);
-void _cdecl API_terminate();
-void _cdecl API_unexpected();
+__declspec(noreturn) void _cdecl API_terminate();
+__declspec(noreturn) void _cdecl API_unexpected();
 
-#ifdef __cplusplus
-bool _cdecl API_uncaught_exception();
-#endif
 
 __END_DECLS
