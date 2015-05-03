@@ -8,9 +8,9 @@
 
 extern "C" {
 
-int __cdecl API_close(int fh) {
-	return _close(fh);
-}
+//int __cdecl API_close(int fh) {
+//	return _close(fh);
+//}
 
 
 } // "C"
