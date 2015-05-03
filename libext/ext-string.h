@@ -407,7 +407,7 @@ inline std::string ToLower(const std::string& s) {
 
 namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::String& s) {
-	return Ext::hash_value((const Ext::String::value_type*)s, (s.length() * sizeof(Ext::String::value_type)));
+	return !s ? size_t(0) : Ext::hash_value((const Ext::String::value_type*)s, (s.length() * sizeof(Ext::String::value_type)));
 }
 }
 

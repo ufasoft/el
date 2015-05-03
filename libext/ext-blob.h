@@ -86,8 +86,8 @@ public:
 
 	void * AFXAPI operator new(size_t sz);
 	__forceinline void operator delete(void *p) { free(p); }
-	void * AFXAPI operator new(size_t sz, size_t len);
-	__forceinline void operator delete(void *p, size_t) { free(p); }
+	void * AFXAPI operator new(size_t sz, size_t len, bool);
+	__forceinline void operator delete(void *p, size_t, bool) { free(p); }
 
 	CStringBlobBuf *AsStringBlobBuf() { return this; }
 
