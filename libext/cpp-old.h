@@ -88,9 +88,12 @@ namespace std {
 #endif
 
 #if !UCFG_STD_UNCAUGHT_EXCEPTIONS && defined(_MSC_VER) && UCFG_STDSTL
-extern "C" int* __cdecl __processing_throw();
+	extern "C" int* __cdecl __processing_throw();
 #endif
 
+#if !UCFG_STD_UNCAUGHT_EXCEPTIONS
+	extern "C" int* __cdecl __uncaught_exceptions();
+#endif
 
 namespace std {
 
@@ -174,12 +177,12 @@ constexpr inline size_t size(T (&ar)[sz]) {
 
 
 
-#if !UCFG_STD_UNCAUGHT_EXCEPTIONS
+#if !UCFG_STD_UNCAUGHT_EXCEPTIONS || !UCFG_STDSTL
 inline int __cdecl uncaught_exceptions() noexcept {
 #	if defined(_MSC_VER) && UCFG_STDSTL
 	return *__processing_throw();
 #	else
-	return API_uncaught_exceptions();
+	return __uncaught_exceptions();
 #	endif
 }
 #endif // !UCFG_STD_UNCAUGHT_EXCEPTIONS

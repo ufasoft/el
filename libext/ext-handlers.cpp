@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #ifdef _MSC_VER
 #	define UCFG_DEFINE_OLD_NAMES 1
 #endif
@@ -302,23 +307,4 @@ __declspec(noreturn) void __cdecl terminate(void) {
 
 
 #endif // !UCFG_STDSTL
-
-__BEGIN_DECLS
-
-#ifndef _MSC_VER
-struct __cxa_eh_globals {
-	void *m_dummy;
-	int ProcessingThrow;
-};
-__cxa_eh_globals *__cxa_get_globals() noexcept;
-
-int _cdecl API_uncaught_exceptions() noexcept {		// VC version in the ext-os-api.cpp
-	return __cxa_get_globals()->ProcessingThrow;
-}
-#endif // !_MSC_VER
-
-__END_DECLS
-
-
-
 

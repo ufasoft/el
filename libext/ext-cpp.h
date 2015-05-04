@@ -145,7 +145,9 @@ protected:
 
 } // Ext::
 
-#include <vcruntime_exception.h>
+#if defined(_VC_CRT_MAJOR_VERSION) && _VC_CRT_MAJOR_VERSION>=14
+#	include <vcruntime_exception.h>
+#endif
 
 //!!!R #ifndef _CRTBLD
 #	include "cpp-old.h"
