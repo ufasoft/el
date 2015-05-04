@@ -81,33 +81,16 @@
 #	error PREFAST not supported
 #endif
 
-#if UCFG_MSC_VERSION>=1900 && UCFG_MSC_FULL_VERSION<190022816
-#	error youtr version of Visual Studio 2015 is obsolete. At least Visual Studio 2015 RC (14.0.22823) or later required
-#endif
-
-#if defined(_MSC_VER) && !defined(_DEBUG) && !defined(_CHAR_UNSIGNED) && !defined(_CRTBLD)
-#	error this library requires /J for VC, or -funsigned-char for GCC compiler option
-#endif
 	
 #if defined(__cplusplus) && defined(WIN32)
 #	ifndef _NATIVE_WCHAR_T_DEFINED
-#		error ExtLib requires /Zc:wchar_t compiler option
+#		error libext requires /Zc:wchar_t compiler option
 #	endif
 #endif
 
 #ifdef _USE_32BIT_TIME_T
-#	error ExtLib requires 64-bit time values
+#	error libext requires 64-bit time values
 #endif
-
-
-#if defined(_MSC_VER) && defined (_POSIX_)
-#	error ExtLib dont allow _POSIX_ on MSVC compiler, because typeof(fpos_t) != __int64
-#endif
-
-#if defined(_MSC_VER) && __STDC__
-#	error ExtLib requires define __STDC__=0
-#endif
-
 
 
 #ifdef _MSC_VER

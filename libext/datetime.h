@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include <chrono>
@@ -134,13 +139,13 @@ public:
 	DEFPROP_GET(int, Milliseconds);
 	*/
 
-	int get_Hours() const { return duration_cast<hours>(*this % Ext::Days(1)).count(); }
+	int get_Hours() const { return int(count() / 36000000000LL) % 24; }
 	DEFPROP_GET(int, Hours);
 
-	int get_Minutes() const { return duration_cast<minutes>(*this % hours(1)).count(); }
+	int get_Minutes() const { return int(count() / 600000000LL % 60); }
 	DEFPROP_GET(int, Minutes);
 
-	int get_Seconds() const { return (int)duration_cast<seconds>(*this % minutes(1)).count(); }
+	int get_Seconds() const { return int(count() / 10000000LL % 60); }
 	DEFPROP_GET(int, Seconds);
 
 	String ToString(int w = 0) const;
