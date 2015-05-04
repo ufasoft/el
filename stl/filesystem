@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 #define _FILESYSTEM_
 
@@ -29,6 +34,10 @@ public:
 	{}
 
 	path(const string_type& s)
+		:	m_s(s)
+	{}
+
+	path(const wstring& s)
 		:	m_s(s)
 	{}
 
@@ -93,6 +102,7 @@ public:
 	void swap(path& b) noexcept { m_s.swap(b.m_s); }
 	path filename() const { return empty() ? path() : *--end(); }
 	const string_type native() const noexcept { return m_s; }
+	std::string string() const { return explicit_cast<std::string>(m_s); }
 	operator string_type() const { return m_s; }
 	const value_type *c_str() const { return m_s; }
 	bool empty() const { return m_s.empty(); }
