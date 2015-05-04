@@ -476,7 +476,7 @@ BOOL CCmdTarget::InitInstance() {
 const AFX_MSGMAP* CCmdTarget::GetThisMessageMap() {
 	static const AFX_MSGMAP_ENTRY _messageEntries[] =
 	{
-		{ 0, 0, AfxSig_end, 0 }     // nothing here
+		{ 0, 0, 0, 0 }     // nothing here		AfxSig_end = 0
 	};
 	static const AFX_MSGMAP messageMap =
 	{

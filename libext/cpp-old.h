@@ -92,7 +92,7 @@ namespace std {
 #endif
 
 #if !UCFG_STD_UNCAUGHT_EXCEPTIONS
-	extern "C" int* __cdecl __uncaught_exceptions();
+	extern "C" int __cdecl __uncaught_exceptions();
 #endif
 
 namespace std {
