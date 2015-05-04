@@ -5,7 +5,7 @@
 
 #include <el/ext.h>
 
-#ifdef _MSC_VER && _VC_CRT_MAJOR_VERSION<14 && UCFG_STDSTL
+#if defined(_MSC_VER) && _VC_CRT_MAJOR_VERSION<14 && UCFG_STDSTL
 #	include <../crt/src/mtdll.h>
 #endif
 
