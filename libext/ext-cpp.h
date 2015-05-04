@@ -956,7 +956,6 @@ class CWnd;
 #	endif
 
 
-#	include <afxmsg_.h>
 
 #	if UCFG_WCE
 #		undef _WIN32_WINNT
