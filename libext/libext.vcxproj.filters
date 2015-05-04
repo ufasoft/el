@@ -33,6 +33,9 @@
     <Filter Include="Source Files\zlib\H">
       <UniqueIdentifier>{631cf925-6208-45d3-a760-0cd829e74759}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\crt">
+      <UniqueIdentifier>{80850a84-47a9-4043-afeb-46e6d32d0523}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ext-base.cpp">
@@ -143,9 +146,6 @@
     <ClCompile Include="..\crt\time.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\crt\crt-file.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\foreign\jansson\dump.c">
       <Filter>Source Files\jansson</Filter>
     </ClCompile>
@@ -236,6 +236,9 @@
     <ClCompile Include="..\..\..\foreign\zlib\zutil.c">
       <Filter>Source Files\zlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\crt\crt-file.cpp">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">
@@ -269,6 +272,9 @@
       <Filter>Source Files\zlib\H</Filter>
     </ClInclude>
     <ClInclude Include="..\libext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ext-err.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

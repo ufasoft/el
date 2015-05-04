@@ -220,7 +220,12 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">el/ext.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="..\crt\time.cpp" />
-    <ClCompile Include="..\crt\crt-file.cpp" />
+    <ClCompile Include="..\crt\crt-file.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\elwin\static-main.cpp" />
     <ClCompile Include="..\stl\decimal.cpp" />
     <ClCompile Include="..\stl\dynamic_bitset.cpp" />
@@ -304,6 +309,7 @@
     <ClInclude Include="..\..\..\foreign\zlib\zutil.h" />
     <ClInclude Include="..\libext.h" />
     <ClInclude Include="ext-cpp.h" />
+    <ClInclude Include="ext-err.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\bignum\x86x64\bignum-x86x64.asm">
@@ -412,7 +418,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -435,7 +441,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <Optimization>MaxSpeed</Optimization>
+      <Optimization>MinSpace</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
