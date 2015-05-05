@@ -10,6 +10,7 @@
 
 namespace ExtSTL { namespace sys {
 using namespace std;
+using namespace Ext;
 
 class path {
 public:
