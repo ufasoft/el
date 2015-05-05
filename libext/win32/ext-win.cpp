@@ -779,7 +779,7 @@ bool AFXAPI AfxHasResource(const CResID& name, const CResID& typ) {
 } // Ext::
 
 
-#if defined(_EXT) || !defined(_AFXDLL)
+#if UCFG_STDSTL && (defined(_EXT) || !defined(_AFXDLL))
 	extern "C" int _charmax = CHAR_MAX;
 #endif
 
