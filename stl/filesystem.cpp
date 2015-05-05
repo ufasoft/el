@@ -5,6 +5,8 @@
 
 #include <el/ext.h>
 
+#if !UCFG_STD_FILESYSTEM
+
 #include "filesystem"
 
 #if UCFG_USE_POSIX
@@ -782,4 +784,5 @@ path AFXAPI canonical(const path& p, error_code& ec) {
 
 }}  // ExtSTL::sys::
 
+#endif // !UCFG_STD_FILESYSTEM
 
