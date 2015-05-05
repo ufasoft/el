@@ -1,5 +1,11 @@
 #include <el/inc/ext_config.h>
 
+#ifdef RC_INVOKED
+#	include "winres.h"
+#endif
+
+
+
 //!!!? #include <afxres.h>
 
 #define ID_REGISTER 20000
