@@ -104,7 +104,7 @@ const error_category& sqlite_category() {
 }
 
 SqliteException::SqliteException(int errval, RCString s)
-	:	base(error_code(errval, sqlite_error_category()), s)
+	:	base(error_code(errval, sqlite_category()), s)
 {
 }
 

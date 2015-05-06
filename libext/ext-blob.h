@@ -274,7 +274,7 @@ inline std::ostream& __stdcall operator<<(std::ostream& os, const Blob& blob) {
 typedef const Blob& RCBlob;
 
 template <class T>
-class StaticList {
+class StaticList : noncopyable {
 public:
 	static T *Root;
 
