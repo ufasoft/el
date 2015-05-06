@@ -86,7 +86,7 @@ static void OpenSslThreadId(CRYPTO_THREADID *ti) {
 #endif
 }
 
-static struct CInitOpenSsl {
+struct CInitOpenSsl {
 	CInitOpenSsl() {
 		s_pOpenSslMutexes = new mutex[CRYPTO_num_locks()];
         CRYPTO_set_locking_callback(&OpenSslLockingCallback);
@@ -98,7 +98,7 @@ static struct CInitOpenSsl {
 		CRYPTO_THREADID_set_callback(nullptr);
 		delete[] exchange(s_pOpenSslMutexes, nullptr);
 	}
-} s_initOpenSsl;
+} g_initOpenSsl;
 
 
 
