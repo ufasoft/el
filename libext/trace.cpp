@@ -19,7 +19,6 @@
 namespace Ext {
 using namespace std;
 
-
 class CDebugStreambuf : public streambuf {
 	static const int MAX_BUFSIZE = 1024;
 
@@ -70,15 +69,19 @@ public:
 	}
 };
 
+#if !UCFG_WDM
 TraceStream::TraceStream(const path& p, bool bAppend)
 	:	base(m_file)
 {
+	create_directories(p.parent_path());
+
 	File::OpenInfo oi;
 	oi.Path = p;
 	oi.Mode = bAppend ? FileMode::Append : FileMode::Create;
 	oi.Share = FileShare::ReadWrite;
 	m_file.Open(oi);
 }
+#endif
 
 String TruncPrettyFunction(const char *fn) {
 	const char *e = strchr(fn, '('), *b;
@@ -134,7 +137,8 @@ void CTrace::SetSecondOStream(Stream *os) {
 static struct CTraceInit {
 	CTraceInit() {
 		if (const char *slevel = getenv("UCFG_TRC")) {
-			CTrace::SetOStream(new CIosStream(clog));
+			if (!CTrace::GetOStream())
+				CTrace::SetOStream(new CIosStream(clog));
 			CTrace::s_nLevel = atoi(slevel);
 		}
 	}
@@ -341,30 +345,30 @@ void CTraceWriter::Init(const char* funname) {
 }
 
 #if UCFG_USE_POSIX
-#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "d"
+#	define EXT_TID_FORMATTER "%-4" EXT_LL_PREFIX "d"
 #else
-#	define EXT_TID_FORMATTER "%" EXT_LL_PREFIX "x"
+#	define EXT_TID_FORMATTER "%-4" EXT_LL_PREFIX "x"
 #endif
 
 CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
-		m_os << '\n';
+		m_os.put('\n');
 		string str = m_os.str();		
 		DateTime dt = DateTime::Now();
 		int h = dt.Hour,
 			m = dt.Minute,
 			s = dt.Second,
-			ms = dt.Millisecond;
+			mst = dt.Ticks / 1000 % 10000;
 		long long tid = GetThreadNumber();
 		char buf[100];
 		if (m_bPrintDate)
-			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d %02d:%02d:%02d.%03d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d %02d:%02d:%02d.%04d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, mst);
 		else
-			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%04d ", tid, h, m, s, mst);
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
-			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%03d ", tid, h, m, s, ms);
+			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%04d ", tid, h, m, s, mst);
 			time_str = buf + str;
 		}
 
