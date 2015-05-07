@@ -96,6 +96,10 @@
 #	define UCFG_PLATFORM_SHORT_NAME "platform"
 #endif
 
+#if UCFG_PLATFORM_IX86 || UCFG_PLATFORM_X64 || defined(_M_MIPS) || defined(_M_ARM)
+#	define UCFG_LITLE_ENDIAN 1
+#endif
+
 #if defined(_M_X64) || defined(__ppc64__) || defined(__mips64__) || defined(__arm64__) || defined(_WIN64) || (defined(__LP64__) && __LP64__)
 #	define UCFG_64 1
 #else
@@ -198,7 +202,7 @@
 
 #if UCFG_WCE
 #	ifndef _UNICODE
-#		error ExtLib/CE requires _UNICODE defined
+#		error libext/CE requires _UNICODE defined
 #	endif
 
 #	ifndef UNDER_CE
@@ -411,7 +415,7 @@
 #endif
 
 #ifndef UCFG_STD_SIZE
-#	define UCFG_STD_SIZE UCFG_CPP17
+#	define UCFG_STD_SIZE (UCFG_CPP17 || UCFG_MSC_VERSION>=1900)
 #endif
 
 #ifndef UCFG_STD_UNCAUGHT_EXCEPTIONS
