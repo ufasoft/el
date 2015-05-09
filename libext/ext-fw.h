@@ -1139,19 +1139,21 @@ typedef std::unordered_map<UINT, const char*> CMapStringRes;
 CMapStringRes& MapStringRes();
 
 typedef vararray<byte, 64> hashval;
-//!!!R typedef Blob HashValue;
 
 class HashAlgorithm {
 public:
 	size_t BlockSize,
 		HashSize;
-	CBool IsHaifa;
-	bool IsBigEndian;
+	bool IsHaifa, IsBigEndian, IsLenBigEndian, IsBlockCounted;
 
 	HashAlgorithm()
 		:	BlockSize(0)
 		,	HashSize(0)
+		,	IsHaifa(false)
 		,	IsBigEndian(true)
+		,	IsLenBigEndian(true)
+		,	IsBlockCounted(false)
+		,	Is64Bit(false)
 	{}
 
 	virtual ~HashAlgorithm() {}
@@ -1159,9 +1161,11 @@ public:
 	virtual hashval ComputeHash(const ConstBuf& mb);
 
 	virtual void InitHash(void *dst) noexcept {}
+	void PrepareEndianness(void *dst, int count) noexcept;
 	virtual void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {}
+	virtual void OutTransform(void *dst) noexcept {}
 protected:
-	CBool Is64Bit;
+	bool Is64Bit;
 };
 
 hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text);

@@ -1097,9 +1097,23 @@ void CAnnoyer::Request() {
 	}
 }
 
+void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
+	if (IsBigEndian == UCFG_LITLE_ENDIAN) {
+		if (Is64Bit) {
+			uint64_t *p = (uint64_t*)dst;
+			for (int i=0; i<count; ++i)
+				p[i] = swap64(p[i]);
+		} else {
+			uint32_t *p = (uint32_t*)dst;
+			for (int i=0; i<count; ++i)
+				p[i] = swap32(p[i]);
+		}
+	}
+}
+
 template <typename W>
 hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
-	W hash[8];
+	W hash[16];
 	algo.InitHash(hash);
 	W buf[16];
 	uint64_t len = 0, counter;
@@ -1122,33 +1136,18 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 				counter = 0;
 			break;
 		}
-		if (algo.IsBigEndian) {
-			for (int j=0; j<16; ++j)
-				buf[j] = betoh(buf[j]);
-		} else {
-			for (int j=0; j<16; ++j)
-				buf[j] = letoh(buf[j]);
-		}
+		algo.PrepareEndianness(buf, 16);
 		algo.HashBlock(hash, (byte*)buf, counter);
 	}
 	if (algo.IsHaifa)
 		((byte*)buf)[sizeof buf - sizeof(W)*2 - 1] = 1;
-	len <<= 3;
-	*(uint64_t*)((byte*)buf + sizeof(buf) - 8) = algo.IsBigEndian ? htobe(len) : htole(len);
-	if (algo.IsBigEndian) {
-		for (int j=0; j<16; ++j)
-			buf[j] = betoh(buf[j]);
-	} else {
-		for (int j=0; j<16; ++j)
-			buf[j] = letoh(buf[j]);
-	}
+	len = algo.IsBlockCounted ? (len + 8 + sizeof buf) / (sizeof buf)
+		: len << 3;
+	*(uint64_t*)((byte*)buf + sizeof(buf) - 8) = algo.IsLenBigEndian ? htobe(len) : htole(len);
+	algo.PrepareEndianness(buf, 16);
 	algo.HashBlock(hash, (byte*)buf, counter);
-	if (algo.IsBigEndian)
-		for (int j=0; j<8; ++j)
-			hash[j] = htobe(hash[j]);
-	else
-		for (int j=0; j<8; ++j)
-			hash[j] = htole(hash[j]);
+	algo.OutTransform(hash);
+	algo.PrepareEndianness(hash, 8);
 	return hashval((const byte*)hash, algo.HashSize);
 }
 
