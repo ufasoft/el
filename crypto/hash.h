@@ -85,6 +85,11 @@ protected:
 #	define UCFG_IMP_SHA3 'S'		// shplib
 #endif
 
+#ifndef UCFG_IMP_GROESTL
+#	define UCFG_IMP_GROESTL 'T'		// 'S' for shplib,  'T' for T-table
+#endif
+
+
 template <int n>
 class SHA3 : public HashAlgorithm {
 };
@@ -125,19 +130,32 @@ protected:
 	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
 };
 
-class Groestl512Hash : public HashAlgorithm {
-public:
+class GroestlHash : public HashAlgorithm {
+protected:
+	GroestlHash(size_t hashSize);
+	void InitHash(void *dst) noexcept override;
+};
 
-	Groestl512Hash() {
-		BlockSize = 64;
-		HashSize = 64;
-	}
+class Groestl512Hash : public GroestlHash {
+	typedef GroestlHash base;
+public:
+	Groestl512Hash()
+		: base(64)
+	{}
 
 	hashval ComputeHash(const ConstBuf& mb) override;
-	hashval ComputeHash(Stream& stm) override { Throw(E_NOTIMPL); }
+	
+	hashval ComputeHash(Stream& stm) override {
+#if UCFG_IMP_GROESTL=='S'
+		Throw(E_NOTIMPL);
+#else
+		return base::ComputeHash(stm);
+#endif
+	}
+
 protected:
-	void InitHash(void *dst) noexcept override { Throw(E_NOTIMPL); }
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override { Throw(E_NOTIMPL); }
+	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void OutTransform(void *dst) noexcept override;
 };
 
 
@@ -155,6 +173,7 @@ public:
 protected:
 	void InitHash(void *dst) noexcept override;
 	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void OutTransform(void *dst) noexcept override;
 };
 
 class RIPEMD160 : public HashAlgorithm {
@@ -162,7 +181,7 @@ public:
 	RIPEMD160() {
 		BlockSize = 64;
 		HashSize = 20;
-		IsBigEndian = false;
+		IsLenBigEndian = IsBigEndian = false;
 	}
 
 #if UCFG_USE_OPENSSL
