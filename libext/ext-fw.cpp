@@ -1131,7 +1131,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 		}
 		len += cb;
 		counter = len << 3;
-		if (bLast && (len & (sizeof buf - 1)) < sizeof buf - int(bool(algo.IsHaifa)) - sizeof(W)*2) {
+		if (bLast && (len & (sizeof buf - 1)) < sizeof buf - int(bool(algo.IsHaifa)) - 8) {
 			if (!(len & (sizeof buf - 1)))
 				counter = 0;
 			break;
