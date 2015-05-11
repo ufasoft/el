@@ -118,13 +118,16 @@ public:
 	void Register(IDbCommand& cmd) { m_commands.insert(&cmd); }
 	void Unregister(IDbCommand& cmd) { m_commands.erase(&cmd); }
 
+	void DisposeCommandsWithoutUnregiter() {
+		EXT_FOR(IDbCommand *cmd, m_commands) {
+			cmd->Dispose();
+		}
+	}
 protected:
 	unordered_set<IDbCommand*> m_commands;
 
 	void DisposeCommands() {
-		EXT_FOR (IDbCommand *cmd, m_commands) {
-			cmd->Dispose();
-		}
+		DisposeCommandsWithoutUnregiter();
 		m_commands.clear();
 	}
 };

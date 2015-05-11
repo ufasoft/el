@@ -86,17 +86,20 @@ int SqliteCheck(sqlite_db *db, int code) {
 	throw SqliteException(code, s);
 }
 
-static class sqlite_error_category : public ErrorCategoryBase {
+static class SQLiteCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
-	sqlite_error_category()
+	SQLiteCategory()
 		:	base("SQLite", FACILITY_SQLITE)
 	{}
 
 	string message(int errval) const override {
+#if SQLITE_VERSION_NUMBER >= 3008000
 		return sqlite3_errstr(errval);
+#else
+		return Convert::ToString(code);
+#endif
 	}
-
 } s_sqliteErrorCategory;
 
 const error_category& sqlite_category() {
@@ -104,7 +107,7 @@ const error_category& sqlite_category() {
 }
 
 SqliteException::SqliteException(int errval, RCString s)
-	:	base(error_code(errval, sqlite_category()), s)
+	: base(error_code(errval, sqlite_category()), s)
 {
 }
 
