@@ -21,76 +21,89 @@ EXTRN g_groestl_T_table:PTR QWORD
 .CODE
 
 groestl_2cols MACRO		colsXMM, c
-	movzx	rax, byte ptr [rdx + c*8]
-	movzx	r10, byte ptr [rdx + (c+1)*8]
-	movlpd	xmm8, qword ptr [rbx+rax*8]	
-	movhpd	xmm8, qword ptr [rbx+r10*8]
+	mov	al, byte ptr [rdi + rdx + c*8]
+	mov	bl, byte ptr [rdi + rdx + (c+1)*8]
+	movlpd	xmm8, qword ptr [r10+rax*8]	
+	movhpd	xmm8, qword ptr [r10+rbx*8]
 	pxor	colsXMM, xmm8
 ENDM
 
-
 IF X64	
 IFDEF __JWASM__			; UNIX calling convention
-	Groestl512_x86x64Sse2	PROC PUBLIC USES ZBX ZSI ZDI R14 ; , x:QWORD	; x - just for generating frame   rdi=state, rsi= data
+	Groestl512_x86x64Sse2	PROC PUBLIC USES ZBX ZSI ZDI R14 ; , roundConstants:QWORD, u:QWORD	; just for generating frame  
 	TODO!!!
 ELSE
-	Groestl512_x86x64Sse2	PROC PUBLIC USES ZBX ZSI ZDI R12 R13 R14 R15; , pfnAddRoundConstant:QWORD, u:QWORD, shiftTable8:QWORD
-	mov		rsi, rcx				; pfnAddRoundConstant
+	Groestl512_x86x64Sse2	PROC PUBLIC USES ZBX ZSI ZDI R12 R13 R14 R15; , roundConstants:QWORD, u:QWORD, shiftTable8:QWORD
+	mov		rsi, rcx				; roundConstants
 	mov		rdi, rdx				; u
 	mov		r12, r8					; shiftTable8
 ENDIF
-	mov	r14, g_groestl_T_table
 ELSE
-	Groestl512_x86x64Sse2	PROC PUBLIC USES EBX ECX EDX ESI EDI, pfnAddRoundConstant:DWORD, u:DWORD, shiftTable8:DWORD
+	Groestl512_x86x64Sse2	PROC PUBLIC USES EBX ECX EDX ESI EDI, roundConstants:DWORD, u:DWORD, shiftTable8:DWORD
 	TODO!!!
 ENDIF
+	mov		r14, g_groestl_T_table
 	push	zbp
 	mov		zbp, zsp
 	sub		rsp, 8*3
 
-	mov		r13, 0			; round
+	movdqa	xmm0, [zdi+0*16]
+	movdqa	xmm1, [zdi+1*16]  
+	movdqa	xmm2, [zdi+2*16]  
+	movdqa	xmm3, [zdi+3*16]  
+	movdqa	xmm4, [zdi+4*16]  
+	movdqa	xmm5, [zdi+5*16] 
+	movdqa	xmm6, [zdi+6*16] 
+	movdqa	xmm7, [zdi+7*16] 
+
+	pxor	xmm0, [zsi+0*16]		; AddRoundConstant for round #0
+	pxor	xmm1, [zsi+1*16]
+	pxor	xmm2, [zsi+2*16]
+	pxor	xmm3, [zsi+3*16]
+	pxor	xmm4, [zsi+4*16]
+	pxor	xmm5, [zsi+5*16]
+	pxor	xmm6, [zsi+6*16]
+	pxor	xmm7, [zsi+7*16]
+	add		zsi, 8*16
+
+	mov		r13, 0					; round
 LAB_ROUND:
+	movdqa	[zdi+0*16], xmm0
+	movdqa	[zdi+1*16], xmm1
+	movdqa	[zdi+2*16], xmm2
+	movdqa	[zdi+3*16], xmm3
+	movdqa	[zdi+4*16], xmm4
+	movdqa	[zdi+5*16], xmm5
+	movdqa	[zdi+6*16], xmm6
+	movdqa	[zdi+7*16], xmm7
 
-	mov		rcx, rdi
-	mov		rdx, r13
-	mov		r8, 16
-	call	rsi					; AddRoundConstant
+	movdqa	[zdi+128+0*16], xmm0	; second copy of State
+	movdqa	[zdi+128+1*16], xmm1
+	movdqa	[zdi+128+2*16], xmm2
+	movdqa	[zdi+128+3*16], xmm3
+	movdqa	[zdi+128+4*16], xmm4
+	movdqa	[zdi+128+5*16], xmm5
+	movdqa	[zdi+128+6*16], xmm6
+	movdqa	[rdi+128+7*16], xmm7
 
-	movdqa	xmm0, [rdi]
-	movdqa	xmm1, [rdi+1*16] 
-	movdqa	xmm2, [rdi+2*16] 
-	movdqa	xmm3, [rdi+3*16] 
-	movdqa	xmm4, [rdi+4*16] 
-	movdqa	xmm5, [rdi+5*16] 
-	movdqa	xmm6, [rdi+6*16] 
-	movdqa	xmm7, [rdi+7*16] 
-
-	movdqa	[128+rdi], xmm0
-	movdqa	[128+rdi+1*16], xmm1
-	movdqa	[128+rdi+2*16], xmm2
-	movdqa	[128+rdi+3*16], xmm3
-	movdqa	[128+rdi+4*16], xmm4
-	movdqa	[128+rdi+5*16], xmm5
-	movdqa	[128+rdi+6*16], xmm6
-	movdqa	[128+rdi+7*16], xmm7
-
-	pxor	xmm0, xmm0
-	pxor	xmm1, xmm1
-	pxor	xmm2, xmm2
-	pxor	xmm3, xmm3
-	pxor	xmm4, xmm4
-	pxor	xmm5, xmm5
-	pxor	xmm6, xmm6
-	pxor	xmm7, xmm7
+	movdqa	xmm0, [zsi+0*16]		; AddRoundConstant for rounds #1..15,  #15 contains zeros
+	movdqa	xmm1, [zsi+1*16]
+	movdqa	xmm2, [zsi+2*16]
+	movdqa	xmm3, [zsi+3*16]
+	movdqa	xmm4, [zsi+4*16]
+	movdqa	xmm5, [zsi+5*16]
+	movdqa	xmm6, [zsi+6*16]
+	movdqa	xmm7, [zsi+7*16]
+	add		zsi, 8*16
 
 	mov		rcx, 8
+	lea		r10, [r14 + 8*256*8]
+	xor		rax, rax
+	xor		rbx, rbx
+	xor		rdx, rdx
 LAB_ROW:
-	mov		rbx, rcx
-	shl		rbx, 11
-	lea		rbx, [r14 + rbx - 256*8]
-	movzx	rdx, byte ptr [r12+rcx-1]		; offset*8
-	lea		rdx, [rdx + rcx - 1]
-	add		rdx, rdi
+	sub		r10, 256*8
+	mov		dl, byte ptr [r12+rcx-1]		; offset*8 + row
 
 	groestl_2cols	xmm0, 0
 	groestl_2cols	xmm1, 2
@@ -104,18 +117,18 @@ LAB_ROW:
 	dec		rcx
 	jnz		LAB_ROW
 
-	movdqa	[rdi], xmm0
-	movdqa	[rdi+1*16], xmm1
-	movdqa	[rdi+2*16], xmm2
-	movdqa	[rdi+3*16], xmm3
-	movdqa	[rdi+4*16], xmm4
-	movdqa	[rdi+5*16], xmm5
-	movdqa	[rdi+6*16], xmm6
-	movdqa	[rdi+7*16], xmm7
-
 	inc		r13
 	cmp		r13, 14
 	jb		LAB_ROUND
+
+	movdqa	[zdi+0*16], xmm0
+	movdqa	[zdi+1*16], xmm1
+	movdqa	[zdi+2*16], xmm2
+	movdqa	[zdi+3*16], xmm3
+	movdqa	[zdi+4*16], xmm4
+	movdqa	[zdi+5*16], xmm5
+	movdqa	[zdi+6*16], xmm6
+	movdqa	[zdi+7*16], xmm7
 
 	leave
 	ret
