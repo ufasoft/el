@@ -219,6 +219,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">Create</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">el/ext.h</PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="..\crt\crt-eh.cpp" />
     <ClCompile Include="..\crt\time.cpp" />
     <ClCompile Include="..\crt\crt-file.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">true</ExcludedFromBuild>
@@ -230,10 +231,10 @@
     <ClCompile Include="..\stl\decimal.cpp" />
     <ClCompile Include="..\stl\dynamic_bitset.cpp" />
     <ClCompile Include="..\stl\filesystem.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='D_St|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\stl\mutex.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='R_St|Win32'">true</ExcludedFromBuild>
@@ -310,6 +311,7 @@
     <ClInclude Include="..\libext.h" />
     <ClInclude Include="ext-cpp.h" />
     <ClInclude Include="ext-err.h" />
+    <ClInclude Include="exthelpers.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\bignum\x86x64\bignum-x86x64.asm">
@@ -405,6 +407,7 @@
       <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
