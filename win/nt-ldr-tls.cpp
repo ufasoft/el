@@ -14,8 +14,9 @@
 #include <tlhelp32.h>
 #include <winternl.h>
 
-#include <el/win/ntdll.h>
-//#include <el/win/nt.h>
+//#include <el/win/ntdll.h>
+#include <el/win/nt.h>
+
 
 
 #pragma comment(lib, "psapi")// for GetModuleInformation
@@ -109,11 +110,11 @@ bool __stdcall InitTls(void * hInst) {
 		return true;
 
 	NT::TEB *teb = (NT::TEB*)NtCurrentTeb();
-	NT::PEB *peb = teb->ProcessEnvironmentBlock;
+	NT::PEB *peb = (NT::PEB*)teb->ProcessEnvironmentBlock;
     
 	NT::PLDR_DATA_TABLE_ENTRY dataTableEntry = 0;
 
-	NT::PLIST_ENTRY Head,Next;
+	PLIST_ENTRY Head,Next;
     Head = &peb->Ldr->InMemoryOrderModuleList;
 	Next = Head->Flink;
 
@@ -187,7 +188,7 @@ LAB_FOUND_IN_HEAP:
 		}*/
 
 		if (!LdrpTlsBitmap.SizeOfBitMap)
-			RtlInitializeBitMap(&LdrpTlsBitmap, (NT::PULONG)&LdrpStaticTlsBitmapVector, sizeof(LdrpStaticTlsBitmapVector));
+			RtlInitializeBitMap(&LdrpTlsBitmap, (PULONG)&LdrpStaticTlsBitmapVector, sizeof(LdrpStaticTlsBitmapVector));
 		RtlSetBits(&LdrpTlsBitmap, 0, *g_pLdrpNumberOfTlsEntries);
 
 		ULONG index = RtlFindClearBitsAndSet(&LdrpTlsBitmap, 1, 0);
