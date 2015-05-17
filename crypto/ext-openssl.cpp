@@ -145,10 +145,10 @@ void Random::NextBytes(const Buf& mb) {
 }
 
 
-static Ext::Crypto::Random g_Random;
+static InterlockedSingleton<Ext::Crypto::Random> s_pRandom;
 
 Random& RandomRef() {
-	return g_Random;
+	return *s_pRandom;
 }
 
 
