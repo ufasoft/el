@@ -50,7 +50,7 @@ public:
 		}
 	}
 private:
-	mutex m_mtx;
+	CCriticalSection m_mtx;						// MS std::mutex does not work in DllMain
 	IntrusiveList<CDestructibleTls> m_tlses;
 };
 
