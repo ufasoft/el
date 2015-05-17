@@ -279,7 +279,7 @@ String IPAddress::ToString() const {
 		{
 			char buf[INET6_ADDRSTRLEN];
 			if (!::inet_ntop((int)get_AddressFamily(), (void*)&m_sin6.sin6_addr, buf, sizeof buf))
-				CCheck(-1);
+				return "<#IPv6 address>";	//!!!? XP fails if IPv6 not installed //was CCheck(-1);
 			return buf;			
 		}
 	case AF_DOMAIN_NAME:
