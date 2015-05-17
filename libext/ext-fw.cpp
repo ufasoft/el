@@ -1263,12 +1263,12 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 #endif
 }
 
-void CMessageProcessor::SetParam(RCString s) {
+/*!!!Rvoid CMessageProcessor::SetParam(RCString s) {
 	String *ps = g_messageProcessor.m_param;
 	if (!ps)
 		g_messageProcessor.m_param.reset(ps = new String);
 	*ps = s;
-}
+}*/
 
 #if UCFG_COM
 
@@ -1303,16 +1303,17 @@ static String CombineErrorMessages(const char hex[], RCString msg, bool bWithErr
 String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 	CheckStandard();
 	char hex[30] = "";
-	if (bWithErrorCode)
+	if (bWithErrorCode)	
 		sprintf(hex, "Error %8.8X", hr);
 	TCHAR buf[256];
 	char *ar[5] = {0, 0, 0, 0, 0};
 	char **p = 0;
+	/*!!!R
 	String *ps = m_param;
 	if (ps && !ps->empty()) {
 		ar[0] = (char*)ps->c_str();
 		p = ar;
-	}
+	}*/
 	for (size_t i = 0; i<m_ranges.size(); i++) {
 		String msg = m_ranges[i]->CheckMessage(hr);
 		if (!msg.empty())

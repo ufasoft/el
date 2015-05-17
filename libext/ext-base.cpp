@@ -250,7 +250,7 @@ String Exception::get_Message() const {
 	os << setw(8) << hex << ToHResult(_self) << ": ";
 #endif
 	string msg = code().message();
-#if UCFG_STDSTL && UCFG_STD_SYSTEM_ERROR									// VC implementation returns ANSI string
+#if defined(_MSC_VER) && UCFG_STDSTL && UCFG_STD_SYSTEM_ERROR									// VC implementation returns ANSI string
 	if (code().category() == system_category()) {
 		CodePageEncoding encAnsi(CP_ACP);
 		msg = String(encAnsi.GetChars(ConstBuf(msg.data(), msg.length())));
@@ -722,6 +722,5 @@ namespace ExtSTL {
 #endif // !UCFG_STDSTL || !UCFG_STD_MUTEX
 
 } // ExtSTL::
-
 
 

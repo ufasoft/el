@@ -1246,9 +1246,9 @@ public:
 #endif
 	String ProcessInst(HRESULT hr, bool bWithErrorCode = true);
 
-	thread_specific_ptr<String> m_param;
+//!!!R	thread_specific_ptr<String> m_param;
 
-	static void AFXAPI SetParam(RCString s);
+//!!!R	static void AFXAPI SetParam(RCString s);
 };
 
 extern CMessageProcessor g_messageProcessor;
