@@ -249,7 +249,14 @@ String Exception::get_Message() const {
 #if !UCFG_WDM
 	os << setw(8) << hex << ToHResult(_self) << ": ";
 #endif
-	os << dec << code() << " " << code().message();
+	string msg = code().message();
+#if UCFG_STDSTL && UCFG_STD_SYSTEM_ERROR									// VC implementation returns ANSI string
+	if (code().category() == system_category()) {
+		CodePageEncoding encAnsi(CP_ACP);
+		msg = String(encAnsi.GetChars(ConstBuf(msg.data(), msg.length())));
+	}
+#endif
+	os << dec << code() << " " << msg;
 	return os.str();
 }
 
