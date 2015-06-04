@@ -7,6 +7,7 @@
 //   write() implementation with fixed UTF-8 output for MSVC
 
 #include <io.h>
+#include <errno.h>
 #include <crtversion.h>
 
 #include <windows.h>
