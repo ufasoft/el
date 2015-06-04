@@ -64,6 +64,8 @@ inline T exchange(T& obj, U EXT_REF new_val) {
 #	endif
 */
 
+namespace std {
+
 template <typename T, typename U>
 inline T exchange(T& obj, U EXT_REF new_val) {
 	T old_val = std::move(obj);
@@ -75,10 +77,6 @@ inline T exchange(T& obj, U EXT_REF new_val) {
 	return old_val;
 }
 
-
-
-
-namespace std {
 inline char exchange(char& obj, char new_val) {
 	char old_val = obj;
 	obj = new_val;
