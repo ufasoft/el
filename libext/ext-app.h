@@ -5,6 +5,15 @@
 
 #pragma once
 
+#ifndef UCFG_COUT_REDIRECTOR
+#	if UCFG_WIN32
+#		define UCFG_COUT_REDIRECTOR 'R'
+#	else
+#		define UCFG_COUT_REDIRECTOR 0
+#	endif
+#endif
+
+
 namespace Ext {
 
 class CCommandLineInfo : public Object { //!!!
@@ -135,6 +144,7 @@ public:
 	virtual void Execute() {}	
 	virtual bool OnSignal(int sig);
 
+	virtual void InitOutRedirectors();
 	virtual void SetSignals();
 };
 

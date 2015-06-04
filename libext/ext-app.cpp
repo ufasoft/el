@@ -3,13 +3,12 @@
 #include "ext-fw.h"
 
 #if UCFG_WIN32
-#	include EXT_HEADER_CODECVT
 #	include <el/libext/win32/ext-win.h>
 #endif
 
 namespace Ext {
 using namespace std;
-	
+
 CCommandLineInfo::CCommandLineInfo() {
 	m_bShowSplash = true;
 	m_bRunEmbedded = false;
@@ -69,8 +68,7 @@ bool CAppBase::s_bSigBreak;
 #if UCFG_COMPLEX_WINAPP
 
 CAppBase::CAppBase()
-	:	m_bPrintLogo(true)
-{
+	: m_bPrintLogo(true) {
 	Argc = __argc;
 #if UCFG_ARGV_UNICODE
 	ProcessArgv(__argc, __wargv);
@@ -103,7 +101,7 @@ String CAppBase::GetCompanyName() {
 	try {
 		if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)String(AfxGetModuleState()->FileName.native()), &dw)) //!!!
 			companyName = FileVersionInfo().CompanyName;
-	} catch (RCExc){
+	} catch (RCExc) {
 	}
 	return companyName;
 }
@@ -130,7 +128,7 @@ RegistryKey& CAppBase::get_KeyCU() {
 
 path COperatingSystem::get_WindowsDirectory() {
 	TCHAR szPath[_MAX_PATH];
-	Win32Check(::GetWindowsDirectory(szPath , size(szPath)));
+	Win32Check(::GetWindowsDirectory(szPath, size(szPath)));
 	return szPath;
 }
 
@@ -213,10 +211,10 @@ void CAppBase::ProcessArgv(int argc, String::value_type *argv[]) {
 	if (argv) {
 		for (int i=0; i<=argc; ++i) {
 			String arg = argv[i];
-	#if UCFG_WCE
+#if UCFG_WCE
 			if (arg.Length>=2 && arg[0]=='\"' && arg[arg.Length-1]=='\"')
 				arg = arg.Substring(1, arg.Length-2);
-	#endif
+#endif
 			m_argv.push_back(arg);
 			m_argvp.push_back((argv_char_t*)(const argv_char_t*)m_argv[i]);
 		}
@@ -240,7 +238,7 @@ void CAppBase::ParseCommandLine(CCommandLineInfo& rCmdInfo) {
 				++pszParam;
 			}
 			rCmdInfo.ParseParam(pszParam, bFlag, bLast);
-		} else 
+		} else
 #endif
 		{
 			const argv_char_t *pszParam = Argv[i];
@@ -269,39 +267,39 @@ CAppBase * AFXAPI AfxGetCApp() {
 class OutputForwarderBuffer : public basic_streambuf<char>, noncopyable {
 	typedef basic_streambuf<char> base;
 public:
-    typedef base StreamBuffer;
-    typedef basic_streambuf<wchar_t> WideStreamBuffer;
-	
-    OutputForwarderBuffer(StreamBuffer& existingBuffer, WideStreamBuffer* pWideStreamBuffer)
-        :	base( existingBuffer )
-        ,	m_wideStreamBuf(pWideStreamBuffer)
-		,	m_state()
-    {}
+	typedef base StreamBuffer;
+	typedef basic_streambuf<wchar_t> WideStreamBuffer;
+
+	OutputForwarderBuffer(StreamBuffer& existingBuffer, WideStreamBuffer* pWideStreamBuffer)
+		: base(existingBuffer)
+		, m_wideStreamBuf(pWideStreamBuffer)
+		, m_state() {
+	}
 protected:
-    streamsize xsputn(const char* s, streamsize n) override {
+	streamsize xsputn(const char* s, streamsize n) override {
 		size_t bufSize = std::min(size_t(100), size_t(n));
 		wchar_t *wbuf = (wchar_t*)alloca(bufSize * sizeof(wchar_t)), *wnext;
-		for (const char *next, *fb=s, *fe=s+n; ;) {
+		for (const char *next, *fb=s, *fe=s+n;;) {
 			Cvt::result rc = m_cvt.in(m_state, fb, fe, next, wbuf, wbuf+bufSize, wnext);
 			if (wnext != wbuf)
 				m_wideStreamBuf->sputn(wbuf, wnext-wbuf);
 			if (exchange(fb, next) == next)
 				return next-s;
 		}
-    }
+	}
 
-    int_type overflow(int_type c) override {
-        const bool cIsEOF = traits_type::eq_int_type( c, traits_type::eof() );
-        const int_type failureValue = traits_type::eof();
-        const int_type successValue = cIsEOF ? traits_type::not_eof(c) : c;
- 
-        if( !cIsEOF ) {
-            const char_type ch = traits_type::to_char_type( c );
-            const streamsize nCharactersWritten  = xsputn( &ch, 1 ); 
-            return (nCharactersWritten == 1? successValue : failureValue);
-        }
-        return successValue;
-    }
+	int_type overflow(int_type c) override {
+		const bool cIsEOF = traits_type::eq_int_type(c, traits_type::eof());
+		const int_type failureValue = traits_type::eof();
+		const int_type successValue = cIsEOF ? traits_type::not_eof(c) : c;
+
+		if (!cIsEOF) {
+			const char_type ch = traits_type::to_char_type(c);
+			const streamsize nCharactersWritten  = xsputn(&ch, 1);
+			return (nCharactersWritten == 1 ? successValue : failureValue);
+		}
+		return successValue;
+	}
 private:
 	WideStreamBuffer *m_wideStreamBuf;
 
@@ -309,52 +307,34 @@ private:
 	Cvt m_cvt;
 	Cvt::state_type	m_state;
 };
-  
-class DirectOutputBuffer : public basic_streambuf<wchar_t>, noncopyable  {
+
+class DirectOutputBuffer : public basic_streambuf<wchar_t>, noncopyable {
 public:
-    enum StreamId { outputStreamId, errorStreamId, logStreamId };
- 
-    DirectOutputBuffer( StreamId streamId = outputStreamId )
-        :	streamId_( streamId )
-    {} 
+	enum StreamId { outputStreamId, errorStreamId, logStreamId };
+
+	DirectOutputBuffer(StreamId streamId = outputStreamId)
+		: streamId_(streamId) {
+	}
 protected:
-    streamsize xsputn(const wchar_t* s, streamsize n) override {
-        static HANDLE const outputStreamHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-        static HANDLE const errorStreamHandle = GetStdHandle(STD_ERROR_HANDLE);
- 
-        HANDLE const streamHandle = (streamId_ == outputStreamId? outputStreamHandle : errorStreamHandle);         
-        DWORD nCharactersWritten = 0;
-        bool writeSucceeded = ::WriteConsole(streamHandle, s, (DWORD)n, &nCharactersWritten, 0);
-        return writeSucceeded ? (streamsize)nCharactersWritten  : 0;
-    }
+	streamsize xsputn(const wchar_t* s, streamsize n) override {
+		static HANDLE const outputStreamHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+		static HANDLE const errorStreamHandle = GetStdHandle(STD_ERROR_HANDLE);
+
+		HANDLE const streamHandle = (streamId_ == outputStreamId ? outputStreamHandle : errorStreamHandle);
+		DWORD nCharactersWritten = 0;
+		bool writeSucceeded = ::WriteConsole(streamHandle, s, (DWORD)n, &nCharactersWritten, 0);
+		return writeSucceeded ? (streamsize)nCharactersWritten : 0;
+	}
 private:
-    StreamId streamId_;
+	StreamId streamId_;
 };
 #endif // UCFG_WIN32
 
 
 CConApp::CConApp() {
 	s_pApp = this;
-	setlocale(LC_CTYPE, "");
-#if UCFG_WIN32
-	_wsetlocale(LC_CTYPE, L"");
-
-	static bool s_bSetUtf8Mode;
-	if (!exchange(s_bSetUtf8Mode, true)) {
-#	if _VC_CRT_MAJOR_VERSION<14
-		_setmode(_fileno(stdin), _O_U8TEXT);
-		_setmode(_fileno(stdout), _O_U8TEXT);
-		_setmode(_fileno(stderr), _O_U8TEXT);
-#	endif
-		static OutputForwarderBuffer coutBuffer(*cout.rdbuf(), wcout.rdbuf()),
-			cerrBuffer(*cerr.rdbuf(), wcerr.rdbuf()),
-			clogBuffer(*clog.rdbuf(), wclog.rdbuf()); 
-	    cout.rdbuf( &coutBuffer );
-    	cerr.rdbuf( &cerrBuffer );
-	    clog.rdbuf( &clogBuffer );
-	}
-#endif // UCFG_WIN32
 }
+
 
 
 CConApp *CConApp::s_pApp;
@@ -391,6 +371,12 @@ void __cdecl CConApp::OnSigInt(int sig) {
 #endif // !UCFG_WCE
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
+#if UCFG_COUT_REDIRECTOR
+	InitOutRedirectors();
+#else
+	setlocale(LC_CTYPE, "");
+#endif
+
 	if (const char *slevel = getenv("UCFG_TRC")) {
 		if (!CTrace::GetOStream())
 			CTrace::SetOStream(new CIosStream(clog));
@@ -432,7 +418,7 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 					Environment::ExitCode = 3;  // Compilation error
 					break;
 				default:
-					wcerr << ex << endl;
+					wcerr << ex.what() << endl;
 					Environment::ExitCode = 2;
 				}
 			}

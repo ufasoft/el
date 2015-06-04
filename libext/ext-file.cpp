@@ -248,7 +248,7 @@ void File::Open(const File::OpenInfo& oi) {
 		dwCreateFlag = TRUNCATE_EXISTING;
 		break;
 	default:
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	}
 
 	SECURITY_ATTRIBUTES sa = { sizeof sa };
