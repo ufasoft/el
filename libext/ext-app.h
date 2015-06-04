@@ -144,7 +144,9 @@ public:
 	virtual void Execute() {}	
 	virtual bool OnSignal(int sig);
 
+#if UCFG_COUT_REDIRECTOR!='R'
 	virtual void InitOutRedirectors();
+#endif
 	virtual void SetSignals();
 };
 

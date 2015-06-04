@@ -371,7 +371,7 @@ void __cdecl CConApp::OnSigInt(int sig) {
 #endif // !UCFG_WCE
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
-#if UCFG_COUT_REDIRECTOR
+#if UCFG_COUT_REDIRECTOR && UCFG_COUT_REDIRECTOR!='R'
 	InitOutRedirectors();
 #else
 	setlocale(LC_CTYPE, "");
