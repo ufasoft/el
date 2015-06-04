@@ -14,17 +14,45 @@
 
 extern "C" {
 
+__int64 __cdecl _lseeki64_nolock(int fh, __int64 _Offset, int _Origin);
+
+#define FAPPEND         0x20
+
 #if _VC_CRT_MAJOR_VERSION>=14
+
+	struct __crt_lowio_handle_data {
+		CRITICAL_SECTION           lock;
+		intptr_t                   osfhnd;          // underlying OS file HANDLE
+		__int64                    startpos;        // File position that matches buffer start
+		unsigned char              osfile;          // Attributes of file (e.g., open in text mode?)
+		char				      textmode;
+		// ...
+	};
+	
 	void __cdecl __acrt_errno_map_os_error(unsigned long const oserrno);
 	void __cdecl __acrt_lowio_lock_fh(int fh);
 	void __cdecl __acrt_lowio_unlock_fh(int fh);
 #else
+	struct __crt_lowio_handle_data {
+		intptr_t osfhnd;    /* underlying OS file HANDLE */
+		char osfile;        /* attributes of file (e.g., open in text mode?) */
+		char pipech;        /* one char buffer for handles opened on pipes */
+		int lockinitflag;
+	};
+
 	void __cdecl _dosmaperr(unsigned long);
 	
 	inline void __cdecl __acrt_errno_map_os_error(unsigned long const oserrno) { return _dosmaperr(oserrno); }
 	inline void __cdecl __acrt_lowio_lock_fh(int fh) { __lock_fhandle(fh);  }
 	inline void __cdecl __acrt_lowio_unlock_fh(int fh) { _unlock_fhandle(fh); }
 #endif // _VC_CRT_MAJOR_VERSION
+
+extern __crt_lowio_handle_data* __pioinfo[];
+
+#define IOINFO_L2E          6
+#define IOINFO_ARRAY_ELTS   (1 << IOINFO_L2E)
+#define _pioinfo(i)          (__pioinfo[(i) >> IOINFO_L2E] + ((i) & (IOINFO_ARRAY_ELTS - 1)))
+#define _osfile(i)           (_pioinfo(i)->osfile)
 
 } // "C"
 
@@ -57,6 +85,10 @@ extern "C" int __cdecl _write_nolock(int fh, const void *buffer, unsigned size) 
 	if (INVALID_HANDLE_VALUE == h)
 		return -1;
 	if (!_isatty(fh) || fh>=N_STATES) {
+		if (_osfile(fh) && FAPPEND)
+			_lseeki64_nolock(fh, 0, FILE_END);
+
+
 		DWORD dw;
 	    if (!WriteFile(h, buffer, size, &dw, nullptr)) {
 			switch (int err = ::GetLastError()) {
