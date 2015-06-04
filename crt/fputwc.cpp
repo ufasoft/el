@@ -12,6 +12,8 @@
 
 #include <windows.h>
 
+int _ext_crt_module_fputwc;
+
 extern "C" {
 
 #if _VC_CRT_MAJOR_VERSION>=14

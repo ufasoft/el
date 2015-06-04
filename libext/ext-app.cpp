@@ -6,6 +6,16 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
+#if UCFG_COUT_REDIRECTOR=='R' && !defined(_AFXDLL)
+	extern int _ext_crt_module_write;             		// enforce replacing write(), fputwc() functions
+	extern int _ext_crt_module_fputwc;
+
+	int *pModuleWite = &_ext_crt_module_write,
+		*pModuleFputwc = &_ext_crt_module_fputwc;
+#endif //  UCFG_COUT_REDIRECTOR=='R'
+
+
+
 namespace Ext {
 using namespace std;
 
@@ -369,6 +379,7 @@ void __cdecl CConApp::OnSigInt(int sig) {
 	}
 }
 #endif // !UCFG_WCE
+
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
 #if UCFG_COUT_REDIRECTOR && UCFG_COUT_REDIRECTOR!='R'

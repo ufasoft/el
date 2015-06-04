@@ -11,6 +11,8 @@
 
 #include <windows.h>
 
+int _ext_crt_module_write;
+
 
 extern "C" {
 
