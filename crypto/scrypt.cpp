@@ -169,6 +169,29 @@ hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx) {
 	return HMAC(sha, ConstBuf(pIhash, 32), ConstBuf(text, data.Size + 4));
 }
 
+
+Blob Scrypt(const ConstBuf& password, const ConstBuf& salt, int n, int r, int p, size_t dkLen) {
+	HmacPseudoRandomFunction<SHA256> prf;
+	const size_t mfLen = r*128;
+	Blob bb = PBKDF2(prf, password, salt, 1, p*mfLen);
+	AlignedMem am((n+1)*r*128, 128);
+	uint32_t *v = (uint32_t*)am.get();
+	SalsaBlockPtr tmp = (SalsaBlockPtr)alloca(r*128);
+	for (int i=0; i<p; ++i) {
+		SalsaBlockPtr x = (SalsaBlockPtr)(bb.data()+i*mfLen);
+		for (int i=0; i<n; ++i) {
+			memcpy(&v[i * 32 * r], x, 2*r * sizeof(x[0]));
+			VectorMix(Salsa20Core, x, tmp, r, 8);
+		}
+		for (int i=0; i<n; ++i) {
+			int j = 32*r * (x[2 * r - 1][0] & (n - 1));
+			VectorXor(x[0], &v[j], 2*r*16);
+			VectorMix(Salsa20Core, x, tmp, r, 8);
+		}
+	}
+	return PBKDF2(prf, password, bb, 1, dkLen);
+}
+
 CArray8UInt32 CalcSCryptHash(const ConstBuf& password) {
 	ASSERT(password.Size == 80);
 
