@@ -92,18 +92,18 @@ Blob BlockCipher::Encrypt(const ConstBuf& cbuf) {
 
 		switch (Mode) {
 		case CipherMode::ECB:
-			EncryptBlock(ekey, block.data());
-			ms.WriteBuf(block);
+			EncryptBlock(ekey, tdata);
+			ms.WriteBuffer(tdata, cbBlock);
 			break;
 		case CipherMode::OFB:
 			EncryptBlock(ekey, block.data());
-			VectorXor(tdata, block.constData(), size);
-			ms.WriteBuffer(tdata, size);
+			VectorXor(block.data(), tdata, cbBlock);
+			ms.WriteBuffer(block.constData(), size);
 			break;
 		case CipherMode::CBC:
 			VectorXor(tdata, block.constData(), size);
-			EncryptBlock(ekey, block.data());
-			ms.WriteBuf(block);
+			EncryptBlock(ekey, tdata);
+			ms.WriteBuf(block = ConstBuf(tdata, cbBlock));
 			break;
 		default:
 			Throw(E_NOTIMPL);
