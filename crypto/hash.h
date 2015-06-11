@@ -201,8 +201,23 @@ public:
 	void NextBytes(const Buf& mb) override;
 };
 
+class PseudoRandomFunction {
+public:
+	virtual size_t HashSize() const =0;
+	virtual hashval operator()(const ConstBuf& key, const ConstBuf& text) =0;
+};
 
-//!!!R Random& RandomRef();
+template <class H>
+class HmacPseudoRandomFunction : public PseudoRandomFunction {
+public:
+	H HAlgo;
+
+	size_t HashSize() const override { return HAlgo.HashSize; }
+	hashval operator()(const ConstBuf& key, const ConstBuf& text) override { return HMAC(HAlgo, key, text); }
+};
+
+Blob PBKDF2(PseudoRandomFunction& prf, const ConstBuf& password, const ConstBuf& salt, uint32_t c, size_t dkLen);
+
 
 typedef std::array<uint32_t, 8> CArray8UInt32;
 hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx);
@@ -216,6 +231,8 @@ void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept;
 CArray8UInt32 CalcSCryptHash(const ConstBuf& password);
 std::array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]);
 CArray8UInt32 CalcNeoSCryptHash(const ConstBuf& password, int profile = 0);
+
+Blob Scrypt(const ConstBuf& password, const ConstBuf& salt, int n, int r, int p, size_t dkLen);
 
 #if UCFG_CPU_X86_X64
 extern "C" void _cdecl ScryptCore_x86x64(uint32_t x[32], uint32_t alignedScratch[1024*32+32]);
