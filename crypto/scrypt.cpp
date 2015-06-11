@@ -481,3 +481,4 @@ array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]) {
 
 }} // Ext::Crypto::
 
+
