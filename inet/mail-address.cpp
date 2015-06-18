@@ -40,6 +40,7 @@ void SendEmail(RCString recipient, RCString subj, RCString msg, RCString from) {
 #endif
 
 	fprintf(popen, "%s", msg.c_str());
+	popen.Wait();
 
 	//!!!R	ProcessStartInfo psi("email", EXT_STR("-s \"" << subj << "\" " << recipient));
 	//	psi.RedirectStandardInput = true;
