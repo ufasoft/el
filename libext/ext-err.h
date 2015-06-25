@@ -18,7 +18,7 @@ ENUM_CLASS(ExtErr) {
 	, Registry
 	, InvalidFlags
 	, IncorrectVariant
-	, ItemNotFound
+	, ItemNotFound							= 10
 	, DCOMnotInstalled
 	, VariantMustBeArray
 	, InvalidTypeForThisOperation
@@ -28,7 +28,7 @@ ENUM_CLASS(ExtErr) {
 	, InvalidRegistrationCode
 	, UnknownVersionRegcode
 	, DuplicateName
-	, InvalidValue
+	, InvalidValue							= 20
 	, ThreadInterrupted
 	, InvalidFileHeader
 	, IncompatibleFileVersion
@@ -38,7 +38,7 @@ ENUM_CLASS(ExtErr) {
 	, FindHandler
 	, InvalidExceptionMagicNumber
 	, InvalidResultCallHandler
-	, ControlNotFound
+	, ControlNotFound                   	= 30
 	, ClientSizeNULL
 	, DialogTemplate
 	, DispatchIsNull
@@ -48,7 +48,7 @@ ENUM_CLASS(ExtErr) {
 	, TooltipNotFound
 	, LoadXML
 	, XMLError
-	, NoInputStream
+	, NoInputStream                    		= 40
 	, NoOutputStream
 	, InvalidExtendOfNumber
 	, UnknownStructuredStorageElementType
@@ -58,7 +58,7 @@ ENUM_CLASS(ExtErr) {
 	, NoAdviseHolder
 	, OleControlError
 	, UnknownWin32Error
-	, VarTypeInNotStringCompatible
+	, VarTypeInNotStringCompatible     		= 50
 	, UnknownSocketsError
 	, InvalidUTF8String
 	, UnsupportedVariantType
@@ -68,7 +68,7 @@ ENUM_CLASS(ExtErr) {
 	, Trace
 	, AssertValidObject
 	, InvalidSplitType
-	, BlackRedTree
+	, BlackRedTree                     		= 60
 	, QueueUserAPC
 	, SignalBreak
 	, NormalExit		//!!!?
@@ -107,13 +107,14 @@ ENUM_CLASS(ExtErr) {
 	, JSON_RPC_MethodNotFound
 	, JSON_RPC_IsNotRequest
 
-	, OBJECTCODE_DATACHANGED		= 4000
-	, OBJECTCODE_VIEWCHANGED
+	, ObjectCode_DataChanged = 4000
+	, ObjectCode_ViewChanged
 
 	, SAT_EmptyStructure = 5000
 
 	, Crypto						= 7000	
 	, UnsupportedEncryptionAlgorithm
+	, DerivedKeyTooLong
 
 	, PROXY_LongDomainName			= 8000
 	, PROXY_InvalidAddressType
