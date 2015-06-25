@@ -5,7 +5,6 @@
 
 #include <el/ext.h>
 
-
 namespace Ext {
 using namespace std;
 
@@ -105,11 +104,12 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::JSON_RPC_InvalidParams							, "JSON-RPC Invalid method parameter(s)"		 }
 	, { ExtErr::JSON_RPC_MethodNotFound							, "JSON-RPC Method not found"		 }
 	, { ExtErr::JSON_RPC_IsNotRequest							, "The JSON sent is not a valid Request object"		 }
-	, { ExtErr::OBJECTCODE_DATACHANGED							, "OBJECTCODE_DATACHANGED Advice"		 }
-	, { ExtErr::OBJECTCODE_VIEWCHANGED							, "OBJECTCODE_VIEWCHANGED Advice"		 }
+	, { ExtErr::ObjectCode_DataChanged							, "OBJECTCODE_DATACHANGED Advice"		 }
+	, { ExtErr::ObjectCode_ViewChanged							, "OBJECTCODE_VIEWCHANGED Advice"		 }
 	, { ExtErr::SAT_EmptyStructure								, "SAT Empty Structure"		 }
 	, { ExtErr::Crypto											, "Crypto Error"		 }
 	, { ExtErr::UnsupportedEncryptionAlgorithm					, "Unsupported Encryption Algorithm"		 }
+	, { ExtErr::DerivedKeyTooLong								, "Derived Key Too Long"		 }
 	, { ExtErr::PROXY_LongDomainName							, "Domain name very long"		 }
 	, { ExtErr::PROXY_InvalidAddressType						, "Invalid address type"		 }
 	, { ExtErr::PROXY_VeryLongLine								, "Very long line"		 }
