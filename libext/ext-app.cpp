@@ -382,7 +382,7 @@ void __cdecl CConApp::OnSigInt(int sig) {
 
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
-#if UCFG_COUT_REDIRECTOR && UCFG_COUT_REDIRECTOR!='R'
+#if UCFG_WIN32_FULL && UCFG_COUT_REDIRECTOR!='R'
 	InitOutRedirectors();
 #else
 	setlocale(LC_CTYPE, "");
@@ -409,7 +409,7 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 		SetSignals();
 #endif
 		ParseCommandLine(_self);
-		if (m_bPrintLogo) {
+		if (m_bPrintLogo && (!FileDescription.empty() || !LegalCopyright.empty() || !Url.empty())) {
 			wcerr << FileDescription << ' ' << SVersion << "  " << LegalCopyright;
 			if (!Url.empty())
 				wcerr << "  " << Url;
