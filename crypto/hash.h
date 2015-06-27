@@ -222,7 +222,10 @@ Blob PBKDF2(PseudoRandomFunction& prf, const ConstBuf& password, const ConstBuf&
 typedef std::array<uint32_t, 8> CArray8UInt32;
 hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx);
 void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, const ConstBuf& data);
+
+void ShuffleForSalsa16(uint32_t w[16], const uint32_t src[16]);
 void ShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
+void UnShuffleForSalsa16(uint32_t dst[16], const uint32_t w[16]);
 void UnShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
 
 typedef uint32_t(*SalsaBlockPtr)[16];

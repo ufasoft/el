@@ -10,9 +10,7 @@
 
 extern "C" {
 
-#if UCFG_CPU_X86_X64
-	static bool s_bHasSse2 = CpuInfo().HasSse2;
-#endif
+extern bool s_bHasSse2;
 
 #ifdef _M_X64
 	void _cdecl ScryptCore_x64_3way(uint32_t x[16*3*2], uint32_t alignedScratch[3*1024*32+32]);
@@ -22,78 +20,19 @@ extern "C" {
 
 namespace Ext { namespace Crypto {
 
+typedef void(*PFN_Salsa)(uint32_t dst[16], const uint32_t src[16], int rounds);
 
-void ShuffleForSalsa(uint32_t w[32], const uint32_t src[32]) {
-	w[0]	= src[0	];
-	w[1]	= src[5	];
-	w[2]	= src[10];
-	w[3]	= src[15];
-	w[4]	= src[12];
-	w[5]	= src[1	];
-	w[6]	= src[6	];
-	w[7]	= src[11];
-	w[8]	= src[8	];
-	w[9]	= src[13];
-	w[10]	= src[2	];
-	w[11]	= src[7	];
-	w[12]	= src[4	];
-	w[13]	= src[9	];
-	w[14]	= src[14];
-	w[15]	= src[3	];
-
-	w[16+0]	 = src[16+0	];
-	w[16+1]	 = src[16+5	];
-	w[16+2]	 = src[16+10];
-	w[16+3]	 = src[16+15];
-	w[16+4]	 = src[16+12];
-	w[16+5]	 = src[16+1	];
-	w[16+6]	 = src[16+6	];
-	w[16+7]	 = src[16+11];
-	w[16+8]	 = src[16+8	];
-	w[16+9]  = src[16+13];
-	w[16+10] = src[16+2	];
-	w[16+11] = src[16+7	];
-	w[16+12] = src[16+4	];
-	w[16+13] = src[16+9	];
-	w[16+14] = src[16+14];
-	w[16+15] = src[16+3	];
+void VectorMix(PFN_Salsa pfn, uint32_t x[][16], uint32_t tmp[][16], int r, int rounds = 20) noexcept {
+	int mask = 2*r - 1;
+	SalsaBlockPtr prev = &x[mask];
+	for (int i=0; i<=mask; ++i) {
+		VectorXor(x[i], (const uint32_t*)prev, 16);
+		prev = &tmp[(i & 1)*r + i/2];
+		pfn((uint32_t*)prev, x[i], rounds);
+	}
+	memcpy(x, tmp, 2*r*sizeof(x[0]));
 }
 
-void UnShuffleForSalsa(uint32_t dst[32], const uint32_t w[32]) {
-	dst[0]	= w[0];
-	dst[5]	= w[1];
-	dst[10] = w[2];
-	dst[15] = w[3];
-	dst[12]	= w[4];
-	dst[1]	= w[5];
-	dst[6]	= w[6];
-	dst[11]	= w[7];
-	dst[8]	= w[8];
-	dst[13]	= w[9];
-	dst[2]	= w[10];
-	dst[7]	= w[11];
-	dst[4]	= w[12];
-	dst[9]	= w[13];
-	dst[14]	= w[14];
-	dst[3]	= w[15];		
-
-	dst[16+0]	= w[16+0];
-	dst[16+5]	= w[16+1];
-	dst[16+10]  = w[16+2];
-	dst[16+15]  = w[16+3];
-	dst[16+12]	= w[16+4];
-	dst[16+1]	= w[16+5];
-	dst[16+6]	= w[16+6];
-	dst[16+11]	= w[16+7];
-	dst[16+8]	= w[16+8];
-	dst[16+13]	= w[16+9];
-	dst[16+2]	= w[16+10];
-	dst[16+7]	= w[16+11];
-	dst[16+4]	= w[16+12];
-	dst[16+9]	= w[16+13];
-	dst[16+14]	= w[16+14];
-	dst[16+3]	= w[16+15];
-}
 
 void NeoScryptCore(uint32_t x[][16], uint32_t tmp[][16], uint32_t v[], int r, int rounds, int n, bool dblmix) noexcept {
 	SalsaBlockPtr z = (SalsaBlockPtr)alloca(r*2*16*sizeof(uint32_t));
