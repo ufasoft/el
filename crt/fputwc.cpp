@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com      ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -51,7 +51,7 @@ extern "C" wint_t __cdecl _fputwc_nolock(wchar_t c, FILE *stream) {
 	}
 	while (n--)
 		*p++ = char((c >> 6*n) & 0x3F | 0x80);
-	return 0<_write(fh, buf, p-buf) ? c : WEOF;
+	return 0<_write(fh, buf, unsigned(p-buf)) ? c : WEOF;
 }
 
 extern "C" wint_t __cdecl fputwc(wchar_t c, FILE *stream) {

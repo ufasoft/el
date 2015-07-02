@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com      ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -153,7 +153,7 @@ extern "C" int __cdecl _write_nolock(int fh, const void *buffer, unsigned size) 
 			}
 		}
 		
-		if (pw != wbuf && !::WriteConsoleW(h, wbuf, pw-wbuf, &dwOut, 0)) {
+		if (pw != wbuf && !::WriteConsoleW(h, wbuf, DWORD(pw-wbuf), &dwOut, 0)) {
 			__acrt_errno_map_os_error(::GetLastError());
 			return i;
 		}
