@@ -69,19 +69,22 @@ public:
 	}
 };
 
-#if !UCFG_WDM
+#if !UCFG_WDM      //!!!?
 TraceStream::TraceStream(const path& p, bool bAppend)
 	:	base(m_file)
 {
-	create_directories(p.parent_path());
-
 	File::OpenInfo oi;
 	oi.Path = p;
 	oi.Mode = bAppend ? FileMode::Append : FileMode::Create;
 	oi.Share = FileShare::ReadWrite;
-	m_file.Open(oi);
+
+	try {
+		create_directories(p.parent_path());
+		m_file.Open(oi);
+	} catch (RCExc) {												// not a showstopper
+	}
 }
-#endif
+#endif // !UCFG_WDM
 
 String TruncPrettyFunction(const char *fn) {
 	const char *e = strchr(fn, '('), *b;
@@ -353,22 +356,21 @@ void CTraceWriter::Init(const char* funname) {
 CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
 		m_os.put('\n');
-		string str = m_os.str();		
-		DateTime dt = DateTime::Now();
-		int h = dt.Hour,
-			m = dt.Minute,
-			s = dt.Second,
-			mst = dt.Ticks / 1000 % 10000;
+		string str = m_os.str();
+		LocalDateTime dt = Clock::now().ToLocalTime();
+		tm t = dt;
+		int mst = dt.Ticks / 1000 % 10000;
 		long long tid = GetThreadNumber();
-		char buf[100];
+		char bufTime[20], buf[100];
+		sprintf(bufTime, " %02d:%02d:%02d.%04d ", t.tm_hour, t.tm_min, t.tm_sec, mst);
 		if (m_bPrintDate)
-			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d %02d:%02d:%02d.%04d ", tid, int(dt.Year), int(dt.Month), int(dt.Day), h, m, s, mst);
+			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d%s", tid, 1900+int(t.tm_year), t.tm_mon, t.tm_mday, bufTime);
 		else
-			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%04d ", tid, h, m, s, mst);
+			sprintf(buf, EXT_TID_FORMATTER "%s", tid, bufTime);
 		string date_s = buf + str;
 		string time_str;
 		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
-			sprintf(buf, EXT_TID_FORMATTER " %02d:%02d:%02d.%04d ", tid, h, m, s, mst);
+			sprintf(buf, EXT_TID_FORMATTER "%s", tid, bufTime);
 			time_str = buf + str;
 		}
 

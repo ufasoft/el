@@ -19,10 +19,19 @@ namespace Ext {
 using namespace std;
 
 bool AFXAPI operator==(const ConstBuf& x, const ConstBuf& y) {
-	if (!x.P || !y.P)
-		return x.P == y.P;
-	return x.Size==y.Size &&
-		(x.P==y.P || !memcmp(x.P, y.P, x.Size));
+	return !x.P || !y.P
+		? x.P == y.P
+		: x.Size==y.Size && (x.P==y.P || !memcmp(x.P, y.P, x.Size));
+}
+
+void CPrintable::Print(ostream& os) const {
+	os << ToString();
+}
+
+String CPrintable::ToString() const {
+	ostringstream os;
+	Print(os);
+	return os.str();
 }
 
 const class CRuntimeClass Object::classObject =
@@ -45,7 +54,7 @@ bool CHandleBaseBase::Close(bool bFromDtor) {
 	bool r = false;
 	bool prev = false;
 	if (m_abClosed.compare_exchange_strong(prev, true)) {
-#if !defined(_MSC_VER) || defined(_CPPUNWIND)
+#if UCFG_USE_IN_EXCPETION
 		if (bFromDtor && InException) {
 			try {
 				r = Release();
@@ -75,7 +84,6 @@ SafeHandle::HandleAccess::~HandleAccess() {
 			}
 #endif
 }
-
 
 SafeHandle::SafeHandle(intptr_t handle)
 	:	m_aHandle(handle)
@@ -326,9 +334,18 @@ Exception::Exception(HRESULT hr, RCString message)
 }
 
 Exception::Exception(const error_code& ec, RCString message)
-	:	base(ec, message.empty() ? string() : string(explicit_cast<string>(message)))
+	: base(ec, message.empty() ? string() : string(explicit_cast<string>(message)))
 	, m_message(message)
 {
+#if !UCFG_WCE
+	if (CStackTrace::Use)
+		StackTrace = CStackTrace::FromCurrentThread();
+#endif
+}
+
+Exception::Exception(ExtErr errval, RCString message)
+	: base(make_error_code(errval), message.empty() ? string() : string(explicit_cast<string>(message)))
+	, m_message(message) {
 #if !UCFG_WCE
 	if (CStackTrace::Use)
 		StackTrace = CStackTrace::FromCurrentThread();

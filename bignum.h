@@ -353,7 +353,7 @@ public:
 		size_t nbytes = maxValue.Length / 8 + 1;
 		byte *p = (byte*)alloca(nbytes);
 		uniform_int_distribution<int> dist(0, 255);
-		for (int i = 0; i < nbytes; ++i)
+		for (size_t i = 0; i < nbytes; ++i)
 			p[i] = (byte)dist(rngeng);
 #if UCFG_BIGNUM!='A'
 		byte *ar = (byte*)alloca(nbytes);

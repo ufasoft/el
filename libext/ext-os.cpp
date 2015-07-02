@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 
@@ -287,7 +292,7 @@ bool CEvent::lock(uint32_t dwTimeout) {
 #if UCFG_USE_PTHREADS
 	timespec abstime;
 	if (dwTimeout != INFINITE)
-		abstime = DateTime::UtcNow()+TimeSpan::FromMilliseconds(dwTimeout);
+		abstime = Clock::now()+TimeSpan::FromMilliseconds(dwTimeout);
 	EXT_LOCK (m_mutex) {
 		while (!m_bSignaled) {
 			if (dwTimeout == INFINITE)

@@ -424,6 +424,8 @@ private:
 template <typename EL, typename TR>
 inline std::basic_ostream<EL, TR>& operator<<(std::basic_ostream<EL, TR>& os, const CPrintable& ob) { return os << ob.ToString(); }
 
+inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) { ob.Print(os); return os; }
+
 
 class MacAddress : totally_ordered<MacAddress> {
 public:

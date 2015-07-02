@@ -75,7 +75,7 @@ int AFXAPI Win32Check(LRESULT i) {
 		ec = error_code(dw, system_category());
 	else {
 		HRESULT hr = GetLastHResult();
-		ec = hr ? error_code(hr,  hresult_category()) : ExtErr::UnknownWin32Error;
+		ec = hr ? error_code(hr,  hresult_category()) : make_error_code(ExtErr::UnknownWin32Error);
 	}
 	Throw(ec);
 }
@@ -495,11 +495,59 @@ CodepageCvt::result CodepageCvt::do_out(mbstate_t& state, const wchar_t *_First1
 	if (n > 0) {
 		_Mid1 = _Last1;
 		_Mid2 = _First2+n;
-		return ok;
+		return _Mid1==_Last1 ? ok : partial;
 	}
 	return error;
 }
 
+/*!!!R implemented in codecvt_utf8_utf16
+CodepageCvt::result CodepageCvt::do_in(mbstate_t& s, const char *fb, const char *fe, const char *&fn, wchar_t *tb, wchar_t *te, wchar_t *&tn) const {
+	if (m_cp == CP_UTF8) {
+		tn = tb;
+		for (fn=fb; fn!=fe;) {
+			if (tn == te)
+				return partial;
+			if (!s._Byte) {
+				byte ch = byte(*fn);
+				if (ch < 0x80)
+					s._Wchar = ch;
+				else if (ch < 0xC0)
+					return error;
+				else if (ch < 0xE0) {
+					s._Wchar = ch & 0x1F;
+					s._Byte = 1;
+				} else if (ch < 0xF0) {
+					s._Wchar = ch & 0xF;
+					s._Byte = 2;
+				} else if (ch < 0xF8) {
+					s._Wchar = ch & 7;
+					s._Byte = 3;
+				} else if (ch < 0xFC) {
+					s._Wchar = ch & 3;
+					s._Byte = 4;
+				} else {
+					s._Wchar = ch & 3;
+					s._Byte = 5;
+				}
+				++fn;
+			}
+
+			for (; s._Byte; ++fn) {
+				if (fn == fe)
+					return partial;
+				char ch = *fn;
+				if (!(ch & 0x80) || (ch & 0x40))
+					return error;
+				s._Wchar = (s._Wchar << 6) | (ch & 0x3F);
+				s._Byte--;
+			}
+			*tn++ = exchange(s._Wchar, 0);
+		}
+		return s._Byte ? partial : ok;
+	} else {
+		Throw(E_NOTIMPL);
+	}
+}*/
 
 HRESULT CDllServer::OnRegister() {
 #if UCFG_COM_IMPLOBJ
@@ -737,6 +785,14 @@ public:
 		for (const Win32CodeErrc *p=s_win32code2errc; (code=p->Code); ++p)
 			if (code == errval)
 				return p->Errc;
+		switch (errval) {
+		case ERROR_WRONG_PASSWORD:
+		case ERROR_INVALID_PASSWORD:
+			return ExtErr::InvalidPassword;
+		case ERROR_LOGON_FAILURE:		return ExtErr::LogonFailure;
+		case ERROR_PWD_TOO_SHORT:		return ExtErr::PasswordTooShort;
+		case ERROR_CRC: 				return ExtErr::Checksum;
+		}
 		return error_condition(errval, *this);
 	}
 

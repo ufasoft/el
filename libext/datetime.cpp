@@ -453,16 +453,6 @@ inline DateTime DateTime::PreciseCorrect(int64_t ticks) {
 	return ticks;
 }*/
 
-DateTime DateTime::UtcNow() noexcept {
-#if !UCFG_USE_POSIX
-	if (!s_cntDisablePreciseTime) {
-		if (CPreciseTimeBase *preciser = CPreciseTimeBase::s_pCurrent)		// get pointer to avoid Race Condition
-			return DateTime(preciser->GetTime(&SimpleUtc));
-	}
-#endif
-	return DateTime(SimpleUtc());
-}
-
 LocalDateTime DateTime::ToLocalTime() {
 #if UCFG_USE_POSIX
 	timeval tv;
@@ -483,10 +473,6 @@ LocalDateTime DateTime::ToLocalTime() {
 #endif
 }
 
-
-LocalDateTime DateTime::Now() {
-	return UtcNow().ToLocalTime();
-}
 
 
 #ifdef WIN32
@@ -667,7 +653,13 @@ int64_t AFXAPI to_time_t(const DateTime& dt) {
 }
 
 Clock::time_point AFXAPI Clock::now() noexcept {
-	return DateTime::UtcNow();
+#if !UCFG_USE_POSIX
+	if (!s_cntDisablePreciseTime) {
+		if (CPreciseTimeBase *preciser = CPreciseTimeBase::s_pCurrent)		// get pointer to avoid Race Condition
+			return DateTime(preciser->GetTime(&DateTime::SimpleUtc));
+	}
+#endif
+	return DateTime(DateTime::SimpleUtc());
 }
 
 

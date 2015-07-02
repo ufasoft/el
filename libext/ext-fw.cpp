@@ -258,7 +258,7 @@ Version::Version(RCString s) {
 		Build = m[4].matched ? atoi(String(m[4])) : -1;
 		Revision = m[6].matched ? atoi(String(m[6])) : -1;
 	} else
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 }
 #endif
 
@@ -275,12 +275,12 @@ Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
 
 String Version::ToString(int fieldCount) const {
 	if (fieldCount<0 || fieldCount>4)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	int ar[4] = { Major, Minor, Build, Revision };
 	ostringstream os;
 	for (int i=0; i<fieldCount; ++i) {
 		if (ar[i] == -1)
-			Throw(E_INVALIDARG);
+			Throw(errc::invalid_argument);
 		if (i)
 			os << ".";
 		os << ar[i];
@@ -813,12 +813,12 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 				break;
 			}
 			if (uint16_t(ch) >= 256)
-				Throw(E_INVALIDARG);
+				Throw(errc::invalid_argument);
 			bs.Write(5, valTable[ch]);
 		}
 	}
 	if (bs.Offset)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	return ms;
 }
 
@@ -1089,7 +1089,7 @@ void CAnnoyer::OnAnnoy() {
 }
 
 void CAnnoyer::Request() {
-	DateTime now = DateTime::UtcNow();
+	DateTime now = Clock::now();
 	if (now-m_prev > m_period) {
 		OnAnnoy();
 		m_prev = now;

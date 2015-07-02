@@ -187,10 +187,16 @@ ENUM_CLASS(DayOfWeek) {
 
 class LocalDateTime;
 
-class DateTime : public DateTimeBase {
+struct Clock;
+
+class DateTime : public DateTimeBase {		//!!! should be : time_point<Clock, ...>
 	typedef DateTimeBase base;
 public:
 	typedef DateTime class_type;
+	typedef Clock clock;
+
+	typedef std::chrono::duration<int64_t, ratio<1, 10000000>> duration;
+	typedef std::chrono::time_point<system_clock, duration> time_point;
 
 	static const int64_t s_span1600 = ((int64_t)10000000*3600*24)*(365*1600+388); //!!!+day/4; //!!! between 0 C.E. to 1600 C.E. as MS calculates  
 
@@ -230,8 +236,6 @@ public:
 
 #endif
 
-	typedef std::chrono::duration<int64_t, ratio<1, 10000000>> duration;
-	typedef std::chrono::time_point<system_clock, duration> time_point;
 
 	operator time_point() const {
 		return time_point(duration(Ticks - from_time_t(0).Ticks));
@@ -319,8 +323,6 @@ public:
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
 
 	LocalDateTime ToLocalTime();
-	static LocalDateTime AFXAPI Now();
-	static DateTime AFXAPI UtcNow() noexcept;
 
 	/*!!!
 	static DateTime AFXAPI get_PreciseNow();
@@ -533,18 +535,27 @@ protected:
 	virtual int64_t GetFrequency(int64_t stPeriod, int64_t tscPeriod);
 };
 
+struct Clock {
+	static const bool is_steady = false;
+
+	typedef TimeSpan duration;
+	typedef	DateTime time_point;
+
+	static time_point AFXAPI now() noexcept;
+};
+
 class MeasureTime {
 public:
 	DateTime Start;
 	TimeSpan& Span;
 
 	MeasureTime(TimeSpan& span)
-		:	Start(DateTime::UtcNow())
+		:	Start(Clock::now())
 		,	Span(span)
 	{}
 
 	TimeSpan End() {
-		return Span = DateTime::UtcNow()-Start;
+		return Span = Clock::now()-Start;
 	}
 
 	~MeasureTime() {
@@ -554,14 +565,6 @@ public:
 
 int64_t AFXAPI to_time_t(const DateTime& dt);
 
-struct Clock {
-	static const bool is_steady = false;
-
-	typedef TimeSpan duration;
-	typedef	DateTime time_point;
-
-	static time_point AFXAPI now() noexcept;
-};
 
 
 

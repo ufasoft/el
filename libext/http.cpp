@@ -581,7 +581,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 				Headers.Set("Authorization", "Basic "+Convert::ToBase64String(ConstBuf(psz, strlen(psz))));
 			}
 
-			DWORD flags = 0;
+			DWORD flags = INTERNET_FLAG_NO_CACHE_WRITE;		// tp prevent ERROR_WINHTTP_OPERATION_CANCELLED
 			if (RequestUri.Scheme == "https")
 				flags |= INTERNET_FLAG_SECURE;
 			if (Method == "GET") {
@@ -813,7 +813,7 @@ Blob WebClient::UploadFile(RCString address, const path& fileName) {
 	m_request = HttpWebRequest(address);
 
 	MemoryStream ms;
-	String boundary = EXT_STR("---------------------" << hex << DateTime::UtcNow().Ticks);
+	String boundary = EXT_STR("---------------------" << hex << Clock::now().Ticks);
 	const char *pBoundary = boundary;
 	m_request.AdditionalHeaders.Set("Content-Type", "multipart/form-data; boundary=" + boundary);
 
@@ -857,7 +857,7 @@ ptr<WebProxy> WebProxy::FromString(RCString s) {
 		ProxyType typ = m[1].str()=="socks" ? ProxyType::Socks : ProxyType::Http;
 		return new WebProxy(String(m[2]), Convert::ToUInt16(String(m[3])), typ);
 	} else
-		Throw(HRESULT_FROM_WIN32(ERROR_INVALID_PARAMETER));
+		Throw(errc::invalid_argument);
 }
 
 } // Ext::

@@ -78,7 +78,7 @@ ENUM_CLASS(ExtErr) {
 	, InvalidCast
 	, MaxTries
 	, NonEmptyPointer
-	, ObjectNotInitialized
+	, ObjectNotInitialized					= 70
 	, ObjectDisposed
 	, Dynamic_Library
 	, CodeNotReachable
@@ -87,12 +87,17 @@ ENUM_CLASS(ExtErr) {
 	, Overflow
 	, EncodingNotSupported
 	, Protocol_Violation
-	, New_Protocol_Version
+	, NewProtocolVersion
+	, ObsoleteProtocolVersion				= 80
 	, FileFormat
 	, ReadTapeSync
 	, CrashRpt
 	, RecursionTooDeep
 	, Map
+	, InvalidPassword
+	, LogonFailure
+	, PasswordTooShort
+	, Checksum
 	
 	, DB_NoRecord = 2000
 	, DB_DupKey

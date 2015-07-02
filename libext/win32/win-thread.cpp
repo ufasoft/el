@@ -351,8 +351,7 @@ BOOL CWinThread::ProcessMessageFilter(int code, MSG *lpMsg) {
 				return FALSE;
 			pThreadState->m_bInMsgFilter = TRUE;    // avoid reentering this code
 			MSG msg = *lpMsg;
-			if (m_pActiveWnd->IsEnabled() && PreTranslateMessage(msg))
-			{
+			if (m_pActiveWnd->IsEnabled && PreTranslateMessage(msg)) {
 				pThreadState->m_bInMsgFilter = FALSE;
 				return TRUE;
 			}
@@ -367,7 +366,6 @@ static LRESULT CALLBACK _AfxMsgFilterHook(int code, WPARAM wParam, LPARAM lParam
 	CWinThread* pThread;
 	if (AfxGetModuleState()->m_bDLL || (code < 0 && code != MSGF_DDEMGR) || !(pThread = AfxGetThread()))
 		return AfxGetThreadState()->m_hookMsg.CallNext(code, wParam, lParam);
-	ASSERT(pThread != NULL);
 	return (LRESULT)pThread->ProcessMessageFilter(code, (LPMSG)lParam);
 }
 

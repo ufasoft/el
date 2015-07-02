@@ -39,7 +39,8 @@ inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v, const char *funname
 class CPrintable {
 public:
 	virtual ~CPrintable() {}
-	virtual String ToString() const =0;
+	virtual void Print(std::ostream& os) const;
+	virtual String ToString() const;
 };
 
 
@@ -80,10 +81,10 @@ public:
 
 	explicit Exception(HRESULT hr = 0, RCString message = "");
 	explicit Exception(const error_code& ec, RCString message = "");
+	explicit Exception(ExtErr errval, RCString message = "");
 	~Exception() noexcept {}		//!!! necessary for GCC 4.6
 	String ToString() const override;
-
-
+	
 	const char *what() const noexcept override;
 
 #if !UCFG_WCE

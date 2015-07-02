@@ -1289,7 +1289,7 @@ __END_DECLS
 
 __BEGIN_DECLS
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !UCFG_WDM
 	inline int __cdecl API_close(int fh) { return _close(fh); }
 #endif
 
