@@ -19,6 +19,14 @@ class Exception;
 //!!!R typedef const Exception& RCExc;
 //typedef const std::exception& RCExc;
 
+#ifndef UCFG_USE_IN_EXCPETION
+#	if defined(_CPPUNWIND) || !defined(_MSC_VER)
+#		define UCFG_USE_IN_EXCPETION (!UCFG_WDM)		//!!!?
+#	else
+#		define UCFG_USE_IN_EXCPETION 0
+#	endif
+#endif
+
 class CHandleBaseBase {
 public:
 	mutable atomic<int> m_aInUse;
@@ -32,18 +40,12 @@ public:
 	virtual bool Release() const =0;
 	bool Close(bool bFromDtor = false);
 	
-	void swap(CHandleBaseBase& r) {
-		int t = m_aInUse;
-		m_aInUse = r.m_aInUse.load();
-		r.m_aInUse = t;
-
-		bool tb = m_abClosed;
-		m_abClosed = r.m_abClosed.load();
-		r.m_abClosed = tb;
-	}
+	void swap(CHandleBaseBase& r);
 protected:
 	atomic<bool> m_abClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
+#if UCFG_USE_IN_EXCPETION
 	CInException InException;
+#endif
 };
 
 template <class T>
@@ -251,35 +253,8 @@ public:
 	SafeHandle(intptr_t handle);
 	virtual ~SafeHandle();
 
-	SafeHandle(EXT_RV_REF(SafeHandle) rv)
-		:	m_invalidHandleValue(rv.m_invalidHandleValue)
-		,	m_bOwn(rv.m_bOwn)
-	{
-		m_aHandle = rv.m_aHandle.load();
-		m_aInUse = rv.m_aInUse.load();
-		m_abClosed = rv.m_abClosed.load();
-
-		rv.m_aHandle = rv.m_invalidHandleValue;
-		rv.m_bOwn = true;
-		rv.m_aInUse = 0;
-		rv.m_abClosed = true;
-	}
-
-	SafeHandle& operator=(EXT_RV_REF(SafeHandle) rv) {
-		InternalReleaseHandle();
-
-		m_aHandle = rv.m_aHandle.load();
-		m_bOwn = rv.m_bOwn;
-		m_aInUse = rv.m_aInUse.load();
-		m_abClosed = rv.m_abClosed.load();
-
-		rv.m_aHandle = rv.m_invalidHandleValue;
-		rv.m_bOwn = true;
-		rv.m_aInUse = 0;
-		rv.m_abClosed = true;
-
-		return *this;
-	}
+	SafeHandle(EXT_RV_REF(SafeHandle) rv);
+	SafeHandle& operator=(EXT_RV_REF(SafeHandle) rv);
 
 //!!!	void Release() const;
 	//!!!  void CloseHandle();
@@ -296,14 +271,7 @@ public:
 		return Valid() ? EXT_CONVERTIBLE_TO_TRUE : 0;
 	}
 
-	void swap(SafeHandle& r) {
-		base::swap(r);
-		std::swap(m_bOwn, r.m_bOwn);
-
-		intptr_t t = m_aHandle;
-		m_aHandle = r.m_aHandle.load();
-		r.m_aHandle = t;
-	}
+	void swap(SafeHandle& r);
 
 #if UCFG_WDM
 protected:
