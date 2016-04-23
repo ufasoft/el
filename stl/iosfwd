@@ -1,0 +1,192 @@
+/*######   Copyright (c) 1999-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
+#pragma once
+
+namespace ExtSTL {
+
+typedef __int64 streamoff;
+typedef __int64 streamsize;
+
+
+
+#if !UCFG_WCE
+#	define _Fpz	0
+#endif
+
+template<class _St>
+class fpos {
+	typedef fpos<_St> _Myt;
+public:
+	fpos(streamoff _O = 0)
+		: _Off(_O), _Fpos(_Fpz)
+	{//!!!LOCKIT
+		_State = _Stz;
+	}
+	fpos(_St _S, fpos_t _F)
+		: _Off(0), _Fpos(_F), _State(_S) {}
+	_St state() const
+	{
+		return (_State);
+	}
+	void state(_St _S)
+	{
+		_State = _S;
+	}
+
+	fpos_t seekpos() const { return _Fpos; }
+
+	fpos_t get_fpos_t() const
+	{
+		return (_Fpos);
+	}
+
+	//operator streamoff() const {return (_Off + _FPOSOFF(_Fpos)); }
+	operator streamoff() const { return (_Off + _Fpos); }
+
+	streamoff operator-(const _Myt& _R) const
+	{
+		return ((streamoff)*this - (streamoff)_R);
+	}
+	_Myt& operator+=(streamoff _O)
+	{
+		_Off += _O;
+		return (*this);
+	}
+	_Myt& operator-=(streamoff _O)
+	{
+		_Off -= _O;
+		return (*this);
+	}
+	_Myt operator+(streamoff _O) const
+	{
+		_Myt _Tmp = *this;
+		return (_Tmp += _O);
+	}
+	_Myt operator-(streamoff _O) const
+	{
+		_Myt _Tmp = *this;
+		return (_Tmp -= _O);
+	}
+	bool operator==(const _Myt& _R) const
+	{
+		return ((streamoff)*this == (streamoff)_R);
+	}
+	bool operator!=(const _Myt& _R) const
+	{
+		return (!(*this == _R));
+	}
+private:
+	static _St _Stz;
+	streamoff _Off;
+	fpos_t _Fpos;
+	_St _State;
+};
+template<class _St>
+_St fpos<_St>::_Stz;
+
+typedef fpos<mbstate_t> streampos;
+
+template <typename EL>
+struct char_traits_Base {
+	typedef EL char_type;
+	typedef int int_type;
+	typedef streampos pos_type; //!!! should be streampos
+	typedef streamoff off_type;
+	typedef _Mbstatet state_type;
+
+	static int_type eof() { return EOF; }
+	static int_type not_eof(const int_type& m) { return m!=eof() ? m : 0; }
+
+	static char_type to_char_type(const int_type& a) { return (char_type)a; }
+	static int_type to_int_type(EL ch) { return ch; }
+
+	static bool eq(const char_type& a, const char_type& b) { return a == b; }
+	static bool eq_int_type(const int_type& a, const int_type& b) { return a == b; }
+
+	static size_t length(const char_type *p) {
+		const char_type *e = p;
+		while (!eq(*e, char_type()))
+			++e;
+		return e-p;
+	}
+
+	static void assign(char_type& dst, const char_type& src) {
+		dst = src;
+	}
+
+	static EL *assign(char_type *p, size_t count, char_type ch) {
+		std::fill(p, p+count, ch);
+		return p;
+	}
+
+	static const char_type* find(const char_type* p, size_t count, const char_type& ch) {
+		for (; count--; ++p)
+			if (eq(*p, ch))
+				return p;
+		return 0;
+	}
+
+	static char_type* move(char_type* dst, const char_type* src, size_t count) {
+		return (char_type*)memmove(dst, src, count*sizeof(char_type));
+	}
+};
+
+template <typename EL>
+struct char_traits : public char_traits_Base<EL> {
+};
+
+template<> struct char_traits<char> : public char_traits_Base<char> {
+	static int_type eof() { return EOF; }
+
+	static int_type to_int_type(char ch) {
+		return (unsigned char)ch;
+	}
+
+	static size_t length(const char_type *p) {
+		return strlen(p);
+	}
+
+	static void assign(char_type& dst, const char_type& src) {		//!!!
+		dst = src;
+	}
+
+	static char *assign(char *p, size_t count, char ch) {
+		return (char*)memset(p, ch, count);
+	}
+
+	static const char_type* find(const char_type* p, size_t count, const char_type& ch) {
+		return (const char_type*)memchr(p, ch, count);
+	}
+
+	static int compare(const char_type* s1, const char_type* s2, std::size_t count) {
+		return memcmp(s1, s2, count);
+	}
+};
+
+template<> struct char_traits<wchar_t> : public char_traits_Base<wchar_t> {
+
+	static int_type eof() { return WEOF; }
+
+	static size_t length(const char_type *p) {
+		return wcslen(p);
+	}
+
+	static wchar_t *assign(wchar_t *p, size_t count, wchar_t ch) {
+		return wmemset(p, ch, count);
+	}
+
+	static const char_type* find(const char_type* p, size_t count, const char_type& ch) {
+		return (const char_type*)wmemchr(p, ch, count);
+	}
+
+	static int compare(const char_type* s1, const char_type* s2, std::size_t count) {
+		return wmemcmp(s1, s2, count);
+	}
+};
+
+
+} // ExtSTL::
+
