@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include EXT_HEADER_SYSTEM_ERROR
+
 #if UCFG_COM
 	typedef WCHAR OLECHAR;
 	typedef OLECHAR *BSTR;
@@ -18,10 +20,27 @@
 
 //!!!#include "libext.h"
 
+namespace Ext {
 
-namespace std { template<> struct std::is_error_code_enum<Ext::ExtErr> : true_type {}; }
+
+const std::error_category& AFXAPI ext_category();
+
+inline std::error_code make_error_code(ExtErr v) { return std::error_code(int(v), ext_category()); }
+inline std::error_condition make_error_condition(ExtErr v) { return std::error_condition(int(v), ext_category()); }
+
+
+} // Ext::
+
+namespace std { template<> struct std::is_error_condition_enum<Ext::ExtErr> : true_type {}; }
 
 namespace Ext {
+
+DECLSPEC_NORETURN __forceinline void ThrowImp(ExtErr errval) { ThrowImp(make_error_code(errval)); }
+DECLSPEC_NORETURN __forceinline void ThrowImp(ExtErr errval, const char *funname, int nLine) { ThrowImp(make_error_code(errval), funname, nLine); }
+
+#if !UCFG_DEFINE_THROW
+DECLSPEC_NORETURN __forceinline void AFXAPI Throw(ExtErr v) { ThrowImp(v); }
+#endif
 
 using std::atomic;
 
@@ -306,10 +325,6 @@ public:
 };
 
 
-const std::error_category& AFXAPI ext_category();
-
-inline std::error_code make_error_code(ExtErr v) { return std::error_code(int(v), ext_category()); }
-inline std::error_condition make_error_condition(ExtErr v) { return std::error_condition(int(v), ext_category()); }
 
 
 

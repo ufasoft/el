@@ -82,7 +82,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 #if UCFG_HAS_REALLOC
 		d = (CStringBlobBuf*)Realloc(this, cbNew);
 #else
-		memcpy((d = (CStringBlobBuf*)Malloc(cbNew)), this, std::min((size_t)d->m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), cbNew));
+		memcpy((d = (CStringBlobBuf*)Malloc(cbNew)), this, std::min((size_t)m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), cbNew));
 		free(this);
 #endif
 		d->m_size = size;	
