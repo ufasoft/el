@@ -275,7 +275,7 @@ AFX_MODULE_STATE::AFX_MODULE_STATE(bool bDLL, WNDPROC pfnAfxWndProc)
 	,	m_dwVersion(_MFC_VER),
 #else
 AFX_MODULE_STATE::AFX_MODULE_STATE(bool bDLL)
-	:	
+	:
 #endif
 	m_bDLL(bDLL)
 	,	m_fRegisteredClasses(0)
@@ -483,7 +483,7 @@ const AFX_MSGMAP* CCmdTarget::GetThisMessageMap() {
 		NULL,
 		&_messageEntries[0]
 	};
-	return &messageMap;	
+	return &messageMap;
 }
 
 const AFX_MSGMAP* CCmdTarget::GetMessageMap() const {
@@ -565,7 +565,7 @@ HRESULT CDllServer::OnUnregister() {
 #endif
 }
 
-#if UCFG_COMPLEX_WINAPP	
+#if UCFG_COMPLEX_WINAPP
 CWinThread * AFXAPI AfxGetThread() {
 	ThreadBase *t = Thread::TryGetCurrentThread();
 	CWinThread *pThread = t ? t->AsWinThread() : 0;
@@ -585,6 +585,7 @@ int AFXAPI AfxMessageBox(RCString text, UINT nType, UINT nIDHelp) {
 #endif
 }
 
+#if UCFG_COM    //!!!?
 int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType, UINT nIDHelp) {
 	String string;
 	string.Load(nIDPrompt);
@@ -592,7 +593,7 @@ int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType, UINT nIDHelp) {
 		nIDHelp = nIDPrompt;
 	return AfxMessageBox(string, nType, nIDHelp);
 }
-
+#endif
 
 void AfxWinTerm() {
 	//!!!  ::CoFreeUnusedLibraries();
@@ -605,13 +606,14 @@ void AfxWinTerm() {
 	}
 }
 
+#if UCFG_EXTENDED && UCFG_WIN_MSG
 static int AfxWinMainEx(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lpCmdLine, int nCmdShow) {
 	AFX_MODULE_STATE* pModuleState = AfxGetModuleState();
 	pModuleState->m_bDLL = false;
 	int nReturnCode = 1;
 	try {
 		AfxWinInit(hInstance, hPrevInstance, lpCmdLine, nCmdShow);
-		CWinThread* pThread = AfxGetThread(); 
+		CWinThread* pThread = AfxGetThread();
 		bool rc = pThread->InitInstance();
 #if UCFG_WIN_MSG
 		if (rc)
@@ -650,6 +652,9 @@ int AFXAPI AfxWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, RCString lpC
 	AfxWinTerm();
 	return nReturnCode;
 }
+
+#endif // UCFG_EXTENDED && UCFG_WIN_MSG
+
 
 
 static EXT_THREAD_PTR(AFX_MODULE_STATE) t_pModuleState;
@@ -786,6 +791,7 @@ public:
 			if (code == errval)
 				return p->Errc;
 		switch (errval) {
+		case ERROR_HANDLE_EOF:			return ExtErr::EndOfStream;
 		case ERROR_WRONG_PASSWORD:
 		case ERROR_INVALID_PASSWORD:
 			return ExtErr::InvalidPassword;

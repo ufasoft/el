@@ -14,6 +14,10 @@
 #	include <wincon.h>
 #endif
 
+
+#include <afxmsg_.h>
+
+
 #include <psapi.h>
 
 #if (!defined(_CRTBLD) || UCFG_CRT=='U') && UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
@@ -156,7 +160,7 @@ public:
 	Rectangle()
 	{}
 
-	Rectangle(int l, int t, int w, int h) { 
+	Rectangle(int l, int t, int w, int h) {
 		left = l;
 		top = t;
 		right = l+w;
@@ -253,7 +257,7 @@ typedef Rectangle Rect;
 }
 
 #			if UCFG_OLE
-#				include "ext-com.h"	
+#				include "ext-com.h"
 #				include "excom.h"
 #			endif
 
@@ -297,7 +301,7 @@ namespace Ext
 	*/
 
 	/*!!!
-	template<> struct hash<String> 
+	template<> struct hash<String>
 	{
 	size_t operator()(RCString s) const
 	};
@@ -463,12 +467,12 @@ public:
 	DEFPROP_GET(const VS_FIXEDFILEINFO&, FixedInfo);
 
 	Version GetFileVersionN() {
-		const VS_FIXEDFILEINFO& fi = FixedInfo;		
-		return Version::FromFileInfo(fi.dwFileVersionMS, fi.dwFileVersionLS);	
+		const VS_FIXEDFILEINFO& fi = FixedInfo;
+		return Version::FromFileInfo(fi.dwFileVersionMS, fi.dwFileVersionLS);
 	}
 
 	Version GetProductVersionN() {
-		const VS_FIXEDFILEINFO& fi = FixedInfo;		
+		const VS_FIXEDFILEINFO& fi = FixedInfo;
 		return Version::FromFileInfo(fi.dwProductVersionMS, fi.dwProductVersionLS);
 	}
 
@@ -585,7 +589,7 @@ template <class T> class CHandleMap {
 	std::unordered_map<HANDLE, T*> m_permanentMap;
 	std::unordered_map<HANDLE, T*> m_temporaryMap;
 public:
-	~CHandleMap() { 
+	~CHandleMap() {
 		DeleteTemp();
 	}
 
@@ -625,7 +629,7 @@ template <class T> void CHandleMap<T>::SetPermanent(HANDLE h, T* permOb) {
 }
 
 template <class T> void CHandleMap<T>::RemoveHandle(HANDLE h) {
-	m_permanentMap.erase(h);  
+	m_permanentMap.erase(h);
 }
 
 template <class T> T* CHandleMap<T>::LookupPermanent(HANDLE h) {
@@ -756,7 +760,7 @@ public:
 	CFactories m_factoryList;
 #endif
 #if UCFG_OCC
-	observer_ptr<COccManager> m_pOccManager;	
+	observer_ptr<COccManager> m_pOccManager;
 #endif
 	void (AFXAPI *m_pfnFilterToolTipMessage)(MSG*, CWnd*);
 #if defined(_AFXDLL) && UCFG_EXTENDED
@@ -847,7 +851,7 @@ class AFX_CLASS AFX_MAINTAIN_STATE_COM : public AFX_MAINTAIN_STATE2 {
 	typedef AFX_MAINTAIN_STATE2 base;
 public:
 	HRESULT HResult;
-	String Description;	
+	String Description;
 
 	AFX_MAINTAIN_STATE_COM(CComObjectRootBase *pBase);
 	AFX_MAINTAIN_STATE_COM(CComClass *pComClass);
@@ -919,6 +923,7 @@ private:
 	int m_cp;
 
 	EXT_API result do_out(mbstate_t& state, const wchar_t *_First1, const wchar_t *_Last1, const wchar_t *& _Mid1, char *_First2, char *_Last2, char *& _Mid2) const override;
+//	EXT_API result do_in(mbstate_t& s, const char *fb, const char *fe, const char *&fn, wchar_t *tb, wchar_t *te, wchar_t *&tn) const override;
 };
 
 AFX_API void AFXAPI AfxCoreInitModule();
@@ -934,6 +939,13 @@ inline MSG& AFXAPI AfxGetCurrentMessage() {
 AFX_API void * AFXAPI AfxGetResource(const CResID& resID, const CResID& lpszType);
 AFX_API bool AFXAPI AfxHasResourceString(UINT nIDS);
 AFX_API bool AFXAPI AfxHasResource(const CResID& name, const CResID& typ);
+
+
+inline SYSTEM_INFO AFXAPI GetSystemInfo() {
+	SYSTEM_INFO r;
+	::GetSystemInfo(&r);
+	return r;
+}
 
 } // Ext::
 
