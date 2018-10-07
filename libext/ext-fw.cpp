@@ -1792,8 +1792,10 @@ HRESULT AFXAPI ToHResult(const system_error& ex) {
 		return (HRESULT)(((ecode)& 0x0000FFFF) | (FACILITY_OS << 16) | 0x80000000);
 	else if (cat == hresult_category())
 		return ecode;
+#ifdef _WIN32
 	else if (cat == ntos_category())
 		return HRESULT_FROM_NT(ecode);
+#endif
 	else {
 		int fac = FACILITY_UNKNOWN;
 		for (const ErrorCategoryBase *p=ErrorCategoryBase::Root; p; p=p->Next) {
