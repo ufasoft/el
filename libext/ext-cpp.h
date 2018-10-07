@@ -942,7 +942,7 @@ template <typename T> struct CodeMessage {
 };
 
 template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessage<T> (&table)[N], int errval) {
-	for (const CodeMessage<T> *p = table; p != end(table); ++p)
+	for (const CodeMessage<T> *p = table; p != table + N; ++p)
 		if (int(p->Code) == errval)
 			return p->Msg;
 	return nullptr;
