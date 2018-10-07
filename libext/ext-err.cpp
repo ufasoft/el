@@ -87,15 +87,20 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::Overflow										, "Overlow error"								}
 	, { ExtErr::EncodingNotSupported							, "Encoding not supported"						}
 	, { ExtErr::Protocol_Violation								, "Protocol Violation"							}
-	, { ExtErr::New_Protocol_Version							, "New Unsupported Protocol Verion used"		}
+	, { ExtErr::NewProtocolVersion								, "New Unsupported Protocol Verion used"		}
+	, { ExtErr::ObsoleteProtocolVersion							, "Obsolete Unsupported Protocol Verion used"	}
 	, { ExtErr::FileFormat										, "Input File Format violated"					}
-	, { ExtErr::ReadTapeSync									, "Synchronization error during reading of Tape"	}
+	, { ExtErr::ReadTapeSync									, "Synchronization error during reading of Tape"}
 	, { ExtErr::CrashRpt										, "CrashRpt error"								}
 	, { ExtErr::RecursionTooDeep								, "Recusion Too Deep"							}
-	, { ExtErr::Map												, "Error in MapFile"		 }
-	, { ExtErr::DB_NoRecord										, "No record found for scalar DB query"		 }
-	, { ExtErr::DB_DupKey										, "Cannot insert Duplicate Key into Database"		 }
-	, { ExtErr::DB_Corrupt										, "Database corruption"		 }
+	, { ExtErr::Map												, "Error in MapFile"		 					}
+	, { ExtErr::InvalidPassword									, "The Password is not correct"		 			}
+	, { ExtErr::LogonFailure									, "Unknown user name or bad password"		 	}
+	, { ExtErr::PasswordTooShort								, "The password provided is too short"		 	}
+	, { ExtErr::Checksum										, "Checksum error"					 			}
+	, { ExtErr::DB_NoRecord										, "No record found for scalar DB query"		 	}
+	, { ExtErr::DB_DupKey										, "Cannot insert Duplicate Key into Database"	}
+	, { ExtErr::DB_Corrupt										, "Database corruption"		 					}
 	, { ExtErr::DB_Version										, "Database created with newer version of software"		 }
 	, { ExtErr::DB_InternalError								, "Internal Error of DB engine"		 }
 	, { ExtErr::JSON_Parse										, "JSON Parse error"		 }
@@ -126,14 +131,14 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::SOCKS_AuthNotSupported							, "Server's authentication method does not supported by client"		 }
 	, { ExtErr::SOCKS_BadUserOrPassword							, "Bad SOCKS Username or Password"		 }
 	, { ExtErr::SOCKS_Base										, "Base SOCKS error"		 }
-	, { ExtErr::SOCKS_GeneralFailure							, "General SOCKS server failure"		 }
-	, { ExtErr::SOCKS_NotAllowedByRuleset						, "Connection not allowed by ruleset"		 }
-	, { ExtErr::SOCKS_NetworkUnreachable						, "Network unreachable"		 }
-	, { ExtErr::SOCKS_HostUnreachable							, "Host unreachable"		 }
-	, { ExtErr::SOCKS_Refused									, "Connection refused"		 }
-	, { ExtErr::SOCKS_TTLExpired								, "TTL expired"		 }
-	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 }
-	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 }
+	, { ExtErr::SOCKS_GeneralFailure							, "General SOCKS server failure"		 	}
+	, { ExtErr::SOCKS_NotAllowedByRuleset						, "Connection not allowed by ruleset"		}
+	, { ExtErr::SOCKS_NetworkUnreachable						, "Network unreachable"		 				}
+	, { ExtErr::SOCKS_HostUnreachable							, "Host unreachable"		 				}
+	, { ExtErr::SOCKS_Refused									, "Connection refused"		 				}
+	, { ExtErr::SOCKS_TTLExpired								, "TTL expired"		 						}
+	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 		}
+	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 			}
 };
 	
 
