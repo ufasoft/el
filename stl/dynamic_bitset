@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2012-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 #define _DYNAMIC_BITSET_
 
@@ -53,7 +58,7 @@ public:
 protected:
 	size_type m_size;
 
-	virtual byte& ByteRef(size_t pos) const =0;
+	virtual uint8_t& ByteRef(size_t pos) const =0;
 };
 
 template <typename T = unsigned long long>
@@ -120,7 +125,7 @@ public:
 	}
 
 	bool test(size_type pos) const {
-		return ByteRefInline(pos) & byte(1 << (pos & 7));
+		return ByteRefInline(pos) & uint8_t(1 << (pos & 7));
 	}
 	
 	bool operator[](size_type pos) const { return test(pos); }
@@ -184,13 +189,13 @@ public:
 		return *this;
 	}
 private:
-	inline byte& ByteRefInline(size_t pos) const {
-		return *((byte*)&m_data[0] + (pos >> 3));
+	inline uint8_t& ByteRefInline(size_t pos) const {
+		return *((uint8_t*)&m_data[0] + (pos >> 3));
 	}
 
-	byte& ByteRef(size_t pos) const override {
+	uint8_t& ByteRef(size_t pos) const override {
 		ASSERT(pos < size());
-		return *((byte*)&m_data[0] + (pos >> 3));
+		return *((uint8_t*)&m_data[0] + (pos >> 3));
 	}
 
 	void ClearLastBits() {
@@ -231,7 +236,7 @@ using ExtSTL::to_block_range;
 }
 
 namespace Ext {
-uint64_t ToUInt64AtBytePos(const std::dynamic_bitset<byte>& bs, size_t pos);
+uint64_t ToUInt64AtBytePos(const std::dynamic_bitset<uint8_t>& bs, size_t pos);
 }
 
 
