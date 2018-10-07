@@ -154,7 +154,7 @@ static ZZ ZZFromSignedBytes(const uint8_t* p, size_t n) {
 
 #	if LONG_MAX==0x7fffffff
 BigInteger::BigInteger(long n)
-	:	m_zz(ZZFromSignedBytes((byte*)&n, sizeof(n)))
+	:	m_zz(ZZFromSignedBytes((uint8_t*)&n, sizeof(n)))
 {
 }
 #	endif
@@ -540,7 +540,7 @@ Blob BigInteger::ToBytes() const {
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const BigInteger& n) {
 	DWORD nbytes = DWORD((n.Length+8)/8);
 #if UCFG_BIGNUM!='A'
-	uint8_t* p = (byte*)alloca(nbytes);
+	uint8_t* p = (uint8_t*)alloca(nbytes);
 	n.ToBytes(p, nbytes);
 #else
 	const BASEWORD *p = n.Data;
@@ -679,7 +679,7 @@ BigInteger BigInteger::operator~() const {
 	ExtendTo(p, count);
 	for (int i=0; i<count; ++i)
 		p[i] = ~p[i];
-	return BigInteger((const byte*)p, (count)*sizeof(BASEWORD));
+	return BigInteger((const uint8_t*)p, (count)*sizeof(BASEWORD));
 #else
 	BASEWORD *p = (BASEWORD*)alloca(m_count*sizeof(BASEWORD));
 	for (size_t i=0; i<m_count; i++)
