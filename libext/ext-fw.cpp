@@ -42,7 +42,7 @@
 #endif
 
 
-namespace Ext { 
+namespace Ext {
 using namespace std;
 
 static bool s_bSilentUI;
@@ -164,7 +164,7 @@ String Environment::GetMachineVersion() {
 	CCheck(::uname(&u));
 	return u.machine;
 #elif defined(WIN32)
-	String s;	
+	String s;
 	SYSTEM_INFO si;
 	GetSystemInfo(&si);
 	switch (si.wProcessorArchitecture) {
@@ -303,7 +303,7 @@ OperatingSystem::OperatingSystem() {
 #	if UCFG_WCE
 	case VER_PLATFORM_WIN32_CE: Platform = PlatformID::WinCE; break;
 #	endif
-	}		
+	}
 	Version = Ext::Version(vi.dwMajorVersion, vi.dwMinorVersion, vi.dwBuildNumber);
 	ServicePack = vi.szCSDVersion;
 #endif
@@ -497,7 +497,7 @@ vector<String> ParseCommandLine(RCString s) {
 					arg += String(*p);
 				else
 					bBackSlashQuote = true;
-				break;			
+				break;
 #endif
 			case ' ':
 			case '\t':
@@ -578,7 +578,7 @@ map<String, String> Environment::GetEnvironmentVariables() {
 		if (char *q = strchr(*p, '='))
 			m[String(*p, q-*p)] = q + 1;
 		else
-			m[*p] = "";			
+			m[*p] = "";
 	}
 #else
 	CStringsKeeper sk;
@@ -586,7 +586,7 @@ map<String, String> Environment::GetEnvironmentVariables() {
 		if (TCHAR *q = _tcschr(p, '='))
 			m[String(p, q-p)] = q + 1;
 		else
-			m[p] = "";			
+			m[p] = "";
 	}
 #endif
 	return m;
@@ -649,7 +649,7 @@ String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 			os << ch;
 		else
 			os << '%' << setw(2) << setfill('0') << hex << (int)(byte)ch;
-	}		
+	}
 	return os.str();
 }
 
@@ -674,7 +674,7 @@ String HttpUtility::UrlDecode(RCString s, Encoding& enc) {
 		default:
 			os << ch;
 		}
-	}		
+	}
 	return os.str();
 }
 
@@ -721,7 +721,7 @@ static int GetBase64Val(istream& is) {
 	return EOF;
 }
 
-Blob Convert::FromBase64String(RCString s) {  
+Blob Convert::FromBase64String(RCString s) {
 	istringstream is(s.c_str());
 	MemoryStream ms;
 	BinaryWriter wr(ms);
@@ -787,7 +787,7 @@ public:
 		if (Offset + count >= 8) {
 			Base.WriteBuffer(&m_prevValue, 1);
 			m_prevValue = byte(value << (16 - Offset - count));
-		}			
+		}
 		Offset = (Offset + count) % 8;
 	}
 
@@ -824,7 +824,7 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 
 static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
 	ostringstream os;
-	const int bitsInGroup = bytesInGroup * 8 / charsInGroup, 
+	const int bitsInGroup = bytesInGroup * 8 / charsInGroup,
 		mask = (1<<bitsInGroup) - 1;
 	for (size_t i=0; i<mb.Size;) {
 		int nbits = 0;
@@ -866,7 +866,7 @@ static StaticRegex s_reGuid("\\{([0-9A-Fa-f]{8,8})-([0-9A-Fa-f]{4,4})-([0-9A-Fa-
 
 Guid::Guid(RCString s) {
 #if UCFG_COM
-	OleCheck(::CLSIDFromString(Bstr(s), this));	
+	OleCheck(::CLSIDFromString(Bstr(s), this));
 #else
 	cmatch m;
 	if (regex_search(s.c_str(), m, *s_reGuid)) {
@@ -889,7 +889,7 @@ Guid Guid::NewGuid() {
 	Random rng;
 	rng.NextBytes(Buf((byte*)&guid, sizeof(GUID)));
 #endif
-	return guid;	
+	return guid;
 }
 
 String Guid::ToString(RCString format) const {
@@ -1212,7 +1212,7 @@ CMessageProcessor::CMessageProcessor() {
 }
 
 CMessageRange::CMessageRange() {
-	g_messageProcessor.m_ranges.push_back(this);  
+	g_messageProcessor.m_ranges.push_back(this);
 }
 
 CMessageRange::~CMessageRange() {
@@ -1249,7 +1249,7 @@ String CMessageProcessor::CModuleInfo::GetMessage(HRESULT hr) {
 			} catch (RCExc) {
 				return nullptr;
 			}
-		}		
+		}
 	}
 	return m_mcat.GetMessage((hr>>16) & 0xFF, hr & 0xFFFF);
 #elif UCFG_WIN32
@@ -1303,7 +1303,7 @@ static String CombineErrorMessages(const char hex[], RCString msg, bool bWithErr
 String CMessageProcessor::ProcessInst(HRESULT hr, bool bWithErrorCode) {
 	CheckStandard();
 	char hex[30] = "";
-	if (bWithErrorCode)	
+	if (bWithErrorCode)
 		sprintf(hex, "Error %8.8X", hr);
 	TCHAR buf[256];
 	char *ar[5] = {0, 0, 0, 0, 0};
@@ -1552,7 +1552,7 @@ DWORD ProcessObj::get_ID() const {
 			PROCESS_BASIC_INFORMATION info;
 			ULONG returnSize;
 			ntQIP((HANDLE)(intptr_t)Handle(_self), ProcessBasicInformation, &info, sizeof(info), &returnSize);  // Get basic information.
-			m_pid = (DWORD)info.UniqueProcessId;		
+			m_pid = (DWORD)info.UniqueProcessId;
 		}
 #endif
 	}
@@ -1700,7 +1700,7 @@ String Process::get_ProcessName() {
 	char szModule[PATH_MAX];
 	memset(szModule, 0, sizeof szModule);
 	CCheck(::readlink(String(EXT_STR("/proc/" << get_ID() << "/exe")), szModule, sizeof(szModule)));
-	return path(szModule).filename();
+	return path(szModule).filename().native();
 #else
 	TCHAR buf[MAX_PATH];
 	Win32Check(::GetModuleBaseName((HANDLE)(intptr_t)Handle(*m_pimpl), 0, buf, size(buf)));
@@ -1857,7 +1857,3 @@ EXT_API bool AFXAPI regex_searchImpl(Ext::String::const_iterator bs,  Ext::Strin
 
 } // std::
 #endif // UCFG_USE_REGEX
-
-
-
-
