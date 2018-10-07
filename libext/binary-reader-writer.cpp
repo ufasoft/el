@@ -79,19 +79,18 @@ void BinaryWriter::Write(const VARIANT& v) {
 	case VT_CY:
 	case VT_BOOL:
 	case VT_BSTR:
-		_self << byte(v.vt);
+		_self << uint8_t(v.vt);
 		WriteVariantOfType(v, v.vt);
 		break;
 	default:
 		if (VarIsArray(v)) {
 			CSafeArray sa((SAFEARRAY*&)v.parray);
 			_self << VT_ARRAY_EX;
-			byte elType = byte(v.vt);
+			uint8_t elType = uint8_t(v.vt);
 			_self << elType;
-			byte dims = (byte)sa.DimCount;
+			uint8_t dims = (uint8_t)sa.DimCount;
 			_self << dims;
-			switch (dims)
-			{
+			switch (dims) {
 			case 1:
 				{ 
 					LONG dim1 = sa.GetLBound(),
@@ -177,22 +176,22 @@ Blob BinaryReader::ReadToEnd() const {
 	return ms.Blob;
 }
 
-uint64_t AFXAPI Read7BitEncoded(const byte *&p) {
-	const byte *q = p;										//O local pointer is faster
-	byte b = *q++;
+uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p) {
+	const uint8_t* q = p; //O local pointer is faster
+	uint8_t b = *q++;
 	uint64_t r = b & 0x7F;									//O for 1-byte records
-	for (int shift=7; b & 0x80;) {
+	for (int shift = 7; b & 0x80;) {
 		r |= uint64_t((b = *q++) & 0x7F) << shift;
-		if ((shift+=7) >= 64)
+		if ((shift += 7) >= 64)
 			Throw(E_FAIL);
 	}
 	p = q;
 	return r;
 }
 
-void AFXAPI Write7BitEncoded(byte *&p, uint64_t v) {
+void AFXAPI Write7BitEncoded(uint8_t*& p, uint64_t v) {
 	do {
-		byte b = v & 0x7F;
+		uint8_t b = v & 0x7F;
 		if (v >>= 7)
 			b |= 0x80;
 		*p++ = b;
@@ -200,7 +199,7 @@ void AFXAPI Write7BitEncoded(byte *&p, uint64_t v) {
 }
 
 void BinaryWriter::Write7BitEncoded(uint64_t v) {
-	byte buf[10], *p = buf;
+	uint8_t buf[10], *p = buf;
 	Ext::Write7BitEncoded(p, v);
 	Write(buf, p-buf);
 }
@@ -208,7 +207,7 @@ void BinaryWriter::Write7BitEncoded(uint64_t v) {
 uint64_t BinaryReader::Read7BitEncoded() const {
 	uint64_t r = 0;
 	for (int shift=0; shift<64; shift+=7) {
-		byte b = ReadByte();
+		uint8_t b = ReadByte();
 		r |= uint64_t(b & 0x7F) << shift;
 		if (!(b & 0x80))
 			return r;

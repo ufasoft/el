@@ -9,23 +9,17 @@
 namespace Ext {
 using namespace std;
 
-Stream::Stream() {
-}
-
-Stream::~Stream() {
-}
-
 bool Stream::Eof() const {
 	Throw(E_NOTIMPL);
 }
 
 int Stream::ReadByte() const {
-	byte b;
+	uint8_t b;
 	return Read(&b, 1) ? int(b) : -1;
 }
 
 void Stream::ReadBuffer(void *buf, size_t count) const {
-	byte *p = (byte*)buf;
+	uint8_t *p = (uint8_t *)buf;
 	for (size_t cb; count; count-=cb, p+=cb) {
 		if (!(cb = Read(p, count)))
 			Throw(ExtErr::EndOfStream);
@@ -33,16 +27,16 @@ void Stream::ReadBuffer(void *buf, size_t count) const {
 }
 
 void Stream::CopyTo(Stream& dest, size_t bufsize) const {
-	vector<byte> buf(bufsize);
+	vector<uint8_t> buf(bufsize);
 	for (size_t cb; cb = Read(&buf[0], buf.size());)
 		dest.WriteBuffer(&buf[0], cb);
 }
 
 size_t BufferedStream::Read(void *buf, size_t count) const {
-	size_t cb = (min)(count, m_end-m_cur);
-	memcpy(buf, m_buf.constData()+exchange(m_cur, m_cur+cb), cb);
+	size_t cb = (min)(count, m_end - m_cur);
+	memcpy(buf, m_buf.constData() + exchange(m_cur, m_cur + cb), cb);
 	if (count -= cb) {
-		buf = (byte*)buf + cb;
+		buf = (uint8_t*)buf + cb;
 		if (count >= m_buf.Size)
 			cb += Stm.Read(buf, count);
 		else {
@@ -54,34 +48,34 @@ size_t BufferedStream::Read(void *buf, size_t count) const {
 }
 
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
-	size_t capacity = Capacity;
-	if (capacity-m_pos < count) {
-		m_blob.Size = (size_t)max(max(int64_t(32), int64_t(capacity*2)), int64_t(m_pos+count));
+	auto nextPos = m_pos + count;
+	if (nextPos > m_capacity) {
+		m_capacity = max3(m_capacity * 2, nextPos, DEFAULT_CAPACITY);
+#if UCFG_HAS_REALLOC
+		m_data = (uint8_t*)Ext::Realloc(m_data, m_capacity);
+#else
+		free(exchange(m_data, (uint8_t*)memcpy(Ext::Malloc(m_capacity), data, m_size)));
+#endif
 	}
-	memcpy(m_blob.data()+m_pos, buf, count);
-	m_pos += count;
+	m_size = max(m_size, nextPos);
+	memcpy(&m_data[exchange(m_pos, nextPos)], buf, count);
 }
 
 bool MemoryStream::Eof() const {
 	Throw(E_NOTIMPL);
 }
 
-void MemoryStream::Reset(size_t cap) {
-	m_blob.Size = cap;
-	m_pos = 0;
-}
-
-Blob MemoryStream::get_Blob() {
-	class Blob r = m_blob;
-	r.Size = (size_t)m_pos;
-	return r;
+void MemoryStream::Reset(size_t capacity) {
+	free(exchange(m_data, nullptr));
+	m_data = (uint8_t *)Ext::Malloc(m_capacity = capacity);
+	m_size = 0;
 }
 
 void CMemReadStream::ReadBufferAhead(void *buf, size_t count) const {
-	if (count > m_mb.Size-m_pos)
+	if (count > m_mb.Size - m_pos)
 		Throw(ExtErr::EndOfStream);
 	if (buf)
-		memcpy(buf, m_mb.P+m_pos, count);
+		memcpy(buf, m_mb.P + m_pos, count);
 }
 
 size_t CMemReadStream::Read(void *buf, size_t count) const {
@@ -93,10 +87,10 @@ size_t CMemReadStream::Read(void *buf, size_t count) const {
 }
 
 void CMemReadStream::ReadBuffer(void *buf, size_t count) const {
-	if (count > m_mb.Size-m_pos)
+	if (count > m_mb.Size - m_pos)
 		Throw(ExtErr::EndOfStream);
 	if (buf)
-		memcpy(buf, m_mb.P+m_pos, count);
+		memcpy(buf, m_mb.P + m_pos, count);
 	m_pos += count;
 }
 

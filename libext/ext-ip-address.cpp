@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -16,7 +16,7 @@
 #include "ext-net.h"
 
 
-namespace Ext { 
+namespace Ext {
 using namespace std;
 
 
@@ -65,7 +65,7 @@ static AtExitRegistration s_atexitSocketsCleanup(&SocketsCleanup);
 
 #if UCFG_WIN32
 
-extern "C" const char * __cdecl API_inet_ntop(int af, const void *src, char *dst, socklen_t size) {	
+extern "C" const char * __cdecl API_inet_ntop(int af, const void *src, char *dst, socklen_t size) {
 	s_usingSockets.EnsureInit();
 
 	TCHAR buf[256];
@@ -109,7 +109,7 @@ extern "C" int __cdecl API_inet_pton(int af, const char *src, void *dst) {
 		sockaddr_in sa4;
 		sockaddr_in6 sa6;
 	} sa;
-	INT len; 
+	INT len;
 	int rc;
 	String s(src);
 	switch (af) {
@@ -141,7 +141,7 @@ extern "C" int __cdecl API_inet_pton(int af, const char *src, void *dst) {
 
 String AFXAPI HostToStr(DWORD host) {
 	char buf[20];
-	const byte *ar = (const byte*)&host;
+	const uint8_t* ar = (const uint8_t*)&host;
 	sprintf(buf, "%d.%d.%d.%d", ar[3], ar[2], ar[1], ar[0]);
 	return buf;
 }
@@ -219,7 +219,7 @@ size_t IPAddress::GetHashCode() const {
 		r += std::hash<uint32_t>()(*(uint32_t*)&m_sin.sin_addr);
 		break;
 	case AF_INET6:
-		r += hash_value(ConstBuf(&m_sin6.sin6_addr, 16));		
+		r += hash_value(ConstBuf(&m_sin6.sin6_addr, 16));
 		break;
 	default:
 		Throw(ExtErr::UnknownHostAddressType);
@@ -238,7 +238,7 @@ static StaticRegex
 #endif // UCFG_USE_REGEX
 
 IPAddress IPAddress::Parse(RCString ipString) {
-	byte buf[16];
+	uint8_t buf[16];
 	if (CCheck(::inet_pton(AF_INET, ipString, buf)))
 		return IPAddress(ConstBuf(buf, 4));
 	if (CCheck(::inet_pton(AF_INET6, ipString, buf)))
@@ -259,7 +259,7 @@ IPAddress IPAddress::Parse(RCString ipString) {
 }
 
 bool IPAddress::TryParse(RCString s, IPAddress& ip) {
-	byte buf[16];
+	uint8_t buf[16];
 	if (CCheck(::inet_pton(AF_INET, s, buf))) {
 		ip = IPAddress(ConstBuf(buf, 4));
 		return true;
@@ -280,7 +280,7 @@ String IPAddress::ToString() const {
 			char buf[INET6_ADDRSTRLEN];
 			if (!::inet_ntop((int)get_AddressFamily(), (void*)&m_sin6.sin6_addr, buf, sizeof buf))
 				return "<#IPv6 address>";	//!!!? XP fails if IPv6 not installed //was CCheck(-1);
-			return buf;			
+			return buf;
 		}
 	case AF_DOMAIN_NAME:
 		return m_domainname;
@@ -388,7 +388,7 @@ bool IPAddress::IsGlobal() const {
 		break;
 	case AF_INET6:
 		{
-			uint16_t fam = *(byte*)&m_sin6.sin6_addr;
+			uint16_t fam = *(uint8_t*)&m_sin6.sin6_addr;
 			return fam > 0 && fam<0xFC;
 		}
 	case IPAddress::AF_DOMAIN_NAME:
@@ -483,7 +483,7 @@ IPEndPoint IPEndPoint::Parse(RCString s) {
 }
 
 
-String COperatingSystem::get_ComputerName() {	
+String COperatingSystem::get_ComputerName() {
 #if UCFG_USE_POSIX || UCFG_WCE
 	return Dns::GetHostName();
 #else
@@ -546,7 +546,7 @@ extern "C" const char *inet_ntop(int af, const void *src, char *dst, size_t size
 	case AF_INET :
 		return inet_ntop_v4 (src, dst, size);
 	default :
-		errno = EAFNOSUPPORT;	
+		errno = EAFNOSUPPORT;
 		return NULL;
 	}
 }

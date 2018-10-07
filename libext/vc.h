@@ -1,18 +1,18 @@
 #pragma once
 
+#if UCFG_MSC_VERSION>=1900 && UCFG_MSC_FULL_VERSION<190023026
+#	error your version of Visual Studio 2015 is obsolete
+#endif
+
 #include <crtversion.h>
 
 #if _VC_CRT_MAJOR_VERSION < 10
 #	VC CRT version 10 or later required
 #endif
 
-#if !defined(_DEBUG) && !defined(_CHAR_UNSIGNED) && !defined(_CRTBLD)
-#	error this library requires /J for VC, or -funsigned-char for GCC compiler option
-#endif
-
-#if UCFG_MSC_VERSION>=1900 && UCFG_MSC_FULL_VERSION<190022816
-#	error youtr version of Visual Studio 2015 is obsolete. At least Visual Studio 2015 RC (14.0.22823) or later required
-#endif
+//!!!R #if !defined(_DEBUG) && !defined(_CHAR_UNSIGNED) && !defined(_CRTBLD)
+//!!!R #	error this library requires /J for VC, or -funsigned-char for GCC compiler option
+//!!!R #endif
 
 #if defined (_POSIX_)
 #	error libext don't allow to define _POSIX_ on MSVC compiler, because typeof(fpos_t) != __int64

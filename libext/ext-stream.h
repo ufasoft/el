@@ -15,12 +15,11 @@ ENUM_CLASS(SeekOrigin) {
 
 
 class EXTCLASS Stream {
-public:
 	typedef Stream class_type;
-
+public:
 	static const size_t DEFAULT_BUF_SIZE = 8192;
 
-	virtual ~Stream();
+	virtual ~Stream() {}
 	virtual void WriteBuffer(const void *buf, size_t count) { Throw(E_NOTIMPL); }
 
 	void WriteBuf(const ConstBuf& mb) { WriteBuffer(mb.P, mb.Size); }
@@ -53,7 +52,7 @@ public:
 
 	void CopyTo(Stream& dest, size_t bufsize = DEFAULT_BUF_SIZE) const;
 protected:
-	Stream();
+	Stream() {}
 };
 
 class BufferedStream : public Stream {
@@ -108,7 +107,7 @@ protected:
 	mutable CBool m_bInited, m_bByByteMode;
 	void *m_pimpl;
 	mutable int m_bufpos;
-	mutable std::vector<byte> m_sbuf, m_dbuf;
+	mutable std::vector<uint8_t> m_sbuf, m_dbuf;
 	Stream& m_stmBase;
 
 	virtual void InitImp() const;

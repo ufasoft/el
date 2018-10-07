@@ -173,14 +173,14 @@ const char *String::c_str() const {  //!!! optimize
 			for (size_t n=(pData->GetSize()/sizeof(value_type))+1, len=n+1;; len<<=1) {
 				Array<char> p(len);
 				size_t r;
-				if ((r=enc.GetBytes((const value_type*)pData->GetBSTR(), n, (byte*)p.get(), len)) < len) {
+				if ((r = enc.GetBytes((const value_type*)pData->GetBSTR(), n, (uint8_t*)p.get(), len)) < len) {
 					char *pch = p.release();
 					pch[r] = 0; //!!!? R
 					for (char *prev=0; !apChar.compare_exchange_weak(prev, pch);)
 						if (prev) {
 							free(pch);
 							break;
-						}						
+						}
 					break;
 				}
 			}
@@ -204,6 +204,11 @@ void String::CopyTo(char *ar, size_t size) const {
 	memcpy(ar, p, len);
 	ar[len] = 0;
 #endif
+}
+
+bool String::StartsWith(const String& s) const noexcept {
+	return s.length() <= length() &&
+		std::equal(s.begin(), s.end(), begin());
 }
 
 int String::FindOneOf(RCString sCharSet) const {
@@ -351,13 +356,13 @@ int String::compare(const String& s) const noexcept {
 static locale s_locale("");
 
 static locale& UserLocale() {
-	return s_locale; 
+	return s_locale;
 }
 
 #else
 static locale& UserLocale() {
 	static locale s_locale("");
-	return s_locale; 
+	return s_locale;
 }
 
 #endif // UCFG_WDM
@@ -391,7 +396,7 @@ bool String::empty() const noexcept {
 	return !m_blob.m_pData || m_blob.Size==0;
 }
 
-void String::clear() {		//  noexcept 
+void String::clear() {		//  noexcept
 	m_blob.Size = 0;		//!!!TODO make this function noexcept
 	MakeDirty();
 }
@@ -689,7 +694,7 @@ extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
 				}
 			}
 		}
-		r = (const unsigned short*)(const wchar_t*)(s_threadStrings->Map[::GetCurrentThreadId()] = Ext::String(utf8));	
+		r = (const unsigned short*)(const wchar_t*)(s_threadStrings->Map[::GetCurrentThreadId()] = Ext::String(utf8));
 	}
 	return r;
 }
@@ -698,4 +703,3 @@ extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
 
 #endif // UCFG_WIN32
 
- 

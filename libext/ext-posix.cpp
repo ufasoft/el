@@ -79,9 +79,9 @@ void __cdecl delay(int us) {
 char *
 	AFXAPI strsep(char **stringp, const char *delim)
 {
-	register char *s;
-	register const char *spanp;
-	register int c, sc;
+	char *s;
+	const char *spanp;
+	int c, sc;
 	char *tok;
 
 	if ((s = *stringp) == NULL)
@@ -137,7 +137,7 @@ size_t __cdecl strlcat(char *dst, const char *src, size_t siz) {
     char *d = dst;
     const char *s = src;
     size_t n = siz;
-    while (n-- != 0 && *d)	// Find the end of dst and adjust bytes left but don't go past end 
+    while (n-- != 0 && *d)	// Find the end of dst and adjust bytes left but don't go past end
         d++;
     size_t dlen = d - dst;
     if (0 == (n = siz - dlen))

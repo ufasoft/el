@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -125,7 +125,7 @@ ThreadBase::ThreadBase(thread_group *ownRef)
 	,	m_dwCoInit(COINIT_APARTMENTTHREADED)
 #endif
 {
-	ASSERT(1000 < std::abs(int32_t((byte*)&ownRef - (byte*)this)));		// Thread cannot be in stack
+	ASSERT(1000 < std::abs(int32_t((uint8_t*)&ownRef - (uint8_t*)this))); // Thread cannot be in stack
 }
 
 ThreadBase::~ThreadBase() {
@@ -541,7 +541,7 @@ void ThreadBase::QueueAPC() {
 bool ThreadBase::Join(int ms) {
 #if UCFG_USE_PTHREADS
 	ASSERT(ms == INFINITE);
-	void *r;	
+	void *r;
 	PthreadCheck(::pthread_join(m_ptid, &r));
 	m_ptid = (pthread_t)0;
 	m_exitCode = (uint32_t)(uintptr_t)r;
@@ -596,13 +596,13 @@ void ThreadBase::WaitStop() {
 		Join();
 }
 
-byte __afxThreadData[sizeof(CThreadSlotData)];
+uint8_t __afxThreadData[sizeof(CThreadSlotData)];
 CThreadSlotData *_afxThreadData;
 
 void CThreadSlotData::DeleteValues(CThreadData *pData, HINSTANCE hInst) {
 	bool bDelete = true;
 	for (size_t i = 1; i < pData->size(); i++) {
-		if (!hInst || m_arSlotData[i].hInst == hInst) {			
+		if (!hInst || m_arSlotData[i].hInst == hInst) {
 			if ((*pData)[i])										// delete the data since hInst matches (or is NULL)
 				delete exchange((*pData)[i], nullptr);
 		} else if ((*pData)[i])
@@ -643,7 +643,7 @@ CThreadSlotData::~CThreadSlotData() {
 
 void AFXAPI AfxTermThread(HINSTANCE hInstTerm) {
 	if (_afxThreadData)
-		_afxThreadData->DeleteValues(hInstTerm, false);		//!!! 
+		_afxThreadData->DeleteValues(hInstTerm, false);		//!!!
 }
 
 void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
@@ -670,7 +670,7 @@ void ThreadBase::OnEndThread(bool bDelete) {
 #if UCFG_WIN32
 	TRC(5, Name);
 #endif
-	
+
 	OnEnd();
 	if (bDelete)
 		Delete();
@@ -692,7 +692,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 #	endif
 #endif
 	uint32_t exitCode = (UINT)E_FAIL; //!!!
-	alloca(StackOffset);							// to prevent cache line aliasing 
+	alloca(StackOffset);							// to prevent cache line aliasing
 	try {
 #ifdef X_CPPRTTI
 		try {
@@ -1162,10 +1162,3 @@ int CWinThread::ExitInstance() {
 
 
 } // Ext::
-
-
-
-
-
-
-

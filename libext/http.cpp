@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2011-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -67,7 +67,7 @@ static class curl_error_category : public error_category {
 	typedef error_category base;
 
 	const char *name() const noexcept override { return "cURL"; }
-	
+
 	string message(int errval) const override {
 	     return ::curl_easy_strerror((CURLcode)errval);
 	}
@@ -77,7 +77,7 @@ static class curl_error_category : public error_category {
 		case CURLE_COULDNT_CONNECT:		return c==errc::connection_refused;
 		case CURLE_OPERATION_TIMEDOUT:	return c==errc::timed_out;
 		case CURLE_REMOTE_ACCESS_DENIED:return c==errc::permission_denied;
-		case CURLE_OUT_OF_MEMORY:		return c==not_enough_memory;
+		case CURLE_OUT_OF_MEMORY:		return c==errc::not_enough_memory;
 		default:
 			return base::equivalent(errval, c);
 		}
@@ -161,7 +161,7 @@ public:
 		EXT_LOCK (Mtx) {
 			Sessions.push_front(p);
 			if (Sessions.size() >= MAX_SESSIONS)
-				Sessions.pop_back();	
+				Sessions.pop_back();
 		}
 	}
 } g_curlManager;
@@ -228,7 +228,7 @@ void InetStream::Attach(ptr<CurlSession> curl) {
 
 size_t InetStream::Read(void *buf, size_t size) const {
 #if UCFG_USE_LIBCURL
-	if (!m_io.ReadToUserBuf((byte*)buf, size)) {
+	if (!m_io.ReadToUserBuf((uint8_t*)buf, size)) {
 		CurlCheck(::curl_easy_pause(m_curl, CURLPAUSE_SEND), m_curl);			//!!!bug  can be called only from callback
 	}
 	return m_io.ReceivedSize;	//!!!?
@@ -241,9 +241,9 @@ size_t InetStream::Read(void *buf, size_t size) const {
 }
 
 int InetStream::ReadByte() const {
-	byte by;
+	uint8_t by;
 #if UCFG_USE_LIBCURL
-	if (!m_io.ReadToUserBuf((byte*)&by, 1)) {
+	if (!m_io.ReadToUserBuf((uint8_t*)&by, 1)) {
 		CurlCheck(::curl_easy_pause(m_curl, CURLPAUSE_SEND), m_curl);			//!!!bug  can be called only from callback
 	}
 	if (m_io.UserReadSize)
@@ -258,7 +258,7 @@ int InetStream::ReadByte() const {
 
 void InetStream::WriteBuffer(const void *buf, size_t count) {
 #if UCFG_USE_LIBCURL
-	m_io.UserWriteBuf = (const byte *)buf;
+	m_io.UserWriteBuf = (const uint8_t*)buf;
 	m_io.UserWriteSize = count;
 	CurlCheck(::curl_easy_pause(m_curl, CURLPAUSE_RECV), m_curl);
 #else
@@ -331,7 +331,7 @@ ptr<CurlSession> WebRequest::Connect() {
 #else
 void WebRequest::Connect() {
 #endif
-	String userName = Credentials.UserName, 
+	String userName = Credentials.UserName,
 		password = Credentials.Password;
 #if UCFG_USE_LIBCURL
 	ptr<CurlSession> curl = g_curlManager.GetSession(IPEndPoint(RequestUri.Host, (uint16_t)RequestUri.Port));
@@ -344,10 +344,10 @@ void WebRequest::Connect() {
 		if (!!password)
 			curl->SetOption(CURLOPT_PASSWORD, (const char*)password);
 	}
-	
+
 	if (m_timeout > 0)
 		CurlCheck(::curl_easy_setopt(curl->m_h, CURLOPT_TIMEOUT_MS, (long)m_timeout), curl);
-	
+
 	CURLoption opt = (CURLoption)0;
 	if (Method == "GET") {
 		opt = CURLOPT_HTTPGET;
@@ -368,7 +368,7 @@ void WebRequest::Connect() {
 #else
 	if (!userName) {
 		userName = RequestUri.UserName;
-		password = RequestUri.Password;	
+		password = RequestUri.Password;
 	}
 	Session().Connect(m_pimpl->m_conn, RequestUri.Host, (INTERNET_PORT)RequestUri.Port, userName, password, m_serviceType);
 #endif
@@ -384,7 +384,7 @@ HttpWebRequest::HttpWebRequest(RCString url)
 {
 #if !UCFG_USE_LIBCURL
 	m_serviceType = INTERNET_SERVICE_HTTP;
-#endif	
+#endif
 	Method = "GET";
 	if (!!url) {
 		RequestUri = url;
@@ -437,19 +437,19 @@ void HttpWebRequest::put_UserAgent(RCString v) {
 }
 
 #if 0 //!!!
-ptr<WebProxy> HttpWebRequest::get_Proxy() {	
+ptr<WebProxy> HttpWebRequest::get_Proxy() {
 	return m_proxy;
 /*!!!
 #if UCFG_USE_LIBCURL
 	Throw(E_NOTIMPL);
 #else
-	DWORD qlen = 0;	
+	DWORD qlen = 0;
 	Win32Check(::InternetQueryOption(m_sess, INTERNET_OPTION_PROXY, 0, &qlen),  ERROR_INSUFFICIENT_BUFFER);
 	INTERNET_PROXY_INFO *pi = (INTERNET_PROXY_INFO*)alloca(qlen);
 	Win32Check(::InternetQueryOption(m_sess, INTERNET_OPTION_PROXY, pi, &qlen));
 	WebProxy r;
 	String s = pi->lpszProxy;
-	if (s.Left(5) == "http=")
+	if (s.StartsWith("http="))
 		r.Address = s.Mid(5);
 	return r;
 #endif*/
@@ -523,7 +523,7 @@ String HttpWebRequest::GetHeadersString() {
 	return sHeaders;
 }
 
-void HttpWebRequest::Send(const byte *p, size_t size) {
+void HttpWebRequest::Send(const uint8_t* p, size_t size) {
 #if !UCFG_USE_LIBCURL
 	m_bSendEx = true;
 
@@ -535,18 +535,21 @@ void HttpWebRequest::Send(const byte *p, size_t size) {
 
 	String sHeaders = GetHeadersString();
 	if (!sHeaders.empty()) {
-		pib = &ib;	
+		pib = &ib;
 		ib.lpcszHeader = sHeaders;
 		ib.dwHeadersLength = sHeaders.length();
 	}
 
 	if (p)
-		pib = &ib;	
+		pib = &ib;
+
+	DWORD flags = SECURITY_FLAG_IGNORE_REVOCATION;
+	Win32Check(::InternetSetOption((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_response.m_pImpl->m_conn), INTERNET_OPTION_SECURITY_FLAGS, &flags, sizeof flags));
 	Win32Check(::HttpSendRequestEx((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_response.m_pImpl->m_conn), pib, 0, 0, 0));
 #endif
 }
 
-HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
+HttpWebResponse HttpWebRequest::GetResponse(const uint8_t* p, size_t size) {
 	if (!m_response.m_pImpl) {
 #if UCFG_USE_LIBCURL
 		ptr<CurlSession> curl = Connect();
@@ -567,7 +570,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 			Connect();
 			m_response = HttpWebResponse(_self);
 
-			String userName = Credentials.UserName, 
+			String userName = Credentials.UserName,
 				password = Credentials.Password;
 			if (!userName) {
 				userName = RequestUri.UserName;
@@ -582,6 +585,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 			}
 
 			DWORD flags = INTERNET_FLAG_NO_CACHE_WRITE;		// tp prevent ERROR_WINHTTP_OPERATION_CANCELLED
+
 			if (RequestUri.Scheme == "https")
 				flags |= INTERNET_FLAG_SECURE;
 			if (Method == "GET") {
@@ -605,7 +609,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 					hh.Set("Content-Type", ContentType);
 					m_pResponse->m_pImpl->m_conn.AddHeaders(hh);
 				}*/
-			}	
+			}
 			m_pimpl->m_conn.HttpOpen(m_response.m_pImpl->m_conn, Method, RequestUri.PathAndQuery, nullptr, Referer, nullptr, flags);
 			m_response.m_pImpl->m_conn.AddHeaders(AdditionalHeaders);
 			m_response.m_pImpl->m_stm.m_pConnection.reset(&m_response.m_pImpl->m_conn);
@@ -629,7 +633,7 @@ HttpWebResponse HttpWebRequest::GetResponse(const byte *p, size_t size) {
 	return m_response;
 }
 
-Stream& HttpWebRequest::GetRequestStream(const byte *p, size_t size) {
+Stream& HttpWebRequest::GetRequestStream(const uint8_t* p, size_t size) {
 	return HttpWebRequest::GetResponse(p, size).m_pImpl->m_stm;
 }
 
@@ -640,7 +644,7 @@ int HttpWebResponse::get_StatusCode() {
 #if UCFG_USE_LIBCURL
 	long r;
 	CurlCheck(::curl_easy_getinfo(m_pImpl->m_conn.Session->m_h, CURLINFO_RESPONSE_CODE, &r), m_pImpl->m_conn.Session);
-	return r;	
+	return r;
 #else
 	DWORD r, dw = sizeof r;
 	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &r, &dw, 0));
@@ -689,7 +693,7 @@ String HttpWebResponse::GetString(DWORD dwInfoLevel) {
 #if UCFG_USE_LIBCURL
 	const char *p;
 	CurlCheck(::curl_easy_getinfo(m_pImpl->m_conn.Session->m_h, CURLINFO(dwInfoLevel), &p), m_pImpl->m_conn.Session);
-	return p;	
+	return p;
 #else
 	DWORD dw = 0;
 	Win32Check(::HttpQueryInfo((HINTERNET)(intptr_t)SafeHandle::HandleAccess(m_pImpl->m_conn), dwInfoLevel, 0, &dw, 0) || ::GetLastError()==ERROR_INSUFFICIENT_BUFFER);
@@ -736,13 +740,13 @@ InetStream& WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 	req.Headers = Headers;
 	if (!!UserAgent)
 		req.UserAgent = UserAgent;
-	const byte *psz = 0;
+	const uint8_t* psz = 0;
 	size_t len = 0;
 	if (data.P) {
 		psz = data.P;
 		len = data.Size;
 		req.ContentLength = len;
-		
+
 		if (data.Size > 2000000)
 			req.Timeout = 100000;			// for large files
 	}
@@ -753,7 +757,7 @@ InetStream& WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 		req.m_postData = data;
 		stm.m_io.UserWriteBuf = req.m_postData.constData();
 		stm.m_io.UserWriteSize = req.m_postData.Size;
-	}	
+	}
 	CurlCheck(::curl_easy_perform(req.m_response.m_pImpl->m_conn.Session->m_h), req.m_response.m_pImpl->m_conn.Session);
 #endif
 
@@ -770,7 +774,7 @@ InetStream& WebClient::DoRequest(HttpWebRequest& req, const ConstBuf data) {
 		ex.Result = Encoding::UTF8.GetChars(ConstBuf(stm.ResultStream));
 #else
 		ex.Result = StreamReader(m_response.GetResponseStream()).ReadToEnd();
-#endif	
+#endif
 //!!!?		ex.Response = m_response;
 		throw ex;
 	}
@@ -829,7 +833,7 @@ Blob WebClient::UploadFile(RCString address, const path& fileName) {
 	ms.WriteBuffer("--\r\n", 4);
 
 	WebRequestKeeper keeper(CurrentRequest, m_request);
-	m_request.Method = "POST";	
+	m_request.Method = "POST";
 	InetStream& stm = DoRequest(m_request, ms);
 #if UCFG_USE_LIBCURL
 	return stm.ResultStream.Blob;
@@ -861,6 +865,3 @@ ptr<WebProxy> WebProxy::FromString(RCString s) {
 }
 
 } // Ext::
-
-
-

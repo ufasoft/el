@@ -15,7 +15,7 @@ struct LruTraits {
 struct UnorderedLruItem {
 	UnorderedLruItem *Next, *Prev;
 	void *Key;
-	//!!!	byte m_iter[LruTraits<std::unordered_map<int, int> >::IteratorSize];
+	//!!!	uint8_t m_iter[LruTraits<std::unordered_map<int, int> >::IteratorSize];
 };
 
 template <typename K, typename T, typename C>
@@ -125,7 +125,7 @@ protected:
 	}
 
 #if !UCFG_STDSTL														// really works only in ExtSTL
-	std::observer_ptr<byte> m_pTemporaryFreed;
+	std::observer_ptr<uint8_t> m_pTemporaryFreed;
 
 	~LruBase() {
 		if (m_pTemporaryFreed)
@@ -140,7 +140,7 @@ protected:
 
 	void __fastcall VFreeNode(void *p) override {
 		if (!m_pTemporaryFreed)
-			m_pTemporaryFreed.reset((byte*)p);
+			m_pTemporaryFreed.reset((uint8_t*)p);
 		else
 			base::VFreeNode(p);
 	}

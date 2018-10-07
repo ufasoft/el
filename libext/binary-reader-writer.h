@@ -57,8 +57,8 @@ public:
 		return *this;
 	}
 
-	byte ReadByte() const {
-		byte r;
+	uint8_t ReadByte() const {
+		uint8_t r;
 		*this >> r;
 		return r;
 	}
@@ -226,27 +226,6 @@ public:
 		for (size_t i=0; i<count; ++i)
 			*this >> ar[i];
 	}
-protected:
-	
-
-/*!!!	Stream& operator>>(bool& v) { v = false; return Read(&v, 1); } 
-	Stream& operator>>(char& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(byte& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(short& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(uint16_t& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(int& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(LONG& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(uint32_t& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(unsigned long v) { return Read(&v, sizeof v); }
-
-	//!!!  Stream& operator>>(size_t& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(int64_t& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(u_int64_t& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(float& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(double& v) { return Read(&v, sizeof v); }
-	Stream& operator>>(GUID& v) { return Read(&v, sizeof v); }
-	*/
-
 };
 
 class BinaryWriter : noncopyable {
@@ -309,7 +288,7 @@ public:
 		return Write(&vle, sizeof vle);
 	}
 
-	void Write(byte v) {
+	void Write(uint8_t v) {
 		Write(&v, 1);
 	}
 
@@ -335,32 +314,7 @@ public:
 #ifdef GUID_DEFINED
 	void Write(const GUID& v) { Write(&v, sizeof v); }
 #endif
-
-protected:
-	
-
-/*!!!
-
-
-__forceinline Stream& operator<<(const char& v)     { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const byte& v)     { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const short& v)    { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const uint16_t& v)     { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const int& v)      { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const LONG& v)     { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const uint32_t& v)    { return Write(&v, sizeof v); }
-//!!!	__forceinline Stream& operator<<(size_t v)			{ return Write(&v, sizeof v); }
-
-
-__forceinline Stream& operator<<(const int64_t& v) { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const u_int64_t& v) { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const float& v)    { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const double& v)   { return Write(&v, sizeof v); }
-__forceinline Stream& operator<<(const GUID& v)     { return Write(&v, sizeof v); }
-
-*/	
 };
-
 
 
 class BitReader {
@@ -379,7 +333,7 @@ public:
 		return (m_b >> --m_n) & 1;
 	}
 private:
-	byte m_b;
+	uint8_t m_b;
 	int m_n;
 
 	void ReadByte() {

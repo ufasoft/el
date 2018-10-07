@@ -30,7 +30,7 @@ CStringBlobBuf::CStringBlobBuf(size_t len)
 #endif
 	,	m_size(len)
 {
-	*(UNALIGNED String::value_type*)((byte*)(this+1)+len) = 0;
+	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
@@ -44,7 +44,7 @@ CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
 		memcpy(this+1, p, len);
 	else
 		memset(this+1, 0, len);
-	*(UNALIGNED String::value_type*)((byte*)(this+1)+len) = 0;
+	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(size_t len, const void *buf, size_t copyLen)
@@ -55,7 +55,7 @@ CStringBlobBuf::CStringBlobBuf(size_t len, const void *buf, size_t copyLen)
 	,	m_size(len)
 {
 	memcpy(this+1, buf, copyLen);
-	memset((byte*)(this+1)+copyLen, 0, len-copyLen+sizeof(String::value_type));
+	memset((uint8_t *)(this + 1) + copyLen, 0, len - copyLen + sizeof(String::value_type));
 }
 
 void * AFXAPI CStringBlobBuf::operator new(size_t sz) {
@@ -86,10 +86,10 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 		free(this);
 #endif
 		d->m_size = size;	
-		memset((byte*)(d+1)+copyLen, 0, size-copyLen+sizeof(String::value_type));
+		memset((uint8_t *)(d + 1) + copyLen, 0, size - copyLen + sizeof(String::value_type));
 		return d;
 	} else {
-		d = new(size, false) CStringBlobBuf(size, this+1, copyLen);
+		d = new (size, false) CStringBlobBuf(size, this + 1, copyLen);
 		Release(this);
 		return d;
 	}
@@ -209,17 +209,17 @@ void Blob::Cow() {
 		Release(exchange(m_pData, m_pData->Clone()));
 }
 
-byte *Blob::data() {
+uint8_t *Blob::data() {
 	Cow();
-	return (byte*)m_pData->GetBSTR();
+	return (uint8_t*)m_pData->GetBSTR();
 }
 
 Blob Blob::FromHexString(RCString s) {
 	size_t len = s.length() / 2;
 	Blob blob(0, len);
-	byte *p = blob.data();
+	uint8_t *p = blob.data();
 	for (size_t i=0; i<len; ++i)
-		p[i] = (byte)stoi(s.substr(i*2, 2), 0, 16);
+		p[i] = (uint8_t)stoi(s.substr(i * 2, 2), 0, 16);
 	return blob;
 }
 
@@ -229,19 +229,19 @@ void Blob::put_Size(size_t size) {
 
 void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
 	Cow();
-	byte *data;
-	size_t newSize = get_Size()+mb.Size-size;
+	uint8_t *data;
+	uint8_t newSize = get_Size() + mb.Size - size;
 	if (mb.Size >= size) {		
 		put_Size(newSize);
-		data = (byte*)m_pData->GetBSTR();
-		memmove(data+offset+mb.Size, data+offset+size, newSize-offset-mb.Size);
+		data = (uint8_t*)m_pData->GetBSTR();
+		memmove(data + offset + mb.Size, data + offset + size, newSize - offset - mb.Size);
 	} else {
-		data = (byte*)m_pData->GetBSTR();
-		memmove(data+offset+mb.Size, data+offset+size, Size-offset-size);
+		data = (uint8_t*)m_pData->GetBSTR();
+		memmove(data + offset + mb.Size, data + offset + size, Size - offset - size);
 		put_Size(newSize);
-		data = (byte*)m_pData->GetBSTR();
+		data = (uint8_t*)m_pData->GetBSTR();
 	}
-	memcpy(data+offset, mb.P, mb.Size);
+	memcpy(data + offset, mb.P, mb.Size);
 }
 
 
@@ -252,7 +252,7 @@ ostream& __stdcall operator<<(ostream& os, const ConstBuf& cbuf) {
 		return os << "<#nullptr>";
 	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
 	for (size_t i=0, size=cbuf.Size; i<size; ++i) {
-		byte n = cbuf.P[i];
+		uint8_t n = cbuf.P[i];
 		os.put(digits[n >> 4]).put(digits[n & 15]);
 	}
 	return os;

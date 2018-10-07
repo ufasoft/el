@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -42,12 +42,12 @@ BigInteger::BigInteger(uint32_t n)
 	}
 #endif
 	int64_t v = n;
-	Init((byte*)&v, sizeof(v));			//!!!LE
+	Init((uint8_t*)&v, sizeof(v)); //!!!LE
 }
 
 BigInteger::BigInteger(int64_t n)
 #if UCFG_BIGNUM=='N'
-	:	m_zz(ZZFromSignedBytes((byte*)&n, sizeof(n)))
+	: m_zz(ZZFromSignedBytes((uint8_t*)&n, sizeof(n)))
 #elif UCFG_BIGNUM=='A'
 	:	m_blob(nullptr)
 #endif
@@ -56,7 +56,7 @@ BigInteger::BigInteger(int64_t n)
 	m_count = 1;
 	m_data[0] = n;
 #elif UCFG_BIGNUM!='N'
-	Init((const byte*)&n, sizeof n);			//!!! Only Little-Endian
+	Init((const uint8_t*)&n, sizeof n); //!!! Only Little-Endian
 #endif
 }
 
@@ -117,11 +117,11 @@ BigInteger::BigInteger(long n)
 #	endif
 
 
-void BigInteger::Init(const byte *p, size_t count) {
+void BigInteger::Init(const uint8_t* p, size_t count) {
 	if (p[count-1] < 0x80)
 		::mpz_import(m_zz.get_mpz_t(), count, -1, 1, -1, 0, p);
 	else {
-		byte *q = (byte*)alloca(count);
+		uint8_t* q = (uint8_t*)alloca(count);
 		for (int i=0; i<count; ++i)
 			q[i] = ~p[i];
 		::mpz_import(m_zz.get_mpz_t(), count, -1, 1, -1, 0, q);
@@ -143,10 +143,10 @@ BigInteger::BigInteger(int n)
 
 
 
-static ZZ ZZFromSignedBytes(const byte *p, size_t n) {
+static ZZ ZZFromSignedBytes(const uint8_t* p, size_t n) {
 	if ((p[n-1] & 0x80) == 0)
 		return ZZFromBytes(p, n);
-	byte *buf = (byte*)alloca(n);
+	uint8_t* buf = (uint8_t*)alloca(n);
 	for (int i=0; i<n; ++i)
 		buf[i] = ~p[i];
 	return -(ZZFromBytes(buf, n)+1);
@@ -174,7 +174,7 @@ BigInteger::BigInteger(RCString s, int bas)
 #endif
 {
 #if UCFG_BIGNUM=='A'
-	byte zero = 0;
+	uint8_t zero = 0;
 	Init(&zero, 1);
 #endif
 
@@ -187,7 +187,7 @@ BigInteger::BigInteger(RCString s, int bas)
 		++i;
 		if (s.length() == 1)
 			Throw(E_FAIL);
-	}	
+	}
 	for (; i<s.length(); ++i) {
 		wchar_t ch = s[i];
 		int n;
@@ -207,7 +207,7 @@ BigInteger::BigInteger(RCString s, int bas)
 		_self = -_self;
 }
 
-BigInteger::BigInteger(const byte *p, size_t count)
+BigInteger::BigInteger(const uint8_t* p, size_t count)
 #if UCFG_BIGNUM=='N'
 	:	m_zz(ZZFromSignedBytes(p, count))
 #elif UCFG_BIGNUM=='A'
@@ -227,7 +227,7 @@ int AFXAPI Sign(const BigInteger& v) {
 #else
 	if (v.m_count==1 && !v.m_data[0])
 		return 0;
-	if (*((byte*)v.get_Data()+v.m_count*sizeof(BASEWORD)-1) & 0x80)
+	if (*((uint8_t*)v.get_Data() + v.m_count * sizeof(BASEWORD) - 1) & 0x80)
 		return -1;
 	return 1;
 #endif
@@ -245,7 +245,7 @@ static const char s_radixChars[37] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 String BigInteger::ToString(int bas) const {
 	if (bas < 2 || bas > 36)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	size_t size = Length+2;
 	String::value_type *e = (String::value_type*)alloca(size * sizeof(String::value_type)) + size,									// to avoid char -> String::Char conversion
 			*q = e;
@@ -294,7 +294,7 @@ bool BigInteger::AsInt64(int64_t& n) const {
 	int count = NumBytes(m_zz);
 	if (count > sizeof(int64_t))
 		return false;
-	ToBytes((byte*)&n, sizeof(int64_t));
+	ToBytes((uint8_t*)&n, sizeof(int64_t));
 	return true;
 #else
 	if (m_count > 64/BASEWORD_BITS)
@@ -351,7 +351,7 @@ BigInteger BigInteger::Mul(const BigInteger& y) const {
 
 unsigned int BigInteger::NMod(unsigned int d) const {
 	if (Sign(_self) < 0)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 #if UCFG_BIGNUM=='G'
 	return ::mpz_fdiv_ui(m_zz.get_mpz_t(), d);
 #elif UCFG_BIGNUM=='N'
@@ -495,7 +495,7 @@ bool BigInteger::TestBit(size_t idx) {
 #endif
 }
 
-size_t BigInteger::ToBytes(byte *p, size_t size) const {
+size_t BigInteger::ToBytes(uint8_t* p, size_t size) const {
 #if UCFG_BIGNUM=='G'
 	mpz_class v = sgn(m_zz)==-1 ? m_zz+1 : m_zz;
 	size_t r = NumBytes(v);
@@ -540,7 +540,7 @@ Blob BigInteger::ToBytes() const {
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const BigInteger& n) {
 	DWORD nbytes = DWORD((n.Length+8)/8);
 #if UCFG_BIGNUM!='A'
-	byte *p = (byte*)alloca(nbytes);
+	uint8_t* p = (byte*)alloca(nbytes);
 	n.ToBytes(p, nbytes);
 #else
 	const BASEWORD *p = n.Data;
@@ -552,7 +552,7 @@ BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const BigInteger& n) {
 
 const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, BigInteger& n) {
 	size_t nbytes = rd.ReadSize();
-	byte *p = (byte*)alloca(nbytes);
+	uint8_t* p = (uint8_t*)alloca(nbytes);
 	rd.Read(p, nbytes);
 	n = BigInteger(p, nbytes);
 	return rd;
@@ -586,7 +586,7 @@ bool BigInteger::AsBaseWord(S_BASEWORD& n) const {
 	int count = NumBytes(m_zz);
 	if (count > sizeof(BASEWORD))
 		return false;
-	ToBytes((byte*)&n, sizeof(S_BASEWORD));
+	ToBytes((uint8_t*)&n, sizeof(S_BASEWORD));
 	return true;
 #else
 	if (m_count > 1)
@@ -626,7 +626,7 @@ BigInteger BinaryBignums(PFNImpBinary pfn, const BigInteger& x, const BigInteger
 	y.ExtendTo(py, size);
 	pfn(px, py, pr, size);
 #if UCFG_BIGNUM!='A'
-	return BigInteger((const byte*)pr, (size+incsize)*sizeof(BASEWORD));
+	return BigInteger((const uint8_t*)pr, (size + incsize) * sizeof(BASEWORD));
 #else
 	return BigInteger(pr, size+incsize);
 #endif
@@ -706,13 +706,13 @@ BigInteger AFXAPI operator>>(const BigInteger& x, size_t v) {
 	int sgn = Sign(x);
 	if (v < len) {
 		DWORD nbytes = DWORD((len+8)/8+1);
-		byte *p = (byte*)alloca(nbytes);
+		uint8_t* p = (uint8_t*)alloca(nbytes);
 		x.ToBytes(p, nbytes);
 		int rn = std::max(1, int((len-v+7)/8));
 		int off = v & 7;
 		int byteoff = v/8;
 		for (int i=0; i<rn; ++i)
-			p[i] = (p[i+byteoff] >> off) | byte(p[i+byteoff+1] << (8-off));
+			p[i] = (p[i + byteoff] >> off) | uint8_t(p[i + byteoff + 1] << (8 - off));
 		return BigInteger(p, rn);
 	} else
 		return sgn==-1 ? -1 : 0;
@@ -757,7 +757,7 @@ BASEWORD *BigInteger::ExtendTo(BASEWORD *p, size_t size) const {
 	if (count > size)
 		Throw(ExtErr::InvalidExtendOfNumber);
 #if UCFG_BIGNUM!='A'
-	ToBytes((byte*)p, size*sizeof(BASEWORD));
+	ToBytes((uint8_t*)p, size * sizeof(BASEWORD));
 #else
 	memcpy(p, Data, count*sizeof(BASEWORD));
 	if (count != size)
@@ -835,12 +835,12 @@ BigInteger& BigInteger::operator=(const BigInteger& v)
 	return _self;
 }*/
 
-void BigInteger::Init(const byte *p, size_t count) {
-	byte bhigh = (signed char)p[count-1] >> 7;
+void BigInteger::Init(const uint8_t* p, size_t count) {
+	uint8_t bhigh = (signed char)p[count - 1] >> 7;
 	size_t n = count;
 	for (; n>0 && p[n-1]==bhigh; n--)
 		;
-	if (!n || byte(((signed char)p[n-1]>>7))!=bhigh)
+	if (!n || uint8_t(((signed char)p[n - 1] >> 7)) != bhigh)
 		n++;
 	BASEWORD *data;
 	if ((m_count=(n+sizeof(BASEWORD)-1)/sizeof(BASEWORD)) > size(m_data)) {
@@ -880,7 +880,7 @@ void BigInteger::Init(const byte *p, size_t count) {
 
 BigInteger AFXAPI sqrt(const BigInteger& bi) {
 	if (Sign(bi) < 0)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	for (BigInteger x=(BigInteger(1) << (bi.Length/2)); ;) {													// Newton method
 		BigInteger d = bi / x;
 		bool bRet = abs(x - d) < 2;
@@ -892,7 +892,7 @@ BigInteger AFXAPI sqrt(const BigInteger& bi) {
 
 BigInteger pow(const BigInteger& x, int n) {
 	if (n < 0)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	if (n == 0)
 		return 1;
 	BigInteger r = x;
@@ -917,5 +917,3 @@ void __stdcall ImpXorBignums(const BASEWORD *a, const BASEWORD *b, BASEWORD *c, 
 	while (siz--)
 		*c++ = *a++ ^ *b++;
 }
-
-

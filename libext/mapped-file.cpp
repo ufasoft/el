@@ -179,7 +179,7 @@ void VirtualMem::Alloc(size_t size, MemoryMappedFileAccess access, bool bLargePa
 	CCheck(a != MAP_FAILED);
 	m_address = a;
 #else
-	Win32Check(bool(m_address = (byte*)::VirtualAlloc(0, size, MEM_COMMIT | (bLargePage ? MEM_LARGE_PAGES : 0), MemoryMappedFileAccessToInt(access))));
+	Win32Check(bool(m_address = (uint8_t*)::VirtualAlloc(0, size, MEM_COMMIT | (bLargePage ? MEM_LARGE_PAGES : 0), MemoryMappedFileAccessToInt(access))));
 #endif
 }
 

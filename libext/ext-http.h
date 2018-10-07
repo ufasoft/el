@@ -245,11 +245,11 @@ private:
 template <int WSIZE = 4096>
 class CallbackedIoBuffer {
 public:
-	byte RecvBuf[WSIZE];
+	uint8_t RecvBuf[WSIZE];
 	size_t ReceivedSize;
-	byte *UserReadBuf;
+	uint8_t *UserReadBuf;
 	size_t UserReadSize;
-	const byte *UserWriteBuf;
+	const uint8_t *UserWriteBuf;
 	size_t UserWriteSize;
 
 	CallbackedIoBuffer()
@@ -259,7 +259,7 @@ public:
 	{
 	}
 
-	bool ReadToUserBuf(byte *buf, size_t size) {
+	bool ReadToUserBuf(uint8_t *buf, size_t size) {
 		size_t n = std::min(size, ReceivedSize);
 		memcpy(buf, RecvBuf, n);
 		ReceivedSize -= n;
@@ -300,7 +300,7 @@ private:
 	size_t m_writeSize;
 	MemoryStream ResultStream;
 
-	byte *m_buf;
+	uint8_t *m_buf;
 	int m_rest;
 
 	static size_t WriteFunction(void *ptr, size_t size, size_t nmemb, void *stream);
@@ -452,7 +452,7 @@ public:
 	
 	~HttpWebRequest();
 
-	HttpWebResponse GetResponse(const byte *p = 0, size_t size = 0);
+	HttpWebResponse GetResponse(const uint8_t *p = 0, size_t size = 0);
 
 	DWORD get_Timeout();
 	void put_Timeout(DWORD v);
@@ -466,8 +466,8 @@ public:
 //!!!	void put_Proxy(WebProxy *proxy);
 //!!!R	DEFPROP(ptr<WebProxy>, Proxy);
 
-	void Send(const byte *p = 0, size_t size = 0);
-	Stream& GetRequestStream(const byte *p = 0, size_t size = 0);
+	void Send(const uint8_t *p = 0, size_t size = 0);
+	Stream& GetRequestStream(const uint8_t *p = 0, size_t size = 0);
 	bool EndRequest();
 	void ReleaseFromAPC();
 

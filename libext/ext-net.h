@@ -510,9 +510,9 @@ public:
 	Socket& m_sock;
 	T& m_tr;
 
-	CSocketKeeper(T& tr, Socket& sock)//, int nPort = 0, int nSocketType = SOCK_STREAM, DWORD host = 0)
-		:	m_tr(tr)
-		,	m_sock(sock)   
+	CSocketKeeper(T& tr, Socket& sock)	//, int nPort = 0, int nSocketType = SOCK_STREAM, DWORD host = 0)
+		: m_sock(sock)
+		, m_tr(tr)
 	{
 		EXT_LOCK (m_tr.MtxCallingAPI) {
 			if (tr.m_bStop)

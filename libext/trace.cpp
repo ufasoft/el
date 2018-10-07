@@ -84,6 +84,34 @@ TraceStream::TraceStream(const path& p, bool bAppend)
 	} catch (RCExc) {												// not a showstopper
 	}
 }
+
+void CycledTraceStream::WriteBuffer(const void *buf, size_t count) {
+	{
+		shared_lock<shared_mutex> lk(m_mtx);
+		if (m_file.Length <= m_threshold) {
+			base::WriteBuffer(buf, count);
+			return;
+		}
+	}
+
+	unique_lock<shared_mutex> lk(m_mtx);
+	if (m_file.Length > m_threshold) {
+		m_file.Close();
+		vector<uint8_t> tmp(m_maxSize);
+		{
+			File f(m_path, FileMode::Open, FileAccess::Read);
+			f.Read(&tmp[0], tmp.size(), f.Length - m_maxSize);
+		}
+		File::OpenInfo oi;
+		oi.Path = m_path;
+		oi.Mode = FileMode::Create;
+		oi.Share = FileShare::ReadWrite;
+		m_file.Open(oi);
+		m_file.Write(&tmp[0], tmp.size());
+	}
+	base::WriteBuffer(buf, count);
+}
+
 #endif // !UCFG_WDM
 
 String TruncPrettyFunction(const char *fn) {
@@ -186,8 +214,8 @@ static int s_nThreadNumber;
 
 union TinyThreadInfo {
 	struct {
-		byte Counter[3];		//!!!Endianess
-		byte TraceLocks;
+		uint8_t Counter[3]; //!!!Endianess
+		uint8_t TraceLocks;
 	};
 	void *P;
 };
@@ -379,6 +407,7 @@ CTraceWriter::~CTraceWriter() noexcept {
 		if (traceBlocker.Trace)
 #endif
 		{
+#if _HAS_EXCEPTIONS
 			try {
 				m_pos->WriteBuffer(date_s.data(), date_s.size());
 			} catch (RCExc) {}
@@ -387,6 +416,11 @@ CTraceWriter::~CTraceWriter() noexcept {
 					pSecondStream->WriteBuffer(time_str.data(), time_str.size());
 				} catch (RCExc) {}
 			}
+#else
+			m_pos->WriteBuffer(date_s.data(), date_s.size());
+			if (Ext::Stream *pSecondStream = CTrace::s_pSecondStream)
+				pSecondStream->WriteBuffer(time_str.data(), time_str.size());
+#endif
 		}
 	}
 }

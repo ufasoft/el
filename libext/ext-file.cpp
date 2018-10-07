@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -52,7 +52,7 @@ String AFXAPI RemoveDirSeparator(RCString s, bool bOnEndOnly) {
 	return WithDirSeparator(s) && (!bOnEndOnly || s.Length!=1) ? s.Left(int(s.Length-1)) : s;
 }*/
 
-Path::CSplitPath Path::SplitPath(RCString path) {
+Path::CSplitPath Path::SplitPath(const path& p) {
 	CSplitPath sp;
 #ifdef _WIN32
 	TCHAR drive[_MAX_DRIVE],
@@ -65,15 +65,16 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 		fname, sizeof fname,
 		ext, sizeof ext);
 #	else
-	_tsplitpath(path, drive, dir, fname, ext);
+	_tsplitpath(p.native(), drive, dir, fname, ext);
 #	endif
 	sp.m_drive = drive;
 	sp.m_dir = dir;
 	sp.m_fname = fname;
 	sp.m_ext = ext;
 #else
-	size_t fn = path.rfind(path::preferred_separator);
-	String sSnExt = path.substr(fn==String::npos ? 0 : fn+1);
+	auto pn = p.native();
+	size_t fn = pn.rfind(path::preferred_separator);
+	String sSnExt = pn.substr(fn==String::npos ? 0 : fn+1);
 
 	size_t ext = sSnExt.rfind('.');
 	if (ext != String::npos)
@@ -81,7 +82,7 @@ Path::CSplitPath Path::SplitPath(RCString path) {
 	else
 		ext = sSnExt.length();
 	sp.m_fname = sSnExt.Left(ext);
-	sp.m_dir = path.Left(fn+1);
+	sp.m_dir = pn.substr(0, fn + 1);
 #endif
 	return sp;
 }
@@ -101,12 +102,12 @@ pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUni
 }
 
 path Path::GetPhysicalPath(const path& p) {
-	String path = p;
+	String path = path;
 #if UCFG_WIN32_FULL
 	while (true) {
 		Path::CSplitPath sp = SplitPath(path);
 		vector<String> vec = System.QueryDosDevice(sp.m_drive);				// expand SUBST-ed drives
-		if (vec.empty() || vec[0].Left(4) != "\\??\\")
+		if (vec.empty() || !vec[0].StartsWith("\\??\\"))
 			break;
 		path = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
 	}
@@ -119,9 +120,9 @@ static StaticWRegex s_reDosName("^\\\\\\\\\\?\\\\([A-Za-z]:.*)");   //  \\?\x:
 #endif
 
 path Path::GetTruePath(const path& p) {
-#if UCFG_USE_POSIX	
+#if UCFG_USE_POSIX
 	char buf[PATH_MAX];
-	for (const char *psz = p.native();; psz = buf) {
+	for (const char *psz = p.c_str();; psz = buf) {
 		int len = ::readlink(psz, buf, sizeof(buf)-1);
 		if (len == -1) {
 			if (errno == EINVAL)
@@ -146,16 +147,16 @@ path Path::GetTruePath(const path& p) {
 	file.Attach(::CreateFile(buf, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0));
 	len = pfn((HANDLE)(intptr_t)Handle(file), buf2, size(buf2)-1, 0);
 	Win32Check(len != 0);
-	buf2[len] = 0;	
+	buf2[len] = 0;
 #if UCFG_USE_REGEX
 	wcmatch m;
 	if (regex_search(buf2, m, s_reDosName))
 		return String(m[1]).c_str();
 #else
 	String sbuf(buf2);				//!!! incoplete check, better to use Regex
-	int idx = sbuf.Find(':');
-	if (idx != -1)
-		return sbuf.Mid(idx-1);
+	int idx = sbuf.find(':');
+	if (idx != String::npos)
+		return sbuf.substr(idx-1).ToOsString();
 #endif
 	return buf2;
 #else
@@ -187,7 +188,7 @@ void File::Open(const File::OpenInfo& oi) {
 	case FileAccess::Write:	oflag = O_WRONLY;	break;
 	case FileAccess::ReadWrite:	oflag = O_RDWR;	break;
 	default:
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	}
 	switch (oi.Mode) {
 	case FileMode::CreateNew:
@@ -208,7 +209,7 @@ void File::Open(const File::OpenInfo& oi) {
 		oflag |= O_TRUNC;
 		break;
 	default:
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	}
 	int fd = CCheck(::open(oi.Path.c_str(), oflag, 0644));
 	Attach((intptr_t)fd);
@@ -219,7 +220,7 @@ void File::Open(const File::OpenInfo& oi) {
 	case FileAccess::Write:		dwAccess = GENERIC_WRITE;	break;
 	case FileAccess::ReadWrite:	dwAccess = GENERIC_READ|GENERIC_WRITE;	break;
 	default:
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	}
 	DWORD dwShareMode = 0;
 	if ((int)oi.Share & (int)FileShare::Read)
@@ -253,27 +254,28 @@ void File::Open(const File::OpenInfo& oi) {
 
 	SECURITY_ATTRIBUTES sa = { sizeof sa };
 	sa.bInheritHandle = bool(oi.Share & FileShare::Inheritable);
-	
+
 	DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL
 		| (oi.BufferingEnabled ? 0 : FILE_FLAG_NO_BUFFERING)
 		| (bool(oi.Options & FileOptions::Asynchronous) ? FILE_FLAG_OVERLAPPED : 0)
 		| (bool(oi.Options & FileOptions::RandomAccess) ? FILE_FLAG_RANDOM_ACCESS : 0)
 		| (bool(oi.Options & FileOptions::SequentialScan) ? FILE_FLAG_SEQUENTIAL_SCAN : 0)
 		| (bool(oi.Options & FileOptions::DeleteOnClose) ? FILE_FLAG_DELETE_ON_CLOSE : 0)
-		| (bool(oi.Options & FileOptions::WriteThrough) ? FILE_FLAG_WRITE_THROUGH : 0);		
+		| (bool(oi.Options & FileOptions::WriteThrough) ? FILE_FLAG_WRITE_THROUGH : 0);
 
 	Attach(::CreateFile(ExcLastStringArgKeeper(oi.Path.native()), dwAccess, dwShareMode, &sa, dwCreateFlag, dwFlagsAndAttributes, NULL));
 	if (oi.Mode == FileMode::Append)
-		SeekToEnd(); 
+		SeekToEnd();
 #endif	// UCFG_USE_POSIX
 }
 
-void File::Open(const path& p, FileMode mode, FileAccess access, FileShare share) {
+void File::Open(const path& p, FileMode mode, FileAccess access, FileShare share, FileOptions options) {
 	OpenInfo oi;
 	oi.Path = p;
 	oi.Mode = mode;
 	oi.Access = access;
 	oi.Share = share;
+	oi.Options = options;
 	Open(oi);
 }
 
@@ -301,7 +303,7 @@ void File::WriteAllText(const path& p, RCString contents, Encoding *enc) {
 
 #if !UCFG_USE_POSIX
 
-void File::Create(RCString fileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile, LPSECURITY_ATTRIBUTES lpsa) {
+void File::Create(const path& fileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile, LPSECURITY_ATTRIBUTES lpsa) {
 #if UCFG_USE_POSIX
 	int oflag = 0;
 	if ((dwDesiredAccess & (GENERIC_READ|GENERIC_WRITE)) == (GENERIC_READ|GENERIC_WRITE))
@@ -312,7 +314,7 @@ void File::Create(RCString fileName, DWORD dwDesiredAccess, DWORD dwShareMode, D
 		oflag = O_WRONLY;
 	Attach(CCheck(::open(fileName, oflag)));
 #else
-	Attach(::CreateFile(fileName, dwDesiredAccess, dwShareMode, lpsa, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
+	Attach(::CreateFile(String(fileName.native()), dwDesiredAccess, dwShareMode, lpsa, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
 #endif
 }
 
@@ -403,7 +405,7 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nWritten;
-	for (const byte *p = (const byte*)buf; size; size -= nWritten, p += nWritten) {
+	for (const uint8_t* p = (const uint8_t*)buf; size; size -= nWritten, p += nWritten) {
 		if (pov) {
 			ov.Offset = DWORD(offset);
 			ov.OffsetHigh = DWORD(offset >> 32);
@@ -485,6 +487,18 @@ size_t File::PhysicalSectorSize() const {			// return 0 if not detected
 	return 0;
 }
 
+bool File::get_CanSeek() {
+#if UCFG_USE_POSIX
+	struct stat st;
+	CCheck(::fstat((int)(intptr_t)HandleAccess(_self), &st));
+	return S_ISREG(st.st_mode);
+#else
+	auto ft = ::GetFileType((HANDLE)(intptr_t)HandleAccess(_self));
+	Win32Check(ft != FILE_TYPE_UNKNOWN || GetLastError() == NO_ERROR);
+	return ft == FILE_TYPE_DISK;
+#endif
+}
+
 int64_t File::Seek(const int64_t& off, SeekOrigin origin) {
 #if UCFG_USE_POSIX
 	return CCheck(::lseek((int)(intptr_t)HandleAccess(_self), (long)off, (int)origin));
@@ -504,7 +518,7 @@ void File::Flush() {
 #else
 	Win32Check(::FlushFileBuffers(HandleAccess(_self)));
 #endif
-}  
+}
 
 uint64_t File::get_Length() const {
 #if UCFG_USE_POSIX
@@ -530,7 +544,7 @@ void File::put_Length(uint64_t len) {
 }
 
 void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share, size_t bufferSize, FileOptions options) {
-	intptr_t h = File(p, mode, access, share).Detach();
+	intptr_t h = File(p, mode, access, share, options).Detach();
 #if UCFG_WIN32_FULL
 	int flags = 0;
 	if (mode == FileMode::Append)
@@ -638,7 +652,7 @@ bool FileStream::Eof() const {
 size_t FileStream::Read(void *buf, size_t count) const {
 	if (m_fstm)
 		return fread(buf, 1, count, m_fstm);
-		
+
 #if UCFG_WIN32_FULL
 	if (m_ovl) {
 		uint32_t n;
@@ -695,7 +709,7 @@ void FileStream::ReadBuffer(void *buf, size_t count) const {
 		} else
 #endif
 			n = m_pFile->Read(buf, (UINT)count);
-		if (n) {    
+		if (n) {
 			count -= n;
 			(BYTE*&)buf += n;
 		} else
@@ -785,7 +799,7 @@ DWORD FileSystemInfo::get_Attributes() const {
 DateTime FileSystemInfo::get_CreationTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath.native(), &st));
+	CCheck(::stat(FullPath.c_str(), &st));
 	return DateTime::from_time_t(st.st_ctime);
 #else
 	return GetData().ftCreationTime;
@@ -797,7 +811,7 @@ void FileSystemInfo::put_CreationTime(const DateTime& dt) {
 	Throw(E_NOTIMPL);
 #else
 	File file;
-	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), &ft, 0, 0));
 #endif
@@ -806,7 +820,7 @@ void FileSystemInfo::put_CreationTime(const DateTime& dt) {
 DateTime FileSystemInfo::get_LastAccessTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath.native(), &st));
+	CCheck(::stat(FullPath.c_str(), &st));
 	return DateTime::from_time_t(st.st_atime);
 #else
 	return GetData().ftLastAccessTime;
@@ -821,10 +835,10 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 	ut.modtime = tv.tv_sec;
 	dt.ToTimeval(tvDt);
 	ut.actime = tvDt.tv_sec;
-	CCheck(::utime(FullPath.native(), &ut));
+	CCheck(::utime(FullPath.c_str(), &ut));
 #else
 	File file;
-	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, &ft, 0));
 #endif
@@ -833,7 +847,7 @@ void FileSystemInfo::put_LastAccessTime(const DateTime& dt) {
 DateTime FileSystemInfo::get_LastWriteTime() const {
 #if UCFG_USE_POSIX
 	struct stat st;
-	CCheck(::stat(FullPath.native(), &st));
+	CCheck(::stat(FullPath.c_str(), &st));
 	return DateTime::from_time_t(st.st_mtime);
 #else
 	return GetData().ftLastWriteTime;
@@ -848,10 +862,10 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 	ut.actime = tv.tv_sec;
 	dt.ToTimeval(tvDt);
 	ut.modtime = tvDt.tv_sec;
-	CCheck(::utime(FullPath.native(), &ut));
+	CCheck(::utime(FullPath.c_str(), &ut));
 #else
 	File file;
-	file.Create(String(FullPath.native()), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
+	file.Create(FullPath, FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING);
 	FILETIME ft = dt;
 	Win32Check(::SetFileTime((HANDLE)(intptr_t)Handle(file), 0, 0, &ft));
 #endif
@@ -880,4 +894,3 @@ vector<String> AFXAPI SerialPort::GetPortNames() {
 
 
 } // Ext::
-

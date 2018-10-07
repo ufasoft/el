@@ -8,7 +8,7 @@
 	typedef unsigned int        UINT;
 	typedef INT_PTR (__stdcall *FARPROC)();
 	typedef uint32_t DWORD;
-	typedef byte BYTE;
+	typedef uint8_t BYTE;
 	typedef char CHAR;
 	typedef unsigned short USHORT;
 
@@ -66,6 +66,8 @@ typedef struct _GUID {
 #define FACILITY_WIN32                   7
 #define FACILITY_URT                     19
 
+#define FACILITY_NT_BIT                 0x10000000
+
 
 #define _WINERROR_
 
@@ -74,6 +76,7 @@ typedef __success(return >= 0) uint32_t HRESULT;
 #define _HRESULT_TYPEDEF_(_sc) ((HRESULT)_sc)
 
 #define HRESULT_FROM_WIN32(x) ((HRESULT)(x) <= 0 ? ((HRESULT)(x)) : ((HRESULT) (((x) & 0x0000FFFF) | (FACILITY_WIN32 << 16) | 0x80000000)))
+#define HRESULT_FROM_NT(x)      ((HRESULT) ((x) | FACILITY_NT_BIT))
 
 #define SEVERITY_SUCCESS    0
 #define SEVERITY_ERROR      1
@@ -103,18 +106,13 @@ typedef __success(return >= 0) uint32_t HRESULT;
 
 #define ERROR_FILE_NOT_FOUND             2L
 #define ERROR_PATH_NOT_FOUND             3L
-#define ERROR_CRC                        23L
 #define ERROR_FILE_EXISTS                80L
-#define ERROR_INVALID_PASSWORD           86L
 #define ERROR_INVALID_PARAMETER          87L
 #define ERROR_PROC_NOT_FOUND             127L
 #define ERROR_ARITHMETIC_OVERFLOW        534L
-#define ERROR_PWD_TOO_SHORT              615L
 #define ERROR_STACK_OVERFLOW             1001L
 #define ERROR_CANCELLED                  1223L
-#define ERROR_WRONG_PASSWORD             1323L
 #define ERROR_PASSWORD_RESTRICTION       1325L
-#define ERROR_LOGON_FAILURE              1326L
 #define ERROR_NO_SYSTEM_RESOURCES        1450L
 #define ERROR_INVALID_COMMAND_LINE       1639L
 
@@ -228,4 +226,3 @@ typedef __success(return >= 0) uint32_t HRESULT;
 #define CSIDL_FLAG_PER_USER_INIT        0x0800        // combine with CSIDL_ value to indicate per-user init (eg. upgrade)
 #endif  // NTDDI_WINXP
 #define CSIDL_FLAG_MASK                 0xFF00        // mask for all possible flag values
-

@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext {
@@ -16,9 +21,9 @@ public:
 	HRESULT HResult;
 
 	RegexExc(HRESULT hr, RCString msg = nullptr)
-		:	HResult(hr)
-		,	Message(msg)
-		,	std::regex_error(std::regex_constants::error_escape)				//!!! error_escape is just a stub
+		: std::regex_error(std::regex_constants::error_escape)				//!!! error_escape is just a stub
+		, Message(msg)
+		, HResult(hr)
 	{}
 
 	/*!!!R
@@ -45,7 +50,7 @@ public:
 	typedef Ext::String::difference_type difference_type;
 	typedef Ext::String::const_iterator iterator;
 	typedef Ext::String string_type;
-	
+
 	Ext::CBool matched;
 
 	difference_type length() const {
@@ -102,7 +107,7 @@ public:
 	const_reference prefix() const { return m_prefix; }
 	const_reference suffix() const { return m_suffix; }
 
-	size_t length(int idx = 0) const { return operator[](idx).length(); }	
+	size_t length(int idx = 0) const { return operator[](idx).length(); }
 	size_t position(int idx = 0) const { return distance(m_org, operator[](idx).first); }
 	string_type str(int idx = 0) const { return operator[](idx).str(); }
 

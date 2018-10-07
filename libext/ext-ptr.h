@@ -84,6 +84,8 @@ public:
 	}
 };
 
+void ThrowNonEmptyPointer();	// Helpers
+
 template <typename T, typename L>
 class RefPtr : public PtrBase<T> {
 	typedef PtrBase<T> base;
@@ -132,7 +134,7 @@ public:
 
 	void Attach(T *p) {
 		if (m_p)
-			Throw(ExtErr::NonEmptyPointer);
+			ThrowNonEmptyPointer();
 		m_p = p;
 	}
 
@@ -140,7 +142,7 @@ public:
 
 	T** AddressOf() {
 		if (m_p)
-			Throw(ExtErr::NonEmptyPointer);
+			ThrowNonEmptyPointer();
 		return &m_p;
 	}
 

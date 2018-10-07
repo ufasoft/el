@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -78,7 +78,7 @@ void TimeSpan::ToTimeval(timeval& tv) const {
 	tv.tv_usec = long((cnt % 10000000)/10);
 }
 
-DateTime::DateTime(const timeval& tv) { 
+DateTime::DateTime(const timeval& tv) {
 	m_ticks = int64_t(tv.tv_sec)*10000000 + Unix_DateTime_Offset+tv.tv_usec*10;
 }
 
@@ -285,7 +285,7 @@ bool CPreciseTimeBase::Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, in
 		int64_t freq;
 		if (stPeriod > 0 && cntPeriod > 0 && (freq = GetFrequency(stPeriod, cntPeriod))) {
 			int64_t prevMul = int64_t(m_mul) << (32-m_shift);
-			
+
 			int shift = std::min(int(m_shift), BitLen((uint64_t)freq));
 			int32_t mul = int32_t((10000000LL << shift)/freq);
 			m_shift = shift;
@@ -362,7 +362,7 @@ int64_t CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
 		int64_t ct = m_stBase+(((tscPeriod & m_mask)*m_mul)>>m_shift);
 		bool bResetBase = MyAbs(stPeriod) > m_period;
 		if (!bResetBase && MyAbs(st-ct) < CORRECTION_PRECISION)
-			r = ct;		
+			r = ct;
 		else {
 			TRC(6, "ST-diff " << stPeriod << "  CT-diff " << (st-(m_stBase+(((tscPeriod & m_mask)*m_mul)>>m_shift)))/10000 << "ms TSC-diff = " << tscAfter-tsc << "   Prev Recalibration: " << stPeriod/10000000 << " s ago");
 			bSwitch = Recalibrate(st, tsc, stPeriod, tscPeriod, bResetBase);
@@ -601,15 +601,31 @@ void DateTime::ToTimeval(timeval& tv) const {
 
 #endif // defined(_WIN32) && defined(_M_IX86)
 
-#if !UCFG_WDM
+
 DateTime::operator tm() const {
+#if UCFG_WDM
+	LARGE_INTEGER li;
+	li.QuadPart = Ticks-FileTimeOffset;
+    TIME_FIELDS tf;
+    ::RtlTimeToTimeFields(&li, &tf);
+    tm r = { 0 };
+    r.tm_sec = tf.Second;
+    r.tm_min = tf.Minute;
+    r.tm_hour = tf.Hour;
+    r.tm_mday = tf.Day;
+    r.tm_mon = tf.Month - 1;
+    r.tm_year = tf.Year-1900;
+    r.tm_wday = tf.Weekday;
+ //!!!TODO    r.rm_yday = ;
+    return r;
+#else
 	timeval tv;
 	ToTimeval(tv);
 	time_t tim = tv.tv_sec;
-	tm r;
+    tm r;
 	return *gmtime_r(&tim, &r);
-}
 #endif
+}
 
 DateTime LocalDateTime::ToUniversalTime() {
 #if UCFG_USE_POSIX
@@ -677,8 +693,8 @@ extern "C" {
 */
 __int32 _cdecl gmt2local(time_t t)
 {
-	register int dt, dir;
-	register struct tm *gmt, *loc;
+	int dt, dir;
+	struct tm *gmt, *loc;
 	struct tm sgmt;
 
 	if (t == 0)
@@ -707,5 +723,3 @@ __int32 _cdecl gmt2local(time_t t)
 #endif // UCFG_WIN32_FULL
 
 } // "C"
-
-

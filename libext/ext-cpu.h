@@ -1,10 +1,3 @@
-/*######     Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #########################################################################################################
-#                                                                                                                                                                                                                                            #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  either version 3, or (at your option) any later version.          #
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.   #
-# You should have received a copy of the GNU General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                                                      #
-############################################################################################################################################################################################################################################*/
-
 #pragma once
 
 namespace Ext {
@@ -26,18 +19,136 @@ public:
 		struct {
 			int EAX, EBX, ECX, EDX;
 		};
+
 		int m_ar[4];
+	};
+
+	struct FeatureInfo {
+		FeatureInfo();
+
+		union {
+			CpuidInfo IdInfo1;
+
+			struct {
+				int : 32;
+			
+				int : 32;
+
+				bool SSE3 : 1,
+					PCLMULQDQ : 1,
+					DTES64 : 1,
+					MONITOR : 1,
+					DS_CPL : 1,
+					VMX : 1,
+					SMX : 1,
+					EST : 1,
+					TM2 : 1,
+					SSSE3 : 1,
+					CNXT_ID: 1,
+					SDBG : 1,
+					FMA : 1,
+					CX16 : 1,
+					XPTR : 1,
+					PDCM : 1,
+					: 1,
+					PCID : 1,
+					DCA : 1,
+					SSE41 : 1,
+					SSE42 : 1,
+					X2APIC : 1,
+					MOVBE : 1,
+					POPCNT : 1,
+					TSC_DEADLINE : 1,
+					AES : 1,
+					XSAVE : 1,
+					OXSAVE : 1,
+					AVX : 1,
+					F16C : 1,
+					RDRND : 1,
+					HYPERVISOR : 1;
+
+				bool FPU : 1,
+					VME : 1,
+					DE : 1,
+					PSE : 1,
+					TSC : 1,
+					MSR : 1,
+					PAE : 1,
+					MCE : 1,
+					CX8 : 1,
+					APIC : 1,
+					: 1,
+					SEP : 1,
+					MTRR : 1,
+					PGE : 1,
+					MCA : 1,
+					CMOV : 1,
+					PAT : 1,
+					PSE36 : 1,
+					PSN : 1,
+					CLFSH : 1,
+					: 1,
+					DS : 1,
+					ACPI : 1,
+					MMX : 1,
+					FXSR : 1,
+					SSE : 1,
+					SSE2 : 1,
+					SS : 1,
+					HTT : 1,
+					TM : 1,
+					IA64 : 1,
+					PBE;
+			};
+		};
+		union {
+			CpuidInfo IdInfo7;
+
+			struct {
+				int : 32;
+
+				bool FSGSBASE : 1,
+					: 2,
+					BMI1 : 1,
+					: 1,
+					AVX2 : 1,
+					: 2,
+					BMI2 : 1,
+					ERMS : 1,
+					INVPCID : 1,
+					: 5,
+					AVX512F : 1,
+					AVX512DQ : 1,
+					RDSEED : 1,
+					ADX : 1,
+					: 1,
+					AVX512IFMA : 1,
+					: 4,
+					AVX512PF : 1,
+					AVX512ER : 1,
+					AVX512CD : 1,
+					SHA : 1,
+					AVX512BW : 1,
+					AVX512VL : 1;
+				int : 32;
+
+				int : 32;
+			};
+		};
 	};
 
 	struct SFamilyModelStepping {
 		int Family, Model, Stepping;
 	};
 
-	CpuidInfo Cpuid(int level) {
+	static CpuidInfo Cpuid(int level) {
 		CpuidInfo r;
 		::Cpuid(r.m_ar, level);
 		return r;
 	}
+
+	const FeatureInfo& get_Features();
+	DEFPROP_GET(FeatureInfo, Features);
 
 	CpuVendor get_Vendor() {
 		int a[4];
@@ -49,11 +160,6 @@ public:
 		return r;
 	}
 	DEFPROP_GET(CpuVendor, Vendor);
-
-	bool get_HasTsc() {
-		return Cpuid(1).EDX & 0x10;
-	}
-	DEFPROP_GET(bool, HasTsc);
 
 	struct SFamilyModelStepping get_FamilyModelStepping() {
 	    int v = Cpuid(1).EAX;
@@ -79,16 +185,6 @@ public:
 		return false;
 	}
 	DEFPROP_GET(bool, ConstantTsc);
-
-	bool get_HasSse() {
-		return Cpuid(1).EDX & 0x02000000;
-	}
-	DEFPROP_GET(bool, HasSse);
-
-	bool get_HasSse2() {
-		return Cpuid(1).EDX & 0x04000000;
-	}
-	DEFPROP_GET(bool, HasSse2);
 
 #	if UCFG_FRAMEWORK && !defined(_CRTBLD)
 	String get_Name() {

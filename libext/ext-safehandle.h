@@ -19,31 +19,24 @@ class Exception;
 //!!!R typedef const Exception& RCExc;
 //typedef const std::exception& RCExc;
 
-#ifndef UCFG_USE_IN_EXCPETION
-#	if defined(_CPPUNWIND) || !defined(_MSC_VER)
-#		define UCFG_USE_IN_EXCPETION (!UCFG_WDM)		//!!!?
-#	else
-#		define UCFG_USE_IN_EXCPETION 0
-#	endif
-#endif
 
 class CHandleBaseBase {
 public:
 	mutable atomic<int> m_aInUse;
 
 	CHandleBaseBase()
-		: m_abClosed(true)
-		,	m_aInUse(0)
+		:	m_aInUse(0)
+		,	m_abClosed(true)
 	{
 	}
 
 	virtual bool Release() const =0;
 	bool Close(bool bFromDtor = false);
-	
+
 	void swap(CHandleBaseBase& r);
 protected:
 	atomic<bool> m_abClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
-#if UCFG_USE_IN_EXCPETION
+#if UCFG_USE_IN_EXCEPTION
 	CInException InException;
 #endif
 };
@@ -66,7 +59,7 @@ template <class U> friend class CHandleKeeper;
 
 #ifndef WDM_DRIVER
 
-class EXTAPI CTls : noncopyable {	
+class EXTAPI CTls : noncopyable {
 public:
 	typedef CTls class_type;
 
@@ -156,7 +149,7 @@ public:
 		T *r = *this;
 		if (!r)
 			reset(r = new T);
-		return *r;	
+		return *r;
 	}
 };
 
@@ -236,15 +229,15 @@ public:
 #endif
 
 	SafeHandle()
-		:	m_aHandle(-1)
-		,	m_invalidHandleValue(-1)
+		: m_invalidHandleValue(-1)
+		,	m_aHandle(-1)
 		,	m_bOwn(true)
 	{}
 
 	SafeHandle(intptr_t invalidHandle, bool)
-		:	m_aHandle(invalidHandle)
-		,	m_invalidHandleValue(invalidHandle)
-		,	m_bOwn(true)
+		: m_invalidHandleValue(invalidHandle)
+		, m_aHandle(invalidHandle)
+		, m_bOwn(true)
 #if UCFG_WDM
 		,	m_pObject(nullptr)
 #endif
@@ -259,7 +252,7 @@ public:
 //!!!	void Release() const;
 	//!!!  void CloseHandle();
 	intptr_t DangerousGetHandle() const;
-	
+
 	void Attach(intptr_t handle, bool bOwn = true);
 #ifdef _WIN32
 	void Attach(HANDLE handle, bool bOwn = true) { Attach((intptr_t)handle, bOwn); }
@@ -356,4 +349,3 @@ ENUM_CLASS(HandleInheritability) {
 } END_ENUM_CLASS(HandleInheritability);
 
 } // Ext::
-

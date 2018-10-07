@@ -94,9 +94,9 @@ void *CAlloc::Malloc(size_t size) {
 		return p;
 #elif UCFG_ALLOCATOR=='T'
 #	if UCFG_HEAP_CHECK
-	if (void *p = tc_malloc(size)) 
+	if (void *p = tc_malloc(size))
 #	else
-	if (void *p = do_malloc(size)) 
+	if (void *p = do_malloc(size))
 #	endif
 		return p;
 #else
@@ -152,7 +152,7 @@ void *CAlloc::Realloc(void *p, size_t size) {
 #if !UCFG_MINISTL
 void *CAlloc::AlignedMalloc(size_t size, size_t align) {
 #if UCFG_ALLOCATOR=='T'
-	if (void *p = do_memalign(align, size)) 
+	if (void *p = do_memalign(align, size))
 		return p;
 #elif UCFG_USE_POSIX
 	void *r;
@@ -211,11 +211,11 @@ void * __cdecl operator new[](size_t sz) {
 #	if UCFG_STDSTL
 void __cdecl operator delete[](void *p, const std::nothrow_t& ) noexcept {
 	operator delete(p);//!!!
-}	
+}
 #else
 void __cdecl operator delete[](void *p, const ExtSTL::nothrow_t& ) noexcept {
 	operator delete(p);//!!!
-}	
+}
 #	endif // UCFG_STDSTL
 
 #endif // UCFG_WDM
@@ -266,6 +266,8 @@ void __cdecl __crtCapturePreviousContext
 
 }
 
+
+
 #if UCFG_WDM
 extern "C" void* __cdecl API_malloc(size_t size) {
 	return CAlloc::Malloc(size);
@@ -296,8 +298,8 @@ int __cdecl _CrtDbgReportW(
 
 
 
-
 } // "C"
+
 
 #if UCFG_WDM
 __declspec(noreturn) void __cdecl terminate(void) {
@@ -307,4 +309,5 @@ __declspec(noreturn) void __cdecl terminate(void) {
 
 
 #endif // !UCFG_STDSTL
+
 

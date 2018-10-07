@@ -21,7 +21,7 @@ unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed) {
 	const int r = 24;
 	size_t len = cbuf.Size;
 
-	const byte *data = cbuf.P;
+	const uint8_t *data = cbuf.P;
 
 	unsigned int h = seed ^ len;
 
@@ -133,7 +133,7 @@ unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed) {
 }
 
 uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed) {
-	const byte *data = cbuf.P;
+	const uint8_t *data = cbuf.P;
 	size_t len = cbuf.Size,
 		nblocks = len / 4;
 	uint32_t h1 = seed;

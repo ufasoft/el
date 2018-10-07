@@ -135,7 +135,7 @@ void Socket::Listen(int backLog) {
 }
 
 pair<Socket, IPEndPoint> Socket::Accept() {
-	byte sa[50];
+	uint8_t sa[50];
 	socklen_t addrlen = sizeof(sa);
 	SOCKET s = ::accept(BlockingHandleAccess(_self), (sockaddr*)sa, &addrlen);
 	pair<Socket, IPEndPoint> r;
@@ -232,7 +232,7 @@ int Socket::Send(const void *buf, int len, int flags) {
 }
 
 int Socket::ReceiveFrom(void *buf, int len, IPEndPoint& ep) {
-	byte bufSockaddr[100];
+	uint8_t bufSockaddr[100];
 	ZeroStruct(bufSockaddr);
 	sockaddr& sa =  *(sockaddr*)bufSockaddr;
 	sa.sa_family = AF_INET;
@@ -315,7 +315,7 @@ void NetworkStream::WriteBuffer(const void *buf, size_t count) {
 			if (n < 0)
 				Throw(E_FAIL);
 			count -= n;
-			(const byte*&)buf += n;
+			(const uint8_t*&)buf += n;
 		} else if (count)
 			Throw(E_FAIL);
 	}
@@ -361,7 +361,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 
 		bool Process(fd_set *fdset) {
 			if (FD_ISSET((intptr_t)m_hp, fdset)) {
-				byte buf[BUF_SIZE];
+				uint8_t buf[BUF_SIZE];
 				int r = m_sock.Receive(buf, sizeof buf);
 				if (m_bLive = r) {
 					bool bDisconnectAfterData = false;

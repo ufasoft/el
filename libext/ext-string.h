@@ -5,7 +5,6 @@
 
 #pragma once
 
-
 namespace Ext {
 
 using std::vector;
@@ -187,7 +186,7 @@ public:
 #endif
 
 	const value_type& operator[](size_type idx) const;
-	
+
 	const value_type& operator[](int idx) const {
 		return operator[]((size_t)idx);
 	}
@@ -222,10 +221,10 @@ public:
 	String& operator+=(const String& s);
 	void CopyTo(char *ar, size_t size) const;
 	void CopyTo(value_type *ar, size_t size) const;
-	
+
 	int compare(size_type p1, size_type c1, const value_type *s, size_type c2) const;
 	int compare(const String& s) const noexcept;
-	
+
 	int CompareNoCase(const String& s) const;
 	bool empty() const noexcept;
 	void clear();
@@ -238,6 +237,7 @@ public:
 
 	bool Contains(const String& s) const noexcept { return find(s) != npos; }
 
+	bool StartsWith(const String& s) const noexcept;
 	int FindOneOf(const String& sCharSet) const;
 	String substr(size_type pos, size_type count = npos) const;
 	String Right(ssize_t nCount) const;
@@ -277,7 +277,7 @@ public:
 	std::string ToOsString() const {
 		return operator explicit_cast<std::string>();
 	}
-#elif UCFG_STDSTL 
+#elif UCFG_STDSTL
 	std::wstring ToOsString() const {
 		return operator explicit_cast<std::wstring>();
 	}

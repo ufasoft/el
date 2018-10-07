@@ -30,22 +30,24 @@ namespace std {
 
 #include EXT_HEADER_FILESYSTEM
 
+/*!!!R/
 #if UCFG_MSC_VERSION>=1900 && UCFG_CRT=='S'
 namespace std { namespace sys = tr2::sys; }
 #endif
+*/
 
 namespace Ext {
-using std::sys::exists;
-using std::sys::path;
-using std::sys::copy_file;
-using std::sys::copy_options;
-using std::sys::current_path;
-using std::sys::create_directory;
-using std::sys::create_directories;
-using std::sys::temp_directory_path;
-using std::sys::directory_iterator;
-using std::sys::is_regular_file;
-using std::sys::is_directory;
+using std::filesystem::exists;
+using std::filesystem::path;
+using std::filesystem::copy_file;
+using std::filesystem::copy_options;
+using std::filesystem::current_path;
+using std::filesystem::create_directory;
+using std::filesystem::create_directories;
+using std::filesystem::temp_directory_path;
+using std::filesystem::directory_iterator;
+using std::filesystem::is_regular_file;
+using std::filesystem::is_directory;
 
 class AFX_CLASS COperatingSystem {
 	typedef COperatingSystem class_type;
@@ -81,17 +83,6 @@ public:
 	static DWORD AFXAPI GetSysColor(int nIndex);
 	static void AFXAPI MessageBeep(UINT uType = 0xFFFFFFFF);
 	EXT_API static CStringVector AFXAPI QueryDosDevice(RCString dev);
-
-	/*!!!
-	static SYSTEM_INFO get_Info() {
-		SYSTEM_INFO si;
-		::GetSystemInfo(&si);
-		return si;
-	}
-	DEFPROP_GET(SYSTEM_INFO, Info);
-	*/
-
-	bool Is64BitNativeSystem();
 
 	static path AFXAPI get_WindowsDirectory();
 	DEFPROP_GET(path, WindowsDirectory);
@@ -205,7 +196,7 @@ private:
 class AFX_CLASS CSemaphore : public CSyncObject {
 public:
 	CSemaphore(LONG lInitialCount = 1, LONG lMaxCount = 1, RCString name = nullptr
-#ifdef WIN32		
+#ifdef WIN32
 		, LPSECURITY_ATTRIBUTES lpsaAttributes = 0
 #endif
 		);
@@ -230,7 +221,7 @@ public:
 			if (!rc)
 				return true;
 			if (errno != EINTR)
-				CCheck(-1);				
+				CCheck(-1);
 		}
 	}
 #endif

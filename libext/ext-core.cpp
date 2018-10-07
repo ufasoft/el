@@ -129,15 +129,19 @@ T CheckBounds(int64_t v) {
 
 template <typename T>
 T CheckBounds(uint64_t v) {
+#if _HAS_EXCEPTIONS
 	if (v > numeric_limits<T>::max())
 		throw out_of_range("integer bounds violated");
+#endif
 	return (T)v;
 }
 
 template <typename T>
 T CheckBounds(int v) {
+#if _HAS_EXCEPTIONS
 	if (v > numeric_limits<T>::max())
 		throw out_of_range("integer bounds violated");
+#endif
 	return (T)v;
 }
 
@@ -149,8 +153,8 @@ uint16_t Convert::ToUInt16(RCString s, int fromBase) {
 	return CheckBounds<uint16_t>(stoi(s, 0, fromBase));
 }
 
-byte Convert::ToByte(RCString s, int fromBase) {
-	return CheckBounds<byte>(stoi(s, 0, fromBase));
+uint8_t Convert::ToByte(RCString s, int fromBase) {
+	return CheckBounds<uint8_t>(stoi(s, 0, fromBase));
 }
 
 #if !UCFG_WDM
@@ -167,9 +171,9 @@ MacAddress::MacAddress(RCString s)
 	vector<String> ar = s.Split(":-");
 	if (ar.size() != 6)
 		Throw(E_FAIL);
-	byte *p = (byte*)&m_n64;
+	uint8_t *p = (uint8_t*)&m_n64;
 	for (size_t i=0; i<ar.size(); i++)
-		*p++ = (byte)Convert::ToUInt32(ar[i], 16);
+		*p++ = (uint8_t)Convert::ToUInt32(ar[i], 16);
 }
 
 String MacAddress::ToString() const {
@@ -236,7 +240,7 @@ void StreamWriter::WriteLine(RCString line) {
 	m_stm.WriteBuf(blob);
 }
 
-uint64_t ToUInt64AtBytePos(const dynamic_bitset<byte>& bs, size_t pos) {
+uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
 	ASSERT(!(pos & 7));
 
 	uint64_t r = 0;
@@ -245,13 +249,13 @@ uint64_t ToUInt64AtBytePos(const dynamic_bitset<byte>& bs, size_t pos) {
 		r |= uint64_t(bs[pos+i]) << i;
 #else
 	size_t idx = pos/bs.bits_per_block;
-	const byte *pb = (const byte*)&bs.m_data[idx];
+	const uint8_t *pb = (const uint8_t *)&bs.m_data[idx];
 	ssize_t outRangeBits = max(ssize_t(pos + 64 - bs.size()), (ssize_t)0);
 	if (0 == outRangeBits)
 		return *(uint64_t*)pb;
 	size_t n = std::min(size_t(8), (bs.num_blocks()-idx)*bs.bits_per_block/8);
 	for (size_t i=0; i<n; ++i)
-		((byte*)&r)[i] = pb[i];
+		((uint8_t*)&r)[i] = pb[i];
 	r &= uint64_t(-1) >> outRangeBits;
 #endif
 	return r;

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -15,7 +15,7 @@ uint16_t AFXAPI CalculateWordSum(const ConstBuf& mb, uint32_t sum, bool bComplem
 	for (size_t count=mb.Size>>1; count--;)
 		sum += *p++;
 	if (mb.Size & 1)
-		sum += *(byte*)p;
+		sum += *(uint8_t*)p;
 	for (uint32_t w; w=sum>>16;)
 		sum = (sum & 0xFFFF)+w;
 	return uint16_t(bComplement ? ~sum : sum);
@@ -72,7 +72,7 @@ void CHttpRequest::Parse(const vector<String>& ar) {
 void CHttpResponse::Parse(const vector<String>& ar) {
 	String s = ParseHeader(ar);
 	vector<String> sar = s.Split();
-	if (sar.size()<2 || sar[0].Left(5) != "HTTP/")
+	if (sar.size()<2 || !sar[0].StartsWith("HTTP/"))
 		Throw(E_FAIL);
 	Code = atoi(sar[1]);
 }
@@ -100,7 +100,7 @@ NameValueCollection& CHttpRequest::get_Params() {
 			if (query.length() > 1 && query.at(0)=='?')
 				ParseParams(query);
 			else if (Method == "POST")
-				ParseParams(Encoding::UTF8.GetChars(Data));			
+				ParseParams(Encoding::UTF8.GetChars(Data));
 		}
 	}
 	return m_params;
@@ -111,4 +111,3 @@ NameValueCollection& CHttpRequest::get_Params() {
 
 
 } // Ext::
-

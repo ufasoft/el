@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -137,9 +137,7 @@ String Environment::GetMachineType() {
 	CCheck(::uname(&u));
 	return u.machine;
 #elif defined(WIN32)
-	SYSTEM_INFO si;
-	GetSystemInfo(&si);
-	switch (si.wProcessorArchitecture) {
+	switch (GetSystemInfo().wProcessorArchitecture) {
 	case PROCESSOR_ARCHITECTURE_INTEL: 	return "x86";
 	case PROCESSOR_ARCHITECTURE_MIPS:	return "MIPS";
 	case PROCESSOR_ARCHITECTURE_SHX:	return "SHX";
@@ -148,6 +146,7 @@ String Environment::GetMachineType() {
 #	if UCFG_WIN32_FULL
 	case PROCESSOR_ARCHITECTURE_IA32_ON_WIN64:	return "IA-32 on Win64";
 	case PROCESSOR_ARCHITECTURE_AMD64:	return "x64";
+	case PROCESSOR_ARCHITECTURE_ARM64:	return "ARM-64";
 #	endif
 	case PROCESSOR_ARCHITECTURE_UNKNOWN:
 	default:
@@ -165,8 +164,7 @@ String Environment::GetMachineVersion() {
 	return u.machine;
 #elif defined(WIN32)
 	String s;
-	SYSTEM_INFO si;
-	GetSystemInfo(&si);
+	SYSTEM_INFO si = GetSystemInfo();
 	switch (si.wProcessorArchitecture) {
 	case PROCESSOR_ARCHITECTURE_INTEL:
 		switch (si.dwProcessorType) {
@@ -174,6 +172,9 @@ String Environment::GetMachineVersion() {
 			switch (si.wProcessorRevision) {
 			case 5895:
 				s = "Core 2 Quad";
+				break;
+			case 24067:
+				s = "Core i7-6700";
 				break;
 			default:
 				s = "586";
@@ -396,7 +397,7 @@ class Environment Environment;
 
 path Environment::GetFolderPath(SpecialFolder folder) {
 #if UCFG_USE_POSIX
-	path homedir = GetEnvironmentVariable("HOME");
+	path homedir = ToPath(GetEnvironmentVariable("HOME"));
 	switch (folder) {
 	case SpecialFolder::Desktop: 			return homedir / "Desktop";
 	case SpecialFolder::ApplicationData: 	return homedir / ".config";
@@ -426,26 +427,14 @@ path Environment::GetFolderPath(SpecialFolder folder) {
 		CComPtr<IMalloc> aMalloc;
 		OleCheck(::SHGetMalloc(&aMalloc));
 		aMalloc->Free(pidl);
-	#	else
-		if (!SHGetSpecialFolderPath(0, path, (int)folder, false))
-			Throw(E_FAIL);
-	#	endif
 	}
+	#	else
+	if (!SHGetSpecialFolderPath(0, path, (int)folder, false))
+		Throw(E_FAIL);
+	#	endif
 	return path;
 #else
 	Throw(E_NOTIMPL);
-#endif
-}
-
-int Environment::get_ProcessorCount() {
-#if UCFG_WIN32
-	SYSTEM_INFO si;
-	::GetSystemInfo(&si);
-	return si.dwNumberOfProcessors;
-#elif UCFG_USE_POSIX
-	return std::max((int)sysconf(_SC_NPROCESSORS_ONLN), 1);
-#else
-	return 1;
 #endif
 }
 
@@ -592,6 +581,15 @@ map<String, String> Environment::GetEnvironmentVariables() {
 	return m;
 }
 
+int Environment::get_ProcessorCount() {
+#if UCFG_WIN32
+	return GetSystemInfo().dwNumberOfProcessors;
+#elif UCFG_USE_POSIX
+	return std::max((int)sysconf(_SC_NPROCESSORS_ONLN), 1);
+#else
+	return 1;
+#endif
+}
 
 int Environment::get_ProcessorCoreCount() {
 #if UCFG_WIN32_FULL
@@ -611,7 +609,7 @@ int Environment::get_ProcessorCoreCount() {
 	Cpuid(a, 0);
 	if (a[0] >= 4) {
 		Cpuid(a, 4);
-		return ((a[0] >> 26) & 0x3F) + 1;
+		return ((a[0] >> 26) & 0x3F) + 1;				//!!! this code results to 2*cores on i7 CPUs
 	}
 #endif
 	return ProcessorCount;
@@ -648,7 +646,7 @@ String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 		else if (isalnum(ch) || strchr("!'()*-._", ch))
 			os << ch;
 		else
-			os << '%' << setw(2) << setfill('0') << hex << (int)(byte)ch;
+			os << '%' << setw(2) << setfill('0') << hex << (int)(uint8_t)ch;
 	}
 	return os.str();
 }
@@ -705,7 +703,7 @@ public:
 	CBase64Table()
 		:	vector<int>((size_t)256, EOF)
 	{
-		for (byte i=(byte)strlen(s_toBase64); i--;) // to eliminate trailing zero
+		for (uint8_t i = (uint8_t)strlen(s_toBase64); i--;) // to eliminate trailing zero
 			_self[s_toBase64[i]] = i;
 	}
 };
@@ -730,15 +728,15 @@ Blob Convert::FromBase64String(RCString s) {
 			ch1 = GetBase64Val(is);
 		if (ch0 == EOF || ch1 == EOF)
 			break;
-		wr << byte(ch0 << 2 | ch1 >> 4);
+		wr << uint8_t(ch0 << 2 | ch1 >> 4);
 		int ch2 = GetBase64Val(is);
 		if (ch2 == EOF)
 			break;
-		wr << byte(ch1 << 4 | ch2 >> 2);
+		wr << uint8_t(ch1 << 4 | ch2 >> 2);
 		int ch3 = GetBase64Val(is);
 		if (ch3 == EOF)
 			break;
-		wr << byte(ch2 << 6 | ch3);
+		wr << uint8_t(ch2 << 6 | ch3);
 	}
 	return ms.Blob;
 }
@@ -746,7 +744,7 @@ Blob Convert::FromBase64String(RCString s) {
 String Convert::ToBase64String(const ConstBuf& mb) {
 	//!!!R	CBase64Table::s_toBase64;
 	vector<String::value_type> v;
-	const byte *p = mb.P;
+	const uint8_t* p = mb.P;
 	for (size_t i=mb.Size/3; i--; p+=3) {
 		uint32_t dw = (p[0]<<16) | (p[1]<<8) | p[2];
 		v.push_back(CBase64Table::s_toBase64[(dw>>18) & 0x3F]);
@@ -786,7 +784,7 @@ public:
 		m_prevValue |= value << (8-count) >> Offset;
 		if (Offset + count >= 8) {
 			Base.WriteBuffer(&m_prevValue, 1);
-			m_prevValue = byte(value << (16 - Offset - count));
+			m_prevValue = uint8_t(value << (16 - Offset - count));
 		}
 		Offset = (Offset + count) % 8;
 	}
@@ -798,7 +796,7 @@ public:
 		m_prevValue = 0;
 	}
 public:
-	byte m_prevValue;
+	uint8_t m_prevValue;
 };
 
 static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable) {
@@ -819,7 +817,7 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 	}
 	if (bs.Offset)
 		Throw(errc::invalid_argument);
-	return ms;
+	return Blob(ms);
 }
 
 static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
@@ -843,7 +841,7 @@ public:
 
 	CBase32Table()
 		: vector<int>((size_t)256, EOF) {
-		for (byte i=(byte)strlen(s_toBase32); i--;) // to eliminate trailing zero
+		for (uint8_t i = (uint8_t)strlen(s_toBase32); i--;) // to eliminate trailing zero
 			_self[s_toBase32[i]] = i;
 	}
 };
@@ -874,7 +872,7 @@ Guid::Guid(RCString s) {
 		Data2 = Convert::ToUInt16(m[2], 16);
 		Data3 = Convert::ToUInt16(m[3], 16);
 		for (int i=0; i<8; ++i)
-			Data4[i] = (byte)Convert::ToUInt16(m[4+i], 16);
+			Data4[i] = (uint8_t)Convert::ToUInt16(m[4 + i], 16);
 	} else
 		Throw(E_FAIL);
 #endif
@@ -887,7 +885,7 @@ Guid Guid::NewGuid() {
 	OleCheck(::CoCreateGuid(&guid));
 #else
 	Random rng;
-	rng.NextBytes(Buf((byte*)&guid, sizeof(GUID)));
+	rng.NextBytes(Buf((uint8_t*)&guid, sizeof(GUID)));
 #endif
 	return guid;
 }
@@ -1027,7 +1025,7 @@ uint16_t Random::NextWord() {
 void Random::NextBytes(const Buf& mb) {
 	uniform_int_distribution<int> dist(0, 255);
 	for (size_t i = 0; i < mb.Size; i++)
-		mb.P[i] = (byte)dist(*Rngeng(_self));
+		mb.P[i] = (uint8_t)dist(*Rngeng(_self));
 }
 
 int Random::Next() {
@@ -1077,7 +1075,7 @@ BinaryReader& AFXAPI GetSystemURandomReader() {
 	STATIC_ASSERT(DBL_MANT_DIG < 64);
 
 	uint64_t n;
-	NextBytes(Buf((byte*)&n, sizeof n));
+	NextBytes(Buf((uint8_t*)&n, sizeof n));
 
 	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
 	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
@@ -1113,7 +1111,11 @@ void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
 
 template <typename W>
 hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
+#if UCFG_CPU_X86_X64
+	__m128i hash[8];
+#else
 	W hash[16];
+#endif
 	algo.InitHash(hash);
 	W buf[16];
 	uint64_t len = 0, counter;
@@ -1126,7 +1128,7 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 		}
 		size_t cb = stm.Read(buf, sizeof buf);
 		if (cb < sizeof buf) {
-			((byte*)buf)[cb] = 0x80;
+			((uint8_t*)buf)[cb] = 0x80;
 			bLast = true;
 		}
 		len += cb;
@@ -1137,18 +1139,18 @@ hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
 			break;
 		}
 		algo.PrepareEndianness(buf, 16);
-		algo.HashBlock(hash, (byte*)buf, counter);
+		algo.HashBlock(hash, (uint8_t*)buf, counter);
 	}
 	if (algo.IsHaifa)
-		((byte*)buf)[sizeof buf - sizeof(W)*2 - 1] = 1;
+		((uint8_t*)buf)[sizeof buf - sizeof(W) * 2 - 1] = 1;
 	len = algo.IsBlockCounted ? (len + 8 + sizeof buf) / (sizeof buf)
 		: len << 3;
-	*(uint64_t*)((byte*)buf + sizeof(buf) - 8) = algo.IsLenBigEndian ? htobe(len) : htole(len);
+	*(uint64_t*)((uint8_t*)buf + sizeof(buf) - 8) = algo.IsLenBigEndian ? htobe(len) : htole(len);
 	algo.PrepareEndianness(buf, 16);
-	algo.HashBlock(hash, (byte*)buf, counter);
+	algo.HashBlock(hash, (uint8_t*)buf, counter);
 	algo.OutTransform(hash);
 	algo.PrepareEndianness(hash, 8);
-	return hashval((const byte*)hash, algo.HashSize);
+	return hashval((const uint8_t*)hash, algo.HashSize);
 }
 
 hashval HashAlgorithm::ComputeHash(Stream& stm) {
@@ -1169,7 +1171,7 @@ hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text) {
 		k = hk;
 	}
 	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.Size);
-	byte *buf = (byte*)alloca(size);
+	uint8_t* buf = (uint8_t*)alloca(size);
 	for (size_t i=0; i<halgo.BlockSize; ++i)
 		buf[i] = i<k.Size ? k.P[i] ^ 0x36 : 0x36;
 	memcpy(buf+halgo.BlockSize, text.P, text.Size);
@@ -1202,7 +1204,7 @@ hashval Crc32::ComputeHash(Stream& stm) {
 	for (int v; (v=stm.ReadByte())!=-1;)
 		val = s_crcTable[(val ^ v) & 0xFF] ^ (val >> 8);
 	val = ~val;
-	return hashval((const byte*)&val, sizeof val);
+	return hashval((const uint8_t*)&val, sizeof val);
 }
 
 CMessageProcessor g_messageProcessor;

@@ -113,7 +113,7 @@ public:
 template <class T> class CMTQueue {
 	size_t m_cap;
 	size_t m_mask;
-	std::unique_ptr<byte> m_buf;
+	std::unique_ptr<uint8_t> m_buf;
 	T * volatile m_r, * volatile m_w;
 public:
 	explicit CMTQueue(size_t cap)
@@ -123,7 +123,7 @@ public:
 		for (size_t n=cap; n; n>>=1)
 			if (!(n & 1))
 				Throw(E_FAIL);
-		m_buf.reset(new byte[sizeof(T)*m_cap]);
+		m_buf.reset(new uint8_t[sizeof(T) * m_cap]);
 		m_r = m_w = (T*)m_buf.get();
 	}
 
@@ -443,12 +443,11 @@ public:
 		ASSERT_INTRUSIVE;
 	}
 protected:
-	byte m_base[sizeof(value_type)];
+	uint8_t m_base[sizeof(value_type)];
 	size_t m_size;
 	
 	const T *getP() const { return (const T*)m_base; }
 	T *getP() { return (T*)m_base; }
-
 };
 
 
@@ -592,16 +591,6 @@ bool between(const T& v, const T& lo, const T& hi) {
 	return between<T, std::less<T>>(v, lo, hi, std::less<T>());
 }
 
-template <typename T, class L>
-T clamp(const T& v, const T& lo, const T& hi, L pred) {
-	return pred(v, lo) ? lo : pred(hi, v) ? hi : v;
-}
-
-template <typename T>
-T clamp(const T& v, const T& lo, const T& hi) {
-	return clamp<T, std::less<T>>(v, lo, hi, std::less<T>());
-}
-
 template <typename T>
 T RoundUpToMultiple(const T& x, const T& mul) {
 	return (x + mul - 1) / mul * mul;
@@ -631,7 +620,7 @@ public:
 	operator T&() { return *m_p; }
 private:
 	T *m_p;
-	byte m_placeTx[sizeof(T)];
+	uint8_t m_placeTx[sizeof(T)];
 	CBool m_bOwn;
 };
 #endif // !UCFG_WDM

@@ -1,15 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 
-#if defined(_M_IX86) || defined(_M_X64) 
+#if defined(_M_IX86) || defined(_M_X64)
 #	include <x86intrin.h>
 #	include <cpuid.h>
 #endif
@@ -30,7 +22,7 @@ extern __inline unsigned int __attribute__((__gnu_inline__, __always_inline__)) 
 #	define _rotl(a,b)		__rold((a), (b))
 #endif
 
-#if defined(_M_IX86) || defined(_M_X64) 
+#if defined(_M_IX86) || defined(_M_X64)
 
 
 #	ifndef _rdtsc
@@ -38,11 +30,12 @@ inline volatile long long __rdtsc() {
    register long long tsc asm("eax");
    asm volatile (".byte 0x0F, 0x31" : : : "eax", "edx");	// RDTSC
    return tsc;
-} 
+}
 #		define _rdtsc()		__rdtsc()
 #	endif
 
 #define swap32 __builtin_bswap32
+#define swap64 __builtin_bswap64
 
 #endif
 
@@ -79,5 +72,3 @@ inline unsigned char _BitScanReverse64(unsigned long * _Index, unsigned long lon
 
 
 __END_DECLS
-
-
