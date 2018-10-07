@@ -817,7 +817,7 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 	}
 	if (bs.Offset)
 		Throw(errc::invalid_argument);
-	return Blob(ms);
+	return Blob(ConstBuf(ms));
 }
 
 static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
