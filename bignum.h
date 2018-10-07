@@ -194,9 +194,9 @@ public:
 	BigInteger(int64_t n);
 
 	explicit BigInteger(RCString s, int bas = 10);
-	BigInteger(const byte *p, size_t count);
+	BigInteger(const uint8_t* p, size_t count);
 
-	size_t ToBytes(byte *p, size_t size) const;
+	size_t ToBytes(uint8_t* p, size_t size) const;
 	Blob ToBytes() const;
 	bool operator!() const;
 
@@ -222,8 +222,8 @@ public:
 	BigInteger& operator=(const BigInteger& bi);
 #else
 	BigInteger(const BigInteger& bi)
-		:	m_count(bi.m_count)
-		,	m_blob(bi.m_blob)
+		: m_blob(bi.m_blob)
+		, m_count(bi.m_count)
 	{
 		m_data[0] = bi.m_data[0];
 	}
@@ -246,14 +246,14 @@ public:
 		:	m_blob(nullptr)
 	{
 		int64_t v = n;
-		Init((byte*)&v, sizeof(v));
+		Init((uint8_t*)&v, sizeof(v));
 	}
 #	endif
 
 	BigInteger(const BASEWORD *p, size_t count)
 		:	m_blob(nullptr)
 	{
-		Init((byte*)p, count*sizeof(BASEWORD));
+		Init((uint8_t*)p, count * sizeof(BASEWORD));
 	}
 
 	BigInteger(EXT_RV_REF(BigInteger) rv)
@@ -299,11 +299,11 @@ public:
 		return (unsigned int)r;
 	}
 
-	operator explicit_cast<byte>() const {
+	operator explicit_cast<uint8_t>() const {
 		int64_t r;
 		if (!AsInt64(r) || r<0 || r>255)
 			Throw(E_FAIL);
-		return (byte)r;
+		return (uint8_t)r;
 	}
 
 	friend inline void swapHelper(BigInteger& x, BigInteger& y);
@@ -351,18 +351,18 @@ public:
 	template <class E>
 	static inline BigInteger AFXAPI Random(const BigInteger& maxValue, E& rngeng) {
 		size_t nbytes = maxValue.Length / 8 + 1;
-		byte *p = (byte*)alloca(nbytes);
+		uint8_t* p = (uint8_t*)alloca(nbytes);
 		uniform_int_distribution<int> dist(0, 255);
 		for (size_t i = 0; i < nbytes; ++i)
-			p[i] = (byte)dist(rngeng);
+			p[i] = (uint8_t)dist(rngeng);
 #if UCFG_BIGNUM!='A'
-		byte *ar = (byte*)alloca(nbytes);
+		uint8_t* ar = (uint8_t*)alloca(nbytes);
 		maxValue.ToBytes(ar, nbytes);
-		byte hiByte = ar[nbytes - 1];
+		uint8_t hiByte = ar[nbytes - 1];
 #else
-		byte hiByte = ((byte*)maxValue.get_Data())[nbytes - 1];
+		uint8_t hiByte = ((uint8_t*)maxValue.get_Data())[nbytes - 1];
 #endif
-		p[nbytes - 1] = hiByte ? (byte)uniform_int_distribution<int>(0, hiByte - 1) (rngeng) : 0;
+		p[nbytes - 1] = hiByte ? (uint8_t)uniform_int_distribution<int>(0, hiByte - 1)(rngeng) : 0;
 		return BigInteger(p, nbytes);
 	}
 
@@ -384,7 +384,7 @@ public:
 	size_t GetHashCode() const {
 #if UCFG_BIGNUM!='A'
 		size_t nbytes = size_t((Length+8)/8);
-		byte *p = (byte*)alloca(nbytes);
+		uint8_t* p = (uint8_t*)alloca(nbytes);
 		ToBytes(p, nbytes);
 		return hash_value(ConstBuf(p, nbytes));
 #else
@@ -409,7 +409,7 @@ public:
 	size_t m_count; //!!!
 private:
 #endif
-	void Init(const byte *p, size_t count);
+	void Init(const uint8_t* p, size_t count);
 	BigInteger Div(const BigInteger& v);
 
 	friend BigInteger BinaryBignums(PFNImpBinary pfn, const BigInteger& x, const BigInteger& y, int incsize);
@@ -443,7 +443,7 @@ namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const BigInteger& bi) {
 #if UCFG_BIGNUM!='A'
 	DWORD nbytes = DWORD((bi.Length+8)/8);
-	byte *p = (byte*)alloca(nbytes);
+	uint8_t *p = (uint8_t*)alloca(nbytes);
 	bi.ToBytes(p, nbytes);
 	return hash_value(ConstBuf(p, nbytes));
 #else
