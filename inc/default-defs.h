@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef _DLL
+#	define _AFXDLL
+#endif
+
 #if !defined(DEBUG) && defined(_DEBUG)
 #	define DEBUG 1
 #endif
@@ -21,7 +25,7 @@
 #endif
 
 #ifdef _WIN32
-#	define  NTDDI_WINLH NTDDI_VISTA				//!!! not defined in current SDK
+#	define NTDDI_WINLH NTDDI_VISTA //!!! not defined in current SDK
 #endif
 
 #ifndef _MSC_VER
@@ -41,12 +45,12 @@
 #		define _M_ARM
 #	elif defined(__mips__)
 #		define _M_MIPS
-#	endif	
+#	endif
 
 #	ifdef __SSE2__
 #		define _M_IX86_FP 2
 #	endif
-#endif  // ndef _MSC_VER
+#endif // ndef _MSC_VER
 
 #if defined(__GNUC__) && __GNUC__ > 0 && !defined(__clang__)
 #	define UCFG_GNUC_VERSION (__GNUC__ * 100 + __GNUC_MINOR__)
@@ -66,6 +70,12 @@
 #else
 #	define UCFG_MSC_VERSION 0
 #	define UCFG_MSC_FULL_VERSION 0
+#endif
+
+#ifdef _MSVC_LANG
+#	define UCFG_MSVC_LANG _MSVC_LANG
+#else
+#	define UCFG_MSVC_LANG 0
 #endif
 
 #if !defined(_MAC) && (defined(_M_M68K) || defined(_M_MPPC))
@@ -114,14 +124,13 @@
 #	define UCFG_USE_MASM UCFG_CPU_X86_X64
 #endif
 
-
 #ifdef _M_ARM
-#	ifndef ARM  //!!!
+#	ifndef ARM		//!!!
 #		define ARM //!!!
 #	endif
 
-#	ifndef _ARM_  //!!!
-#		define _ARM_  //!!!
+#	ifndef _ARM_	 //!!!
+#		define _ARM_ //!!!
 #	endif
 
 #	ifdef _MSC_VER
@@ -150,7 +159,6 @@
 #		define WINCEOSVER _WIN32_WCE
 #	endif
 
-
 //	#ifndef _CE_ALLOW_SINGLE_THREADED_OBJECTS_IN_MTA
 //		#define _CE_ALLOW_SINGLE_THREADED_OBJECTS_IN_MTA
 //	#endif
@@ -163,28 +171,28 @@
 #	define _WIN32_WINNT 0x602
 #endif
 
-#define _CORECRT_WIN32_WINNT  _WIN32_WINNT_WINXP	// To be compatible with XP
-#define _VCRT_WIN32_WINNT  _WIN32_WINNT_WINXP
+#define _CORECRT_WIN32_WINNT _WIN32_WINNT_WINXP // To be compatible with XP
+#define _VCRT_WIN32_WINNT _WIN32_WINNT_WINXP
 
 #define _MSVCRT_WINDOWS
 
-#define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!?
+//#define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!? defined in sdkddkver.h
+#define _WIN32_WINNT_WIN10_TH2 0x0A01 //!!!? not defined in SDK
+#define _WIN32_WINNT_WIN10_RS1 0x0A02 //!!!? not defined in SDK
 
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
 
 #ifndef NTDDI_VERSION
-#	define NTDDI_VERSION        0x06020000		//  NTDDI_WIN8
+#	define NTDDI_VERSION 0x06020000 //  NTDDI_WIN8
 #endif
 
 #define _APISET_MINWIN_VERSION 0x200
 
-#define PSAPI_VERSION 1							// to use psapi.dll instead of new kernel32 replacement
-
+#define PSAPI_VERSION 1 // to use psapi.dll instead of new kernel32 replacement
 
 #ifndef __SPECSTRINGS_STRICT_LEVEL //!!!
 #	define __SPECSTRINGS_STRICT_LEVEL 0
-#endif	
-
+#endif
 
 #ifdef _M_IX86
 #	define _X86_
@@ -212,7 +220,7 @@
 #	ifndef WIN32
 #		define WIN32
 #	endif
-	
+
 #	define _CRTAPI1
 #	define _CRTAPI2
 
@@ -221,13 +229,17 @@
 #ifndef WDM_DRIVER
 #	ifdef NDIS_WDM
 #		define WDM_DRIVER
-#	endif                    
+#	endif
 #endif
 
 #ifdef WDM_DRIVER
 #	define UCFG_WDM 1
 #else
 #	define UCFG_WDM 0
+#endif
+
+#if UCFG_WDM
+#	define _KERNEL_MODE 1 // we don't use -kernel compiler option to enable EH
 #endif
 
 #ifndef UCFG_EXT_C
@@ -260,8 +272,14 @@
 #	define UCFG_USE_WINDEFS UCFG_WIN32
 #endif
 
+#ifdef __cplusplus
+#	define UCFG_CPLUSPLUS __cplusplus
+#else
+#	define UCFG_CPLUSPLUS 0
+#endif
+
 #ifndef UCFG_CPP17
-#	if defined(__cplusplus) && __cplusplus >= 201700 || (UCFG_MSC_VERSION >= 2000) || (UCFG_GNUC_VERSION >= 411) || (UCFG_CLANG_VERSION >= 400)		//!!!?
+#	if UCFG_CPLUSPLUS >= 201700 || (UCFG_MSVC_LANG > 201402) || (UCFG_GNUC_VERSION && UCFG_CPLUSPLUS > 201402) || (UCFG_CLANG_VERSION >= 400) //!!!?
 #		define UCFG_CPP17 1
 #	else
 #		define UCFG_CPP17 0
@@ -269,7 +287,7 @@
 #endif
 
 #ifndef UCFG_CPP14
-#	if defined(__cplusplus) && __cplusplus >= 201400 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 410) || (UCFG_CLANG_VERSION >= 310)	//!!!?
+#	if UCFG_CPLUSPLUS >= 201400 || (UCFG_MSC_VERSION >= 1900) || (UCFG_GNUC_VERSION >= 410) || (UCFG_CLANG_VERSION >= 310) //!!!?
 #		define UCFG_CPP14 1
 #	else
 #		define UCFG_CPP14 UCFG_CPP17
@@ -277,7 +295,7 @@
 #endif
 
 #ifndef UCFG_CPP11
-#	if defined(__cplusplus) && __cplusplus > 199711 || defined(__GXX_EXPERIMENTAL_CXX0X__) || (UCFG_MSC_VERSION >= 1600) || UCFG_WCE
+#	if UCFG_CPLUSPLUS > 199711 || defined(__GXX_EXPERIMENTAL_CXX0X__) || (UCFG_MSC_VERSION >= 1600) || UCFG_WCE
 #		define UCFG_CPP11 1
 #	else
 #		define UCFG_CPP11 UCFG_CPP14
@@ -285,7 +303,7 @@
 #endif
 
 #ifndef UCFG_CPP11_ENUM
-#	if defined(_MSC_VER) && _MSC_VER<1700
+#	if defined(_MSC_VER) && _MSC_VER < 1700
 #		define UCFG_CPP11_ENUM 0
 #	else
 #		define UCFG_CPP11_ENUM UCFG_CPP11
@@ -293,7 +311,7 @@
 #endif
 
 #ifndef UCFG_CPP11_EXPLICIT_CAST
-#	if defined(_MSC_VER) && _MSC_VER<=1700 || defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#	if defined(_MSC_VER) && _MSC_VER <= 1700 || defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
 #		define UCFG_CPP11_EXPLICIT_CAST 0
 #	else
 #		define UCFG_CPP11_EXPLICIT_CAST UCFG_CPP11
@@ -303,7 +321,7 @@
 #ifndef UCFG_CPP11_NULLPTR
 #	if defined(_NATIVE_NULLPTR_SUPPORTED)
 #		define UCFG_CPP11_NULLPTR 1
-#	elif defined(_MSC_VER) && _MSC_VER<1600
+#	elif defined(_MSC_VER) && _MSC_VER < 1600
 #		define UCFG_CPP11_NULLPTR 0
 #	elif defined(__GXX_EXPERIMENTAL_CXX0X__) && !defined(__clang__)
 #		if __GNUC__ == 4 && __GNUC_MINOR__ <= 5
@@ -321,7 +339,7 @@
 #endif
 
 #ifndef UCFG_CPP11_RVALUE
-#	if	defined(_MSC_VER) && _MSC_VER<1600
+#	if defined(_MSC_VER) && _MSC_VER < 1600
 #		define UCFG_CPP11_RVALUE 0
 #	else
 #		define UCFG_CPP11_RVALUE UCFG_CPP11
@@ -333,7 +351,7 @@
 #endif
 
 #ifndef UCFG_CPP11_CONSTEXPR
-#	define UCFG_CPP11_CONSTEXPR (UCFG_CPP11 && (!UCFG_MSC_VERSION || UCFG_MSC_VERSION>=1900))
+#	define UCFG_CPP11_CONSTEXPR (UCFG_CPP11 && (!UCFG_MSC_VERSION || UCFG_MSC_VERSION >= 1900))
 #endif
 
 #ifndef UCFG_CPP14_NOEXCEPT
@@ -341,7 +359,11 @@
 #endif
 
 #ifndef EXT_NOEXCEPT
-#	define EXT_NOEXCEPT noexcept
+#	ifdef __cplusplus
+#		define EXT_NOEXCEPT noexcept
+#	else
+#		define EXT_NOEXCEPT
+#	endif
 #endif
 
 #ifndef UCFG_C99_FUNC
@@ -349,7 +371,7 @@
 #endif
 
 #ifndef UCFG_CPP11_THREAD_LOCAL
-#	define UCFG_CPP11_THREAD_LOCAL (UCFG_CLANG_VERSION >= 305 || UCFG_GNUC_VERSION >= 407 || UCFG_MSC_VERSION >= 1900 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11)) 
+#	define UCFG_CPP11_THREAD_LOCAL (UCFG_CLANG_VERSION >= 305 || UCFG_GNUC_VERSION >= 407 || UCFG_MSC_VERSION >= 1900 || (!UCFG_GNUC_VERSION && !UCFG_MSC_VERSION && UCFG_CPP11))
 #endif
 
 #ifdef __cplusplus
@@ -364,7 +386,7 @@
 #	endif
 
 #	ifndef UCFG_STD_SHARED_MUTEX
-#		define UCFG_STD_SHARED_MUTEX (UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || UCFG_MSC_VERSION >= 2000 || UCFG_CLANG_VERSION >= 306))
+#		define UCFG_STD_SHARED_MUTEX (UCFG_CPP17 || UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || UCFG_MSC_VERSION >= 2000 || UCFG_CLANG_VERSION >= 306))
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX
@@ -380,19 +402,25 @@
 #	endif
 
 #	ifndef UCFG_STD_DYNAMIC_BITSET
-#		define UCFG_STD_DYNAMIC_BITSET (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCPP_VERSION < 1200) && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1900))
+#		define UCFG_STD_DYNAMIC_BITSET 0 //!!! (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCP_VERSION < 1200) && !(UCFG_MSC_VERSION && UCFG_MSC_VERSION <= 1900))
 #	endif
 
 #	ifndef UCFG_STD_MUTEX
 #		define UCFG_STD_MUTEX (UCFG_CPP11 || UCFG_MSC_VERSION >= 1700 || UCFG_LIBCPP_VERSION >= 1100)
 #	endif
-#endif // __cplusplus
 
+#	ifndef UCFG_STD_HASH
+#		define UCFG_STD_HASH (UCFG_CPP14 || UCFG_MSC_VERSION >= 1900)
+#	endif
+
+#	ifndef UCFG_STD_BACK_INSERT_ITERATOR
+#		define UCFG_STD_BACK_INSERT_ITERATOR (UCFG_CPP14 || UCFG_MSC_VERSION >= 1900)
+#	endif
+#endif // __cplusplus
 
 #ifndef UCFG_HAVE_STATIC_ASSERT
 #	define UCFG_HAVE_STATIC_ASSERT UCFG_CPP11
 #endif
-
 
 #ifndef UCFG_STD_DECIMAL
 #	define UCFG_STD_DECIMAL (UCFG_GNUC_VERSION >= 410 || UCFG_MSC_VERSION >= 2000)
@@ -406,7 +434,7 @@
 #	define UCFG_CPP11_BEGIN (UCFG_CPP14 || UCFG_GNUC_VERSION >= 406 || UCFG_MSC_VERSION >= 1600)
 #endif
 
-#if !defined(_HAS_CHAR16_T_LANGUAGE_SUPPORT) && UCFG_CPP11 && (!UCFG_MSC_VERSION || UCFG_MSC_VERSION>= 1900)
+#if !defined(_HAS_CHAR16_T_LANGUAGE_SUPPORT) && UCFG_CPP11 && (!UCFG_MSC_VERSION || UCFG_MSC_VERSION >= 1900)
 #	define _HAS_CHAR16_T_LANGUAGE_SUPPORT 1
 #endif
 
@@ -415,17 +443,28 @@
 #endif
 
 #ifndef UCFG_STD_SIZE
-#	define UCFG_STD_SIZE (UCFG_CPP17 || UCFG_MSC_VERSION>=1900)
+#	define UCFG_STD_SIZE (UCFG_CPP17 || UCFG_MSC_VERSION >= 1900)
 #endif
 
 #ifndef UCFG_STD_UNCAUGHT_EXCEPTIONS
 #	define UCFG_STD_UNCAUGHT_EXCEPTIONS (UCFG_CPP17 || UCFG_MSC_VERSION >= 1900)
 #endif
 
-#ifndef UCFG_STD_OBSERVER_PTR
-#	define UCFG_STD_OBSERVER_PTR UCFG_CPP17
+#if UCFG_WDM || !defined _CPPUNWIND
+#	define UCFG_USE_IN_EXCEPTION 0
+#else
+#	define UCFG_USE_IN_EXCEPTION UCFG_STD_UNCAUGHT_EXCEPTIONS
 #endif
 
+
+
+#ifndef UCFG_STD_CLAMP
+#	define UCFG_STD_CLAMP UCFG_CPP17
+#endif
+
+#ifndef UCFG_STD_OBSERVER_PTR
+#	define UCFG_STD_OBSERVER_PTR 0
+#endif
 
 #define WIN9X_COMPAT_SPINLOCK
 
@@ -439,7 +478,7 @@
 
 #define _ATL_NO_AUTOMATIC_NAMESPACE
 
-#define _ATL_ALLOW_CHAR_UNSIGNED  // to prevent ATL error in VS11
+#define _ATL_ALLOW_CHAR_UNSIGNED // to prevent ATL error in VS11
 
 /*!!!R
 #ifndef _MSC_VER
@@ -453,11 +492,9 @@
 
 #define _HAS_TRADITIONAL_STL 1
 
-
 #ifndef _FILE_OFFSET_BITS
 #	define _FILE_OFFSET_BITS 64
 #endif
-
 
 #ifndef _STRALIGN_USE_SECURE_CRT
 #	define _STRALIGN_USE_SECURE_CRT 0
@@ -477,13 +514,25 @@
 #	define UCFG_EH_DIRECT_CATCH (!UCFG_WCE)
 #endif
 
+#ifndef UCFG_EHTRACE
+#	define UCFG_EHTRACE 0
+#endif
+
+#ifndef UCFG_ISBAD_API
+#	if defined(_CRTBLD)
+#		define UCFG_ISBAD_API 0
+#	else
+#		define UCFG_ISBAD_API 1
+#	endif
+#endif
+
 #if !defined(_MSC_VER) && defined(__GNUC__)
 #	define UCFG_GNUC 1
 #else
 #	define UCFG_GNUC 0
 #endif
 
-#if UCFG_WDM && (UCFG_CPU_X86_X64 || defined(_M_ARM))	//!!!?
+#if UCFG_WDM && (UCFG_CPU_X86_X64 || defined(_M_ARM)) //!!!?
 #	define UCFG_FPU 0
 #else
 #	define UCFG_FPU 1
@@ -499,35 +548,34 @@
 #define _COMPLEX_DEFINED
 
 #ifdef _MSC_VER
-#	define HAVE_SNPRINTF 	1
-#	define HAVE_STRSTR 		1
+#	define HAVE_SNPRINTF 1
+#	define HAVE_STRSTR 1
 #	define HAVE_STRLCPY
-#	define HAVE_STRDUP 		1
-#	define HAVE_VSNPRINTF 	1
-#	define HAVE_MEMMOVE  	1
-#	define HAVE_FCNTL_H 	1
+#	define HAVE_STRDUP 1
+#	define HAVE_VSNPRINTF 1
+#	define HAVE_MEMMOVE 1
+#	define HAVE_FCNTL_H 1
 #	define HAVE_STRSEP
 #	define HAVE_SOCKADDR_STORAGE
-#	define HAVE_SQLITE3		1
-#	define HAVE_LIBGMP		1
-#	define HAVE_LIBNTL		1
+#	define HAVE_SQLITE3 1
+#	define HAVE_LIBGMP 1
+#	define HAVE_LIBNTL 1
 #	define HAVE_BERKELEY_DB 1
-#	define HAVE_JANSSON		1
-#	define HAVE_PCRE2		1
-#endif	// _MSC_VER
+#	define HAVE_JANSSON 1
+#	define HAVE_PCRE2 1
+#endif // _MSC_VER
 
 #ifndef UCFG_DEFINE_NOMINMAX
 #	define UCFG_DEFINE_NOMINMAX 1
 #endif
 
-#if	UCFG_DEFINE_NOMINMAX
-#	define NOMINMAX					// used in windows.h
+#if UCFG_DEFINE_NOMINMAX
+#	define NOMINMAX // used in windows.h
 #endif
 
 #ifndef UCFG_DEFINE_OLD_NAMES
 #	define UCFG_DEFINE_OLD_NAMES 0
 #endif
-
 
 #if UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
 #	if defined(_M_X64) || defined(_M_ARM) || defined(_M_MIPS)
@@ -541,7 +589,7 @@
 #		define _thiscall
 #	else
 #		ifndef __cdecl
-#			define __cdecl  __attribute((__cdecl__))
+#			define __cdecl __attribute((__cdecl__))
 #		endif
 
 #		ifndef _cdecl
@@ -549,7 +597,7 @@
 #		endif
 
 #		ifndef __stdcall
-#			define __stdcall  __attribute((__stdcall__))
+#			define __stdcall __attribute((__stdcall__))
 #		endif
 
 #		ifndef _stdcall
@@ -557,7 +605,7 @@
 #		endif
 
 #		ifndef __fastcall
-#			define __fastcall  __attribute((__fastcall__))
+#			define __fastcall __attribute((__fastcall__))
 #		endif
 
 #		ifndef _fastcall
@@ -565,7 +613,7 @@
 #		endif
 
 #		ifndef __thiscall
-#			define __thiscall  __attribute((__thiscall__))
+#			define __thiscall __attribute((__thiscall__))
 #		endif
 
 #		ifndef _thiscall
@@ -576,8 +624,4 @@
 #	ifndef PASCAL
 #		define PASCAL
 #	endif
-#endif  // UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
-
-
-
-
+#endif // UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
