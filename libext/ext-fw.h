@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -14,10 +14,15 @@ typedef struct tagEXCEPINFO EXCEPINFO;
 #	include <nl_types.h>
 #endif
 
+#include EXT_HEADER_SHARED_MUTEX
 
 #include EXT_HEADER_FILESYSTEM
 
 namespace Ext {
+
+inline path operator/(const path& a, const String& s) { return path(a) /= path(s.c_str()); }
+inline path operator/(const path& a, const char s[]) { return path(a) /= path(s); }
+
 
 using std::wstring;
 using std::istringstream;
@@ -242,8 +247,8 @@ struct CFileStatus {
 	DateTime m_mtime;          // last modification date/time of file
 	DateTime m_atime;          // last access date/time of file
 	int64_t m_size;            // logical size of file in bytes
-	byte m_attribute;       // logical OR of File::Attribute enum values
-	byte _m_padding;        // pad the structure to a WORD
+	uint8_t m_attribute;	   // logical OR of File::Attribute enum values
+	uint8_t _m_padding;		   // pad the structure to a WORD
 	path AbsolutePath; // absolute path name
 };
 #endif
@@ -306,15 +311,15 @@ public:
 		Attach(h, bOwn);
 	}
 
-	File(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read) {
-		Open(p, mode, access, share);
+	File(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read, FileOptions options = FileOptions::None) {
+		Open(p, mode, access, share, options);
 	}
 
 	~File();
 
 	static Blob AFXAPI ReadAllBytes(const path& p);
 	static void AFXAPI WriteAllBytes(const path& p, const ConstBuf& mb);
-	
+
 	static String AFXAPI ReadAllText(const path& p, Encoding *enc = &Encoding::UTF8);
 	static void AFXAPI WriteAllText(const path& p, RCString contents, Encoding *enc = &Encoding::UTF8);
 
@@ -337,9 +342,9 @@ public:
 	};
 
 	void Open(const OpenInfo& oi);
-	EXT_API virtual void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None);
+	EXT_API virtual void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None, FileOptions options = FileOptions::None);
 #ifdef WIN32
-	void Create(RCString fileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
+	void Create(const path& fileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
 	void CreateForMapping(LPCTSTR lpFileName, DWORD dwDesiredAccess = GENERIC_READ|GENERIC_WRITE, DWORD dwShareMode = FILE_SHARE_READ|FILE_SHARE_WRITE, DWORD dwCreationDisposition = CREATE_NEW, DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL, HANDLE hTemplateFile = 0, LPSECURITY_ATTRIBUTES lpsa = 0);
 	DWORD GetOverlappedResult(OVERLAPPED& ov, bool bWait = true);
 //!!!R	static bool AFXAPI GetStatus(RCString lpszFileName, CFileStatus& rStatus);
@@ -349,6 +354,10 @@ public:
 	DWORD DeviceIoControlAndWait(int code, LPCVOID bufIn = 0, size_t nIn = 0, LPVOID bufOut = 0, size_t nOut = 0);
 	void CancelIo();
 #endif
+
+	bool get_CanSeek();
+	DEFPROP_GET(bool, CanSeek);
+
 	EXT_API int64_t Seek(const int64_t& off, SeekOrigin origin = SeekOrigin::Begin);
 	int64_t SeekToEnd() { return Seek(0, SeekOrigin::End); }
 	void Flush();
@@ -370,8 +379,6 @@ public:
 	//!!!  static void Rename(LPCTSTR oldName, LPCTSTR newName);
 	//!!!D  static void Copy(LPCTSTR existingFile, LPCTSTR newFile, bool bFailIfExists = false);
 	//!!!D  static void RemoveDirectory(RCString dir, bool bRecurse = false);
-protected:
-	String m_strFileName;
 private:
 #ifdef WIN32
 	bool CheckPending(BOOL b);
@@ -485,7 +492,7 @@ public:
 	MemoryMappedView& operator=(EXT_RV_REF(MemoryMappedView) rv);
 	void Map(MemoryMappedFile& file, uint64_t offset, size_t size, void *desiredAddress = 0);
 	void Unmap();
-	void Flush();	
+	void Flush();
 
 	static void AFXAPI Protect(void *p, size_t size, MemoryMappedFileAccess access);
 };
@@ -530,7 +537,7 @@ public:
 	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI CreateFromFile(const path& p, FileMode mode = FileMode::Open, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI OpenExisting(RCString mapName, MemoryMappedFileRights rights = MemoryMappedFileRights::ReadWrite, HandleInheritability inheritability = HandleInheritability::None);
-	
+
 	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access);
 	MemoryMappedView CreateView(uint64_t offset, size_t size = 0) { return CreateView(offset, size, Access); }
 };
@@ -551,7 +558,7 @@ public:
 		:	m_fstm(0)
 	{
 	}
-	
+
 	FileStream(Ext::File& file
 #if UCFG_WIN32_FULL
 , OVERLAPPED *ovl = nullptr
@@ -594,7 +601,7 @@ public:
 			return r;
 #else
 			return r.__pos;
-#endif			
+#endif
 		} else if (m_pFile)
 			return m_pFile->Seek(0, SeekOrigin::Current);
 		else
@@ -617,7 +624,7 @@ public:
 			Throw(E_FAIL);
 	}
 
-	int64_t Seek(int64_t offset, SeekOrigin origin) const override { 
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override {
 		if (m_fstm) {
 			CCheck(fseek(m_fstm, (long)offset, (int)origin));	//!!!
 			return Position;
@@ -664,8 +671,25 @@ class TraceStream : public FileStream {
 	typedef FileStream base;
 public:
 	TraceStream(const path& p, bool bAppend = false);
-private:
+protected:
 	File m_file;
+};
+
+class CycledTraceStream : public TraceStream {
+	typedef TraceStream base;
+public:
+	CycledTraceStream(const path& p, bool bAppend = false, size_t maxSize = 10000000)
+		: base(p, bAppend)
+		, m_path(p)
+		, m_maxSize(maxSize)
+		, m_threshold(maxSize * 11 / 10)
+	{}
+
+	void WriteBuffer(const void *buf, size_t count) override;
+private:
+	path m_path;
+	std::shared_mutex m_mtx;
+	size_t m_maxSize, m_threshold;
 };
 
 class Guid : public GUID {
@@ -704,7 +728,7 @@ inline bool operator<(const GUID& guid1, const GUID& guid2) {
 
 namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::Guid& guid) {
-	return Ext::hash_value((const byte*)&guid, sizeof(GUID));
+	return Ext::hash_value((const uint8_t*)&guid, sizeof(GUID));
 }
 }
 
@@ -811,7 +835,7 @@ template <class T> class CSubscriber {
 public:
 	typedef std::unordered_set<T*> CSet;
 	CSet m_set;
-	
+
 	void operator+=(T *v) {
 		m_set.insert(v);
 	}
@@ -868,7 +892,7 @@ public:
 	EXT_API static std::pair<path, UINT> AFXAPI GetTempFileName(const path& p, RCString prefix, UINT uUnique = 0);
 	EXT_API static path AFXAPI GetTempFileName() { return GetTempFileName(temp_directory_path(), "tmp").first; }
 
-	static CSplitPath AFXAPI SplitPath(RCString path);
+	static CSplitPath AFXAPI SplitPath(const path&p );
 
 	static path AFXAPI GetPhysicalPath(const path& p);
 	static path AFXAPI GetTruePath(const path& p);
@@ -1043,7 +1067,7 @@ public:
 
 #if UCFG_WIN32
 	static int32_t AFXAPI TickCount();
-#endif
+#endif // UCFG_WIN32
 
 #if UCFG_WIN32_FULL
 	class CStringsKeeper {
@@ -1071,7 +1095,7 @@ public:
 	static String AFXAPI GetMachineType();
 	static String AFXAPI GetMachineVersion();
 	static bool AFXAPI Is64BitOperatingSystem();
-	
+
 	int get_ProcessorCount();
 	DEFPROP_GET(int, ProcessorCount);
 
@@ -1087,7 +1111,7 @@ struct CaseInsensitiveStringLess : std::less<String> {
 	bool operator()(RCString a, RCString b) const {
 		return a.CompareNoCase(b) < 0;
 	}
-};	
+};
 
 struct CaseInsensitiveHash {
 	size_t operator()(RCString s) const {
@@ -1138,7 +1162,7 @@ public:
 typedef std::unordered_map<UINT, const char*> CMapStringRes;
 CMapStringRes& MapStringRes();
 
-typedef vararray<byte, 64> hashval;
+typedef vararray<uint8_t, 64> hashval;
 
 class HashAlgorithm {
 public:
@@ -1157,12 +1181,12 @@ public:
 	{}
 
 	virtual ~HashAlgorithm() {}
-	virtual hashval ComputeHash(Stream& stm);
+	virtual hashval ComputeHash(Stream& stm);				//!!!TODO should be const
 	virtual hashval ComputeHash(const ConstBuf& mb);
 
 	virtual void InitHash(void *dst) noexcept {}
 	void PrepareEndianness(void *dst, int count) noexcept;
-	virtual void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {}
+	virtual void HashBlock(void* dst, const uint8_t* src, uint64_t counter) noexcept {}
 	virtual void OutTransform(void *dst) noexcept {}
 protected:
 	bool Is64Bit;
@@ -1289,7 +1313,7 @@ public:
 };
 
 class VarValue {
-public:	
+public:
 	ptr<VarValueObj> m_pimpl;
 
 	VarValue() {}
@@ -1333,7 +1357,7 @@ private:
 
 	VarValueObj& Impl() const {
 		if (!m_pimpl)
-			Throw(E_INVALIDARG);
+			Throw(errc::invalid_argument);
 		return *m_pimpl;
 	}
 };
@@ -1365,7 +1389,7 @@ public:
 
 	virtual VarValue Parse(std::istream& is, Encoding *enc = &Encoding::UTF8) =0;
 	virtual void Print(std::ostream& os, const VarValue& v) =0;
-	
+
 	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf = ConstBuf()) { Throw(E_NOTIMPL); }
 
 	VarValue Parse(RCString s) {
@@ -1485,8 +1509,8 @@ public:
 
 #ifdef _DEBUG
 #	define DBG_OBJECT_COUNTER(typ) Ext::DbgObjectCounter<typ> _dbgObjectCounter;
-#else  
-#	define DBG_OBJECT_COUNTER(typ) 
+#else
+#	define DBG_OBJECT_COUNTER(typ)
 #endif
 
 
@@ -1564,7 +1588,7 @@ public:
 	DWORD VirtualProtect(void *addr, size_t size, DWORD flNewProtect);
 	MEMORY_BASIC_INFORMATION VirtualQuery(const void *addr);
 	SIZE_T ReadMemory(LPCVOID base, LPVOID buf, SIZE_T size);
-	SIZE_T WriteMemory(LPVOID base, LPCVOID buf, SIZE_T size); 	
+	SIZE_T WriteMemory(LPVOID base, LPCVOID buf, SIZE_T size);
 #endif // UCFG_WIN32
 protected:
 	bool Valid() const override {
@@ -1643,7 +1667,7 @@ public:
 
 	~POpen() {
 		if (m_stream)
-			Wait();		
+			Wait();
 	}
 
 	void Wait() {
@@ -1653,7 +1677,7 @@ public:
 		case 0:
 			return;
 		default:
-			ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (byte)rc));
+			ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (uint8_t)rc));
 		}
 	}
 
@@ -1663,20 +1687,6 @@ private:
 };
 
 
-template <typename T>
-struct CodeMessage {
-	T Code;
-	const char *Msg;
-};
-
-template <typename T, int N>
-const char *FindInCodeMessageTable(const CodeMessage<T> (&table)[N], int errval) {
-	for (const CodeMessage<T> *p=table; p!=end(table); ++p)
-		if (int(p->Code) == errval)
-			return p->Msg;
-	return nullptr;
-}
-
 
 
 } // Ext::
@@ -1685,4 +1695,3 @@ const char *FindInCodeMessageTable(const CodeMessage<T> (&table)[N], int errval)
 #if UCFG_USE_REGEX
 #	include "ext-regex.h"
 #endif
-
