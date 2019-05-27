@@ -119,16 +119,10 @@
     <ClCompile Include="ext-net.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="http.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="bignum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="murmurhash.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="internet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\stl\filesystem.cpp">
@@ -239,6 +233,9 @@
     <ClCompile Include="..\crt\crt-file.cpp">
       <Filter>Source Files\crt</Filter>
     </ClCompile>
+    <ClCompile Include="..\crt\crt-eh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">
@@ -275,6 +272,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ext-err.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="exthelpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

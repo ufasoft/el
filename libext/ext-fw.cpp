@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -105,12 +105,12 @@ String AFXAPI AfxLoadString(UINT nIDS) {
 
 #if UCFG_WIN32_FULL
 CStringVector AFXAPI COperatingSystem::QueryDosDevice(RCString dev) {
-	for(int size=_MAX_PATH;; size*=2) {
-		TCHAR *buf = (TCHAR*)alloca(sizeof(TCHAR)*size);
+	for (int size = _MAX_PATH;; size *= 2) {
+		TCHAR* buf = (TCHAR*)alloca(sizeof(TCHAR) * size);
 		DWORD dw = ::QueryDosDevice(dev, buf, size);
 		if (dw && dw < size)
 			return AsciizArrayToStringArray(buf);
-		Win32Check(GetLastError() != ERROR_INSUFFICIENT_BUFFER);
+		Win32Check(GetLastError() == ERROR_INSUFFICIENT_BUFFER);
 	}
 }
 #endif
@@ -688,7 +688,7 @@ NameValueCollection HttpUtility::ParseQueryString(RCString query) {
 			Throw(E_FAIL);
 		String name = UrlDecode(m[1]),
 			value = UrlDecode(m[2]);
-		r[name.ToUpper()].push_back(value);
+		r.GetRef(name.ToUpper()).push_back(value);
 	}
 	return r;
 }
@@ -741,18 +741,18 @@ Blob Convert::FromBase64String(RCString s) {
 	return ms.Blob;
 }
 
-String Convert::ToBase64String(const ConstBuf& mb) {
+String Convert::ToBase64String(RCSpan mb) {
 	//!!!R	CBase64Table::s_toBase64;
 	vector<String::value_type> v;
-	const uint8_t* p = mb.P;
-	for (size_t i=mb.Size/3; i--; p+=3) {
+	const uint8_t* p = mb.data();
+	for (size_t i = mb.size() / 3; i--; p += 3) {
 		uint32_t dw = (p[0]<<16) | (p[1]<<8) | p[2];
 		v.push_back(CBase64Table::s_toBase64[(dw>>18) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>12) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>6) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[dw & 0x3F]);
 	}
-	if (size_t rem = mb.Size % 3) {
+	if (size_t rem = mb.size() % 3) {
 		v.push_back(CBase64Table::s_toBase64[(p[0]>>2) & 0x3F]);
 		switch (rem) {
 		case 1:
@@ -774,14 +774,14 @@ public:
 	int Offset;
 
 	BitWriteStream(Stream& bas)
-	:	Base(bas)
-	,	Offset(0)
-	,	m_prevValue(0)
-	{}
+		: Base(bas)
+		, Offset(0)
+		, m_prevValue(0) {
+	}
 
 	void Write(int count, uint32_t value) {
 		ASSERT(count <= 8);
-		m_prevValue |= value << (8-count) >> Offset;
+		m_prevValue |= value << (8 - count) >> Offset;
 		if (Offset + count >= 8) {
 			Base.WriteBuffer(&m_prevValue, 1);
 			m_prevValue = uint8_t(value << (16 - Offset - count));
@@ -799,11 +799,11 @@ public:
 	uint8_t m_prevValue;
 };
 
-static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable) {
+static Blob FromBaseX(int charsInGroup, RCString s, const uint8_t valTable[]) {
 	MemoryStream ms;
 	BitWriteStream bs(ms);
-	for (size_t i=0; i<s.size(); i+=charsInGroup) {
-		for (size_t j=0; j<charsInGroup; ++j) {
+	for (size_t i = 0; i < s.size(); i += charsInGroup) {
+		for (size_t j = 0; j < charsInGroup; ++j) {
 			wchar_t ch = s[i+j];
 			if ('=' == ch) {
 				bs.Offset = 0;
@@ -817,30 +817,30 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 	}
 	if (bs.Offset)
 		Throw(errc::invalid_argument);
-	return Blob(ConstBuf(ms));
+	return Blob(ms.AsSpan());
 }
 
-static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
+static String ToBaseX(int charsInGroup, int bytesInGroup, RCSpan mb, const char *table) {
 	ostringstream os;
 	const int bitsInGroup = bytesInGroup * 8 / charsInGroup,
 		mask = (1<<bitsInGroup) - 1;
-	for (size_t i=0; i<mb.Size;) {
+	for (size_t i = 0; i < mb.size();) {
 		int nbits = 0;
 		uint64_t val = 0;
-		for (int j=bytesInGroup; j-- && i<mb.Size; nbits+=8)
-			val |= uint64_t(mb.P[i++]) << (j*8);
-		for (int j=charsInGroup; j--; nbits-=bitsInGroup)
-			os.put(nbits>0 ?table[(val >> (j*bitsInGroup)) & mask] : '=');
+		for (int j = bytesInGroup; j-- && i < mb.size(); nbits += 8)
+			val |= uint64_t(mb[i++]) << (j * 8);
+		for (int j = charsInGroup; j--; nbits -= bitsInGroup)
+			os.put(nbits > 0 ? table[(val >> (j * bitsInGroup)) & mask] : '=');
 	}
 	return os.str();
 }
 
-class CBase32Table : public vector<int> {
+class CBase32Table : public vector<uint8_t> {
 public:
 	static const char s_toBase32[];
 
 	CBase32Table()
-		: vector<int>((size_t)256, EOF) {
+		: vector<uint8_t>((size_t)256, 0) {
 		for (uint8_t i = (uint8_t)strlen(s_toBase32); i--;) // to eliminate trailing zero
 			_self[s_toBase32[i]] = i;
 	}
@@ -850,12 +850,12 @@ static InterlockedSingleton<CBase32Table> s_pBase32Table;
 
 const char CBase32Table::s_toBase32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-Blob Convert::FromBase32String(RCString s) {
-	return FromBaseX(8, s.ToUpper(), *s_pBase32Table);
+Blob Convert::FromBase32String(RCString s, const uint8_t* table) {
+	return FromBaseX(8, s.ToUpper(), table ? table : &(*s_pBase32Table)[0]);
 }
 
-String Convert::ToBase32String(const ConstBuf& mb) {
-	return ToBaseX(8, 5, mb, CBase32Table::s_toBase32);
+String Convert::ToBase32String(RCSpan mb, const char *table) {
+	return ToBaseX(8, 5, mb, table ? table : CBase32Table::s_toBase32);
 }
 
 
@@ -1017,15 +1017,12 @@ Random::~Random() {
 
 uint16_t Random::NextWord() {
 	return (uint16_t) uniform_int_distribution<int>(0, 65535) (*Rngeng(_self));
-
-
-	//!!!R return uint16_t((m_seed = m_seed * 214013L + 2531011L) >> 16);
 }
 
-void Random::NextBytes(const Buf& mb) {
+void Random::NextBytes(const span<uint8_t>& mb) {
 	uniform_int_distribution<int> dist(0, 255);
-	for (size_t i = 0; i < mb.Size; i++)
-		mb.P[i] = (uint8_t)dist(*Rngeng(_self));
+	for (size_t i = 0; i < mb.size(); i++)
+		mb.data()[i] = (uint8_t)dist(*Rngeng(_self));
 }
 
 int Random::Next() {
@@ -1071,16 +1068,6 @@ BinaryReader& AFXAPI GetSystemURandomReader() {
 	return s_systemURandomReader;
 }
 
-/*!!!R
-	STATIC_ASSERT(DBL_MANT_DIG < 64);
-
-	uint64_t n;
-	NextBytes(Buf((uint8_t*)&n, sizeof n));
-
-	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
-	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
-	*/
-
 void CAnnoyer::OnAnnoy() {
 	if (m_iAnnoy)
 		m_iAnnoy->OnAnnoy();
@@ -1098,88 +1085,100 @@ void CAnnoyer::Request() {
 void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
 	if (IsBigEndian == UCFG_LITLE_ENDIAN) {
 		if (Is64Bit) {
-			uint64_t *p = (uint64_t*)dst;
-			for (int i=0; i<count; ++i)
-				p[i] = swap64(p[i]);
+			for (uint64_t *p = (uint64_t*)dst, *e = p + count; p != e; ++p)
+				*p = swap64(*p);
 		} else {
-			uint32_t *p = (uint32_t*)dst;
-			for (int i=0; i<count; ++i)
-				p[i] = swap32(p[i]);
+			for (uint32_t *p = (uint32_t*)dst, *e = p + count; p != e; ++p)
+				*p = swap32(*p);
 		}
 	}
 }
 
+void HashAlgorithm::PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {
+	PrepareEndianness(src, WordCount);
+	HashBlock(dst, src, counter);
+}
+
 template <typename W>
-hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
-#if UCFG_CPU_X86_X64
-	__m128i hash[8];
-#else
-	W hash[16];
-#endif
-	algo.InitHash(hash);
-	W buf[16];
-	uint64_t len = 0, counter;
+hashval ComputeHashImp(HashAlgorithm& algo, void *hash, Stream& stm, uint64_t processedLen) {
+	const size_t dataSize = HashAlgorithm::WordCount * sizeof(W);
+	DECLSPEC_ALIGN(32) W buf[64];									// input data & scratchbuffer
+	uint64_t counter;
 	bool bLast = false;
 	while (true) {
-		ZeroStruct(buf);
+		memset(buf, 0, dataSize);
 		if (bLast) {
 			counter = 0;
 			break;
 		}
-		size_t cb = stm.Read(buf, sizeof buf);
-		if (cb < sizeof buf) {
+		size_t cb = stm.Read(buf, dataSize);
+		if (cb < dataSize) {
 			((uint8_t*)buf)[cb] = 0x80;
 			bLast = true;
 		}
-		len += cb;
-		counter = len << 3;
-		if (bLast && (len & (sizeof buf - 1)) < sizeof buf - int(bool(algo.IsHaifa)) - 8) {
-			if (!(len & (sizeof buf - 1)))
+		processedLen += cb;
+		counter = processedLen << 3;
+		if (bLast && (processedLen & (dataSize - 1)) < dataSize - int(bool(algo.IsHaifa)) - 8) {
+			if (!(processedLen & (dataSize - 1)))
 				counter = 0;
 			break;
 		}
-		algo.PrepareEndianness(buf, 16);
-		algo.HashBlock(hash, (uint8_t*)buf, counter);
+		algo.PrepareEndiannessAndHashBlock(hash, (uint8_t*)buf, counter);
 	}
 	if (algo.IsHaifa)
-		((uint8_t*)buf)[sizeof buf - sizeof(W) * 2 - 1] = 1;
-	len = algo.IsBlockCounted ? (len + 8 + sizeof buf) / (sizeof buf)
-		: len << 3;
-	*(uint64_t*)((uint8_t*)buf + sizeof(buf) - 8) = algo.IsLenBigEndian ? htobe(len) : htole(len);
-	algo.PrepareEndianness(buf, 16);
-	algo.HashBlock(hash, (uint8_t*)buf, counter);
+		((uint8_t*)buf)[dataSize - sizeof(W) * 2 - 1] = 1;
+	processedLen = algo.IsBlockCounted ? (processedLen + 8 + dataSize) / dataSize
+		: processedLen << 3;
+	*(uint64_t*)((uint8_t*)buf + dataSize - 8) = algo.IsLenBigEndian ? htobe(processedLen) : htole(processedLen);
+	algo.PrepareEndiannessAndHashBlock(hash, (uint8_t*)buf, counter);
 	algo.OutTransform(hash);
 	algo.PrepareEndianness(hash, 8);
 	return hashval((const uint8_t*)hash, algo.HashSize);
 }
 
 hashval HashAlgorithm::ComputeHash(Stream& stm) {
-	return Is64Bit ? ComputeHashImp<uint64_t>(_self, stm) : ComputeHashImp<uint32_t>(_self, stm);
+#if UCFG_CPU_X86_X64
+	__m128i hash[8];
+#else
+	W hash[16];
+#endif
+	InitHash(hash);
+	return Is64Bit
+		? ComputeHashImp<uint64_t>(_self, hash, stm, 0)
+		: ComputeHashImp<uint32_t>(_self, hash, stm, 0);
 }
 
-hashval HashAlgorithm::ComputeHash(const ConstBuf& mb) {
+hashval HashAlgorithm::ComputeHash(RCSpan mb) {
 	CMemReadStream stm(mb);
 	return ComputeHash(stm);
 }
 
+hashval HashAlgorithm::Finalize(void *hash, Stream& stm, uint64_t processedLen)
+{
+	return Is64Bit
+		? ComputeHashImp<uint64_t>(_self, hash, stm, processedLen)
+		: ComputeHashImp<uint32_t>(_self, hash, stm, processedLen);
+}
+
+
 // RFC 2104
-hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text) {
-	ConstBuf k = key;
+hashval HMAC(HashAlgorithm& halgo, RCSpan key, RCSpan text) {
+	Span k = key;
 	hashval hk;
-	if (key.Size > halgo.BlockSize) {
+	if (key.size() > halgo.BlockSize) {
 		hk = halgo.ComputeHash(key);
-		k = hk;
+		k = Span(hk);
 	}
-	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.Size);
+	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.size());
 	uint8_t* buf = (uint8_t*)alloca(size);
-	for (size_t i=0; i<halgo.BlockSize; ++i)
-		buf[i] = i<k.Size ? k.P[i] ^ 0x36 : 0x36;
-	memcpy(buf+halgo.BlockSize, text.P, text.Size);
-	hashval hv = halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+text.Size));
-	for (size_t i=0; i<halgo.BlockSize; ++i)
-		buf[i] = i<k.Size ? k.P[i] ^ 0x5C : 0x5C;
-	memcpy(buf+halgo.BlockSize, hv.constData(), hv.size());
-	return halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+hv.size()));
+	for (size_t i = 0; i < halgo.BlockSize; ++i)
+		buf[i] = i < k.size() ? k[i] ^ 0x36 : 0x36;
+	memcpy(buf + halgo.BlockSize, text.data(), text.size());
+	hashval hv = halgo.ComputeHash(Span(buf, halgo.BlockSize + text.size()));
+	for (size_t i = 0; i < halgo.BlockSize; ++i)
+		buf[i] = i < k.size() ? k[i] ^ 0x5C : 0x5C;
+	memcpy(buf + halgo.BlockSize, hv.constData(), hv.size());
+	return halgo.ComputeHash(Span(buf, halgo.BlockSize + hv.size()));
 }
 
 
@@ -1396,11 +1395,11 @@ bool PersistentCache::Lookup(RCString key, Blob& blob) {
 	return true;
 }
 
-void PersistentCache::Set(RCString key, const ConstBuf& mb) {
+void PersistentCache::Set(RCString key, RCSpan mb) {
 	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key.c_str();
 	create_directories(fn.parent_path());
 	FileStream fs(fn, FileMode::Create, FileAccess::Write);
-	fs.WriteBuffer(mb.P, mb.Size);
+	fs.WriteBuffer(mb.data(), mb.size());
 
 	/*!!!
 #if UCFG_WIN32
@@ -1438,17 +1437,17 @@ Resource::Resource(const CResID& resID, const CResID& resType, HMODULE hModule) 
 #endif
 }
 
-const void *Resource::get_Data() {
+const uint8_t *Resource::data() const {
 #if UCFG_WIN32
 	if (!m_pimpl->m_p)
 		m_pimpl->m_p = ::LockResource(m_pimpl->m_hglbResource);
-	return m_pimpl->m_p;
+	return (const uint8_t*)m_pimpl->m_p;
 #else
 	return m_blob.constData();
 #endif
 }
 
-size_t Resource::get_Size() {
+size_t Resource::size() const {
 #if UCFG_WIN32
 	return Win32Check(::SizeofResource(m_pimpl->m_hModule, m_pimpl->m_hRsrc));
 #else
@@ -1683,7 +1682,7 @@ bool ProcessObj::Start() {
 #else // UCFG_WIN32
 	Throw(E_NOTIMPL);
 #endif
-	TRC(4, "PID: " << m_pid);
+	TRC(4, "PID: " << m_pid.Value());
 	return true;
 }
 

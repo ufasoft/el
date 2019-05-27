@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include "sign.h"
 
@@ -25,7 +25,7 @@ public:
 	~CngKey();
 	CngKey& operator=(const CngKey& key);
 	Blob Export(CngKeyBlobFormat format) const;
-	static CngKey AFXAPI Import(const ConstBuf& mb, CngKeyBlobFormat format);
+	static CngKey AFXAPI Import(RCSpan mb, CngKeyBlobFormat format);
 protected:
 	CngKey(void *pimpl)
 		:	m_pimpl(pimpl)
@@ -58,8 +58,8 @@ public:
 	{
 	}
 
-	Blob SignHash(const ConstBuf& hash) override;
-	bool VerifyHash(const ConstBuf& hash, const ConstBuf& signature) override;
+	Blob SignHash(RCSpan hash) override;
+	bool VerifyHash(RCSpan hash, RCSpan signature) override;
 };
 
 ptr<Dsa> CreateECDsa();

@@ -1,14 +1,14 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #include <el/ext.h>
 
-#include "ext-http.h"
+#include <el/inet/http.h>
 
 
-namespace Ext {
+namespace Ext { namespace Inet {
 
 int AFXAPI InetCheck(int i) {
 	if (!i) {
@@ -128,5 +128,5 @@ bool AFXAPI ConnectedToInternet() {
 
 
 
-} // Ext::
+}} // Ext::Inet::
 

@@ -32,6 +32,18 @@
 #	define EXT_HEADER_SHARED_MUTEX <el/stl/shared_mutex>
 #endif
 
+#if UCFG_STD_OPTIONAL
+#	define EXT_HEADER_OPTIONAL EXT_HEADER(optional)
+#else
+#	define EXT_HEADER_OPTIONAL <el/stl/optional>
+#endif
+
+#if UCFG_STD_SPAN
+#	define EXT_HEADER_SPAN EXT_HEADER(span)
+#else
+#	define EXT_HEADER_SPAN <el/stl/span>
+#endif
+
 #if UCFG_STD_DYNAMIC_BITSET
 #	define EXT_HEADER_DYNAMIC_BITSET EXT_HEADER(dynamic_bitset)
 #else
@@ -368,14 +380,16 @@ template <class T> typename enable_if<Ext::is_movable<T>::value, Ext::rv<T> &>::
 
 namespace Ext {
 class CInException : noncopyable {
+	int m_nUncaught;
 public:
 	CInException() noexcept
-		: m_nUncauight(std::uncaught_exceptions()) {}
+		: m_nUncaught(std::uncaught_exceptions()) {}
 
-	EXPLICIT_OPERATOR_BOOL() const noexcept { return std::uncaught_exceptions() > m_nUncauight ? EXT_CONVERTIBLE_TO_TRUE : 0; }
+	void swap(CInException& r) {
+		r.m_nUncaught = std::exchange(m_nUncaught, r.m_nUncaught);
+	}
 
-private:
-	int m_nUncauight;
+	EXPLICIT_OPERATOR_BOOL() const noexcept { return std::uncaught_exceptions() > m_nUncaught ? EXT_CONVERTIBLE_TO_TRUE : 0; }
 };
 } // namespace Ext
 #endif // UCFG_USE_IN_EXCEPTION
@@ -1031,13 +1045,15 @@ namespace Ext {
 class StreamToBlob : MemoryStream, public BinaryWriter {
 public:
 	using MemoryStream::get_Blob;
-	using MemoryStream::operator ConstBuf;
 
 	StreamToBlob(size_t capacity = 0)
 		: MemoryStream(capacity)
 		, BinaryWriter(static_cast<MemoryStream &>(*this)) {}
 
 	StreamToBlob &Ref() { return *this; }
+
+    const uint8_t *data() const { return MemoryStream::data(); }
+    size_t size() const { return MemoryStream::size(); }
 };
 
 class CTraceCategory {
@@ -1095,7 +1111,7 @@ template <class T> T max3(T a, T b, T c) { return std::max(std::max(a, b), c); }
 } // namespace Ext
 
 #			define EXT_STR(expr) (static_cast<std::ostringstream &>(const_cast<std::ostringstream &>(static_cast<const std::ostringstream &>(std::ostringstream())) << expr)).str()
-#			define EXT_BIN(expr, ...) ConstBuf(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
+#			define EXT_BIN(expr, ...) Span(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
 
 #			if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !defined(WDM_DRIVER)
   //#		include "win32/ext-atl.h"

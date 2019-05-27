@@ -1,3 +1,10 @@
+;/*######   Copyright (c) 2001-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+;#                                                                                                                                     #
+;# 		See LICENSE for licensing information                                                                                         #
+;#####################################################################################################################################*/
+
+
+
 INCLUDE el/x86x64.inc
 
 
@@ -105,66 +112,66 @@ ENDIF
 ImpNegBignum	ENDP
 
 IF X64
-	ImpShld	PROC PUBLIC USES ZBX ZSI ZDI ZBP	
-		mov		RSI, ZCX		; s
-		mov		RDI, ZDX		; d
-		mov		RCX, R9			; amt
-		mov		RBX, R8			; siz
+	ImpShld	PROC PUBLIC USES ZBX ZSI ZDI ZBP
+	mov	RSI, ZCX		; s
+	mov	RDI, ZDX		; d
+	mov	RCX, R9			; amt
+	mov	RBX, R8			; siz
 ELSE
 	ImpShld	PROC stdcall PUBLIC USES ZBX ZSI ZDI ZBP, s:DWORD, d:DWORD, siz:DWORD , amt:DWORD
-		mov		ESI, s
-		mov		EDI, d
-		mov		ECX, amt
-		mov		EBX, siz
+	mov	ESI, s
+	mov	EDI, d
+	mov	ECX, amt
+	mov	EBX, siz
 ENDIF
-		xor		ZBP, ZBP
-@@x:	mov		ZDX, ZBP
-		lodsZ
-		mov		ZBP, ZAX
-		shld	ZAX, ZDX, CL
-		stosZ
-		dec		ZBX
-		jnz		@@x
-		xchg	ZAX, ZBP
-		cZY
-		shld	ZDX, ZAX, CL
-		mov		[ZDI], ZDX
-		ret
+	xor	ZBP, ZBP
+@@x:	mov	ZDX, ZBP
+	lodsZ
+	mov	ZBP, ZAX
+	shld	ZAX, ZDX, CL
+	stosZ
+	dec	ZBX
+	jnz	@@x
+	xchg	ZAX, ZBP
+	cZY
+	shld	ZDX, ZAX, CL
+	mov	[ZDI], ZDX
+	ret
 ImpShld	ENDP
 
 IF X64
 	ImpShrd	PROC PUBLIC USES ZBX ZSI ZDI, s:QWORD, d:QWORD, siz:QWORD, amt:QWORD, prev:QWORD
-		mov		s, RCX
-		mov		d, RDX
-		mov		siz, R8
-		mov		amt, R9		
-		mov		RSI, ZCX		; s
-		mov		RDI, ZDX		; d
-		mov		RCX, R9			; amt
-		mov		RBX, R8			; siz
+		mov	s, RCX
+		mov	d, RDX
+		mov	siz, R8
+		mov	amt, R9
+		mov	RSI, ZCX		; s
+		mov	RDI, ZDX		; d
+		mov	RCX, R9			; amt
+		mov	RBX, R8			; siz
 ELSE
 	ImpShrd	PROC stdcall PUBLIC USES ZBX ZSI ZDI, s:DWORD, d:DWORD, siz:DWORD , amt:DWORD, prev: DWORD
-		mov		ESI, s
-		mov		EDI, d
-		mov		ECX, amt
-		mov		EBX, siz
+		mov	ESI, s
+		mov	EDI, d
+		mov	ECX, amt
+		mov	EBX, siz
 ENDIF
-		dec		ZBX
-		shl		ZBX, ZWORD_BITS-3
-		add		ZSI, ZBX
-		add		ZDI, ZBX
-		mov		ZBX, siz
+		dec	ZBX
+		shl	ZBX, ZWORD_BITS-3
+		add	ZSI, ZBX
+		add	ZDI, ZBX
+		mov	ZBX, siz
 		push	ZBP
-		mov		ZDX, prev
+		mov	ZDX, prev
 		std
 @@x:	lodsZ
-		mov		ZBP, ZAX
+		mov	ZBP, ZAX
 		shrd	ZAX, ZDX, CL
 		stosZ
-		mov		ZDX, ZBP
-		dec		ZBX
-		jnz		@@x
-		pop		ZBP
+		mov	ZDX, ZBP
+		dec	ZBX
+		jnz	@@x
+		pop	ZBP
 		cld
 		ret
 ImpShrd	ENDP
@@ -177,12 +184,12 @@ ELSE
 		mov	ECX, siz
 ENDIF
 		clc
-@@x:	rcl		ZWORD_PTR [ZBX], 1
+@@x:		rcl	ZWORD_PTR [ZBX], 1
 		lahf
-		add		ZDX, ZWORD_SIZE
+		add	ZDX, ZWORD_SIZE
 		sahf
-		loop		@@x
-		setc		AL
+		loop	@@x
+		setc	AL
 		ret
 ImpRcl	ENDP
 
@@ -193,57 +200,57 @@ IF X64
 		mov	ZAX, ZDX
 ELSE
 	ImpBT	PROC C PUBLIC,  p:DWORD, i:DWORD
-		mov		ZBX, p
-		mov		ZAX, i
+		mov	ZBX, p
+		mov	ZAX, i
 ENDIF
-		bt		[ZBX], ZAX
-		setc		AL
-        ret        
+		bt	[ZBX], ZAX
+		setc	AL
+        ret
 ImpBT 	ENDP
 
 IF X64
 	ImpMulBignums	PROC PUBLIC USES ZBX ZSI ZDI, a:QWORD, m:QWORD, b:QWORD, n: QWORD, d:QWORD
-		mov		a, RCX
-		mov		m, RDX
-		mov		b, R8
-		mov		n, R9
+		mov	a, RCX
+		mov	m, RDX
+		mov	b, R8
+		mov	n, R9
 ELSE
 	ImpMulBignums	PROC stdcall PUBLIC USES  ZBX ZSI ZDI, a:DWORD, m:DWORD, b:DWORD, n:DWORD, d:DWORD
 ENDIF
-		mov		ZCX, m
-		add		ZCX, n
-		mov		ZDI, d
-		xor		ZAX, ZAX
+		mov	ZCX, m
+		add	ZCX, n
+		mov	ZDI, d
+		xor	ZAX, ZAX
 		rep stosZ
-		mov		ZSI, b
-		mov		ZDI, d
-		mov		ZCX, n
+		mov	ZSI, b
+		mov	ZDI, d
+		mov	ZCX, n
 @@x:	lodsZ
 		push	ZCX
 		push	ZSI
 		push	ZDI
 		push	ZBP
 		xchg	ZAX, ZBX
-		mov		ZSI, a
-		mov		ZCX, m
-		xor		ZDX, ZDX
+		mov	ZSI, a
+		mov	ZCX, m
+		xor	ZDX, ZDX
 @@y:	lodsZ
-		mov		ZBP, ZDX
-		mul		ZBX
-		add		ZAX, ZBP
-		adc		ZDX, 0
-		add		[ZDI], ZAX
-		lea		zdi, [ZDI+ZWORD_SIZE]
-		adc		ZDX, 0
+		mov	ZBP, ZDX
+		mul	ZBX
+		add	ZAX, ZBP
+		adc	ZDX, 0
+		add	[ZDI], ZAX
+		lea	zdi, [ZDI+ZWORD_SIZE]
+		adc	ZDX, 0
 		loop	@@y
-		mov		[ZDI], ZDX
-		pop		ZBP
-		pop		ZDI
-		add		ZDI, ZWORD_SIZE
-		pop		ZSI
-		pop		ZCX
-		loop		@@x
-        ret        
+		mov	[ZDI], ZDX
+		pop	ZBP
+		pop	ZDI
+		add	ZDI, ZWORD_SIZE
+		pop	ZSI
+		pop	ZCX
+		loop	@@x
+        ret
 ImpMulBignums 	ENDP
 
 
@@ -251,84 +258,84 @@ EXTRN g_bHasSse2:PTR BYTE
 
 IF X64
 	ImpMulAddBignums	PROC PUBLIC USES ZBX ZSI ZDI, r:QWORD, a:QWORD, n:QWORD, w: QWORD
-		mov		r, RCX
-		mov		a, RDX
-		mov		n, R8
-		mov		w, R9
+		mov	r, RCX
+		mov	a, RDX
+		mov	n, R8
+		mov	w, R9
 ELSE
 	ImpMulAddBignums	PROC PUBLIC USES ZBX ZSI ZDI, r:DWORD, a:DWORD, n:DWORD, w:DWORD
 ENDIF
-		mov		ZSI, a
-		mov		ZCX, n
-		mov		ZDI, r
-		mov		ZBX, w
+	mov	ZSI, a
+	mov	ZCX, n
+	mov	ZDI, r
+	mov	ZBX, w
 IF X64
 ELSE
-		cmp		BYTE PTR g_bHasSse2, 0
-		je		LAB_BeginMulAddBignums
+	cmp	BYTE PTR g_bHasSse2, 0
+	je	LAB_BeginMulAddBignums
 
-		pxor	xmm2, xmm2		; carry
-		mov		zdx, zcx
-		xor		zax, zax
-		and		zdx, 3
-		shr		zcx, 2
-		jz		@@b
-		movd		xmm7, zbx
-		pshufd		xmm7, xmm7, 0
-		pxor		xmm0, xmm0		; const zero
+	pxor	xmm2, xmm2		; carry
+	mov	zdx, zcx
+	xor	zax, zax
+	and	zdx, 3
+	shr	zcx, 2
+	jz	@@b
+	movd	xmm7, zbx
+	pshufd	xmm7, xmm7, 0
+	pxor		xmm0, xmm0		; const zero
 @@c:	movdqu		xmm5, [zsi+zax]		; xmm5 = (a[3] a[2] a[1] a[0])
-		movdqu		xmm6, [zdi+zax]		; xmm6 = (r[3] r[2] r[1] r[0])
+	movdqu	xmm6, [zdi+zax]		; xmm6 = (r[3] r[2] r[1] r[0])
 
-		pshufd		xmm1, xmm5, 000010000b	; xmm1 = (? a[1] ? a[0])
-		pmuludq		xmm1, xmm7				; xmm1 = ({a[1]*w}  {a[0]*w})
+	pshufd	xmm1, xmm5, 000010000b	; xmm1 = (? a[1] ? a[0])
+	pmuludq	xmm1, xmm7				; xmm1 = ({a[1]*w}  {a[0]*w})
 
-		movdqa		xmm3, xmm6
-		unpcklps	xmm3, xmm0				; xmm3 = (0 r[1] 0 r[0])
-		paddq		xmm1, xmm3		
-		paddq		xmm1, xmm2				; xmm1 = ({a[1]*w+r[1]}  {a[0]*w+r[0]+prevCarry})
+	movdqa	xmm3, xmm6
+	unpcklps	xmm3, xmm0				; xmm3 = (0 r[1] 0 r[0])
+	paddq	xmm1, xmm3
+	paddq	xmm1, xmm2				; xmm1 = ({a[1]*w+r[1]}  {a[0]*w+r[0]+prevCarry})
 
-		unpckhpd	xmm2, xmm1				; xmm2 = ({a[1]*w+r[1]} 0 0)
-		unpcklps	xmm1, xmm0				; xmm1 = (0 high({a[0]*w+r[0]+prevCarry} 0 low({a[0]*w+r[0]+prevCarry})
-		paddq		xmm2, xmm1
-		pshufd		xmm4, xmm2, 010000000b	; xmm4 = (d1 d0 ? ?)
-		pshufd		xmm2, xmm2, 001010111b	; xmm2 = (0 0 0 carry)
+	unpckhpd	xmm2, xmm1				; xmm2 = ({a[1]*w+r[1]} 0 0)
+	unpcklps	xmm1, xmm0				; xmm1 = (0 high({a[0]*w+r[0]+prevCarry} 0 low({a[0]*w+r[0]+prevCarry})
+	paddq	xmm2, xmm1
+	pshufd	xmm4, xmm2, 010000000b	; xmm4 = (d1 d0 ? ?)
+	pshufd	xmm2, xmm2, 001010111b	; xmm2 = (0 0 0 carry)
 
-		pshufd		xmm1, xmm5, 000110010b	; xmm1 = (? a[3] ? a[2])
-		pmuludq		xmm1, xmm7				; xmm1 = ({a[3]*w}  {a[2]*w})
+	pshufd	xmm1, xmm5, 000110010b	; xmm1 = (? a[3] ? a[2])
+	pmuludq	xmm1, xmm7				; xmm1 = ({a[3]*w}  {a[2]*w})
 
-		unpckhps	xmm6, xmm0				; xmm6 = (0 r[3] 0 r[2])
-		paddq		xmm1, xmm6	
-		paddq		xmm1, xmm2				; xmm1 = ({a[3]*w+r[3]}  {a[2]*w+r[2]+prevCarry})
-		
-		unpckhpd	xmm2, xmm1				; xmm2 = ({a[3]*w+r[3]} 0 0)
-		unpcklps	xmm1, xmm0				; xmm1 = (0 high({a[2]*w+r[2]+prevCarry} 0 low({a[2]*w+r[2]+prevCarry})
-		paddq		xmm2, xmm1
-		pshufd		xmm1, xmm2, 010000000b
-		unpckhpd	xmm4, xmm1				; xmm4 = (d3 d2 d1 d0)
-		pshufd		xmm2, xmm2, 001010111b	; xmm2 = (0 0 0 carry)
+	unpckhps	xmm6, xmm0				; xmm6 = (0 r[3] 0 r[2])
+	paddq	xmm1, xmm6
+	paddq	xmm1, xmm2				; xmm1 = ({a[3]*w+r[3]}  {a[2]*w+r[2]+prevCarry})
 
-		movdqu		[zdi+zax], xmm4
-		add		zax, 16
-		loop	@@c
+	unpckhpd	xmm2, xmm1				; xmm2 = ({a[3]*w+r[3]} 0 0)
+	unpcklps	xmm1, xmm0				; xmm1 = (0 high({a[2]*w+r[2]+prevCarry} 0 low({a[2]*w+r[2]+prevCarry})
+	paddq		xmm2, xmm1
+	pshufd		xmm1, xmm2, 010000000b
+	unpckhpd	xmm4, xmm1				; xmm4 = (d3 d2 d1 d0)
+	pshufd		xmm2, xmm2, 001010111b	; xmm2 = (0 0 0 carry)
+
+	movdqu	[zdi+zax], xmm4
+	add	zax, 16
+	loop	@@c
 @@b:	add		zcx, zdx
-		jnz		@@d
-		movd	zax, xmm2
+	jnz		@@d
+	movd	zax, xmm2
         ret
 @@d:	add		zsi, zax
-		add		zdi, zax
-		push	zbp
-		movd	zdx, xmm2
-		jmp		LAB_ContinueMulAddBignums
+	add	zdi, zax
+	push	zbp
+	movd	zdx, xmm2
+	jmp	LAB_ContinueMulAddBignums
 ENDIF
 
 LAB_BeginMulAddBignums:
 		push	zbp
-		xor		zdx, zdx
+		xor	zdx, zdx
 LAB_ContinueMulAddBignums:
 @@a:	lodsZ
 		mov		zbp, zdx
 		mul		zbx
-		add		zax, zbp		
+		add		zax, zbp
 		adc		zdx, 0
 		add		zax, [zdi]
 		adc		zdx, 0
@@ -336,7 +343,7 @@ LAB_ContinueMulAddBignums:
 		loop	@@a
 		mov		zax, zdx
 		pop		zbp
-        ret        
+        ret
 ImpMulAddBignums 	ENDP
 
 
@@ -362,7 +369,7 @@ ENDIF
 		add		ZAX, ZBP
 		adc		ZDX, 0
 							; CF=0 here
-		rcl		ZDI, 1			
+		rcl		ZDI, 1
 		sbb		[ZDI], ZAX
 		rcr		ZDI, 1
 		mov		ZBP, ZDX
@@ -373,137 +380,136 @@ ENDIF
 		sbb		[ZDI], ZBP
 		setc	AL
 		pop		ZBP
-        ret        
+        ret
 ImpMulSubBignums 	ENDP
 
 
 IF X64
 	ImpShortDiv	PROC PUBLIC USES ZBX ZSI ZDI, s:QWORD, d:QWORD, siz:QWORD, q: QWORD
-		mov		s, RCX
-		mov		d, RDX
-		mov		siz, R8
-		mov		q, R9
+	mov		s, RCX
+	mov		d, RDX
+	mov		siz, R8
+	mov		q, R9
 ELSE
 	ImpShortDiv	PROC stdcall PUBLIC USES ZBX ZSI ZDI, s:DWORD, d:DWORD, siz:DWORD, q: DWORD
 ENDIF
-		mov		ZCX, siz
-		lea		ZSI, [ZCX*ZWORD_SIZE-ZWORD_SIZE]
-		mov		ZDI, ZSI
-		add		ZSI, s
-		add		ZDI, d
-		mov		ZBX, q
-		mov		ZDX, [ZSI+ZWORD_SIZE]
-		std
+	mov		ZCX, siz
+	lea		ZSI, [ZCX*ZWORD_SIZE-ZWORD_SIZE]
+	mov		ZDI, ZSI
+	add		ZSI, s
+	add		ZDI, d
+	mov		ZBX, q
+	mov		ZDX, [ZSI+ZWORD_SIZE]
+	std
 @@a:	lodsZ
-		div		ZBX
-		stosZ
-		loop	@@a
-		cld
-		mov		ZAX, ZDX
-		ret
+	div		ZBX
+	stosZ
+	loop	@@a
+	cld
+	mov		ZAX, ZDX
+	ret
 ImpShortDiv	ENDP
 
 
 IF X64
 	ImpDivBignums	PROC PUBLIC USES ZBX ZSI ZDI, a:QWORD, b:QWORD, d:QWORD, n: QWORD
-		mov		a, RCX
-		mov		b, RDX
-		mov		d, R8
-		mov		n, R9
+	mov	a, RCX
+	mov	b, RDX
+	mov	d, R8
+	mov	n, R9
 ELSE
 	ImpDivBignums	PROC stdcall PUBLIC USES ZBX ZSI ZDI, a:DWORD, b:DWORD, d:DWORD, n: DWORD
 ENDIF
-		mov		ZCX, n
-		shl		ZCX, ZWORD_BITS-2
-		sub		ZSP, ZCX
-		shr		ZCX, ZWORD_BITS-3
-		mov		ZDI, ZSP
-		xor		EAX, EAX
-		rep		stosZ
-		mov		ZCX, n
-		shl		ZCX, ZWORD_BITS-3		
-		sub		ZDI, ZCX
-		mov		ZDX, n
-		shl		ZDX, ZWORD_BITS
-		clc
-		mov		ZSI, ZSP
-@@x:	mov		ZCX, n
-		mov		ZBX, a
-@@y:	rcl		ZWORD_PTR [ZBX], 1
-		lahf
-		add		ZBX, ZWORD_SIZE
-		sahf
-		loop	@@y
-		dec		ZDX
-		mov		ZCX, n
-		js		@@t
-		push	ZSI
-@@z:	rcl		ZWORD_PTR [ZSI], 1
-		lodsZ
-		loop	@@z
-		pop		ZSI
-		mov		ZCX, n
-		clc
-		push	ZSI
-		push	ZDI
-		mov		ZBX, b
+	mov	ZCX, n
+	shl	ZCX, ZWORD_BITS-2
+	sub	ZSP, ZCX
+	shr	ZCX, ZWORD_BITS-3
+	mov	ZDI, ZSP
+	xor	EAX, EAX
+	rep	stosZ
+	mov	ZCX, n
+	shl	ZCX, ZWORD_BITS-3
+	sub	ZDI, ZCX
+	mov	ZDX, n
+	shl	ZDX, ZWORD_BITS
+	clc
+	mov	ZSI, ZSP
+@@x:	mov	ZCX, n
+	mov	ZBX, a
+@@y:	rcl	ZWORD_PTR [ZBX], 1
+	lahf
+	add	ZBX, ZWORD_SIZE
+	sahf
+	loop	@@y
+	dec	ZDX
+	mov	ZCX, n
+	js	@@t
+	push	ZSI
+@@z:	rcl	ZWORD_PTR [ZSI], 1
+	lodsZ
+	loop	@@z
+	pop	ZSI
+	mov	ZCX, n
+	clc
+	push	ZSI
+	push	ZDI
+	mov	ZBX, b
 @@w:	lodsZ
-		sbb		ZAX, [ZBX]
-		stosZ
-		lahf
-		add		ZBX, ZWORD_SIZE
-		sahf
-		loop	@@w
-		pop		ZDI
-		pop		ZSI
-		cmc
-		jnc		@@x
-		xchg	ZSI, ZDI
-		jmp		@@x
-@@t:	mov		ZDI, d
-		rep movsZ
-		lea		ZSP, [ZBP-3*ZWORD_SIZE]
-		ret
+	sbb	ZAX, [ZBX]
+	stosZ
+	lahf
+	add	ZBX, ZWORD_SIZE
+	sahf
+	loop	@@w
+	pop	ZDI
+	pop	ZSI
+	cmc
+	jnc	@@x
+	xchg	ZSI, ZDI
+	jmp	@@x
+@@t:	mov	ZDI, d
+	rep movsZ
+	lea	ZSP, [ZBP-3*ZWORD_SIZE]
+	ret
 ImpDivBignums	ENDP
 
 extrn memcpy: NEAR
 
-IF X64	
+IF X64
 ELSE
 	MemcpySse	PROC PUBLIC
 	push	ecx
 	push	esi
 	push	edi
-	mov		edi, [esp+4*4]		; dst
-	mov		esi, [esp+5*4]		; src
-	mov		ecx, [esp+6*4]		; cnt
+	mov	edi, [esp+4*4]		; dst
+	mov	esi, [esp+5*4]		; src
+	mov	ecx, [esp+6*4]		; cnt
 	jecxz	LAB_MEMCPY
 	test	ecx, 127
-	jnz		LAB_MEMCPY	
-	mov		eax, esi
-	or		eax, edi
+	jnz	LAB_MEMCPY
+	mov	eax, esi
+	or	eax, edi
 	test	eax, 0Fh
-	jnz		LAB_MEMCPY
-	shr		ecx, 7
-	mov		eax, edi
+	jnz	LAB_MEMCPY
+	shr	ecx, 7
+	mov	eax, edi
 LAB_LOOP:
-	dotimes_i_8		< movdqa xmm_i, [esi+i*16] >
-	dotimes_i_8		< movntps [edi+i*16], xmm_i >
-	add		esi, 128
-	add		edi, 128
+	dotimes_i_8	< movdqa xmm_i, [esi+i*16] >
+	dotimes_i_8	< movntps [edi+i*16], xmm_i >
+	add	esi, 128
+	add	edi, 128
 	loop	LAB_LOOP
-	pop		edi
-	pop		esi
-	pop		ecx
-	ret		
+	pop	edi
+	pop	esi
+	pop	ecx
+	ret
 LAB_MEMCPY:
-	pop		edi
-	pop		esi
-	pop		ecx
-	jmp		memcpy
+	pop	edi
+	pop	esi
+	pop	ecx
+	jmp	memcpy
 MemcpySse ENDP
 ENDIF
 
 
-		END
-		
+	END

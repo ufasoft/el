@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -29,16 +29,21 @@ bool ResolveLocally() {
 #endif
 }
 
-void CProxyBase::ConnectWithResolving(Stream& stm, const IPEndPoint& hp) {
-	CProxyQuery q = { QueryType::Connect, hp };
-	if (ResolveLocally())
-		q.Ep.Address = IPAddress(htonl(hp.Address.GetIP()));
-	Connect(stm, q);
+void CProxyBase::ConnectWithResolving(Stream& stm, const EndPoint& ep) {
+	CProxyQuery q = { QueryType::Connect, &ep };
+	const DnsEndPoint *dnsEp = dynamic_cast<const DnsEndPoint*>(&ep);
+	if (!ResolveLocally() || !dnsEp)
+		Connect(stm, q);
+	else {
+		IPEndPoint ipEp(Dns::GetHostAddresses(dnsEp->Host).at(0), dnsEp->Port);
+		q.Ep = &ipEp;
+		Connect(stm, q);
+	}
 }
 
 DWORD CProxySocket::GetTimeout() {
 #if UCFG_COMPLEX_WINAPP
-	return (DWORD)RegistryKey(AfxGetApp()->KeyCU,"Options").TryQueryValue("Timeout", DEFAULT_RECEIVE_TIMEOUT)*1000;
+	return (DWORD)RegistryKey(AfxGetApp()->KeyCU, "Options").TryQueryValue("Timeout", DEFAULT_RECEIVE_TIMEOUT)*1000;
 #else
 	return DEFAULT_RECEIVE_TIMEOUT*1000;
 #endif
@@ -56,7 +61,7 @@ DWORD CProxySocket::GetType() {
 void CProxySocket::ConnectToProxy(Stream& stm) {
 	DWORD proxyType = GetType();
 #if UCFG_COMPLEX_WINAPP
-	RegistryKey key(AfxGetApp()->KeyCU,"Options");	
+	RegistryKey key(AfxGetApp()->KeyCU,"Options");
 	WORD port = (WORD)DWORD(key.TryQueryValue("Port", DWORD(1080)));
 #else
 	WORD port = 1080;
@@ -95,12 +100,12 @@ void CProxySocket::AssociateUDP() {
 	m_sock.ReceiveTimeout = (int)timeout;
 	NetworkStream stm(m_sock);
 	ConnectToProxy(stm);
-	byte ar[10] = {5, 3, 0, 1, 0, 0, 0, 0, 0, 0};
+	uint8_t ar[10] = {5, 3, 0, 1, 0, 0, 0, 0, 0, 0};
 	stm.WriteBuffer(ar,10);
 	m_ep = ReadSocks5Reply(stm);
 }
 
-bool CProxySocket::ConnectHelper(const IPEndPoint& hp) {
+bool CProxySocket::ConnectHelper(const EndPoint& ep) {
 	if (m_bLingerZero)
 		LingerState = LingerOption(true, 0);	//!!!
 #if UCFG_COMPLEX_WINAPP
@@ -115,11 +120,11 @@ bool CProxySocket::ConnectHelper(const IPEndPoint& hp) {
 				int nSndBuf = 0;
 				SetSocketOption(SOL_SOCKET, SO_SNDBUF, nSndBuf);
 			}
-		}    
+		}
 
 		CEvent ev;
 		EventSelect(SafeHandle::HandleAccess(ev), FD_CONNECT);
-		Socket::ConnectHelper(hp);
+		Socket::ConnectHelper(ep);
 		if (WaitForSingleObject(SafeHandle::HandleAccess(ev), timeout) == WAIT_TIMEOUT)
 			Throw(ExtErr::PROXY_ConnectTimeOut);
 		WSANETWORKEVENTS events;
@@ -142,9 +147,9 @@ bool CProxySocket::ConnectHelper(const IPEndPoint& hp) {
 		String password = "";
 #endif
 		try {
-			IPEndPoint ep(server, port);
-			TRC(2,"proxy = " << ep);
-			Socket::ConnectHelper(ep);
+			IPEndPoint ep2(IPAddress::Parse(server), port);
+			TRC(2,"proxy = " << ep2);
+			Socket::ConnectHelper(ep2);
 			//!!! sock.Connect(server, port);
 		} catch (RCExc DBG_PARAM(ex)) {
 			TRC(0, ex.what());
@@ -156,7 +161,7 @@ bool CProxySocket::ConnectHelper(const IPEndPoint& hp) {
 		NetworkStream stm(_self);
 		ConnectToProxy(stm);
 		if (proxyType == 5) //!!!? why without authenticate
-			m_remoteHostPort = CSocks5Proxy().TcpBy(stm, hp, 1);
+			m_remoteHostPort = CSocks5Proxy().TcpBy(stm, ep, 1);
 		else {
 			ptr<CProxyBase> pProxy;
 			switch (proxyType) {
@@ -167,7 +172,7 @@ bool CProxySocket::ConnectHelper(const IPEndPoint& hp) {
 			}
 			pProxy->m_user = user;
 			pProxy->m_password = password;
-			CProxyQuery q = { QueryType::Connect, hp };
+			CProxyQuery q = { QueryType::Connect, &ep };
 			pProxy->Connect(stm, q);
 		}
 	}
@@ -180,24 +185,24 @@ IPEndPoint CProxySocket::GetRemoteHostPort() {
 	return m_remoteHostPort.Address.GetIP()==0 ? RemoteEndPoint : m_remoteHostPort;
 }
 
-void CProxySocket::SendTo(const ConstBuf& cbuf, const IPEndPoint& ep) {
+void CProxySocket::SendTo(RCSpan cbuf, const IPEndPoint& ep) {
 	if (!m_sock.Valid())
 		Socket::SendTo(cbuf, ep);
 	else {
-		int size = sizeof(UDP_REPLY)+cbuf.Size;
-		UDP_REPLY *udp = (UDP_REPLY*)alloca(size);
+		int size = sizeof(UDP_REPLY) + cbuf.size();
+		UDP_REPLY* udp = (UDP_REPLY*)alloca(size);
 		udp->m_rsv = 0;
 		udp->m_frag = 0;
 		udp->m_atype = 1;
 		udp->m_host = *(const uint32_t*)ep.Address.GetAddressBytes().constData();
 		udp->m_port = htons(ep.Port);
-		memcpy(udp+1, cbuf.P, cbuf.Size);
+		memcpy(udp+1, cbuf.data(), cbuf.size());
 		Socket::SendTo(ConstBuf(udp, size), ep);
 	}
 }
 
 Blob CProxySocket::ReceiveUDP(IPEndPoint& hp) {
-	byte buf[UDP_BUF_SIZE];
+	uint8_t buf[UDP_BUF_SIZE];
 	IPEndPoint ep;
 	int r = ReceiveFrom(buf, sizeof buf, ep);
 	if (!m_sock.Valid()) {
@@ -210,24 +215,24 @@ Blob CProxySocket::ReceiveUDP(IPEndPoint& hp) {
 			ThrowWSALastError();
 		if (ep == m_ep) {
 			UDP_REPLY *udp = (UDP_REPLY*)buf;
-			byte *p = (byte*)(udp+1);
+			uint8_t* p = (uint8_t*)(udp + 1);
 			switch (udp->m_atype)
 			{
 			case 1:
 				hp = IPEndPoint(udp->m_host, ntohs(udp->m_port));
 				break;
 			case 3:
-				hp = IPEndPoint(String((const char*)(buf+5),buf[4]), ntohs(*(WORD*)(buf+5+buf[4])));
-				p += buf[4]-3;
+				hp = IPEndPoint(IPAddress::Parse(String((const char*)(buf + 5), buf[4])), ntohs(*(uint16_t*)(buf + 5 + buf[4])));
+				p += buf[4] - 3;
 				break;
 			case 4:
-				hp = IPEndPoint(IPAddress(ConstBuf(buf+4, 16)), ntohs(*(WORD*)(buf+20)));
+				hp = IPEndPoint(IPAddress(Span(buf + 4, 16)), ntohs(*(WORD*)(buf + 20)));
 				p += 12;
 				break;
 			default:
 				Throw(ExtErr::SOCKS_AddressTypeNotSupported);
 			}
-			return Blob(p, buf+r-p);
+			return Blob(p, buf + r - p);
 		} else {
 			hp = ep;
 			return Blob(buf, r);
@@ -237,26 +242,30 @@ Blob CProxySocket::ReceiveUDP(IPEndPoint& hp) {
 
 
 IPEndPoint CSocks4Proxy::Connect(Stream& stm, const CProxyQuery& q) {
-	TRC(2, "Connect by SOCKS4 to\t" << q.Ep);
+	const EndPoint *ep = q.Ep;
+	TRC(2, "Connect by SOCKS4 to\t" << *ep);
 
 	if (q.Typ != QueryType::Connect)
 		Throw(E_NOTIMPL);
-	IPEndPoint hp = q.Ep;
+	const IPEndPoint *ipEp = dynamic_cast<const IPEndPoint*>(ep);
+	const DnsEndPoint *dnsEp = dynamic_cast<const DnsEndPoint*>(ep);
+	uint16_t port = ipEp ? ipEp->Port : dnsEp->Port;
+
 	MemoryStream qs;
 	BinaryWriter wr(qs);
-	wr << (byte)4 << (byte)1 << htons(hp.Port);
+	wr << (uint8_t)4 << (uint8_t)1 << htons(port);
 	const char *szPassword = m_password;
-	if (AddressFamily::InterNetwork == hp.AddressFamily) {
-		wr << htonl(hp.Address.GetIP());
+	if (ep->AddressFamily == AddressFamily::InterNetwork) {
+		wr << htonl(ipEp->Address.GetIP());
 		wr.Write(szPassword, strlen(szPassword)+1);
 	} else {
 		wr << (uint32_t)0x01000000;
 		wr.Write(szPassword,strlen(szPassword)+1);
-		wr.Write((const char*)hp.Address.m_domainname, hp.Address.m_domainname.length()+1);
+		wr.Write((const char*)dnsEp->Host, dnsEp->Host.length() + 1);
 	}
 	Blob blob = qs.Blob;
 	stm.WriteBuffer(blob.constData(), blob.Size);
-	byte buf[8];
+	uint8_t buf[8];
 	stm.ReadBuffer(buf, 8);//!!!
 	switch (buf[1]) {
 	case 90:
@@ -275,7 +284,7 @@ IPEndPoint CSocks4Proxy::Connect(Stream& stm, const CProxyQuery& q) {
 }
 
 void CSocks5Proxy::Authenticate(Stream& stm) {
-	byte ar[4] = { 5, 2, 0, 2 };
+	uint8_t ar[4] = { 5, 2, 0, 2 };
 	stm.WriteBuffer(ar, 4);
 	stm.ReadBuffer(ar, 2);
 	switch (ar[1]) {
@@ -285,13 +294,13 @@ void CSocks5Proxy::Authenticate(Stream& stm) {
 		{
 			const char *szUser = m_user,
 				*szPassword = m_password;
-			byte len = byte(strlen(szUser)+strlen(szPassword)+3); //!!!
-			byte *p = (byte*)alloca(len);
+			uint8_t len = uint8_t(strlen(szUser)+strlen(szPassword)+3); //!!!
+			uint8_t *p = (uint8_t*)alloca(len);
 			p[0] = 1;
-			p[1] = (byte)strlen(szUser);
+			p[1] = (uint8_t)strlen(szUser);
 			memcpy(p+2, szUser, p[1]);
 			int off = 2+p[1];
-			p[off] = (byte)strlen(szPassword);
+			p[off] = (uint8_t)strlen(szPassword);
 			memcpy(p+off+1,szPassword, p[off]);
 			stm.WriteBuffer(p, len);
 			stm.ReadBuffer(ar, 2);
@@ -305,38 +314,41 @@ void CSocks5Proxy::Authenticate(Stream& stm) {
 	m_stage = STAGE_AUTHENTICATED;
 }
 
-IPEndPoint CSocks5Proxy::TcpBy(Stream& stm, const IPEndPoint& hp, byte cmd) {
-	TRC(2, "Connect by SOCKS5\t" << hp);
+IPEndPoint CSocks5Proxy::TcpBy(Stream& stm, const EndPoint& ep, uint8_t cmd) {
+	TRC(2, "Connect by SOCKS5\t" << ep);
 
-	byte ar[262] = { 5, cmd, 0, 0 };
+	uint8_t ar[262] = { 5, cmd, 0, 0 };
 	int portOffset;
-	switch ((int)hp.AddressFamily) {
-	case AF_INET:
-		ar[3] = 1;
-		*(uint32_t*)(ar+4) = htonl(hp.Address.GetIP());
-		portOffset = 8;
-		break;
-	case AF_INET6:
-		ar[3] = 4;
-		memcpy(ar+4, hp.Address.GetAddressBytes().constData(), 16);
-		portOffset = 20;
-		break;
-	case IPAddress::AF_DOMAIN_NAME:
-		{
-			ar[3] = 3;
-			const char *domain = hp.Address.m_domainname;
-			size_t len = strlen(domain);
-			if (len > 255)
-				Throw(ExtErr::PROXY_LongDomainName);
-			ar[4] = (byte)len;
-			memcpy(ar+5, domain, len);
-			portOffset = byte(5+len);
+	uint16_t port;
+	if (const DnsEndPoint *dnsEp = dynamic_cast<const DnsEndPoint*>(&ep)) {
+		port = dnsEp->Port;
+		ar[3] = 3;
+		const char *domain = dnsEp->Host;
+		size_t len = strlen(domain);
+		if (len > 255)
+			Throw(ExtErr::PROXY_LongDomainName);
+		ar[4] = (uint8_t)len;
+		memcpy(ar + 5, domain, len);
+		portOffset = uint8_t(5 + len);
+	} else {
+		const IPEndPoint& ipEp = dynamic_cast<const IPEndPoint&>(ep);
+		port = ipEp.Port;
+		switch ((int)ipEp.AddressFamily) {
+		case AF_INET:
+			ar[3] = 1;
+			*(uint32_t*)(ar + 4) = htonl(ipEp.Address.GetIP());
+			portOffset = 8;
+			break;
+		case AF_INET6:
+			ar[3] = 4;
+			memcpy(ar + 4, ipEp.Address.GetAddressBytes().constData(), 16);
+			portOffset = 20;
+			break;
+		default:
+			Throw(E_FAIL);
 		}
-		break;
-	default:
-		Throw(E_FAIL);
 	}
-	*(uint16_t*)(ar+portOffset) = htons(hp.Port);
+	*(uint16_t*)(ar + portOffset) = htons(port);
 	stm.WriteBuffer(ar, portOffset+2);
 	return ReadSocks5Reply(stm);
 }
@@ -344,7 +356,7 @@ IPEndPoint CSocks5Proxy::TcpBy(Stream& stm, const IPEndPoint& hp, byte cmd) {
 IPEndPoint CSocks5Proxy::Connect(Stream& stm, const CProxyQuery& q) {
 	Authenticate(stm);
 
-	byte cmd;
+	uint8_t cmd;
 	switch (q.Typ) {
 	case QueryType::Connect:	cmd = 1; break;
 	case QueryType::Resolve:	cmd = 0xF0; break;
@@ -352,12 +364,12 @@ IPEndPoint CSocks5Proxy::Connect(Stream& stm, const CProxyQuery& q) {
 	default:
 		Throw(E_NOTIMPL);
 	}
-	return TcpBy(stm, q.Ep, cmd);
+	return TcpBy(stm, *q.Ep, cmd);
 }
 
 pair<String,String> CHttpProxy::HttpAuthHeader(String user, String password) {
-	String s = user+":"+password;
-	return make_pair(String("Proxy-Authorization"), "Basic " + Convert::ToBase64String(ConstBuf((const byte*)(const char*)s, s.length())));
+	String s = user + ":" + password;
+	return make_pair(String("Proxy-Authorization"), "Basic " + Convert::ToBase64String(Span((const uint8_t*)(const char*)s, s.length())));
 }
 
 IPEndPoint CHttpProxy::Connect(Stream& stm, const CProxyQuery& q) {
@@ -365,7 +377,7 @@ IPEndPoint CHttpProxy::Connect(Stream& stm, const CProxyQuery& q) {
 
 	if (q.Typ != QueryType::Connect)
 		Throw(E_NOTIMPL);
-	IPEndPoint hp = q.Ep;
+	const EndPoint hp = *q.Ep;
 
 	m_stage = STAGE_AUTHENTICATED;
 	ostringstream os;
@@ -374,7 +386,7 @@ IPEndPoint CHttpProxy::Connect(Stream& stm, const CProxyQuery& q) {
 	if (m_user != "") {
 		WebHeaderCollection headers;
 		pair<String,String> pp = HttpAuthHeader(m_user, m_password);
-		headers[pp.first].push_back(pp.second);
+		headers.GetRef(pp.first).push_back(pp.second);
 		os << headers;
 	}
 	os << "\r\n";
@@ -383,7 +395,7 @@ IPEndPoint CHttpProxy::Connect(Stream& stm, const CProxyQuery& q) {
 	stm.WriteBuffer((const char*)s, s.length());
 	vector<String> header = ReadHttpHeader(stm);
 	TRC(2,"");
-	for (int i=0; i<header.size(); i++) //!!!
+	for (int i = 0; i < header.size(); i++) //!!!
 		TRC(2,header[i]);
 	if (header.size() < 1)
 		Throw(ExtErr::PROXY_VeryLongLine);//!!!
@@ -421,7 +433,7 @@ IPEndPoint ReadSocks5Reply(Stream& stm) {
 	IPAddress addr;
 	uint32_t host;
 	char buf[256];
-	byte len;
+	uint8_t len;
 	switch (reply.m_atyp) {
 	case 1:
 		rd >> host;
@@ -523,7 +535,7 @@ void CSiteNotifierThreader::Execute() {
 //!!!R				CInetIStream is;
 //!!!R				is.open(m_sess,url);
 			} catch (RCExc){
-			}  
+			}
 		}
 		Sleep(NOTIFY_TRY_PERIOD);
 	}

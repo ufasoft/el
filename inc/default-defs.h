@@ -278,11 +278,19 @@
 #	define UCFG_CPLUSPLUS 0
 #endif
 
+#ifndef UCFG_CPP20
+#	if UCFG_CPLUSPLUS >= 202000 || (UCFG_MSVC_LANG > 210000)	//!!!?
+#		define UCFG_CPP20 1
+#	else
+#		define UCFG_CPP20 0
+#	endif
+#endif
+
 #ifndef UCFG_CPP17
 #	if UCFG_CPLUSPLUS >= 201700 || (UCFG_MSVC_LANG > 201402) || (UCFG_GNUC_VERSION && UCFG_CPLUSPLUS > 201402) || (UCFG_CLANG_VERSION >= 400) //!!!?
 #		define UCFG_CPP17 1
 #	else
-#		define UCFG_CPP17 0
+#		define UCFG_CPP17 UCFG_CPP20
 #	endif
 #endif
 
@@ -387,6 +395,14 @@
 
 #	ifndef UCFG_STD_SHARED_MUTEX
 #		define UCFG_STD_SHARED_MUTEX (UCFG_CPP17 || UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || UCFG_MSC_VERSION >= 2000 || UCFG_CLANG_VERSION >= 306))
+#	endif
+
+#	ifndef UCFG_STD_OPTIONAL
+#		define UCFG_STD_OPTIONAL UCFG_CPP17
+#	endif
+
+#	ifndef UCFG_STD_SPAN
+#		define UCFG_STD_SPAN (UCFG_CPP20)
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX

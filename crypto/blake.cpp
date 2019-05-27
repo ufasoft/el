@@ -15,7 +15,7 @@ namespace Ext { namespace Crypto {
 __forceinline uint32_t Rotr(uint32_t v, int n) { return _rotr(v, n); }		//!!! move to .h
 __forceinline uint64_t Rotr(uint64_t v, int n) { return _rotr64(v, n); }
 
-const byte g_blake_sigma[10][16] = {
+const uint8_t g_blake_sigma[10][16] = {
 	{	0,	1,	2,	3,	4,	5,	6,	7,	8,	9,	10,	11,	12,	13,	14,	15	},
 	{	14,	10,	4,	8,	9,	15,	13,	6,	1,	12,	0,	2,	11,	7,	5,	3	},
 	{	11,	8,	12,	0,	5,	2,	15,	13,	10,	14,	3,	6,	7,	1,	9,	4	},
@@ -42,10 +42,10 @@ const uint64_t g_blake512_c[16] = {		// first digits of PI
 
 template <typename W, int N0, int N1, int N2, int N3>
 void CalcBlakeGImp(int sigma0, int sigma1, W& a, W& b, W& c, W& d, const W m[16], const W blakeC[]) {
-	a += b + (m[sigma0] ^ blakeC[sigma1]);	
+	a += b + (m[sigma0] ^ blakeC[sigma1]);
 	c += (d = Rotr((d ^ a), N0));
 	b = Rotr((b ^ c), N1);
-	a += b + (m[sigma1] ^ blakeC[sigma0]);	
+	a += b + (m[sigma1] ^ blakeC[sigma0]);
 	c += (d = Rotr((d ^ a), N2));
 	b = Rotr((b ^ c), N3);
 }
@@ -62,8 +62,7 @@ void CalcBlakeG(int sigma0, int sigma1, uint64_t& a, uint64_t& b, uint64_t& c, u
 #endif
 }
 
-template <typename W, int R>
-void CalcHashBlock(void *dst, const byte *src, uint64_t counter, const W salt[4], const W blakeC[], W t0, W t1) {
+template <typename W, int R> void CalcHashBlock(void* dst, const uint8_t* src, uint64_t counter, const W salt[4], const W blakeC[], W t0, W t1) {
 	const W *m = (const W*)src;
 	W *h = (W*)dst;
 
@@ -74,7 +73,7 @@ void CalcHashBlock(void *dst, const byte *src, uint64_t counter, const W salt[4]
 		t0 ^ blakeC[4],			t0 ^ blakeC[5],			t1 ^ blakeC[6],			t1 ^ blakeC[7]
 	};
 	for (int r=0; r<R; ++r) {
-		const byte *sigma = g_blake_sigma[r % 10];
+		const uint8_t* sigma = g_blake_sigma[r % 10];
 		CalcBlakeG(sigma[0],  sigma[1],	 w[0], w[4], w[8],  w[12], m);
 		CalcBlakeG(sigma[2],  sigma[3],  w[1], w[5], w[9],  w[13], m);
 		CalcBlakeG(sigma[4],  sigma[5],  w[2], w[6], w[10], w[14], m);
@@ -92,7 +91,7 @@ void Blake256::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha256_hinit, sizeof(g_sha256_hinit));
 }
 
-void Blake256::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+void Blake256::HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {
 	CalcHashBlock<uint32_t, 14>(dst, src, counter, Salt, g_blake256_c, uint32_t(counter), counter >> 32);
 }
 
@@ -100,7 +99,7 @@ void Blake512::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha512_hinit, sizeof(g_sha512_hinit));
 }
 
-void Blake512::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+void Blake512::HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {
 	CalcHashBlock<uint64_t, 16>(dst, src, counter, Salt, g_blake512_c, counter, 0);
 }
 

@@ -13,13 +13,13 @@ using namespace Ext;
 extern "C" {
 
 #if UCFG_CPU_X86_X64
-	bool s_bHasSse2 = CpuInfo().HasSse2;
+	bool s_bHasSse2 = CpuInfo().Features.SSE2;
 
 	void __cdecl SalsaCore_SSE2(uint32_t w[16], int rounds);
 #endif
 
 
-const byte g_salsaIndices[32][4] = {
+const uint8_t g_salsaIndices[32][4] = {
 	{ 4,  0,  12, 7 },
 	{ 9,  5,  1,  7 },
 	{ 14, 10, 6,  7 },

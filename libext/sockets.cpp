@@ -75,9 +75,15 @@ void Socket::Bind(const IPEndPoint& ep) {
 	SocketCheck(::bind(HandleAccess(_self), ep.c_sockaddr(), ep.sockaddr_len()));
 }
 
-bool Socket::ConnectHelper(const IPEndPoint& ep) {
+bool Socket::ConnectHelper(const EndPoint& ep) {
 	TRC(4, "Connecting to " << ep);
+	const DnsEndPoint *dnsEp = dynamic_cast<const DnsEndPoint*>(&ep);
+	IPEndPoint ipEp = dnsEp
+		? IPEndPoint(Dns::GetHostAddresses(dnsEp->Host).at(0), dnsEp->Port)
+		: dynamic_cast<const IPEndPoint&>(ep);
 	if (Valid()) {
+		//!!!TODO enum IPs
+		/*!!!R
 		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
 			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
 			EXT_FOR(const IPAddress& ip, addrs) {
@@ -89,13 +95,15 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 					return false;
 			}
 			Throw(errc::timed_out);
-		} else if (::connect(BlockingHandleAccess(_self), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR)
+		} else */
+		if (::connect(BlockingHandleAccess(_self), ipEp.c_sockaddr(), ipEp.sockaddr_len()) != SOCKET_ERROR)
 			return true;
 		else if (WSAGetLastError() != WSA(EWOULDBLOCK))
 			ThrowWSALastError();
 		else
 			return false;
 	} else {
+		/*!!!R
 		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
 			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
 			EXT_FOR(const IPAddress& ip, addrs) {
@@ -110,9 +118,11 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 					return false;
 			}
 			Throw(errc::timed_out);
-		} else {
+		} else
+		*/
+		{
 			Socket s(ep.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
-			if (::connect(BlockingHandleAccess(s), ep.c_sockaddr(), ep.sockaddr_len()) != SOCKET_ERROR) {
+			if (::connect(BlockingHandleAccess(s), ipEp.c_sockaddr(), ipEp.sockaddr_len()) != SOCKET_ERROR) {
 				_self = move(s);
 				return true;
 			} else if (WSAGetLastError() != WSA(EWOULDBLOCK))
@@ -123,11 +133,11 @@ bool Socket::ConnectHelper(const IPEndPoint& ep) {
 }
 
 bool Socket::Connect(RCString hostAddress, uint16_t hostPort) {
-	return ConnectHelper(IPEndPoint(hostAddress, hostPort));
+	return ConnectHelper(IPEndPoint(IPAddress::Parse(hostAddress), hostPort));
 }
 
-void Socket::SendTo(const ConstBuf& cbuf, const IPEndPoint& ep) {	
-	SocketCheck(::sendto(BlockingHandleAccess(_self), (const char*)cbuf.P, cbuf.Size, 0, ep.c_sockaddr(), ep.sockaddr_len()));
+void Socket::SendTo(RCSpan cbuf, const IPEndPoint& ep) {
+	SocketCheck(::sendto(BlockingHandleAccess(_self), (const char*)cbuf.data(), cbuf.size(), 0, ep.c_sockaddr(), ep.sockaddr_len()));
 }
 
 void Socket::Listen(int backLog) {
@@ -195,7 +205,7 @@ void Socket::Create(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtoco
 
 int Socket::get_Available() {
 	int r;
-	IOControl(FIONREAD, Buf(&r, sizeof r));
+	IOControl(FIONREAD, span<uint8_t>((uint8_t*)&r, sizeof r));
 	return r;
 }
 
@@ -260,15 +270,15 @@ void Socket::GetSocketOption(int optionLevel, int optionName, void *pVal, sockle
 	SocketCheck(getsockopt(HandleAccess(_self), optionLevel, optionName, (char *)pVal, &len));
 }
 
-void Socket::SetSocketOption(int optionLevel, int optionName, const ConstBuf& mb) {
-	SocketCheck(::setsockopt(HandleAccess(_self), optionLevel, optionName, (const char*)mb.P, mb.Size));
+void Socket::SetSocketOption(int optionLevel, int optionName, RCSpan mb) {
+	SocketCheck(::setsockopt(HandleAccess(_self), optionLevel, optionName, (const char*)mb.data(), mb.size()));
 }
 
-void Socket::IOControl(int code, const Buf& mb) {
+void Socket::IOControl(int code, const span<uint8_t>& mb) {
 #if UCFG_WIN32
-	SocketCheck(::ioctlsocket(HandleAccess(_self), code, (u_long*)mb.P));
+	SocketCheck(::ioctlsocket(HandleAccess(_self), code, (u_long*)mb.data()));
 #else
-	SocketCheck(::ioctl(HandleAccess(_self), code, (u_long*)mb.P));
+	SocketCheck(::ioctl(HandleAccess(_self), code, (u_long*)mb.data()));
 #endif
 }
 
@@ -281,7 +291,7 @@ void Socket::SetKeepAliveTime(int ms) {
 #else
 	SetSocketOption(IPPROTO_TCP, TCP_KEEPIDLE, ms/1000);
 #endif
-	SetSocketOption(SOL_SOCKET, SO_KEEPALIVE, ms != -1);	
+	SetSocketOption(SOL_SOCKET, SO_KEEPALIVE, ms != -1);
 }
 
 IPEndPoint Socket::get_LocalEndPoint() {
@@ -329,10 +339,10 @@ void NetworkStream::Close() const {
 	m_sock.Close();
 }
 
-void CSocketLooper::Send(Socket& sock, const ConstBuf& mb) {
+void CSocketLooper::Send(Socket& sock, RCSpan mb) {
 	NetworkStream stm(sock);
 	stm.NoSignal = NoSignal;
-	stm.WriteBuffer(mb.P, (int)mb.Size);
+	stm.Write(mb);
 }
 
 void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
@@ -365,7 +375,7 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 				int r = m_sock.Receive(buf, sizeof buf);
 				if (m_bLive = r) {
 					bool bDisconnectAfterData = false;
-					ConstBuf cbuf = ConstBuf(buf, r);
+					Span cbuf = Span(buf, r);
 					Blob blob = m_bIncoming ? m_socketLooper.ProcessDest(cbuf, bDisconnectAfterData) : m_socketLooper.ProcessSrc(cbuf, bDisconnectAfterData);
 					if (!!blob)
 						cbuf = blob;
@@ -425,4 +435,14 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 
 
 } // Ext::
+
+#if UCFG_WIN32
+#	undef NTDDI_VERSION
+#	define NTDDI_VERSION 0x05000000
+#	include <WS2tcpip.h>
+#	undef gai_strerror
+extern "C" char *gai_strerror(int ecode) {
+	return gai_strerrorA(ecode);	//!!!?
+}
+#endif
 

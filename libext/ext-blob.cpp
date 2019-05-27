@@ -85,7 +85,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 		memcpy((d = (CStringBlobBuf*)Malloc(cbNew)), this, std::min((size_t)m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), cbNew));
 		free(this);
 #endif
-		d->m_size = size;	
+		d->m_size = size;
 		memset((uint8_t *)(d + 1) + copyLen, 0, size - copyLen + sizeof(String::value_type));
 		return d;
 	} else {
@@ -104,13 +104,13 @@ static CStringBlobBuf *CreateStringBlobBuf() {
 CStringBlobBuf *CStringBlobBuf::RefEmptyBlobBuf() {
 	CStringBlobBuf *r = s_emptyStringBlobBuf;
 	if (!r)
-		r = CreateStringBlobBuf();		
+		r = CreateStringBlobBuf();
 	r->AddRef();
 	return r;
 }
 
 Blob::Blob(const Blob& blob) noexcept
-	:	m_pData(blob.m_pData)
+	: m_pData(blob.m_pData)
 {
 	if (m_pData)
 		m_pData->AddRef();
@@ -120,12 +120,12 @@ Blob::Blob(const void *buf, size_t len) {
 	m_pData = new(len, false) CStringBlobBuf(buf, len);
 }
 
-Blob::Blob(const ConstBuf& mb) {
-	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
+Blob::Blob(RCSpan mb) {
+	m_pData = new(mb.size(), false) CStringBlobBuf(mb.data(), mb.size());
 }
 
-Blob::Blob(const Buf& mb) {
-	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
+Blob::Blob(const span<uint8_t>& mb) {
+	m_pData = new(mb.size(), false) CStringBlobBuf(mb.data(), mb.size());
 }
 
 Blob::~Blob() {
@@ -147,14 +147,14 @@ Blob& Blob::operator=(const Blob& val) {
 	return _self;
 }
 
-Blob& Blob::operator+=(const ConstBuf& mb) {
+Blob& Blob::operator+=(RCSpan mb) {
 	size_t prevSize = Size;
-	if (mb.P == constData()) {
-		Size = prevSize+mb.Size;
-		memcpy(data()+prevSize, data(), mb.Size);
+	if (mb.data() == constData()) {
+		Size = prevSize + mb.size();
+		memcpy(data() + prevSize, data(), mb.size());
 	} else {
-		Size = prevSize+mb.Size;
-		memcpy(data()+prevSize, mb.P, mb.Size);
+		Size = prevSize + mb.size();
+		memcpy(data() + prevSize, mb.data(), mb.size());
 	}
 	return *this;
 }
@@ -168,7 +168,7 @@ inline bool mem2equal(const void *x, const void *y, size_t siz) {
 		mov edi, y
 		mov ecx, siz
 		xor  eax, eax
-		rep cmpsw 
+		rep cmpsw
 		setz al
 	}
 }
@@ -227,37 +227,49 @@ void Blob::put_Size(size_t size) {
 	m_pData = m_pData ? m_pData->SetSize(size) : new(size, false) CStringBlobBuf(size);
 }
 
-void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
+void Blob::Replace(size_t offset, size_t size, RCSpan mb) {
 	Cow();
 	uint8_t *data;
-	uint8_t newSize = get_Size() + mb.Size - size;
-	if (mb.Size >= size) {		
+	uint8_t newSize = get_Size() + mb.size() - size;
+	if (mb.size() >= size) {
 		put_Size(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.Size, data + offset + size, newSize - offset - mb.Size);
+		memmove(data + offset + mb.size(), data + offset + size, newSize - offset - mb.size());
 	} else {
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.Size, data + offset + size, Size - offset - size);
+		memmove(data + offset + mb.size(), data + offset + size, Size - offset - size);
 		put_Size(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
 	}
-	memcpy(data + offset, mb.P, mb.Size);
+	memcpy(data + offset, mb.data(), mb.size());
 }
 
 
-ostream& __stdcall operator<<(ostream& os, const ConstBuf& cbuf) {
+ostream& __stdcall operator<<(ostream& os, RCSpan cbuf) {
 	static const char s_upperHexDigits[] = "0123456789ABCDEF",
  					  s_lowerHexDigits[] = "0123456789abcdef";
-	if (!cbuf.P)
+	if (!cbuf.data())
 		return os << "<#nullptr>";
 	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
-	for (size_t i=0, size=cbuf.Size; i<size; ++i) {
-		uint8_t n = cbuf.P[i];
+	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
+		uint8_t n = cbuf[i];
 		os.put(digits[n >> 4]).put(digits[n & 15]);
 	}
 	return os;
 }
 
+wostream& __stdcall operator<<(wostream& os, RCSpan cbuf) {
+	static const char s_upperHexDigits[] = "0123456789ABCDEF",
+		s_lowerHexDigits[] = "0123456789abcdef";
+	if (!cbuf.data())
+		return os << "<#nullptr>";
+	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
+	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
+		uint8_t n = cbuf[i];
+		os.put(digits[n >> 4]).put(digits[n & 15]);
+	}
+	return os;
+}
 
 
 } // Ext::

@@ -57,7 +57,7 @@ public:
 	int64_t GetInt64(int i) override;
 	double GetDouble(int i) override;
 	String GetString(int i) override;
-	ConstBuf GetBytes(int i) override;
+	Span GetBytes(int i) override;
 	DbType GetFieldType(int i) override;
 	int FieldCount() override;
 	String GetName(int idx) override;
@@ -77,7 +77,7 @@ public:
 	int64_t GetInt64(int i) { return m_pimpl->GetInt64(i); }
 	double GetDouble(int i) { return m_pimpl->GetDouble(i); }
 	String GetString(int i) { return m_pimpl->GetString(i); }
-	ConstBuf GetBytes(int i) { return m_pimpl->GetBytes(i); }
+	Span GetBytes(int i) { return m_pimpl->GetBytes(i); }
 	DbType GetFieldType(int i) { return m_pimpl->GetFieldType(i); }
 	int FieldCount() { return m_pimpl->FieldCount(); }
 	String GetName(int idx) { return m_pimpl->GetName(idx); }
@@ -105,14 +105,14 @@ public:
 	SqliteCommand& Bind(int column, int32_t v) override;
 	SqliteCommand& Bind(int column, int64_t v) override;
 	SqliteCommand& Bind(int column, double v) override;
-	SqliteCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) override;
+	SqliteCommand& Bind(int column, RCSpan mb, bool bTransient = true) override;
 	SqliteCommand& Bind(int column, RCString s) override;
 
 	SqliteCommand& Bind(RCString parname, std::nullptr_t) override;
 	SqliteCommand& Bind(RCString parname, int32_t v) override;
 	SqliteCommand& Bind(RCString parname, int64_t v) override;
 	SqliteCommand& Bind(RCString parname, double v) override;
-	SqliteCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) override;
+	SqliteCommand& Bind(RCString parname, RCSpan mb, bool bTransient = true) override;
 	SqliteCommand& Bind(RCString parname, RCString s) override;
 
 #if	UCFG_SEPARATE_LONG_TYPE
@@ -129,7 +129,7 @@ public:
 private:
 	observer_ptr<sqlite_(stmt)> m_stmt;
 	CBool m_bNeedReset;
-	
+
 	sqlite_(stmt) *Handle();
 	sqlite_(stmt) *ResetHandle(bool bNewNeedReset = false);
 

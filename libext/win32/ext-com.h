@@ -1,6 +1,6 @@
 #pragma once
 
-#include <atldef.h>
+#include "../../gui/extdef.h"
 
 #include <el/libext/win32/ext-win.h>
 
@@ -22,7 +22,7 @@ public:
 	COleBlob(const void *buf, int len) {
 		COleBlobBuf *p = new COleBlobBuf;
 		p->Init(len, buf);
-		m_pData = p;  
+		m_pData = p;
 	}
 
 	COleBlob(const VARIANT& v)
@@ -68,7 +68,7 @@ protected:
 	//!!!  operator CUnknownHelper() const;
 };
 
-template <class T, const IID* piid = 
+template <class T, const IID* piid =
 #ifdef _MSC_VER
 &__uuidof(T)
 #else
@@ -128,17 +128,17 @@ public:
 	T *operator=(CUnkPtr up) {
 	Assign((IUnknown*)up, piid);
 	return (T*
-	
+
 	)m_unk;
 	}*/
 
 	void Assign(IUnknown *lp) {
 		base::Assign(lp, piid);
-	}	
+	}
 
 	void Assign(IUnknown *lp, const IID* p) {
 		base::Assign(lp, p);
-	}	
+	}
 
 	T *operator=(T *cp) {
 		base::Assign(cp, 0);
@@ -153,7 +153,7 @@ public:
 		return (T*)m_unk;
 	}
 
-#ifdef _MSC_VER  
+#ifdef _MSC_VER
 	template <class Q> void QueryInterface(Q** pp) const {
 		OleCheck(m_unk->QueryInterface(__uuidof(Q), (void**)pp));
 	}
@@ -172,7 +172,7 @@ public:
 	}
 };
 
-template <class T, const IID* piid = 
+template <class T, const IID* piid =
 #ifdef _MSC_VER
 &__uuidof(T)
 #else
@@ -191,7 +191,7 @@ public:
 		:	CComPtr2(unk, piid)
 	{}
 
-	
+
 	T *operator=(IUnknown *unk) {
 		Assign(unk);
 		return (T*)m_unk;
@@ -224,7 +224,7 @@ public:
 	COleCurrency(CURRENCY cySrc);
 
 	CurrencyStatus GetStatus() const;
-	void SetStatus(CurrencyStatus status); 	
+	void SetStatus(CurrencyStatus status);
 	//!!!  __declspec(property(get=GetStatus, put=SetStatus)) CurrencyStatus Status;
 };
 
@@ -363,7 +363,7 @@ public:
 	DEFPROP_GET(VARTYPE, Vartype);
 
 	COleVariant operator[](long idx) const;
- 
+
 	long GetLBound(unsigned dim = 1) const {
 		long result;
 		OleCheck(SafeArrayGetLBound(m_sa, dim, &result));
@@ -483,7 +483,7 @@ public:
 		return m_unk;
 	}
 
-#ifdef _MSC_VER  
+#ifdef _MSC_VER
 	template <class Q> void QueryInterface(Q** pp) const {
 		OleCheck(m_unk->QueryInterface(__uuidof(Q), (void**)pp));
 	}
@@ -528,7 +528,7 @@ public:
 
 	T** operator&() {
 		if (m_p)
-			Throw(E_EXT_InterfaceAlreadyAssigned);
+			Throw(ExtErr::InterfaceAlreadyAssigned);
 		return &m_p;
 	}
 };
@@ -575,7 +575,7 @@ public:
 	Blob Read(int size);
 	void Write(const Blob& blob);
 	*/
-	
+
 	void SetSize(DWORDLONG libNewSize);
 
 	DateTime get_ModTime();
@@ -616,7 +616,7 @@ public:
 class CBstrReadStream : public CMemReadStream {
 public:
 	CBstrReadStream(BSTR bstr)
-		:	CMemReadStream(ConstBuf(bstr, SysStringByteLen(bstr)))
+		:	CMemReadStream(Span((const uint8_t*)bstr, SysStringByteLen(bstr)))
 	{}
 };
 
@@ -691,7 +691,7 @@ public:
 		} \
 		STDMETHOD_(ULONG, Release)(void) { \
 		return m_pRoot->InternalRelease(); \
-		} 
+		}
 
 		CComObjectRootBase *m_pRoot;
 
@@ -723,7 +723,7 @@ _ATL_CHAINDATA _CComChainData<base, derived>::data =
 #define _EXT_BEGIN_COM_MAP(x) \
 typedef x _ComMapClass; \
 static const _ATL_INTMAP_ENTRY *_GetEntries() { \
-static const _ATL_INTMAP_ENTRY _entries[] = { 
+static const _ATL_INTMAP_ENTRY _entries[] = {
 
 #define _EXT_DECLARE_GET_CONTROLLING_UNKNOWN() public:\
 virtual IUnknown* GetControllingUnknown() {return GetUnknown();}

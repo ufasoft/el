@@ -48,7 +48,7 @@ CComPtr<IDispatch> AFXAPI AsDispatch(const VARIANT& v) {
 }
 
 CUnkPtr AFXAPI CreateComObject(RCString assembly, const CLSID& clsid) {
-	CDynamicLibrary dll(assembly);
+	CDynamicLibrary dll(assembly.c_str());
 	LoadLibrary(assembly); // AddRef to prevent unload
 	typedef HRESULT (__stdcall *PFNDllGetClassObject)(REFCLSID rclsid, REFIID riid, LPVOID* ppv);
 	PFNDllGetClassObject pfn = (PFNDllGetClassObject)dll.GetProcAddress(_T("DllGetClassObject"));

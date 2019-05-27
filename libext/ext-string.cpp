@@ -23,7 +23,7 @@ String::String(char ch, ssize_t nRepeat) {
 	wch = ch;
 #else
 	Encoding& enc = Encoding::Default();
-	enc.GetChars(ConstBuf(&ch, 1), &wch, 1);
+	enc.GetChars(Span((const uint8_t*)&ch, 1), &wch, 1);
 #endif
 	m_blob.Size = nRepeat*sizeof(String::value_type);
 	fill_n((value_type*)m_blob.data(), nRepeat, wch);
@@ -35,7 +35,7 @@ void String::SetAt(size_t nIndex, char ch) {
 	wch = ch;
 #else
 	Encoding& enc = Encoding::Default();
-	enc.GetChars(ConstBuf(&ch, 1), &wch, 1);
+	enc.GetChars(Span((const uint8_t*)&ch, 1), &wch, 1);
 #endif
 	SetAt(nIndex, wch);
 }
@@ -149,7 +149,7 @@ void String::Init(Encoding *enc, const char *lpch, ssize_t nLength) {
 		int len = 0;
 		if (nLength) {
 			if (enc) {
-				ConstBuf mb(lpch, nLength);
+				Span mb((const uint8_t*)lpch, nLength);
 				len = enc->GetCharCount(mb);
 				size_t bytes = len * sizeof(value_type);
 				m_blob.m_pData = new(bytes, false) CStringBlobBuf(bytes);
@@ -318,7 +318,7 @@ String& String::operator=(const char *lpsz) {
 String& String::operator=(const value_type *lpsz) {
 	MakeDirty();
 	if (lpsz) {
-		size_t len = traits_type::length(lpsz)*sizeof(value_type);
+		size_t len = traits_type::length(lpsz) * sizeof(value_type);
 		if (!m_blob.m_pData)
 			m_blob.m_pData = new(len, false) CStringBlobBuf(len);
 		else
@@ -337,13 +337,13 @@ String& String::operator+=(const String& s) {
 
 void String::CopyTo(value_type *ar, size_t size) const {
 	size_t len = std::min(size-1, (size_t)length()-1);
-	memcpy(ar, m_blob.constData(), len*sizeof(value_type));
+	memcpy(ar, m_blob.constData(), len * sizeof(value_type));
 	ar[len] = 0;
 }
 
 int String::compare(size_type p1, size_type c1, const value_type *s, size_type c2) const {
 	int r = traits_type::compare((const value_type*)m_blob.constData()+p1, s, (min)(c1, c2));
-	return r ? r : c1==c2 ? 0 : c1<c2 ? -1 : 1;
+	return r ? r : c1 == c2 ? 0 : c1 < c2 ? -1 : 1;
 }
 
 int String::compare(const String& s) const noexcept {
@@ -393,7 +393,7 @@ int String::CompareNoCase(const String& s) const {
 }
 
 bool String::empty() const noexcept {
-	return !m_blob.m_pData || m_blob.Size==0;
+	return !m_blob.m_pData || m_blob.Size == 0;
 }
 
 void String::clear() {		//  noexcept

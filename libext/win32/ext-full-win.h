@@ -113,8 +113,8 @@ struct NamedPipeCreateInfo {
 	observer_ptr<SECURITY_ATTRIBUTES> Sa;
 
 	NamedPipeCreateInfo()
-		:	MaxInstances(PIPE_UNLIMITED_INSTANCES)
-		,	OpenMode(PIPE_ACCESS_DUPLEX)
+		: OpenMode(PIPE_ACCESS_DUPLEX) 
+		, MaxInstances(PIPE_UNLIMITED_INSTANCES)
 	{}
 };
 

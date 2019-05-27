@@ -14,7 +14,7 @@
 using namespace std;
 using namespace Ext;
 
-namespace Ext { 
+namespace Ext {
 
 int __cdecl PopCount(uint32_t v) {
 	return BitOps::PopCount(v);
@@ -24,9 +24,9 @@ int __cdecl PopCount(uint64_t v) {
 	return BitOps::PopCount(uint64_t(v));
 }
 
-const unsigned char *ConstBuf::Find(const ConstBuf& mb) const {
-	for (const unsigned char *p=P, *e=p+(Size-mb.Size), *q; (p <= e) && (q = (const unsigned char*)memchr(p, mb.P[0], e-p+1)); p = q+1)
-		if (mb.Size==1 || !memcmp(q+1, mb.P+1, mb.Size-1))
+const uint8_t *Find(RCSpan a, RCSpan b) {
+	for (const unsigned char *p = a.data(), *e = p + (a.size() - b.size()), *q; (p <= e) && (q = (const unsigned char *)memchr(p, b[0], e - p + 1)); p = q + 1)
+		if (b.size() == 1 || !memcmp(q + 1, b.data() + 1, b.size() - 1))
 			return q;
 	return 0;
 }
@@ -184,11 +184,11 @@ String MacAddress::ToString() const {
 
 ostream& AFXAPI operator<<(ostream& os, const MacAddress& mac) {
 	ios::fmtflags flags = os.flags();
-	Blob blob(mac);
-	for (size_t i=0; i<blob.Size; i++) {
+	Span s = mac.AsSpan();
+	for (size_t i = 0; i < s.size(); ++i) {
 		if (i)
 			os << ':';
-		os << hex << (int)blob.constData()[i];
+		os << hex << (int)s[i];
 	}
 	os.flags(flags);
 	return os;
@@ -236,8 +236,7 @@ LAB_OUT:
 }
 
 void StreamWriter::WriteLine(RCString line) {
-	Blob blob = Encoding.GetBytes(line+NewLine);
-	m_stm.WriteBuf(blob);
+	m_stm.Write(Encoding.GetBytes(line + NewLine));
 }
 
 uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -154,36 +154,33 @@ const IPAddress IPAddress::Any(Fast_htonl(INADDR_ANY)),			// [Win] don't use sta
 	IPAddress::Broadcast(Fast_htonl(INADDR_BROADCAST)),
 	IPAddress::Loopback(Fast_htonl(INADDR_LOOPBACK)),
 	IPAddress::None(Fast_htonl(INADDR_NONE)),
-	IPAddress::IPv6Any(ConstBuf(&s_any6, 16)),
-	IPAddress::IPv6Loopback(ConstBuf(&s_loopback6, 16)),
-	IPAddress::IPv6None(ConstBuf(&s_none6, 16));
+	IPAddress::IPv6Any(Span((const uint8_t*)&s_any6, 16)),
+	IPAddress::IPv6Loopback(Span((const uint8_t*)&s_loopback6, 16)),
+	IPAddress::IPv6None(Span((const uint8_t*)&s_none6, 16));
 
 
 IPAddress::IPAddress()
-	:	m_domainname(nullptr)
 {
 	CreateCommon();
 }
 
 IPAddress::IPAddress(uint32_t nboIp4)
-	:	m_domainname(nullptr)
 {
 	CreateCommon();
 	m_sin.sin_addr.s_addr = nboIp4;
 }
 
-IPAddress::IPAddress(const ConstBuf& mb)
-	:	m_domainname(nullptr)
+IPAddress::IPAddress(RCSpan mb)
 {
 	CreateCommon();
-	switch (mb.Size) {
+	switch (mb.size()) {
 	case 4:
 		AddressFamily = Ext::AddressFamily::InterNetwork;
-		memcpy(&m_sin.sin_addr, mb.P, 4);
+		memcpy(&m_sin.sin_addr, mb.data(), 4);
 		break;
 	case 16:
 		AddressFamily = Ext::AddressFamily::InterNetworkV6;
-		memcpy(&m_sin6.sin6_addr, mb.P, 16);
+		memcpy(&m_sin6.sin6_addr, mb.data(), 16);
 		break;
 	default:
 		Throw(ExtErr::UnknownHostAddressType);
@@ -195,7 +192,6 @@ void IPAddress::CreateCommon() {
 }
 
 IPAddress::IPAddress(const sockaddr& sa)
-	:	m_domainname(nullptr)
 {
 	switch (sa.sa_family) {
 	case AF_INET:
@@ -212,14 +208,11 @@ IPAddress::IPAddress(const sockaddr& sa)
 size_t IPAddress::GetHashCode() const {
 	size_t r = std::hash<uint16_t>()((uint16_t)get_AddressFamily());
 	switch ((int)get_AddressFamily()) {
-	case AF_DOMAIN_NAME:
-		r += std::hash<String>()(m_domainname);
-		break;
 	case AF_INET:
 		r += std::hash<uint32_t>()(*(uint32_t*)&m_sin.sin_addr);
 		break;
 	case AF_INET6:
-		r += hash_value(ConstBuf(&m_sin6.sin6_addr, 16));
+		r += hash_value(Span((const uint8_t*)&m_sin6.sin6_addr, 16));
 		break;
 	default:
 		Throw(ExtErr::UnknownHostAddressType);
@@ -240,9 +233,10 @@ static StaticRegex
 IPAddress IPAddress::Parse(RCString ipString) {
 	uint8_t buf[16];
 	if (CCheck(::inet_pton(AF_INET, ipString, buf)))
-		return IPAddress(ConstBuf(buf, 4));
+		return IPAddress(Span(buf, 4));
 	if (CCheck(::inet_pton(AF_INET6, ipString, buf)))
-		return IPAddress(ConstBuf(buf, 16));
+		return IPAddress(Span(buf, 16));
+	/*!!!R
 #if UCFG_USE_REGEX
 #	if UCFG_WIN32
 	if (regex_search(ipString, *s_reDomainName)) {
@@ -254,18 +248,18 @@ IPAddress IPAddress::Parse(RCString ipString) {
 		r.m_domainname = ipString;
 		return r;
 	}
-#endif
+#endif */
 	Throw(HRESULT_FROM_WIN32(DNS_ERROR_INVALID_IP_ADDRESS));
 }
 
 bool IPAddress::TryParse(RCString s, IPAddress& ip) {
 	uint8_t buf[16];
 	if (CCheck(::inet_pton(AF_INET, s, buf))) {
-		ip = IPAddress(ConstBuf(buf, 4));
+		ip = IPAddress(Span(buf, 4));
 		return true;
 	}
 	if (CCheck(::inet_pton(AF_INET6, s, buf))) {
-		ip = IPAddress(ConstBuf(buf, 16));
+		ip = IPAddress(Span(buf, 16));
 		return true;
 	}
 	return false;
@@ -282,8 +276,6 @@ String IPAddress::ToString() const {
 				return "<#IPv6 address>";	//!!!? XP fails if IPv6 not installed //was CCheck(-1);
 			return buf;
 		}
-	case AF_DOMAIN_NAME:
-		return m_domainname;
 #if UCFG_USE_POSIX && !defined(__FreeBSD__)
 	case AF_PACKET:
 		return ":AF_PACKET:";
@@ -295,11 +287,9 @@ String IPAddress::ToString() const {
 
 IPAddress& IPAddress::operator=(const IPAddress& ha) {
 	AddressFamily = ha.AddressFamily;
-	m_domainname = ha.m_domainname;
 	uint16_t port = m_sin.sin_port;
 	memcpy(&m_sin6, &ha.m_sin6, sizeof m_sin6);
 	switch ((int)get_AddressFamily()) {
-	case AF_DOMAIN_NAME:
 	case AF_INET:
 	case AF_INET6:
 		m_sin.sin_port = port;
@@ -311,8 +301,6 @@ bool IPAddress::operator<(const IPAddress& ha) const {
 	if (AddressFamily != ha.AddressFamily)
 		return (int)get_AddressFamily() < (int)ha.get_AddressFamily();
 	switch ((int)get_AddressFamily()) {
-	case AF_DOMAIN_NAME:
-		return m_domainname < ha.m_domainname;
 	case AF_INET:
 		return memcmp(&m_sin.sin_addr, &ha.m_sin.sin_addr, 4) < 0;
 	case AF_INET6:
@@ -325,10 +313,7 @@ bool IPAddress::operator<(const IPAddress& ha) const {
 bool IPAddress::operator==(const IPAddress& ha) const {
 	if (AddressFamily != ha.AddressFamily)
 		return false;
-	switch ((int)get_AddressFamily())
-	{
-	case AF_DOMAIN_NAME:
-		return m_domainname == ha.m_domainname;
+	switch ((int)get_AddressFamily()) {
 	case AF_INET:
 		return *(int32_t*)&m_sin.sin_addr == *(int32_t*)&ha.m_sin.sin_addr;
 	case AF_INET6:
@@ -355,10 +340,10 @@ Blob IPAddress::GetAddressBytes() const {
 uint32_t IPAddress::GetIP() const {
 	uint32_t nhost;
 	switch ((int)get_AddressFamily()) {
-	case AF_DOMAIN_NAME:
+/*!!!R	case AF_DOMAIN_NAME:
 		if ((nhost = inet_addr(m_domainname)) != INADDR_NONE)
 			return ntohl(nhost);
-		return Dns::GetHostEntry(m_domainname).AddressList[0].GetIP();
+		return Dns::GetHostEntry(m_domainname).AddressList[0].GetIP(); */
 	case AF_INET:
 		nhost = ntohl(m_sin.sin_addr.s_addr);
 		break;
@@ -366,11 +351,6 @@ uint32_t IPAddress::GetIP() const {
 		Throw(ExtErr::UnknownHostAddressType);
 	}
 	return nhost;
-}
-
-void IPAddress::Normalize() {			//!!!TODO for IPv6
-	if ((int)get_AddressFamily() == AF_DOMAIN_NAME)
-		operator=(IPAddress(htonl(GetIP())));
 }
 
 bool IPAddress::IsGlobal() const {
@@ -391,8 +371,6 @@ bool IPAddress::IsGlobal() const {
 			uint16_t fam = *(uint8_t*)&m_sin6.sin6_addr;
 			return fam > 0 && fam<0xFC;
 		}
-	case IPAddress::AF_DOMAIN_NAME:
-		return true;
 	default:
 		Throw(E_FAIL);
 	}
@@ -411,9 +389,6 @@ bool IPAddress::get_IsIPv6Teredo() const {
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPAddress& ha) {
 	wr << (short)ha.get_AddressFamily();
 	switch ((int)ha.get_AddressFamily()) {
-	case IPAddress::AF_DOMAIN_NAME:
-		wr << ha.m_domainname;
-		break;
 	case AF_INET:
 		wr.Write(&ha.m_sin.sin_addr, sizeof(ha.m_sin.sin_addr));
 		break;
@@ -432,13 +407,6 @@ const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPAddress& ha) {
 	short fam = rd.ReadInt16();
 	h.AddressFamily = Ext::AddressFamily(fam);
 	switch (fam) {
-	case IPAddress::AF_DOMAIN_NAME:
-		{
-			String s;
-			rd >> s;
-			h.m_domainname = s;
-		}
-		break;
 	case AF_INET:
 		rd.Read(&h.m_sin.sin_addr, sizeof(h.m_sin.sin_addr));
 		break;
@@ -451,17 +419,6 @@ const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPAddress& ha) {
 	}
 	ha = h;
 	return rd;
-}
-
-IPEndPoint::IPEndPoint(RCString s, uint16_t port) {
-	const char *p = s;
-	const char *q = strchr(p, ':');
-	if (q) {
-		Address = IPAddress::Parse(String(p, q-p));
-		Port = Convert::ToUInt16(q+1);
-	} else
-		Address = IPAddress::Parse(p);
-	Port = port;
 }
 
 const sockaddr *IPEndPoint::c_sockaddr() const {
@@ -477,11 +434,19 @@ size_t IPEndPoint::sockaddr_len() const {
 	}
 }
 
-IPEndPoint IPEndPoint::Parse(RCString s) {
-	vector<String> ar = s.Split(":");
-	return IPEndPoint(IPAddress::Parse(ar[0]), Convert::ToUInt16(ar[1]));
+String IPEndPoint::ToString() const {
+	return (AddressFamily == Ext::AddressFamily::InterNetworkV6 ? "[" + Address.ToString() + "]" : Address.ToString())
+		+ ":" + Convert::ToString(Port);
 }
 
+IPEndPoint IPEndPoint::Parse(RCString s) {
+	string ss(s);
+	static regex reIpPort("(\\[(.+\\)]|(\\d+\\.\\d+\\.\\d+\\.\\d+)):(\\d{1,5})");
+	smatch m;
+	if (!regex_match(ss, m, reIpPort))
+		Throw(E_INVALIDARG);
+	return IPEndPoint(IPAddress::Parse(m[2].matched ? m[2] : m[3]), Convert::ToUInt16(m[4]));
+}
 
 String COperatingSystem::get_ComputerName() {
 #if UCFG_USE_POSIX || UCFG_WCE
@@ -593,7 +558,7 @@ IPHostEntry::IPHostEntry(hostent *phost) {
 				ip = IPAddress(*(uint32_t*)*p);
 				break;
 			case AF_INET6:
-				ip = IPAddress(ConstBuf(*p, 16));
+				ip = IPAddress(Span((const uint8_t*)*p, 16));
 				break;
 			default:
 				Throw(ExtErr::UnknownHostAddressType);

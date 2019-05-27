@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -30,7 +30,7 @@ class CDebugStreambuf : public streambuf {
 #ifdef WIN32
 #	if UCFG_WCE
 		OutputDebugString(String(s));
-#	else		
+#	else
 		OutputDebugStringA(s);
 #	endif
 #elif defined WDM_DRIVER
@@ -117,7 +117,7 @@ void CycledTraceStream::WriteBuffer(const void *buf, size_t count) {
 String TruncPrettyFunction(const char *fn) {
 	const char *e = strchr(fn, '('), *b;
 	for (b=e-1; b!=fn; --b)
-		if (b[-1] == ' ') 
+		if (b[-1] == ' ')
 			break;
 	return String(b, e-b);
 }
@@ -217,7 +217,7 @@ union TinyThreadInfo {
 		uint8_t Counter[3]; //!!!Endianess
 		uint8_t TraceLocks;
 	};
-	void *P;
+	int P;
 };
 
 typedef void (*PFNTrace)(const char *, ...);
@@ -298,22 +298,49 @@ ULONG __cdecl DrvTrace(PCH format, ...) {
 
 #else
 
-CTls CFunTrace::s_level;
-static CTls t_threadNumber;
+static THREAD_LOCAL int t_level;
+static THREAD_LOCAL int t_threadNumber;
+static THREAD_LOCAL CLocalTracePrefix *t_tracePrefixes;
+
+CLocalTracePrefix::CLocalTracePrefix(const char *prefix)
+	: m_prefix(prefix)
+	, m_len(strlen(prefix))
+{
+	CLocalTracePrefix* &refPrefix = t_tracePrefixes;
+	m_prev = exchange(refPrefix, this);
+}
+
+CLocalTracePrefix::~CLocalTracePrefix() {
+	t_tracePrefixes = m_prev;
+}
+
+static CGlobalTracePrefix *s_tracePrefixes;
+
+CGlobalTracePrefix::CGlobalTracePrefix(const char *prefix)
+	: m_prefix(prefix)
+	, m_len(strlen(prefix))
+{
+	CGlobalTracePrefix* &refPrefix = s_tracePrefixes;
+	m_prev = exchange(refPrefix, this);
+}
+
+CGlobalTracePrefix::~CGlobalTracePrefix() {
+	s_tracePrefixes = m_prev;
+}
 
 CFunTrace::CFunTrace(const char *funName, int trclevel)
-	:   m_trclevel(trclevel)
-	,	m_funName(funName)
+	: m_trclevel(trclevel)
+	, m_funName(funName)
 {
-	intptr_t level = (intptr_t)(void*)s_level.Value;
-	TRC(m_trclevel, String(' ', level*2)+">"+m_funName);
-	s_level.Value = (void*)(level+1);
+	int& refLevel = t_level;
+	TRC(m_trclevel, String(' ', refLevel * 2) + ">" + m_funName);
+	++refLevel;
 }
 
 CFunTrace::~CFunTrace() {
-	intptr_t level = (intptr_t)(void*)s_level.Value-1;
-	s_level.Value = (void*)level;
-	TRC(m_trclevel, String(' ', level*2)+"<"+m_funName);
+	int& refLevel = t_level;
+	--refLevel;
+	TRC(m_trclevel, String(' ', refLevel * 2) + "<" + m_funName);
 }
 
 class TraceBlocker {
@@ -322,17 +349,17 @@ public:
 
 	TraceBlocker() {
 		TinyThreadInfo tti;
-		tti.P = t_threadNumber.Value;
+		tti.P = t_threadNumber;
 		Trace = !tti.TraceLocks;
 		++tti.TraceLocks;
-		t_threadNumber.Value = tti.P;
+		t_threadNumber = tti.P;
 	}
 
 	~TraceBlocker() {
 		TinyThreadInfo tti;
-		tti.P = t_threadNumber.Value;
+		tti.P = t_threadNumber;
 		--tti.TraceLocks;
-		t_threadNumber.Value = tti.P;
+		t_threadNumber = tti.P;
 	}
 };
 
@@ -347,9 +374,9 @@ inline intptr_t AFXAPI GetThreadNumber() {
 #elif defined(__linux__)
 	return syscall(SYS_gettid);
 #else
-	intptr_t r = (intptr_t)(void*)t_threadNumber.Value;
+	int r = t_threadNumber;
 	if (!(r & 0xFFFFFF))
-		t_threadNumber.Value = (void*)(uintptr_t)(r |= ++s_nThreadNumber);
+		t_threadNumber = (r |= ++s_nThreadNumber);
 	return r & 0xFFFFFF;
 #endif
 }
@@ -371,8 +398,20 @@ CTraceWriter::CTraceWriter(Ext::Stream *pos) noexcept
 }
 
 void CTraceWriter::Init(const char* funname) {
-	if (funname)
+	if (funname) {
+		for (CLocalTracePrefix *pPrefix = t_tracePrefixes; pPrefix; pPrefix = pPrefix->m_prev)
+			if (!strncmp(pPrefix->m_prefix, funname, pPrefix->m_len)) {
+				funname += pPrefix->m_len;
+				break;
+			}
+		for (CGlobalTracePrefix *pPrefix = s_tracePrefixes; pPrefix; pPrefix = pPrefix->m_prev)
+			if (!strncmp(pPrefix->m_prefix, funname, pPrefix->m_len)) {
+				funname += pPrefix->m_len;
+				break;
+			}
+
 		m_os << funname << " ";
+	}
 }
 
 #if UCFG_USE_POSIX
@@ -460,10 +499,8 @@ void CTraceWriter::StaticPrintf(int level, const char* funname, const char* fmt,
 	w.Stream() << funname << ":\t";
 	va_list args;
 	va_start(args, fmt);
-	w.VPrintf(fmt, args);	
+	w.VPrintf(fmt, args);
 }
 
 
 } // Ext::
-
-

@@ -20,7 +20,7 @@ int Stream::ReadByte() const {
 
 void Stream::ReadBuffer(void *buf, size_t count) const {
 	uint8_t *p = (uint8_t *)buf;
-	for (size_t cb; count; count-=cb, p+=cb) {
+	for (size_t cb; count; count -= cb, p += cb) {
 		if (!(cb = Read(p, count)))
 			Throw(ExtErr::EndOfStream);
 	}
@@ -32,16 +32,24 @@ void Stream::CopyTo(Stream& dest, size_t bufsize) const {
 		dest.WriteBuffer(&buf[0], cb);
 }
 
+BufferedStream::BufferedStream(Stream& stm, size_t bufferSize)
+	: UnderlyingStream(stm)
+	, m_buf(new uint8_t[bufferSize])
+	, m_bufSize(bufferSize)
+	, m_cur(0)
+	, m_end(0)
+{}
+
 size_t BufferedStream::Read(void *buf, size_t count) const {
 	size_t cb = (min)(count, m_end - m_cur);
-	memcpy(buf, m_buf.constData() + exchange(m_cur, m_cur + cb), cb);
+	memcpy(buf, m_buf + exchange(m_cur, m_cur + cb), cb);
 	if (count -= cb) {
 		buf = (uint8_t*)buf + cb;
-		if (count >= m_buf.Size)
-			cb += Stm.Read(buf, count);
+		if (count >= m_bufSize)
+			cb += UnderlyingStream.Read(buf, count);
 		else {
-			cb += (m_cur = (min)(count, m_end = Stm.Read(m_buf.data(), m_buf.Size)));
-			memcpy(buf, m_buf.constData(), m_cur);
+			cb += (m_cur = (min)(count, m_end = UnderlyingStream.Read(m_buf, m_bufSize)));
+			memcpy(buf, m_buf, m_cur);
 		}
 	}
 	return cb;
@@ -72,30 +80,30 @@ void MemoryStream::Reset(size_t capacity) {
 }
 
 void CMemReadStream::ReadBufferAhead(void *buf, size_t count) const {
-	if (count > m_mb.Size - m_pos)
+	if (count > m_mb.size() - m_pos)
 		Throw(ExtErr::EndOfStream);
 	if (buf)
-		memcpy(buf, m_mb.P + m_pos, count);
+		memcpy(buf, m_mb.data() + m_pos, count);
 }
 
 size_t CMemReadStream::Read(void *buf, size_t count) const {
-	size_t r = std::min(count, m_mb.Size-m_pos);
+	size_t r = std::min(count, m_mb.size() - m_pos);
 	if (r)
-		memcpy(buf, m_mb.P+m_pos, r);
+		memcpy(buf, m_mb.data() + m_pos, r);
 	m_pos += r;
 	return r;
 }
 
 void CMemReadStream::ReadBuffer(void *buf, size_t count) const {
-	if (count > m_mb.Size - m_pos)
+	if (count > m_mb.size() - m_pos)
 		Throw(ExtErr::EndOfStream);
 	if (buf)
-		memcpy(buf, m_mb.P + m_pos, count);
+		memcpy(buf, m_mb.data() + m_pos, count);
 	m_pos += count;
 }
 
 int CMemReadStream::ReadByte() const {
-	return m_pos < m_mb.Size ? m_mb.P[m_pos++] : -1;
+	return m_pos < m_mb.size() ? m_mb[m_pos++] : -1;
 }
 
 void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupStream) {
@@ -120,38 +128,6 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 	Throw(ExtErr::PROXY_VeryLongLine);
 }
 
-vector<String> AFXAPI ReadHttpHeader(const Stream& stm, Stream *pDupStream) {
-	for (vector<String> vec; ;) {
-		String line;
-		ReadOneLineFromStream(stm, line, pDupStream);
-		if (line.empty())
-			return vec;
-		vec.push_back(line);
-	}
-	/*!!!
-
-	int i = beg.Length;
-	char buf[256];
-	if (i >= sizeof buf)
-	Throw(E_PROXY_VeryLongLine);
-	strcpy(buf, beg);
-	bool b = false;
-	for (; i<sizeof buf; i++)
-	{
-	stm.ReadBuffer(buf+i, 1);
-	if (buf[i] == '\n')
-	if (b)
-	break;
-	else
-	b = true;
-	if (buf[i] != '\n' && buf[i] != '\r')
-	b = false;
-	}
-	beg = String(buf, i+1);*/
-}
-
-
 
 
 } // Ext::
-

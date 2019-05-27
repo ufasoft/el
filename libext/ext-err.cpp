@@ -140,7 +140,7 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 		}
 	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 			}
 };
-	
+
 
 
 static class ExtCategory : public ErrorCategoryBase {

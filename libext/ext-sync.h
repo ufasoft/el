@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -39,6 +39,8 @@ namespace Ext {
 	using std::try_to_lock_t;
 
 class atomic_flag_lock : noncopyable {
+	atomic_flag& m_aFlag;
+	bool m_owns;
 public:
 	atomic_flag_lock(atomic_flag& aFlag, try_to_lock_t) noexcept
 		: m_aFlag(aFlag)
@@ -52,9 +54,6 @@ public:
 	}
 
 	EXPLICIT_OPERATOR_BOOL() const { return m_owns ? EXT_CONVERTIBLE_TO_TRUE : 0; }
-private:
-	atomic_flag& m_aFlag;
-	bool m_owns;
 };
 
 #if UCFG_USE_PTHREADS
@@ -131,7 +130,7 @@ public:
 
 	bool lock(uint32_t dwTimeout) override;
 	bool TryLock();
-	
+
 	//!!!  DWORD SetSpinCount(DWORD dwSpinCount);
 
 #if UCFG_USE_POSIX
@@ -179,54 +178,6 @@ public:
 };
 #endif // UCFG_WIN32
 
-/*!!!R
-template <class T> void Lock(T& sync) {
-	sync.Lock();
-}
-
-template <class T> void Unlock(T& sync) {
-	sync.Unlock();
-}
-
-inline void Lock(CCriticalSection& cs) {
-	cs.lock();
-}
-
-inline void Unlock(CCriticalSection& cs) {
-	cs.unlock();
-}
-
-#if UCFG_WIN32
-inline void Lock(CNonRecursiveCriticalSection& cs) {
-	cs.lock();
-}
-
-inline void Unlock(CNonRecursiveCriticalSection& cs) {
-	cs.unlock();
-}
-#endif
-
-#if UCFG_STDSTL && UCFG_STD_MUTEX
-
-inline void Lock(std::mutex& mtx) {
-	mtx.lock();
-}
-
-inline void Unlock(std::mutex& mtx) {
-	mtx.unlock();
-}
-
-inline void Lock(std::recursive_mutex& mtx) {
-	mtx.lock();
-}
-
-inline void Unlock(std::recursive_mutex& mtx) {
-	mtx.unlock();
-}
-
-#endif // UCFG_STDSTL && UCFG_STD_MUTEX
-*/
-
 class CScopedLockBase {
 public:
 	operator bool() const {
@@ -238,7 +189,7 @@ template <class T>
 class CScopedLock : public CScopedLockBase {
 public:
 	mutable T *m_sync;
-	
+
 	CScopedLock(const CScopedLock& sl)
 		:	m_sync(exchange(sl.m_sync, nullptr))
 	{}
@@ -248,7 +199,7 @@ public:
 	{
 		m_sync->lock();
 	}
-	
+
 	~CScopedLock() {
 		if (m_sync)
 			m_sync->unlock();
@@ -267,7 +218,7 @@ template <class T> CScopedLock<T> ScopedLock(T& sync) { return CScopedLock<T>(sy
 #define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) Ext::ThrowImp(Ext::ExtErr::CodeNotReachable); else
 //#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) ; else
 
-#if defined(_MSC_VER) && _MSC_VER>=1600
+#if UCFG_CPP11
 #	define EXT_LOCKED(mtx, expr) (std::lock_guard<decltype(mtx)>(mtx), (expr))			//!!!
 #else
 #	define EXT_LOCKED(mtx, expr) (Ext::ScopedLock(mtx), (expr))			//!!!

@@ -16,12 +16,11 @@ __forceinline uint32_t fmix32(uint32_t h) {
 
 #define MIX(h,k,m) { k *= m; k ^= k >> r; k *= m; h *= m; h ^= k; }
 
-unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed) {
+unsigned int MurmurHashAligned2(RCSpan cbuf, uint32_t seed) {
 	const unsigned int m = 0x5bd1e995;
 	const int r = 24;
-	size_t len = cbuf.Size;
-
-	const uint8_t *data = cbuf.P;
+	size_t len = cbuf.size();
+	const uint8_t *data = cbuf.data();
 
 	unsigned int h = seed ^ len;
 
@@ -132,9 +131,9 @@ unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed) {
 	}
 }
 
-uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed) {
-	const uint8_t *data = cbuf.P;
-	size_t len = cbuf.Size,
+uint32_t MurmurHash3_32(RCSpan cbuf, uint32_t seed) {
+	const uint8_t *data = cbuf.data();
+	size_t len = cbuf.size(),
 		nblocks = len / 4;
 	uint32_t h1 = seed;
 	const uint32_t c1 = 0xcc9e2d51,
@@ -147,11 +146,11 @@ uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed) {
 		k1 = _rotl(k1, 15);
 		k1 *= c2;
 		h1 ^= k1;
-		h1 = _rotl(h1, 13); 
+		h1 = _rotl(h1, 13);
 		h1 = h1*5+0xe6546b64;
 	}
 
-	data += nblocks*4;
+	data += nblocks * 4;
 	uint32_t k1 = 0;
 	switch(len & 3) {
 	case 3: k1 ^= data[2] << 16;
@@ -160,6 +159,6 @@ uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed) {
 		k1 *= c1; k1 = _rotl(k1,15); k1 *= c2; h1 ^= k1;
 	}
 	return fmix32(h1 ^ len);
-} 
+}
 
 } // Ext::

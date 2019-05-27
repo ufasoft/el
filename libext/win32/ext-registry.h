@@ -21,13 +21,13 @@ public:
 	String m_name;
 	uint32_t m_type;
 
-	CRegistryValue(uint32_t typ, byte *p, int len);
+	CRegistryValue(uint32_t typ, uint8_t* p, int len);
 	CRegistryValue(int v);
 	CRegistryValue(uint32_t v);
 	CRegistryValue(uint64_t v);
 	//!!!	CRegistryValue(LPCSTR s);
 	CRegistryValue(RCString s, bool bExpand = false);
-	CRegistryValue(const ConstBuf& mb);
+	CRegistryValue(RCSpan mb);
 	CRegistryValue(const CStringVector& ar) { Init(ar); }
 
 	String get_Name() const;

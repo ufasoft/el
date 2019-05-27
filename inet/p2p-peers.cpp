@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -12,27 +12,33 @@
 
 namespace Ext { namespace Inet { namespace P2P {
 
+P2PConf g_Conf, *g_pConf = &g_Conf;
+
+P2PConf*& P2PConf::Instance() {
+	return g_pConf;
+}
+
 bool Peer::IsTerrible(const DateTime& now) const {
-	if (get_LastTry().Ticks && (now-LastTry) < TimeSpan::FromMinutes(1))
+	if (get_LastTry().Ticks && (now - LastTry) < TimeSpan::FromMinutes(1))
 		return false;
 	return !get_LastPersistent().Ticks
-		|| (now-get_LastPersistent()) > TimeSpan::FromDays(30)
+		|| (now - get_LastPersistent()) > TimeSpan::FromDays(30)
 		|| !get_LastLive().Ticks && Attempts>=3
 		|| (now - LastLive) > TimeSpan::FromDays(7) && Attempts>=10;
 }
 
 double Peer::GetChance(const DateTime& now) const {
-	TimeSpan sinceLastSeen = std::max(TimeSpan(), now-LastPersistent);
-	
+	TimeSpan sinceLastSeen = std::max(TimeSpan(), now - LastPersistent);
+
 	double r = (double)duration_cast<seconds>(sinceLastSeen).count();
 	r = 1 - r / (600 + r);
-	if (now-LastTry < TimeSpan::FromMinutes(10))
+	if (now - LastTry < TimeSpan::FromMinutes(10))
 		r /= 100;
-	return r * pow(0.6, Attempts);
+	return r * ::pow(0.6, (int)Attempts);
 }
 
 Blob Peer::GetGroup() const {
-	vector<byte> v;
+	vector<uint8_t> v;
 	const IPAddress& ip = get_EndPoint().Address;
 	Blob blob = ip.GetAddressBytes();
 	if (4 == blob.Size) {
@@ -67,7 +73,7 @@ void PeerManager::Remove(Peer *peer) {
 }
 
 void PeerBucket::Shrink() {
-	DateTime now = DateTime::UtcNow();
+	DateTime now = Clock::now();
 	ptr<Peer> peerOldest;
 	for (int i=0; i<m_peers.size(); ++i) {
 		ptr<Peer>& peer = m_peers[i];
@@ -100,7 +106,7 @@ bool PeerBuckets::Contains(Peer *peer) {
 
 ptr<Peer> PeerBuckets::Select() {
 	Ext::Random rng;
-	DateTime now = DateTime::UtcNow();
+	DateTime now = Clock::now();
 	for (double fac=1;;) {
 		PeerBucket& bucket = m_vec[rng.Next(m_vec.size())];
 		if (!bucket.m_peers.empty()) {
@@ -114,33 +120,36 @@ ptr<Peer> PeerBuckets::Select() {
 
 vector<ptr<Peer>> PeerManager::GetPeers(int nMax) {
 	EXT_LOCK (MtxPeers) {
-		std::random_shuffle(VecRandom.begin(), VecRandom.end());
+		default_random_engine rng(Rand());
+		std::shuffle(VecRandom.begin(), VecRandom.end(), rng);
 		return vector<ptr<Peer>>(VecRandom.begin(), VecRandom.begin()+std::min(size_t(nMax), VecRandom.size()));
 	}
 }
-
-static default_random_engine g_rng(Rand());
-
 
 ptr<Peer> PeerManager::Select() {
 	int size = TriedBuckets.size() + NewBuckets.size();
 	if (!size)
 		return nullptr;
 
-	PeerBuckets& buckets = uniform_int_distribution<int>(0, size - 1) (g_rng) < TriedBuckets.size() ? TriedBuckets : NewBuckets;
-	return buckets.Select();
+	default_random_engine rng(Rand());
+	PeerBuckets& buckets = uniform_int_distribution<int>(0, size - 1)(rng) < TriedBuckets.size() ? TriedBuckets : NewBuckets;
+	ptr<Peer> r = buckets.Select();
+	if (r) {
+		TRC(2, "Selected Peer: " << r->EndPoint);
+	}
+	return r;
 }
 
 void PeerManager::Attempt(Peer *peer) {
 	EXT_LOCK (MtxPeers) {
-		peer->LastTry = DateTime::UtcNow();
+		peer->LastTry = Clock::now();
 		peer->Attempts++;
 	}
 }
 
 void PeerManager::Good(Peer *peer) {
 	EXT_LOCK (MtxPeers) {
-		DateTime now = DateTime::UtcNow();
+		DateTime now = Clock::now();
 		peer->LastTry = now;
 		peer->LastLive = now;
 		peer->LastPersistent = now;
@@ -178,15 +187,15 @@ ptr<Peer> PeerManager::Find(const IPAddress& ip) {
 void PeerManager::AddPeer(Peer& peer) {
 	TRC(3, peer.EndPoint);
 
-	
+
 	bool bSave = false;
 	EXT_LOCK (MtxPeers) {
 		auto pp = Peers.insert(CPeerMap::value_type(peer.EndPoint.Address, &peer));
 		if (pp.second)
-			m_nPeersDirty = true;		
+			m_nPeersDirty = true;
 		else {
 			Peer& peerFound = *pp.first->second;
-			if ((peer.LastLive-peerFound.LastLive).TotalHours > ((DateTime::UtcNow()-peer.LastLive).TotalHours < 24 ? 1 : 24)) {
+			if ((peer.LastLive-peerFound.LastLive).TotalHours > ((Clock::now()-peer.LastLive).TotalHours < 24 ? 1 : 24)) {
 				m_nPeersDirty = true;
 				peerFound.LastLive = peer.LastLive;
 			}
@@ -201,10 +210,10 @@ bool PeerManager::IsRoutable(const IPAddress& ip) {
 		&& !NetManager.IsLocal(ip);
 }
 
-ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty) {
+ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty, bool bRequireRoutable) {
 //	TRC(3, ep);
 
-	if (!IsRoutable(ep.Address))
+	if (bRequireRoutable && !IsRoutable(ep.Address))
 		return nullptr;
 
 	if (NetManager.IsBanned(ep.Address)) {
@@ -217,7 +226,7 @@ ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt,
 	EXT_LOCK (MtxPeers) {
 		if (peer = Find(ep.Address)) {
 			if (dt.Ticks)
-				peer->LastPersistent = std::max(DateTime(), dt-penalty);
+				peer->LastPersistent = std::max(DateTime(), dt - penalty);
 			peer->put_Services(peer->get_Services() | services);
 			if (TriedBuckets.Contains(peer))
 				return nullptr;
@@ -225,7 +234,7 @@ ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt,
 			peer = CreatePeer();
 			peer->EndPoint = ep;
 			peer->Services = services;
-			peer->LastPersistent = std::max(DateTime(), dt-penalty);
+			peer->LastPersistent = std::max(DateTime(), dt - penalty);
 			IpToPeer.insert(make_pair(ep.Address, peer));
 			VecRandom.push_back(peer.get());
 		}
@@ -240,13 +249,12 @@ ptr<Peer> PeerManager::Add(const IPEndPoint& ep, uint64_t services, DateTime dt,
 	return peer;
 }
 
-void PeerManager::OnPeriodic() {
+void PeerManager::OnPeriodic(const DateTime& now) {
 	EXT_LOCK (MtxPeers) {
-		DateTime now = DateTime::UtcNow();
 		int nOutgoing = 0;
-		for (int i=0; i<Links.size(); ++i) {
+		for (int i = 0; i < Links.size(); ++i) {
 			Link& link = *static_cast<Link*>(Links[i].get());
-			if (link.m_dtLastRecv==DateTime() && now > link.m_dtCheckLastRecv)
+			if (link.m_dtLastRecv == DateTime() && now > link.m_dtCheckLastRecv)
 				link.Stop();
 			nOutgoing += !link.Incoming;
 		}
@@ -255,14 +263,10 @@ void PeerManager::OnPeriodic() {
 			return;
 
 		unordered_set<Blob> setConnectedSubnet;
-		for (int i=0; i<Links.size(); ++i)
+		for (int i = 0; i < Links.size(); ++i)
 			setConnectedSubnet.insert(Links[i]->Peer->GetGroup());
 
-#ifdef X_DEBUG//!!!D
-		MaxOutboundConnections = 1;
-#endif
-
-		for (int n = std::max(MaxOutboundConnections-nOutgoing, 0); n--;) {
+		for (int n = std::max(MaxOutboundConnections - nOutgoing, 0); n--;) {
 			if (ptr<Peer> peer = Select()) {
 				if (setConnectedSubnet.insert(peer->GetGroup()).second) {
 					ptr<Link> link = NetManager.CreateLink(*m_owner);
@@ -286,6 +290,16 @@ void PeerManager::OnPeriodic() {
 		SavePeers();
 }
 
+PeerManager::PeerManager(P2P::NetManager& netManager)
+	: NetManager(netManager)
+	, MaxLinks(MAX_LINKS)
+	, MaxOutboundConnections(P2PConf::Instance()->MaxConnections) //!!!
+	, m_aPeersDirty(0)
+	, DefaultPort(0)
+	, TriedBuckets(_self, ADDRMAN_TRIED_BUCKET_COUNT)
+	, NewBuckets(_self, ADDRMAN_NEW_BUCKET_COUNT)
+{
+}
 
 void PeerManager::AddLink(LinkBase *link) {
 	EXT_LOCK (MtxPeers) {

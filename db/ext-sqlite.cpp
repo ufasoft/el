@@ -63,7 +63,7 @@ namespace Ext { namespace DB { namespace sqlite_(NS) {
 static struct CSqliteExceptionFabric : CExceptionFabric {
 	CSqliteExceptionFabric(int fac)
 		:	CExceptionFabric(fac)
-	{		
+	{
 	}
 
 	DECLSPEC_NORETURN void ThrowException(HRESULT hr, RCString msg) {
@@ -150,7 +150,7 @@ SqliteReader::~SqliteReader() {
 		m_cmd.ResetHandle();
 }
 
-bool SqliteReader::Read() {	
+bool SqliteReader::Read() {
 	return SqliteCheck(m_cmd.m_con, ::sqlite_(step)(m_cmd)) == SQLITE_(ROW);
 }
 
@@ -170,9 +170,9 @@ String SqliteReader::GetString(int i) {
 	return (const Char16*)sqlite_(column_text16)(m_cmd, i);
 }
 
-ConstBuf SqliteReader::GetBytes(int i) {
+Span SqliteReader::GetBytes(int i) {
 	sqlite_(value) *value = sqlite_(column_value)(m_cmd, i);
-	return ConstBuf(sqlite_(value_blob)(value), sqlite_(value_bytes)(value));
+	return Span((const uint8_t*)sqlite_(value_blob)(value), sqlite_(value_bytes)(value));
 }
 
 DbType SqliteReader::GetFieldType(int i) {
@@ -242,7 +242,7 @@ sqlite_stmt *SqliteCommand::ResetHandle(bool bNewNeedReset) {
 	sqlite_(stmt) *h = Handle();
 	if (m_bNeedReset) {
 		int rc = ::sqlite_(reset)(h);
-		if (SQLITE_(CONSTRAINT) != (byte)rc)
+		if (SQLITE_(CONSTRAINT) != (uint8_t)rc)
 			SqliteCheck(m_con, rc);
 	}
 	m_bNeedReset = bNewNeedReset;
@@ -273,14 +273,14 @@ SqliteCommand& SqliteCommand::Bind(int column, double v) {
 	return _self;
 }
 
-SqliteCommand& SqliteCommand::Bind(int column, const ConstBuf& mb, bool bTransient) {
-	SqliteCheck(m_con, ::sqlite_(bind_blob)(ResetHandle(), column, mb.P, mb.Size, bTransient ? SQLITE_(TRANSIENT) : SQLITE_(STATIC)));
+SqliteCommand& SqliteCommand::Bind(int column, RCSpan mb, bool bTransient) {
+	SqliteCheck(m_con, ::sqlite_(bind_blob)(ResetHandle(), column, mb.data(), mb.size(), bTransient ? SQLITE_(TRANSIENT) : SQLITE_(STATIC)));
 	return _self;
 }
 
 SqliteCommand& SqliteCommand::Bind(int column, RCString s) {
 	const Char16 *p = (const Char16*)s;
-	SqliteCheck(m_con, p ? ::sqlite_(bind_text16)(ResetHandle(), column, p, s.length()*2, SQLITE_(TRANSIENT)) : ::sqlite_(bind_null)(ResetHandle(), column));
+	SqliteCheck(m_con, p ? ::sqlite_(bind_text16)(ResetHandle(), column, p, s.length() * 2, SQLITE_(TRANSIENT)) : ::sqlite_(bind_null)(ResetHandle(), column));
 	return _self;
 }
 
@@ -289,23 +289,23 @@ SqliteCommand& SqliteCommand::Bind(RCString parname, std::nullptr_t v) {
 }
 
 SqliteCommand& SqliteCommand::Bind(RCString parname, int32_t v) {
-	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v);
 }
 
 SqliteCommand& SqliteCommand::Bind(RCString parname, int64_t v) {
-	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v);
 }
 
 SqliteCommand& SqliteCommand::Bind(RCString parname, double v) {
-	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v); 
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), v);
 }
 
-SqliteCommand& SqliteCommand::Bind(RCString parname, const ConstBuf& mb, bool bTransient) {
-	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), mb, bTransient); 
+SqliteCommand& SqliteCommand::Bind(RCString parname, RCSpan mb, bool bTransient) {
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), mb, bTransient);
 }
 
 SqliteCommand& SqliteCommand::Bind(RCString parname, RCString s) {
-	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), s); 
+	return Bind(::sqlite_(bind_parameter_index)(ResetHandle(), parname), s);
 }
 
 void SqliteCommand::ExecuteNonQuery() {
@@ -400,7 +400,7 @@ void SqliteConnection::Create(const path& file) {
 	Blob utf = Encoding::UTF8.GetBytes(file);
 	SqliteCheck(m_db, ::sqlite4_open(0, (const char*)utf.constData(), &pdb));
 	m_db.reset(pdb);
-#endif	
+#endif
 	ExecuteNonQuery("PRAGMA encoding = \"UTF-8\"");
 	ExecuteNonQuery("PRAGMA foreign_keys = ON");
 
@@ -591,7 +591,7 @@ SqliteVfs::SqliteVfs(bool bDefault)
 }
 
 SqliteVfs::~SqliteVfs() {
-	auto_ptr<sqlite3_vfs> p(m_pimpl);
+	unique_ptr<sqlite3_vfs> p(m_pimpl);
 	SqliteCheck(0, ::sqlite_vfs_unregister(p.get()));
 }
 #endif // UCFG_USE_SQLITE==3

@@ -78,7 +78,7 @@ public:
 	}
 
 	Bn& operator=(const Bn& x) {
-		::mpz_set(m_z, x.m_z);		
+		::mpz_set(m_z, x.m_z);
 		return *this;
 	}
 
@@ -137,8 +137,8 @@ public:
 	}
 
 	BigInteger ToBigInteger() const;
-	static Bn FromBinary(const ConstBuf& cbuf, Endian endian);
-	void ToBinary(byte *p, size_t n) const;
+	static Bn FromBinary(RCSpan cbuf, Endian endian);
+	void ToBinary(uint8_t *p, size_t n) const;
 
 private:
 	mpz_t m_z;

@@ -38,12 +38,20 @@ class PeerManager;
 
 class Peer : public Object, public CPersistent {
 	typedef Peer class_type;
+protected:
+	IPEndPoint m_endPoint;
+
+	uint64_t m_services;
+	DateTime m_lastLive,
+		m_lastPersistent,
+		m_lastTry;			// non-persistent
 public:
 	typedef InterlockedPolicy interlocked_policy;
 
 	CInt<int> Misbehavings;
 	CInt<int> Attempts;
 	CBool IsDirty;
+	CBool m_banned;
 
 	Peer()
 		:	m_services(0)
@@ -105,22 +113,13 @@ public:
 		IsDirty = true;
 	}
 	DEFPROP(bool, Banned);
-protected:
-	IPEndPoint m_endPoint;
-
-	uint64_t m_services;	
-	DateTime m_lastLive, 
-			m_lastPersistent,
-			m_lastTry;			// non-persistent
-	
-	CBool m_banned;
 };
 
 class LinkBase : public Thread {
 	typedef Thread base;
 public:
 	typedef InterlockedPolicy interlocked_policy;
-	
+
 	observer_ptr<P2P::NetManager> NetManager;
 
 	mutex Mtx;
@@ -131,13 +130,13 @@ public:
 	CSetPeersToSend m_setPeersToSend;
 
 	LinkBase(P2P::NetManager *netManager, thread_group *tr)
-		:	NetManager(netManager)
-		,	base(tr)
+		: base(tr)
+		, NetManager(netManager)
 	{
 //		StackSize = UCFG_THREAD_STACK_SIZE;
 	}
 
-	void Push(P2P::Peer *peer) {
+	void PushPeer(P2P::Peer *peer) {
 		EXT_LOCK (Mtx) {
 			m_setPeersToSend.insert(peer);
 		}
@@ -228,16 +227,8 @@ public:
 
 	int MaxLinks;
 	int MaxOutboundConnections;
-	
-	PeerManager(P2P::NetManager& netManager)
-		:	NetManager(netManager)
-		,	MaxLinks(MAX_LINKS)
-		,	MaxOutboundConnections(MAX_OUTBOUND_CONNECTIONS)
-		,	m_aPeersDirty(0)
-		,	DefaultPort(0)
-		,	TriedBuckets(_self, ADDRMAN_TRIED_BUCKET_COUNT)
-		,	NewBuckets(_self, ADDRMAN_NEW_BUCKET_COUNT)
-	{}
+
+	PeerManager(P2P::NetManager& netManager);
 
 	virtual void SavePeers() {}
 //	void AddPeer(Peer& peer);
@@ -254,7 +245,7 @@ public:
 	void Attempt(Peer *peer);
 	void Good(Peer *peer);
 	bool IsRoutable(const IPAddress& ip);
-	ptr<Peer> Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty = TimeSpan(0));
+	ptr<Peer> Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty = TimeSpan(0), bool bRequireRoutable = true);
 
 	vector<ptr<Peer>> GetAllPeers() {
 		EXT_LOCK (MtxPeers) {
@@ -264,9 +255,9 @@ public:
 protected:
 	uint16_t DefaultPort;
 	observer_ptr<thread_group> m_owner;
-	atomic<int> m_aPeersDirty;	
+	atomic<int> m_aPeersDirty;
 
-	virtual void OnPeriodic();
+	virtual void OnPeriodic(const DateTime& now);
 private:
 	typedef unordered_map<IPAddress, ptr<Peer>> CPeerMap;
 	CPeerMap IpToPeer;

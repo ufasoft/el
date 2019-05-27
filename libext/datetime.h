@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -34,7 +34,7 @@ public:
 		m_ticks = rd.ReadInt64();
 	}
 protected:
-	int64_t m_ticks;	
+	int64_t m_ticks;
 
 	DateTimeBase(int64_t ticks = 0)
 		:	m_ticks(ticks)
@@ -77,16 +77,16 @@ public:
 	{}
 
 	TimeSpan(const TimeSpan& span)
-		:	base(span)
+		: base(span)
 	{}
 
 	TimeSpan(int days, int hours, int minutes, int seconds)
-		:	base((((days*24+hours)*60+minutes)*60+seconds)*10000000LL)
+		: base((((days*24+hours)*60+minutes)*60+seconds)*10000000LL)
 	{}
 
 #if UCFG_WIN32
 	TimeSpan(const FILETIME& ft)
-		:	base((int64_t&)ft)
+		: base((int64_t&)ft)
 	{}
 #endif
 
@@ -97,7 +97,7 @@ public:
 
 #if UCFG_USE_POSIX
 	TimeSpan(const timespec& ts)
-		:	base(int64_t(ts.tv_sec)*10000000+ts.tv_nsec/100)
+		: base(int64_t(ts.tv_sec)*10000000+ts.tv_nsec/100)
 	{
 	}
 #endif
@@ -198,7 +198,7 @@ public:
 	typedef std::chrono::duration<int64_t, ratio<1, 10000000>> duration;
 	typedef std::chrono::time_point<system_clock, duration> time_point;
 
-	static const int64_t s_span1600 = ((int64_t)10000000*3600*24)*(365*1600+388); //!!!+day/4; //!!! between 0 C.E. to 1600 C.E. as MS calculates  
+	static const int64_t s_span1600 = ((int64_t)10000000*3600*24)*(365*1600+388); //!!!+day/4; //!!! between 0 C.E. to 1600 C.E. as MS calculates
 
 	static const EXT_DATA DateTime MaxValue;
 
@@ -248,7 +248,7 @@ public:
 	static DateTime AFXAPI from_time_t(int64_t epoch);
 	static DateTime AFXAPI FromAsctime(RCString s);
 
-	int get_Hour() const { 
+	int get_Hour() const {
 #ifdef WIN32
 		return SYSTEMTIME(*this).wHour;
 #else
@@ -257,7 +257,7 @@ public:
 	}
 	DEFPROP_GET(int, Hour);
 
-	int get_Minute() const { 
+	int get_Minute() const {
 #ifdef WIN32
 		return SYSTEMTIME(*this).wMinute;
 #else
@@ -266,7 +266,7 @@ public:
 	}
 	DEFPROP_GET(int, Minute);
 
-	int get_Second() const { 
+	int get_Second() const {
 #ifdef WIN32
 		return SYSTEMTIME(*this).wSecond;
 #else
@@ -275,7 +275,7 @@ public:
 	}
 	DEFPROP_GET(int, Second);
 
-	int get_Millisecond() const { 
+	int get_Millisecond() const {
 #ifdef WIN32
 		return SYSTEMTIME(*this).wMilliseconds;
 #else
@@ -298,7 +298,7 @@ public:
 
 	operator SYSTEMTIME() const;
 
-	
+
 #	if UCFG_COM
 	DATE ToOADate() const;
 	static DateTime AFXAPI FromOADate(DATE date);
@@ -316,21 +316,13 @@ public:
 	template <class T, class U>
 	DateTime operator-(const std::chrono::duration<T, U>& dur) const {
 		return DateTime(m_ticks - duration_cast<std::chrono::duration<TimeSpan::rep, TimeSpan::period>>(dur).count());
-	}	
-	
+	}
+
 	DateTime& operator-=(const TimeSpan& span) { return *this = *this - span; }
 
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
 
 	LocalDateTime ToLocalTime();
-
-	/*!!!
-	static DateTime AFXAPI get_PreciseNow();
-	STATIC_PROPERTY_DEF_GET(DateTime, DateTime, PreciseNow);
-
-	static DateTime AFXAPI get_PreciseUtcNow();
-	STATIC_PROPERTY_DEF_GET(DateTime, DateTime, PreciseUtcNow);
-	*/
 
 #if UCFG_USE_PTHREADS
 	operator timespec() const;
@@ -386,7 +378,7 @@ public:
 #endif
 	}
 	DEFPROP_GET(int, Year);
-	
+
 	String ToString(DWORD dwFlags = 0, LCID lcid = LANG_USER_DEFAULT) const;
 	String ToString(Microseconds) const;
 	String ToString(RCString format) const;
@@ -396,32 +388,23 @@ public:
 
 #if UCFG_WCE
 	static const int DaysPerYear;
-	// Number of days in 4 years
 	static const int DaysPer4Years;
-	// Number of days in 100 years
-	static const int DaysPer100Years;
-	// Number of days in 400 years
+	static const int DaysPer100Years;	
 	static const int DaysPer400Years;
 	static const int DaysTo1601;
 	static const int64_t FileTimeOffset;
 #else
 	static const int DaysPerYear = 365;
-	// Number of days in 4 years
 	static const int DaysPer4Years = DaysPerYear * 4 + 1;
-	// Number of days in 100 years
 	static const int DaysPer100Years = DaysPer4Years * 25 - 1;
-	// Number of days in 400 years
 	static const int DaysPer400Years = DaysPer100Years * 4 + 1;
 	static const int DaysTo1601 = DaysPer400Years * 4;
 	static const int64_t FileTimeOffset = DaysTo1601 * TimeSpan::TicksPerDay;
-#endif	
+#endif
 
 private:
 	static const int64_t TimevalOffset;
 	static const int64_t OADateOffset;
-
-//!!!R	static void PreciseSync();
-//!!!R	static DateTime PreciseCorrect(int64_t ticks);
 };
 
 inline bool AFXAPI operator<(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks < dt2.Ticks; }
@@ -453,9 +436,9 @@ class LocalDateTime : public DateTime {
 	typedef DateTime base;
 public:
 	int OffsetSeconds;
-	
+
 	LocalDateTime()
-		:	OffsetSeconds(0)
+		: OffsetSeconds(0)
 	{}
 
 	explicit LocalDateTime(const DateTime& dt, int off = 0)
@@ -477,7 +460,7 @@ typedef int64_t (AFXAPI *PFNSimpleUtc)();
 
 class CPreciseTimeBase {
 public:
-	static CPreciseTimeBase *s_pCurrent;
+	static CPreciseTimeBase * volatile s_pCurrent;
 	int64_t m_mask;
 	volatile int32_t m_mul;
 	volatile int m_shift;
@@ -517,7 +500,7 @@ protected:
 	}
 
 	static inline int64_t MyAbs(int64_t v) {
-		return v<0 ? -v : v;
+		return v < 0 ? -v : v;
 	}
 
 	static inline int BitLen(uint64_t n) {
@@ -550,8 +533,8 @@ public:
 	TimeSpan& Span;
 
 	MeasureTime(TimeSpan& span)
-		:	Start(Clock::now())
-		,	Span(span)
+		: Start(Clock::now())
+		, Span(span)
 	{}
 
 	TimeSpan End() {

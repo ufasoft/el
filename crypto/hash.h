@@ -1,9 +1,9 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#pragma once 
+#pragma once
 
 #include EXT_HEADER_DYNAMIC_BITSET
 
@@ -25,10 +25,10 @@ using namespace std;
 extern "C" {
 	extern const uint32_t g_sha256_hinit[8];
 	extern const uint64_t g_sha512_hinit[8];
-	extern const uint32_t g_sha256_k[64];	
+	extern const uint32_t g_sha256_k[64];
 	extern uint32_t g_4sha256_k[64][4];			// __m128i
 
-	extern const byte g_blake_sigma[10][16];
+	extern const uint8_t g_blake_sigma[10][16];
 	extern const uint32_t g_blake256_c[16];
 	extern const uint64_t g_blake512_c[16];
 
@@ -53,10 +53,11 @@ public:
 
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
 };
 
 class SHA256 : public HashAlgorithm {
+	typedef HashAlgorithm base;
 public:
 	static void Init4Way(uint32_t state[8][4]);
 
@@ -65,8 +66,10 @@ public:
 		HashSize = 32;
 	}
 
-	void InitHash(void *dst) noexcept  override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void InitHash(void *dst) noexcept override;
+	void HashBlock(void* dst, uint8_t *src, uint64_t counter) noexcept override;
+	void PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
+	hashval ComputeHash(RCSpan s) override;
 };
 
 class SHA512 : public HashAlgorithm {
@@ -77,8 +80,32 @@ public:
 		Is64Bit = true;
 	}
 protected:
-	void InitHash(void *dst) noexcept  override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void InitHash(void *dst) noexcept override;
+	void HashBlock(void *dst, uint8_t src[256], uint64_t counter) noexcept override;
+};
+
+class SipHash2_4 : public HashAlgorithm {
+    typedef HashAlgorithm base;
+
+	uint64_t m_key[2];
+public:
+	SipHash2_4(uint64_t key0, uint64_t key1)
+	{
+		m_key[0] = key0;
+		m_key[1] = key1;
+		BlockSize = 128;
+		HashSize = 8;
+		Is64Bit = true;
+	}
+
+    hashval ComputeHash(Stream& stm) override;
+    hashval ComputeHash(RCSpan s) override { return base::ComputeHash(s); }
+protected:
+	void InitHash(void *dst) noexcept override;
+private:
+    static void Round(uint64_t v[4]);
+    static void TwoRounds(uint64_t v[4]) { Round(v); Round(v); }
+    static void FourRounds(uint64_t v[4]) { TwoRounds(v); TwoRounds(v); }
 };
 
 #ifndef UCFG_IMP_SHA3
@@ -101,7 +128,7 @@ public:
 		HashSize = 32;
 	}
 
-	hashval ComputeHash(const ConstBuf& mb) override;
+	hashval ComputeHash(RCSpan mb) override;
 	hashval ComputeHash(Stream& stm) override;
 };
 
@@ -111,7 +138,7 @@ template<> class SHA3<512> : HashAlgorithm {
 		HashSize = 64;
 	}
 
-	hashval ComputeHash(const ConstBuf& mb) override;
+	hashval ComputeHash(RCSpan mb) override;
 	hashval ComputeHash(Stream& stm) override;
 };
 
@@ -127,7 +154,7 @@ public:
 	}
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
 };
 
 class GroestlHash : public HashAlgorithm {
@@ -143,8 +170,8 @@ public:
 		: base(64)
 	{}
 
-	hashval ComputeHash(const ConstBuf& mb) override;
-	
+	hashval ComputeHash(RCSpan mb) override;
+
 	hashval ComputeHash(Stream& stm) override {
 #if UCFG_IMP_GROESTL=='S'
 		Throw(E_NOTIMPL);
@@ -154,7 +181,8 @@ public:
 	}
 
 protected:
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void InitHash(void *dst) noexcept override;
+	void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
 	void OutTransform(void *dst) noexcept override;
 };
 
@@ -172,7 +200,7 @@ public:
 	}
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
 	void OutTransform(void *dst) noexcept override;
 };
 
@@ -186,11 +214,11 @@ public:
 
 #if UCFG_USE_OPENSSL
 	hashval ComputeHash(Stream& stm) override;
-	hashval ComputeHash(const ConstBuf& mb) override;
+	hashval ComputeHash(RCSpan mb) override;
 #endif
 protected:
 	void InitHash(void *dst) noexcept override;
-	void HashBlock(void *dst, const byte *src, uint64_t counter) noexcept override;
+	void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept override;
 };
 
 
@@ -198,13 +226,13 @@ protected:
 class Random : public Ext::Random {
 public:
 	Random();
-	void NextBytes(const Buf& mb) override;
+	void NextBytes(const span<uint8_t>& mb) override;
 };
 
 class PseudoRandomFunction {
 public:
 	virtual size_t HashSize() const =0;
-	virtual hashval operator()(const ConstBuf& key, const ConstBuf& text) =0;
+	virtual hashval operator()(RCSpan key, RCSpan text) =0;
 };
 
 template <class H>
@@ -213,15 +241,15 @@ public:
 	H HAlgo;
 
 	size_t HashSize() const override { return HAlgo.HashSize; }
-	hashval operator()(const ConstBuf& key, const ConstBuf& text) override { return HMAC(HAlgo, key, text); }
+	hashval operator()(RCSpan key, RCSpan text) override { return HMAC(HAlgo, key, text); }
 };
 
-Blob PBKDF2(PseudoRandomFunction& prf, const ConstBuf& password, const ConstBuf& salt, uint32_t c, size_t dkLen);
+Blob PBKDF2(PseudoRandomFunction& prf, RCSpan password, RCSpan salt, uint32_t c, size_t dkLen);
 
 
 typedef std::array<uint32_t, 8> CArray8UInt32;
-hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx);
-void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, const ConstBuf& data);
+hashval CalcPbkdf2Hash(const uint32_t *pIhash, RCSpan data, int idx);
+void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, RCSpan data);
 
 void ShuffleForSalsa16(uint32_t w[16], const uint32_t src[16]);
 void ShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
@@ -231,11 +259,11 @@ void UnShuffleForSalsa(uint32_t w[32], const uint32_t src[32]);
 typedef uint32_t(*SalsaBlockPtr)[16];
 void NeoScryptCore(uint32_t x[][16], uint32_t tmp[][16], uint32_t v[], int r, int rounds, int n, bool dblmix) noexcept;
 void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept;
-CArray8UInt32 CalcSCryptHash(const ConstBuf& password);
+CArray8UInt32 CalcSCryptHash(RCSpan password);
 std::array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]);
-CArray8UInt32 CalcNeoSCryptHash(const ConstBuf& password, int profile = 0);
+CArray8UInt32 CalcNeoSCryptHash(RCSpan password, int profile = 0);
 
-Blob Scrypt(const ConstBuf& password, const ConstBuf& salt, int n, int r, int p, size_t dkLen);
+Blob Scrypt(RCSpan password, RCSpan salt, int n, int r, int p, size_t dkLen);
 
 #if UCFG_CPU_X86_X64
 extern "C" void _cdecl ScryptCore_x86x64(uint32_t x[32], uint32_t alignedScratch[1024*32+32]);
@@ -278,18 +306,18 @@ public:
 		,	SourceSize(int(ar.size()))
 		,	m_h2(h2)
 	{
-		for (int i=0; i<ar.size(); ++i)
+		for (int i = 0; i < ar.size(); ++i)
 			(*this)[i] = h1(ar[i], i);
-		for (int j=0, nSize = ar.size(); nSize > 1; j += exchange(nSize, (nSize + 1) / 2))
+		for (int j = 0, nSize = ar.size(); nSize > 1; j += exchange(nSize, (nSize + 1) / 2))
 			for (int i = 0; i < nSize; i += 2)
-				base::push_back(h2((*this)[j+i], (*this)[j+std::min(i+1, nSize-1)]));
+				base::push_back(h2((*this)[j + i], (*this)[j + std::min(i + 1, nSize - 1)]));
 	}
 
 	MerkleBranch<T, H2> GetBranch(int idx) {
 		MerkleBranch<T, H2> r;
 		r.m_h2 = m_h2;
 		r.Index = idx;
-		for (int j=0, n=SourceSize; n>1; j+=n, n=(n+1)/2, idx>>=1)
+		for (int j = 0, n = SourceSize; n > 1; j += n, n = (n + 1) / 2, idx >>= 1)
 			r.Vec.push_back((*this)[j + std::min(idx^1, n-1)]);
 		return r;
 	}
@@ -302,17 +330,17 @@ MerkleTree<T, H2> BuildMerkleTree(const vector<U>& ar, H1 h1, H2 h2) {
 
 class PartialMerkleTreeBase {
 public:
-	dynamic_bitset<byte> Bitset;
+	dynamic_bitset<uint8_t> Bitset;
 	size_t NItems;
 
     size_t CalcTreeWidth(int height) const {
-        return (NItems + size_t(1 << height)-1) >> height;
+        return (NItems + (size_t(1) << height) - 1) >> height;
     }
 
 	int CalcTreeHeight() const;
 	virtual void AddHash(int height, size_t pos, const void *ar) =0;
 protected:
-	void TraverseAndBuild(int height, size_t pos, const void *ar, const dynamic_bitset<byte>& vMatch);
+	void TraverseAndBuild(int height, size_t pos, const void* ar, const dynamic_bitset<uint8_t>& vMatch);
 };
 
 template <class T, class H2>
@@ -336,7 +364,7 @@ public:
 
 	void AddHash(int height, size_t pos, const void *ar) override {
 		Items.push_back(CalcHash(height, pos, (const T*)ar));
-	} 
+	}
 
 	T TraverseAndExtract(int height, size_t pos, size_t& nBitsUsed, int& nHashUsed, vector<T>& vMatch) const {
 		if (nBitsUsed >= Bitset.size())
@@ -376,6 +404,7 @@ std::vector<T> BuildMerkleTree(const vector<U>& ar, H1 h1, H2 h2) {
 
 extern "C" {
 
+
 #if UCFG_CPU_X86_X64
 	void _cdecl Sha256Update_4way_x86x64Sse2(uint32_t state[8][4], const uint32_t data[16][4]);
 	void _cdecl Sha256Update_x86x64(uint32_t state[8], const uint32_t data[16]);
@@ -383,4 +412,3 @@ extern "C" {
 #endif
 
 } // "C"
-

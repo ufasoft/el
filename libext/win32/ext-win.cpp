@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -32,6 +32,11 @@
 
 #if UCFG_CRASH_DUMP
 #	include <el/comp/crashdump.h>
+
+
+Ext::CCrashDumpBase *Ext::CCrashDumpBase::I;
+
+
 #endif
 
 namespace Ext {
@@ -77,7 +82,7 @@ int AFXAPI Win32Check(LRESULT i) {
 		HRESULT hr = GetLastHResult();
 		ec = hr ? error_code(hr,  hresult_category()) : make_error_code(ExtErr::UnknownWin32Error);
 	}
-	Throw(ec);
+ 	Throw(ec);
 }
 
 bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
@@ -263,8 +268,8 @@ AFX_MODULE_THREAD_STATE* AFXAPI AfxGetModuleThreadState() {
 void AFX_MODULE_STATE::SetHInstance(HMODULE hModule) {
 	m_hCurrentInstanceHandle = m_hCurrentResourceHandle = hModule;
 #if UCFG_CRASH_DUMP
-	if (CCrashDump::I)
-		CCrashDump::I->Modules.insert(hModule);
+	if (CCrashDumpBase::I)
+		CCrashDumpBase::I->Modules.insert(hModule);
 #endif
 }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#define FACILITY_SQLITE 1967			// compatible with winerror.h
+
 enum Facility {
 		FACILITY_SIMPLE_MAPI= 0x800,
 		FACILITY_CFGMGR    	= 0x801,
@@ -7,7 +9,7 @@ enum Facility {
 		FACILITY_WIFI 		= 0x803,
 		FACILITY_LINE_NUMBER= 0x804,
 		FACILITY_ELFIO      = 0x805,
-		FACILITY_SQLITE     = 0x806,
+
 		FACILITY_UNKNOWN    = 0x807,
 		FACILITY_LIBXML     = 0x808,
 		FACILITY_PCRE       = 0x809,
@@ -20,6 +22,7 @@ enum Facility {
 		FACILITY_MDB		= 0x810,
 		FACILITY_PSTATUS	= 0x811,
 		FACILITY_ZLIB		= 0x812,
+		FACILITY_OBJECT_DATA = 0x813,
 		
 			
 		FACILITY_EXT_DRIVER = 0x816,

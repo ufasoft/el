@@ -27,7 +27,7 @@ ProxyClient::~ProxyClient() {	// non-inlined for ptr<> dtor
 	delete m_obj;
 }
 
-void ProxyClient::Connect(const IPEndPoint& ep) {
+void ProxyClient::Connect(const EndPoint& ep) {
 	if (ProxyString.empty())
 		return base::Connect(ep);
 	Uri uri(ProxyString);
@@ -49,9 +49,9 @@ void ProxyClient::Connect(const IPEndPoint& ep) {
 		proxy = new CHttpProxy;
 	else
 		Throw(errc::invalid_argument);
-	Client.Connect(IPEndPoint(uri.Host, uint16_t(uri.Port)));
+	Client.Connect(IPEndPoint(IPAddress::Parse(uri.Host), uint16_t(uri.Port)));
 	NetworkStream stm(Client);
-	CProxyQuery q = { QueryType::Connect, ep };
+	CProxyQuery q = { QueryType::Connect, &ep };
 	proxy->Connect(stm, q);
 }
 

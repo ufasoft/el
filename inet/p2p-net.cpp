@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,6 +9,23 @@
 #include "p2p-net.h"
 
 namespace Ext { namespace Inet { namespace P2P {
+
+P2PConf::P2PConf() {
+	EXT_CONF_OPTION(MaxConnections, MAX_OUTBOUND_CONNECTIONS);
+	EXT_CONF_OPTION(Port);
+	EXT_CONF_OPTION(ProxyString);
+	EXT_CONF_OPTION(OnlyNet);
+	EXT_CONF_OPTION(Connect);
+	EXT_CONF_OPTION(Listen, true);
+}
+
+
+Net::Net(P2P::NetManager& netManager)
+	: base(netManager)
+	, ProtocolMagic(0)
+	, Listen(true)
+	, StallingTimeout(seconds(2)) {
+}
 
 const int INACTIVE_PEER_SECONDS = 90*60;
 
@@ -30,7 +47,7 @@ void LinkSendThread::Execute() {
 		EXT_LOCK (Link.m_cs) {
 			Link.OutQueue.swap(messages);
 		}
-		DateTime now = DateTime::UtcNow();
+		DateTime now = Clock::now();
 		if (messages.empty()) {
 			if (now-dtLast > TimeSpan::FromSeconds(PERIODIC_SEND_SECONDS)) {
 				Link.OnPeriodic();
@@ -41,7 +58,8 @@ void LinkSendThread::Execute() {
 						Link.Stop();
 				}
 			} else {
-				if (now-m_dtLastSend > seconds(PING_SECONDS))
+				if (now - m_dtLastSend > seconds(PING_SECONDS))
+					Link.LastPingTimestamp = now;
 					if (ptr<Message> m = Link.CreatePingMessage())
 						Link.Send(m);
 				m_ev.Lock(PERIODIC_SEND_SECONDS * 1000);
@@ -56,15 +74,15 @@ void LinkSendThread::Execute() {
 
 #endif // UCFG_P2P_SEND_THREAD
 
-void Link::SendBinary(const ConstBuf& buf) {
+void Link::SendBinary(RCSpan buf) {
 	EXT_LOCK (Mtx) {
-		m_dtLastSend = DateTime::UtcNow();
+		m_dtLastSend = Clock::now();
 		bool bHasToSend = DataToSend.Size;
 		DataToSend += buf;
 		if (!bHasToSend) {
 			int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.Size);
 			if (rc >= 0)
-				DataToSend.Replace(0, rc, ConstBuf(0, 0));
+				DataToSend.Replace(0, rc, Span());
 		}
 	}
 }
@@ -92,7 +110,7 @@ size_t Link::GetMessageHeaderSize() {
 	return Net ? Net->GetMessageHeaderSize() : 1;
 }
 
-size_t Link::GetMessagePayloadSize(const ConstBuf& buf) {
+size_t Link::GetMessagePayloadSize(RCSpan buf) {
 	return Net ? Net->GetMessagePayloadSize(buf) : 0;
 }
 
@@ -100,9 +118,9 @@ ptr<Message> Link::RecvMessage(const BinaryReader& rd) {
 	return Net ? Net->RecvMessage(_self, rd) : nullptr;
 }
 
-void Link::OnMessageReceived(Message *m) {
+void Link::OnMessage(Message *m) {
 	if (Net)
-		Net->OnMessageReceived(m);
+		Net->OnMessage(m);
 }
 
 void Link::ReceiveAndProcessMessage(const BinaryReader& rd) {
@@ -118,17 +136,20 @@ void Link::ReceiveAndProcessMessage(const BinaryReader& rd) {
 			NetManager->BanPeer(*Peer);
 		throw;
 	}
-	msg->Link = this;
-	DateTime now = DateTime::UtcNow();
+	DateTime now = Clock::now();
 	EXT_LOCK (Mtx) {
 		m_dtLastRecv = now;
 		if (Peer)
 			Peer->LastLive = now;
 	}
-	OnMessageReceived(msg);
+	if (msg) {
+		msg->Timestamp = now;
+		msg->LinkPtr = this;
+		OnMessage(msg);
+	}
 }
 
-void Link::ReceiveAndProcessLineMessage(const ConstBuf& bufLine) {
+void Link::ReceiveAndProcessLineMessage(RCSpan bufLine) {
 }
 
 void Link::OnPingTimeout() {
@@ -154,7 +175,7 @@ void Link::Execute() {
 		if (Incoming)
 			epRemote = Tcp.Client.RemoteEndPoint;
 
-		DBG_LOCAL_IGNORE_CONDITION(errc::connection_refused);	
+		DBG_LOCAL_IGNORE_CONDITION(errc::connection_refused);
 		DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
 		DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
 		DBG_LOCAL_IGNORE_CONDITION(errc::not_a_socket);
@@ -190,24 +211,22 @@ LAB_FOUND:
 			}
 		} else {
 			epRemote = Peer->EndPoint;
-			TRC(3, "Connecting to " << epRemote);
+			IPAddress ip = epRemote.Address;
+			TRC(3, "Connecting to " << ip);
 			DBG_LOCAL_IGNORE_CONDITION(errc::timed_out);
 			DBG_LOCAL_IGNORE_CONDITION(errc::address_not_available);
 			DBG_LOCAL_IGNORE_CONDITION(errc::network_unreachable);
 			DBG_LOCAL_IGNORE_CONDITION(errc::host_unreachable);
-			
+
 			if (Tcp.ProxyString.empty()) {
-				Tcp.Client.Create(Peer->get_EndPoint().Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+				Tcp.Client.Create(ip.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
 				Tcp.Client.ReuseAddress = true;
-				Tcp.Client.Bind(epRemote.Address.AddressFamily==AddressFamily::InterNetwork ? IPEndPoint(IPAddress::Any, NetManager->LocalEp4.Port) : IPEndPoint(IPAddress::IPv6Any, NetManager->LocalEp6.Port));
+				Tcp.Client.Bind(ip.AddressFamily == AddressFamily::InterNetwork ? IPEndPoint(IPAddress::Any, NetManager->LocalEp4.Port) : IPEndPoint(IPAddress::IPv6Any, NetManager->LocalEp6.Port));
 				Tcp.Client.ReceiveTimeout = P2P_CONNECT_TIMEOUT;	//!!!?
 			}
-#ifdef X_DEBUG//!!!D
-			epRemote = IPEndPoint::Parse("192.168.0.103:8668");
-#endif
 			Tcp.Connect(epRemote);
 			Tcp.Client.ReceiveTimeout = 0;
-			m_dtCheckLastRecv = DateTime::UtcNow()+TimeSpan::FromMinutes(1);
+			m_dtCheckLastRecv = Clock::now() + minutes(1);
 			Net->Attempt(Peer);
 		}
 		if (Net)
@@ -223,7 +242,7 @@ LAB_FOUND:
 			Net->OnInitLink(_self);
 		Tcp.Client.Blocking = false;
 
-		DateTime dtNextPeriodic = DateTime::UtcNow() + seconds(P2P::PERIODIC_SEND_SECONDS);
+		DateTime dtNextPeriodic = Clock::now() + seconds(P2P::PERIODIC_SEND_SECONDS);
 		const size_t cbHdr = GetMessageHeaderSize();
 		Blob blobMessage(0, cbHdr);
 		bool bReceivingPayload = false;
@@ -231,7 +250,7 @@ LAB_FOUND:
 		if (FirstByte != -1) {
 			cbReceived = 1;
 			blobMessage.Size = std::max(size_t(blobMessage.Size), size_t(1));
-			blobMessage.data()[0] = (byte)exchange(FirstByte, -1);
+			blobMessage.data()[0] = (uint8_t)exchange(FirstByte, -1);
 		}
 
 		if (bMagicReceived) {
@@ -257,18 +276,18 @@ LAB_FOUND:
 			timeval timeout = timevalTimeOut;
 			SocketCheck(::select(int(1+(SOCKET)hp), &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
 
-			DateTime now = DateTime::UtcNow();
+			DateTime now = Clock::now();
 
 			if (FD_ISSET(hp, &readfds)) {
 				while (!m_bStop) {
 				    if (LineBased) {
-						const byte *p = blobMessage.constData();
-						for (const byte *q; q = (const byte*)memchr(p, '\n', cbReceived); ) {
+						const uint8_t *p = blobMessage.constData();
+						for (const uint8_t *q; q = (const uint8_t*)memchr(p, '\n', cbReceived); ) {
 							size_t cbMsg = q - p + 1;
-							ReceiveAndProcessLineMessage(ConstBuf(p, cbMsg));
+							ReceiveAndProcessLineMessage(Span(p, cbMsg));
 							memmove(blobMessage.data(), blobMessage.data()+cbMsg, cbReceived -= cbMsg);
-						}						
-					}					
+						}
+					}
 
 					int rc = Tcp.Client.Receive(blobMessage.data()+cbReceived, blobMessage.Size-cbReceived);
 					if (!rc)
@@ -276,7 +295,7 @@ LAB_FOUND:
 					if (rc < 0)
 						break;
 					cbReceived += rc;
-				
+
 					if (!LineBased && cbReceived == blobMessage.Size) {
 						do {
 							if (!bReceivingPayload) {
@@ -285,7 +304,7 @@ LAB_FOUND:
 									blobMessage.put_Size(blobMessage.Size + cbPayload);
 									break;
 								}
-							}					
+							}
 							if (bReceivingPayload) {
 								CMemReadStream stm(blobMessage);
 								ReceiveAndProcessMessage(BinaryReader(stm));
@@ -308,7 +327,7 @@ LAB_FOUND:
 						int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.Size);
 						if (rc < 0)
 							break;
-						DataToSend.Replace(0, rc, ConstBuf(0, 0));
+						DataToSend.Replace(0, rc, Span());
 					}
 				}
 			}
@@ -316,18 +335,23 @@ LAB_FOUND:
 			EXT_LOCK (Mtx) {
 				if (Peer && now - Peer->LastLive > seconds(INACTIVE_PEER_SECONDS))
 					break;
+
+				if (DtStallingSince != DateTime() && DtStallingSince < now - Net->StallingTimeout) {
+					TRC(2, "Stalling detected");
+					break;
+				}
 			}
 			if (now > dtNextPeriodic) {
-				OnPeriodic();
+				OnPeriodic(now);
 				dtNextPeriodic =  now + seconds(P2P::PERIODIC_SEND_SECONDS);
 			}
-			if (now-m_dtLastSend > PingTimeout)
+			if (now - m_dtLastSend > PingTimeout)
 				OnPingTimeout();
 		}
 	} catch (RCExc) {
 	}
 LAB_EOF:
-	TRC(3, "Disconnecting " << epRemote << "  Socket " << (int64_t)Tcp.Client.DangerousGetHandleEx());
+	TRC(3, "Disconnecting " << epRemote.Address << "  Socket " << (int64_t)Tcp.Client.DangerousGetHandleEx());
 #if UCFG_P2P_SEND_THREAD
 	if (SendThread) {
 		if (!SendThread->m_bStop)
@@ -364,56 +388,63 @@ ListeningThread::ListeningThread(P2P::NetManager& netManager, thread_group& tr, 
 //	StackSize = UCFG_THREAD_STACK_SIZE;
 }
 
+void ListeningThread::StartListener(P2P::NetManager& netManager, thread_group& tr, AddressFamily family) {
+	try {
+		(new P2P::ListeningThread(netManager, tr, family))->Start();
+	} catch (RCExc ex) {
+		TRC(2, ex.what());
+	}
+}
+
 void ListeningThread::StartListeners(P2P::NetManager& netManager, thread_group& tr) {
 	DBG_LOCAL_IGNORE_CONDITION(errc::address_family_not_supported);
 
-	if (Socket::OSSupportsIPv4) {
-		try {
-			(new P2P::ListeningThread(netManager, tr, AddressFamily::InterNetwork))->Start();
-		} catch (RCExc) {
-		}
+	String onlyNet = P2PConf::Instance()->OnlyNet.ToLower();
+	if (onlyNet != "onion") {
+		if (Socket::OSSupportsIPv4 && onlyNet != "ipv6")
+			StartListener(netManager, tr, AddressFamily::InterNetwork);
+		if (Socket::OSSupportsIPv6 && onlyNet != "ipv4")
+			StartListener(netManager, tr, AddressFamily::InterNetworkV6);
 	}
-	if (Socket::OSSupportsIPv6) {
+}
+
+void ListeningThread::ChosePort() {
+	Socket sock;
+	sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
+	if (NetManager.SoftPortRestriction) {
 		try {
-			(new P2P::ListeningThread(netManager, tr, AddressFamily::InterNetworkV6))->Start();
-		} catch (RCExc) {
+			DBG_LOCAL_IGNORE_CONDITION(errc::address_in_use);
+
+			sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
+		} catch (system_error& ex) {
+			if (ex.code() != errc::address_in_use)
+				throw;
+			sock.Bind(IPEndPoint(IPAddress::Any, 0));
 		}
+		NetManager.ListeningPort = sock.get_LocalEndPoint().Port;
+	} else {
+		sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
 	}
 }
 
 void ListeningThread::BeforeStart() {
-	if (m_af == AddressFamily::InterNetwork) {
-		{
-			Socket sock;
-			sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
-			if (NetManager.SoftPortRestriction) {
-				try {
-					DBG_LOCAL_IGNORE_CONDITION(errc::address_in_use);
-
-					sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
-				} catch (system_error& ex) {
-					if (ex.code() != errc::address_in_use)
-						throw;
-					sock.Bind(IPEndPoint(IPAddress::Any, 0));
-				}
-				NetManager.ListeningPort = sock.get_LocalEndPoint().Port;
-			} else {
-				sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
-			}
-		}
-	
+	switch (m_af) {
+	case AddressFamily::InterNetwork:
+		ChosePort();
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
 		m_sock.Bind(IPEndPoint(IPAddress::Any, (uint16_t)NetManager.ListeningPort));
-		TRC(2, "Listening on TCP IPv4 port " << NetManager.ListeningPort);
-	} else {
+		break;
+	case AddressFamily::InterNetworkV6:
 		m_sock.Create(m_af, SocketType::Stream, ProtocolType::Tcp);
 		m_sock.ReuseAddress = true;
 		m_sock.Bind(IPEndPoint(IPAddress::IPv6Any, (uint16_t)NetManager.ListeningPort));
 		NetManager.LocalEp6 = m_sock.LocalEndPoint;
-		TRC(2, "Listening on TCP IPv6 port " << NetManager.ListeningPort);
+		break;
+	default:
+		Throw(E_NOTIMPL);
 	}
-
+	TRC(2, "Listening on TCP IPv" << (m_af == AddressFamily::InterNetworkV6 ? "6" : "4") << " port " << NetManager.ListeningPort);
 	m_sock.Listen();
 }
 
@@ -450,7 +481,7 @@ Link *NetManager::CreateLink(thread_group& tr) {
 bool NetManager::IsTooManyLinks() {
 	int links = 0, limSum = 0;
 	EXT_LOCK (MtxNets) {
-		for (int i=0; i<m_nets.size(); ++i) {
+		for (int i = 0; i < m_nets.size(); ++i) {
 			PeerManager& pm = *m_nets[i];
 			EXT_LOCK (pm.MtxPeers) {
 				links += pm.Links.size();

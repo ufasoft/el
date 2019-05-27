@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -25,7 +25,7 @@ CLSID AFXAPI ProgIDToCLSID(RCString s) {
 CUnkPtr AFXAPI CreateComObject(const CLSID& clsid, DWORD ctx) {
 	CUnkPtr r;
 	OleCheck(CoCreateInstance(clsid, 0, ctx, IID_IUnknown, (void**)&r));
-	return r; 
+	return r;
 }
 
 CUnkPtr AFXAPI CreateComObject(RCString s, DWORD ctx) {
@@ -407,7 +407,7 @@ WORD AFXAPI AsWord(const VARIANT& v) {
 	COleVariant r;
 	r.ChangeType(VT_I2, &(VARIANT&)v);
 	return r.iVal;
-}           
+}
 
 double AFXAPI AsDouble(const VARIANT& v) {
 	COleVariant r;
@@ -425,7 +425,7 @@ CUnkPtr AFXAPI AsUnknown(const VARIANT& v) {
 		return v.pdispVal;
 	default:
 		Throw(ExtErr::IncorrectVariant);
-		return 0;    
+		return 0;
 	}
 }
 
@@ -624,7 +624,7 @@ void COleVariant::ChangeType(VARTYPE vartype, LPVARIANT pSrc) {
 int32_t Convert::ToInt32(const VARIANT& v) {
 	COleVariant var;
 	var.ChangeType(VT_I4, &(VARIANT&)v);
-	return var.lVal; 
+	return var.lVal;
 }
 
 int64_t Convert::ToInt64(const VARIANT& v) {
@@ -633,7 +633,7 @@ int64_t Convert::ToInt64(const VARIANT& v) {
 #if UCFG_WCE
 	return *(uint64_t*)&v.lVal;		//!!!verify
 #else
-	return var.llVal; 
+	return var.llVal;
 #endif
 }
 
@@ -701,7 +701,7 @@ COleVariant::COleVariant(const VARIANT& varSrc) {
 
 COleVariant::COleVariant(LPCSTR lpszSrc, VARTYPE vtSrc) {
 	vt = VT_BSTR;
-	bstrVal = 0;	
+	bstrVal = 0;
 	switch (vtSrc)
 	{
 #ifndef _UNICODE
@@ -802,7 +802,7 @@ const COleVariant& COleVariant::operator=(const VARIANT& v) {
 	return _self;
 }
 
-const COleVariant& COleVariant::operator=(LPCTSTR lpszSrc) {  
+const COleVariant& COleVariant::operator=(LPCTSTR lpszSrc) {
 	return operator=(String(lpszSrc));
 }
 
@@ -1412,7 +1412,7 @@ void COleDispatchDriver::InvokeHelperV(DISPID dwDispID, WORD wFlags, VARTYPE vtR
 			}
 			switch (pArg->vt) {
 			case VT_UI1:
-				pArg->bVal = va_arg(argList, byte);
+				pArg->bVal = va_arg(argList, uint8_t);
 				break;
 			case VT_I2:
 				pArg->iVal = va_arg(argList, short);
@@ -1785,5 +1785,3 @@ extern "C" void * __cdecl _CRT_RTC_INITW(void *_Res0, void **_Res1, int _Res2, i
 
 
 } // Ext::
-
-

@@ -25,7 +25,7 @@ interface IDataRecord : public Object {
 	virtual int64_t GetInt64(int i) =0;
 	virtual double GetDouble(int i) =0;
 	virtual String GetString(int i) =0;
-	virtual ConstBuf GetBytes(int i) =0;
+	virtual Span GetBytes(int i) =0;
 	virtual DbType GetFieldType(int i) =0;
 	virtual int FieldCount() =0;
 	virtual String GetName(int idx) =0;
@@ -51,14 +51,14 @@ interface IDbCommand : public Object {
 	virtual IDbCommand& Bind(int column, int32_t v) =0;
 	virtual IDbCommand& Bind(int column, int64_t v) =0;
 	virtual IDbCommand& Bind(int column, double v) =0;
-	virtual IDbCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) =0;
+	virtual IDbCommand& Bind(int column, RCSpan mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(int column, RCString s) =0;
 
 	virtual IDbCommand& Bind(RCString parname, std::nullptr_t) =0;
 	virtual IDbCommand& Bind(RCString parname, int32_t v) =0;
 	virtual IDbCommand& Bind(RCString parname, int64_t v) =0;
 	virtual IDbCommand& Bind(RCString parname, double v) =0;
-	virtual IDbCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) =0;
+	virtual IDbCommand& Bind(RCString parname, RCSpan mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(RCString parname, RCString s) =0;
 
 	virtual void Dispose() =0;
@@ -74,6 +74,8 @@ public:
 };
 
 class TransactionScope : noncopyable {
+	CInException InException;
+	CBool m_bCommitted;
 public:
 	ITransactionable& m_db;
 
@@ -93,9 +95,6 @@ public:
 		m_db.Commit();
 		m_bCommitted = true;
 	}
-private:
-	CInException InException;
-	CBool m_bCommitted;
 };
 
 interface IDbConn : public Object {
@@ -111,7 +110,7 @@ public:
 		cmd->CommandText = sql;
 		cmd->ExecuteNonQuery();
 	}
-	
+
 	virtual int64_t get_LastInsertRowId() =0;
 	DEFPROP_VIRTUAL_GET(int64_t, LastInsertRowId);
 

@@ -13,7 +13,7 @@ using namespace Ext::ServiceProcess;
 class Sid : public CPrintable {
 	String m_ssid;
 	observer_ptr<SID> m_pSid;
-	vector<byte> m_vec;
+	vector<uint8_t> m_vec;
 public:
 	static Sid World,
 		         Local;

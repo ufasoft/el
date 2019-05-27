@@ -1,7 +1,11 @@
 #pragma once
 
+//#include EXT_HEADER_OPTIONAL
+
 namespace Ext {
 using std::pair;
+//using std::optional;
+//!!!? using std::nullopt;
 
 #ifndef UCFG_DEFAULT_CACHE_SIZE
 #	define UCFG_DEFAULT_CACHE_SIZE 256
@@ -202,12 +206,9 @@ private:
 };
 
 template <class K, class T, class C>
-bool Lookup(LruMap<K, T, C>& m, const K& key, T& val) {
+std::optional<T> Lookup(LruMap<K, T, C>& m, const K& key) {
 	typename LruMap<K, T, C>::iterator i = m.find(key);
-	if (i == m.end())
-		return false;
-	val = i->second.first;
-	return true;
+	return i == m.end() ? std::optional<T>(nullopt) : i->second.first;
 }
 
 

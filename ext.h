@@ -12,11 +12,11 @@
 
 //#pragma warning(disable: 4786)  //!!! name truncated
 
-
-
 #include <el/libext.h>
 
-
+#ifdef WIN32
+#	include <windows.h>
+#endif
 
 #if UCFG_USING_DEFAULT_NS
 using namespace std;
@@ -28,7 +28,4 @@ using _TR1_NAME(hash);
 
 //!!!R #define _POST_CONFIG
 
-
-
 #endif // _LIBEXT_EXT_H
-

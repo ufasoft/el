@@ -7,9 +7,11 @@
 
 #include EXT_HEADER(list)
 
+#include EXT_HEADER_OPTIONAL
 
 namespace Ext {
-
+using std::unordered_map,
+	std::optional, std::nullopt;
 
 template <class T> class Array {
 public:
@@ -185,13 +187,10 @@ bool ContainsInLinear(const C& c, const T& key) {
 	return find(c.begin(), c.end(), key) != c.end();
 }
 
-template <class M, class K, class T>
-bool Lookup(const M& m, const K& key, T& val) {
-	typename M::const_iterator i = m.find(key);
-	if (i == m.end())
-		return false;
-	val = i->second;
-	return true;
+template <class K, class T>
+optional<T> Lookup(const unordered_map<K, T>& m, const K& key) {
+	typename unordered_map<K, T>::const_iterator i = m.find(key);
+	return i == m.end() ? optional<T>(nullopt) : i->second;
 }
 
 

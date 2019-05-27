@@ -95,12 +95,12 @@ class EXTAPI CDynamicLibrary {
 	typedef CDynamicLibrary class_type;
 public:
 	mutable CInt<HMODULE> m_hModule;
-	String Path;
+	path Path;
 
 	CDynamicLibrary() {
 	}
 
-	CDynamicLibrary(const String& path, bool bDelay = false) {
+	CDynamicLibrary(const path& path, bool bDelay = false) {
 		Path = path;
 		if (!bDelay)
 			Load(path);
@@ -114,7 +114,7 @@ public:
 		return m_hModule;
 	}
 
-	void Load(const String& path) const;
+	void Load(const path& path) const;
 	void Free();
 	FARPROC GetProcAddress(const CResID& resID);
 private:
@@ -187,16 +187,8 @@ class Resource {
 public:
 	Resource(const CResID& resID, const CResID& resType, HMODULE hModule = 0);
 
-	const void *get_Data();
-	DEFPROP_GET(const void *, Data);
-
-	size_t get_Size();
-	DEFPROP_GET(size_t, Size);
-
-	operator ConstBuf() {
-		return ConstBuf(Data, Size);
-	}
-
+	const uint8_t *data() const;
+	size_t size() const;
 private:
 #if UCFG_WIN32
 	ptr<ResourceObj> m_pimpl;
@@ -212,8 +204,8 @@ private:
 const int COINIT_APARTMENTTHREADED  = 0x2;
 
 class AFX_CLASS CUsingCOM {
-	bool m_bInitialized;
 	CDynamicLibrary m_dllOle;
+	bool m_bInitialized;
 public:
 	CUsingCOM(DWORD dwCoInit = COINIT_APARTMENTTHREADED);
 	CUsingCOM(_NoInit);
@@ -318,7 +310,7 @@ public:
 	~File();
 
 	static Blob AFXAPI ReadAllBytes(const path& p);
-	static void AFXAPI WriteAllBytes(const path& p, const ConstBuf& mb);
+	static void AFXAPI WriteAllBytes(const path& p, RCSpan mb);
 
 	static String AFXAPI ReadAllText(const path& p, Encoding *enc = &Encoding::UTF8);
 	static void AFXAPI WriteAllText(const path& p, RCString contents, Encoding *enc = &Encoding::UTF8);
@@ -796,7 +788,7 @@ public:
 	Random(int seed = Rand());
 	~Random();
 
-	virtual void NextBytes(const Buf& mb);
+	virtual void NextBytes(const span<uint8_t>& mb);
 	int Next();
 	int Next(int maxValue);
 	double NextDouble();
@@ -1131,17 +1123,23 @@ public:
 	CStringVector GetValues(RCString key) const {
 		CStringVector r;
 		base::const_iterator i = find(key);
-		return i!=end() ? i->second : CStringVector();
+		return i != end() ? i->second : CStringVector();
+	}
+
+	CStringVector& GetRef(RCString key) {
+		return base::operator[](key);
 	}
 
 	String Get(RCString key) const {
-		return find(key)!=end() ? String::Join(",", GetValues(key)) : nullptr;
+		return find(key) != end() ? String::Join(",", GetValues(key)) : nullptr;
 	}
+
+	String operator[](RCString key) const { return Get(key); }
 
 	void Set(RCString name, RCString v) {
 		CStringVector ar;
 		ar.push_back(v);
-		(*this)[name] = ar;
+		base::operator[](name) = ar;
 	}
 
 	String ToString() const;
@@ -1166,6 +1164,8 @@ typedef vararray<uint8_t, 64> hashval;
 
 class HashAlgorithm {
 public:
+	static const unsigned WordCount = 16;
+
 	size_t BlockSize,
 		HashSize;
 	bool IsHaifa, IsBigEndian, IsLenBigEndian, IsBlockCounted;
@@ -1182,17 +1182,20 @@ public:
 
 	virtual ~HashAlgorithm() {}
 	virtual hashval ComputeHash(Stream& stm);				//!!!TODO should be const
-	virtual hashval ComputeHash(const ConstBuf& mb);
+	virtual hashval ComputeHash(RCSpan mb);
 
 	virtual void InitHash(void *dst) noexcept {}
 	void PrepareEndianness(void *dst, int count) noexcept;
-	virtual void HashBlock(void* dst, const uint8_t* src, uint64_t counter) noexcept {}
+	virtual void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {}
+	virtual void PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept;
 	virtual void OutTransform(void *dst) noexcept {}
 protected:
 	bool Is64Bit;
+
+	hashval Finalize(void *hash, Stream& stm, uint64_t processedLen);
 };
 
-hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text);
+hashval HMAC(HashAlgorithm& halgo, RCSpan key, RCSpan text);
 
 
 class Crc32 : public HashAlgorithm {
@@ -1390,7 +1393,7 @@ public:
 	virtual VarValue Parse(std::istream& is, Encoding *enc = &Encoding::UTF8) =0;
 	virtual void Print(std::ostream& os, const VarValue& v) =0;
 
-	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf = ConstBuf()) { Throw(E_NOTIMPL); }
+	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, RCSpan preBuf = Span()) { Throw(E_NOTIMPL); }
 
 	VarValue Parse(RCString s) {
 		istringstream iss(s.c_str());
@@ -1439,12 +1442,12 @@ public:
 		MemoryStream ms;
 		BinaryWriter wr(ms);
 		PersistentTraits<T>::Write(wr, val);
-		Set(key, ConstBuf(ms.get_Blob()));
+		Set(key, Span(ms.get_Blob()));
 #endif
 	}
 private:
 	static bool AFXAPI Lookup(RCString key, Blob& blob);
-	static void AFXAPI Set(RCString key, const ConstBuf& mb);
+	static void AFXAPI Set(RCString key, RCSpan mb);
 };
 
 class Temperature : public CPrintable {

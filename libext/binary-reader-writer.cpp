@@ -92,7 +92,7 @@ void BinaryWriter::Write(const VARIANT& v) {
 			_self << dims;
 			switch (dims) {
 			case 1:
-				{ 
+				{
 					LONG dim1 = sa.GetLBound(),
 						dim2 = sa.GetUBound();
 					_self << dim1 << dim2;
@@ -121,9 +121,9 @@ void BinaryWriter::Write(const VARIANT& v) {
 }
 #endif	// UCFG_OLE
 
-BinaryWriter& BinaryWriter::operator<<(const ConstBuf& mb) {
-	WriteSize(mb.Size);
-	BaseStream.WriteBuffer(mb.P, mb.Size);
+BinaryWriter& BinaryWriter::Write(RCSpan mb) {
+	WriteSize(mb.size());
+	BaseStream.Write(mb);
 	return _self;
 }
 

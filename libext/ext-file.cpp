@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -65,7 +65,7 @@ Path::CSplitPath Path::SplitPath(const path& p) {
 		fname, sizeof fname,
 		ext, sizeof ext);
 #	else
-	_tsplitpath(p.native(), drive, dir, fname, ext);
+	_tsplitpath(String(p.native()), drive, dir, fname, ext);
 #	endif
 	sp.m_drive = drive;
 	sp.m_dir = dir;
@@ -102,17 +102,17 @@ pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUni
 }
 
 path Path::GetPhysicalPath(const path& p) {
-	String path = path;
+	String ps = p.native();
 #if UCFG_WIN32_FULL
 	while (true) {
-		Path::CSplitPath sp = SplitPath(path);
+		Path::CSplitPath sp = SplitPath(ps.c_str());
 		vector<String> vec = System.QueryDosDevice(sp.m_drive);				// expand SUBST-ed drives
 		if (vec.empty() || !vec[0].StartsWith("\\??\\"))
 			break;
-		path = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
+		ps = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
 	}
 #endif
-	return path.c_str();
+	return ps.c_str();
 }
 
 #if UCFG_WIN32_FULL && UCFG_USE_REGEX
@@ -289,8 +289,8 @@ Blob File::ReadAllBytes(const path& p) {
 	return blob;
 }
 
-void File::WriteAllBytes(const path& p, const ConstBuf& mb) {
-	FileStream(p, FileMode::Create, FileAccess::Write).WriteBuf(mb);
+void File::WriteAllBytes(const path& p, RCSpan mb) {
+	FileStream(p, FileMode::Create, FileAccess::Write).Write(mb);
 }
 
 String File::ReadAllText(const path& p, Encoding *enc) {

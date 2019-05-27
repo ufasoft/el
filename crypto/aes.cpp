@@ -22,7 +22,7 @@
 
 extern "C" {
 
-const byte g_aesSubByte[256] = {
+const uint8_t g_aesSubByte[256] = {
 	0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
 	0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
 	0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
@@ -41,10 +41,10 @@ const byte g_aesSubByte[256] = {
 	0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16
 };
 
-const byte *g_aesInvSubByte,
+const uint8_t *g_aesInvSubByte,
 		*g_aesPowers;
 const uint16_t *g_aesLogs;
-
+const uint8_t *g_aesMul;
 
 } // "C"
 
@@ -57,14 +57,14 @@ void InitAesTables() {
 	static bool s_b;
 	if (s_b)
 		return;
-	byte *invSubByte = new byte[256],						// possible Memory Leak, but it is small amount of RAM
-		*powers = new byte[1024];
+	uint8_t *invSubByte = new uint8_t[256], // possible Memory Leak, but it is small amount of RAM
+		*powers = new uint8_t[1024];
 	uint16_t *logs = new uint16_t[256];
 	memset(powers, 0, 1024);								// elements after 510 are for multiplication by zero
-	byte n = 0;
+	uint8_t n = 0;
 	for (int i=0; i<256; ++i) {
-		invSubByte[g_aesSubByte[i]] = (byte)i;
-		logs[powers[i] = n = (!i ? 1 : n ^ (n<<1) ^ (n & 0x80 ? 0x1B : 0))] = (byte)i;
+		invSubByte[g_aesSubByte[i]] = (uint8_t)i;
+		logs[powers[i] = n = (!i ? 1 : n ^ (n << 1) ^ (n & 0x80 ? 0x1B : 0))] = (uint8_t)i;
 	}
 	memcpy(powers+255, powers, 255);
 	logs[1] = 0;
@@ -73,16 +73,23 @@ void InitAesTables() {
 	g_aesInvSubByte = invSubByte;
 	g_aesPowers = powers;
 	g_aesLogs = logs;
+
+	uint8_t *aesMul = new uint8_t[65536];
+	for (int a = 0; a < 256; ++a)
+		for (int b = 0; b < 256; ++b)
+			aesMul[(a << 8) | b] = g_aesPowers[g_aesLogs[a] + g_aesLogs[b]];
+	g_aesMul = aesMul;
+
 	s_b = true;
 }
 
-static byte MulRow(uint32_t a, uint32_t b) {
-	byte *pa = (byte*)&a, *pb = (byte*)&b;
+static uint8_t MulRow(uint32_t a, uint32_t b) {
+	uint8_t *pa = (uint8_t *)&a, *pb = (uint8_t *)&b;
 	return Mul(pa[0], pb[0]) ^ Mul(pa[1], pb[1]) ^ Mul(pa[2], pb[2]) ^ Mul(pa[3], pb[3]);
 }
 
 static uint32_t MulPolynom(uint32_t col, uint32_t p) {
-	return MulRow(col, p) | (MulRow(col, _rotl(p, 8)) << 8) | (MulRow(col, _rotl(p, 16)) << 16) | (MulRow(col, _rotl(p, 24)) << 24);	
+	return MulRow(col, p) | (MulRow(col, _rotl(p, 8)) << 8) | (MulRow(col, _rotl(p, 16)) << 16) | (MulRow(col, _rotl(p, 24)) << 24);
 }
 
 static uint32_t MixColumn(uint32_t col) {
@@ -94,33 +101,33 @@ static uint32_t InvMixColumn(uint32_t col) {
 }
 
 
-ExpandedKey::ExpandedKey(const ConstBuf& key)
+ExpandedKey::ExpandedKey(RCSpan key)
 	:	m_i(0)
 	,	m_rcon(1)
 {
-	m_key.resize(key.Size / 4);
-	for (int i=0; i<key.Size/4; ++i)
-		m_key[i] = letoh(*(uint32_t*)(key.P + i*4));
+	m_key.resize(key.size() / 4);
+	for (int i = 0; i < key.size() / 4; ++i)
+		m_key[i] = letoh(*(uint32_t*)(key.data() + i*4));
 }
 
 uint32_t ExpandedKey::Next() {
 	uint32_t t = m_key[(m_i+m_key.size()-1) % m_key.size()];
 	if (0 == m_i)
-		t = exchange(m_rcon, byte((m_rcon << 1) ^ (m_rcon & 0x80 ? 0x1B : 0)))
+		t = exchange(m_rcon, uint8_t((m_rcon << 1) ^ (m_rcon & 0x80 ? 0x1B : 0)))
 			^ (g_aesSubByte[(t >> 8) & 255] |
 					  (g_aesSubByte[(t >> 16) & 255] << 8) |
 			          (g_aesSubByte[(t >> 24) & 255] << 16) |
 			          (g_aesSubByte[t & 255] << 24));
 	else if (m_key.size()>6 && m_i==4) {
 		uint32_t a = t;
-		byte *pt = (byte*)&t, *pa = (byte*)&a;
+		uint8_t *pt = (uint8_t *)&t, *pa = (uint8_t *)&a;
 		pt[0] = g_aesSubByte[pa[0]]; pt[1] = g_aesSubByte[pa[1]]; pt[2] = g_aesSubByte[pa[2]]; pt[3] = g_aesSubByte[pa[3]];
 	}
 	uint32_t& cur = m_key[exchange(m_i, (m_i+1) % m_key.size())];
 	return exchange(cur, cur ^ t);
 }
 
-InvExpandedKey::InvExpandedKey(const ConstBuf& key, int ekeylen, int nb)
+InvExpandedKey::InvExpandedKey(RCSpan key, int ekeylen, int nb)
 	:	base(key)
 	,	m_invkey(ekeylen)
 {
@@ -135,11 +142,11 @@ Aes::Aes() {
 	InitAesTables();
 }
 
-void Aes::EncDec(const ConstBuf& ekey, uint32_t *data, const byte subTable[256], uint32_t(*pfnMixColumn)(uint32_t)) {
-	byte *p = (byte*)data;
+void Aes::EncDec(RCSpan ekey, uint32_t *data, const uint8_t subTable[256], uint32_t (*pfnMixColumn)(uint32_t)) {
+	uint8_t *p = (uint8_t *)data;
 	const int cbBlock = BlockSize/8;
 	const int nb = cbBlock / 4;
-	VectorXor(data, (const uint32_t*)ekey.P, nb);
+	VectorXor(data, (const uint32_t*)ekey.data(), nb);
 	for (int i=0; i<Rounds; ++i) {
 		for (int j=nb*4; j--;)
 			p[j] = subTable[p[j]];
@@ -161,15 +168,15 @@ void Aes::EncDec(const ConstBuf& ekey, uint32_t *data, const byte subTable[256],
 		if (i<Rounds-1)
 			for (int j=0; j<nb; ++j)
 				data[j] = pfnMixColumn(data[j]);
-		VectorXor(data, (const uint32_t*)ekey.P + (i+1)*nb, nb);
+		VectorXor(data, (const uint32_t*)ekey.data() + (i+1)*nb, nb);
 	}
 }
 
-void Aes::EncryptBlock(const ConstBuf& ekey, byte *data) {
+void Aes::EncryptBlock(RCSpan ekey, uint8_t *data) {
 	EncDec(ekey, (uint32_t*)data, g_aesSubByte, MixColumn);
 }
 
-void Aes::DecryptBlock(const ConstBuf& ekey, byte *data) {
+void Aes::DecryptBlock(RCSpan ekey, uint8_t *data) {
 	uint32_t *b = (uint32_t*)data,
 		*e = (uint32_t*)(data + BlockSize/8);
 	std::reverse(b, e);
@@ -203,7 +210,7 @@ Blob Aes::CalcExpandedKey() const {
 	uint32_t *p = (uint32_t*)r.data();
 	ExpandedKey ekey(Key);
 	for (int i=0, n=r.Size/4; i<n; ++i)
-		p[i] = ekey.Next(); 
+		p[i] = ekey.Next();
 	return r;
 }
 
@@ -219,7 +226,7 @@ Blob Aes::CalcInvExpandedKey() const {
 
 #endif // UCFG_USE_OPENSSL
 
-pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const byte salt[8], int nRounds) {
+pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const uint8_t salt[8], int nRounds) {
 	pair<Blob, Blob> r(Blob(0, 32), Blob(0, 16));
 	const unsigned char *psz = (const unsigned char*)(const char*)password;
 
@@ -229,9 +236,9 @@ pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const byte salt
 		Throw(E_FAIL);
 #else
 	SHA512 sha;
-	Blob data = ConstBuf(psz, strlen(password)) + ConstBuf(salt, 8);
+	Blob data = Span(psz, strlen(password)) + Span(salt, 8);
 	while (nRounds--)
-		data = sha.ComputeHash(data);
+		data = Span(sha.ComputeHash(data));
 	memcpy(r.first.data(), data.constData(), r.first.Size);
 	memcpy(r.second.data(), data.constData()+r.first.Size, r.second.Size);
 #endif
@@ -240,10 +247,10 @@ pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const byte salt
 
 #if UCFG_USE_OPENSSL
 
-Blob Aes::Encrypt(const ConstBuf& cbuf) {
+Blob Aes::Encrypt(RCSpan cbuf) {
 	int rlen = cbuf.Size+AES_BLOCK_SIZE, flen = 0;
 	Blob r(0, rlen);
-    
+
 	CipherCtx ctx;
     SslCheck(::EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), 0, m_key.constData(), IV.constData()));
     SslCheck(::EVP_EncryptUpdate(ctx, r.data(), &rlen, cbuf.P, cbuf.Size));
@@ -252,7 +259,7 @@ Blob Aes::Encrypt(const ConstBuf& cbuf) {
 	return r;
 }
 
-Blob Aes::Decrypt(const ConstBuf& cbuf) {
+Blob Aes::Decrypt(RCSpan cbuf) {
 	int rlen = cbuf.Size, flen = 0;
 	Blob r(0, rlen);
 

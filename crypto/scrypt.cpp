@@ -70,7 +70,7 @@ void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept {
 		ScryptCore_x86x64(w, alignedScratch);
 		UnShuffleForSalsa(x, w);
 	} else
-#endif	
+#endif
 	{
 		uint32_t tmp[2][16];
 		NeoScryptCore((SalsaBlockPtr)x, tmp, alignedScratch, 1, 8, 1024, false);
@@ -78,10 +78,10 @@ void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept {
 		memcpy(w, x, 32 * sizeof(uint32_t));
 		for (int i=0; i<1024; ++i) {
 			memcpy(alignedScratch+i*32, w, 32*sizeof(uint32_t));
-			
+
 			VectorXor(w, w+16, 16);
 			Salsa20Core(w, 8);
-		
+
 			VectorXor(w+16, w, 16);
 			Salsa20Core(w+16, 8);
 		}
@@ -101,15 +101,15 @@ void ScryptCore(uint32_t x[32], uint32_t alignedScratch[1024*32+32]) noexcept {
 	}
 }
 
-hashval CalcPbkdf2Hash(const uint32_t *pIhash, const ConstBuf& data, int idx) {
+hashval CalcPbkdf2Hash(const uint32_t *pIhash, RCSpan data, int idx) {
 	SHA256 sha;
-	byte *text = (byte*)alloca(data.Size + 4);
-	*(uint32_t*)((byte*)memcpy(text, data.P, data.Size) + data.Size) = htobe32(idx);
-	return HMAC(sha, ConstBuf(pIhash, 32), ConstBuf(text, data.Size + 4));
+	uint8_t *text = (uint8_t *)alloca(data.size() + 4);
+	*(uint32_t *)((uint8_t*)memcpy(text, data.data(), data.size()) + data.size()) = htobe32(idx);
+	return HMAC(sha, ConstBuf(pIhash, 32), ConstBuf(text, data.size() + 4));
 }
 
 
-Blob Scrypt(const ConstBuf& password, const ConstBuf& salt, int n, int r, int p, size_t dkLen) {
+Blob Scrypt(RCSpan password, RCSpan salt, int n, int r, int p, size_t dkLen) {
 	HmacPseudoRandomFunction<SHA256> prf;
 	const size_t mfLen = r*128;
 	Blob bb = PBKDF2(prf, password, salt, 1, p*mfLen);
@@ -131,8 +131,8 @@ Blob Scrypt(const ConstBuf& password, const ConstBuf& salt, int n, int r, int p,
 	return PBKDF2(prf, password, bb, 1, dkLen);
 }
 
-CArray8UInt32 CalcSCryptHash(const ConstBuf& password) {
-	ASSERT(password.Size == 80);
+CArray8UInt32 CalcSCryptHash(RCSpan password) {
+	ASSERT(password.size() == 80);
 
 	SHA256 sha;
 
@@ -140,7 +140,7 @@ CArray8UInt32 CalcSCryptHash(const ConstBuf& password) {
 	const uint32_t *pIhash = (uint32_t*)ihash.constData();
 
 	uint32_t x[32];
-	for (int i=0; i<4; ++i) {
+	for (int i = 0; i < 4; ++i) {
 		hashval hv = CalcPbkdf2Hash(pIhash, password, i+1);
 		memcpy(x+8*i, hv.constData(), 32);
 	}
@@ -217,35 +217,37 @@ static DECLSPEC_ALIGN(128) const uint32_t s_IhashFinal_4way[16][4] = {
 
 #if UCFG_CPU_X86_X64
 
-void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, const ConstBuf& data) {
+void CalcPbkdf2Hash_80_4way(uint32_t dst[32], const uint32_t *pIhash, RCSpan data) {
 	SHA256 sha;
 	DECLSPEC_ALIGN(128) uint32_t
 		ist[16][4], ost[8][4],
 		buf4[32][4];
 
-	uint32_t buf[32], ostate[8], istate[8], bufPasswd[20];
-	for (int i=0; i<20; ++i)
-		bufPasswd[i] = be32toh(((const uint32_t*)data.P)[i]);
+	DECLSPEC_ALIGN(32) uint32_t buf[32], ostate[8], istate[8];
 
-	for (int i=0; i<8; ++i)
+	for (int i = 0; i < 8; ++i)
 		buf[i] = be32toh(pIhash[i] ^ 0x5C5C5C5C);
 	memset(buf+8, 0x5C, 8*4);
 	sha.InitHash(ostate);
-	sha.HashBlock(ostate, (const byte*)buf, 0);
+	sha.HashBlock(ostate, (uint8_t*)buf, 0);
 
-	for (int i=0; i<8; ++i)
+	for (int i = 0; i < 8; ++i)
 		buf[i] = be32toh(pIhash[i] ^ 0x36363636);
-	memset(buf+8, 0x36, 8*4);
+	memset(buf + 8, 0x36, 8 * 4);
 	sha.InitHash(istate);
-	sha.HashBlock(istate, (const byte*)buf, 0);
-	sha.HashBlock(istate, (const byte*)bufPasswd, 0);
+	sha.HashBlock(istate, (uint8_t*)buf, 0);
+	uint32_t bufPasswd[20];
+	for (int i = 0; i < 20; ++i)
+		bufPasswd[i] = be32toh(((const uint32_t*)data.data())[i]);
+	memcpy(buf, bufPasswd, sizeof bufPasswd);
+	sha.HashBlock(istate, (uint8_t*)buf, 0);
 
 	for (int i=0; i<8; ++i) {
 		ist[i][0] = ist[i][1] = ist[i][2] = ist[i][3] = istate[i];
 		ost[i][0] = ost[i][1] = ost[i][2] = ost[i][3] = ostate[i];
 	}
 	for (int i=0; i<4; ++i)
-		buf4[i][0] = buf4[i][1] = buf4[i][2] = buf4[i][3] = bufPasswd[16+i];
+		buf4[i][0] = buf4[i][1] = buf4[i][2] = buf4[i][3] = bufPasswd[16 + i];
 	memcpy(buf4[4], s_InnerPad, sizeof s_InnerPad);
 	Sha256Update_4way_x86x64Sse2(ist, buf4);
 
@@ -290,7 +292,7 @@ array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]) {
 	}
 	memset(buf+8, 0x5C, 8*16);
 	Sha256Update_4way_x86x64Sse2(ostate, buf);
-	
+
 	for (int i=0; i<8; ++i) {
 		buf[i][0] = tstate[i][0] ^ 0x36363636;
 		buf[i][1] = tstate[i][1] ^ 0x36363636;
@@ -357,8 +359,8 @@ array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]) {
 	AlignedMem am((3*1025*32)*sizeof(uint32_t), 128);
 	ScryptCore_x64_3way(w, (uint32_t*)am.get());
 	uint32_t *s = w;
-	
-	for (int k=0; k<3; ++k) {	
+
+	for (int k=0; k<3; ++k) {
 		buf[0  ][k] = swap32(s[0]);
 		buf[5  ][k] = swap32(s[1]);
 		buf[10 ][k] = swap32(s[2]);
@@ -380,8 +382,8 @@ array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]) {
 	Sha256Update_4way_x86x64Sse2(tstate, buf);
 
 	s = w+16;
-	
-	for (int k=0; k<3; ++k) {	
+
+	for (int k=0; k<3; ++k) {
 		buf[0  ][k] = swap32(s[0]);
 		buf[5  ][k] = swap32(s[1]);
 		buf[10 ][k] = swap32(s[2]);
@@ -401,12 +403,12 @@ array<CArray8UInt32, 3> CalcSCryptHash_80_3way(const uint32_t input[20]) {
 		s += 32;
 	}
 	Sha256Update_4way_x86x64Sse2(tstate, buf);
-	
+
 	Sha256Update_4way_x86x64Sse2(tstate, s_IhashFinal_4way);
 
 	memcpy(tstate[8], s_OuterPad, sizeof s_OuterPad);
 	Sha256Update_4way_x86x64Sse2(ostate, tstate);
-	
+
 	array<CArray8UInt32, 3> r;
 	for (int i=0; i<8; ++i) {
 		r[0][i] = htobe32(ostate[i][0]);

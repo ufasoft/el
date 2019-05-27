@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -15,7 +15,7 @@
 #endif
 
 
-#include <afxmsg_.h>
+#include "extmsg_.h"
 
 
 #include <psapi.h>
@@ -633,15 +633,11 @@ template <class T> void CHandleMap<T>::RemoveHandle(HANDLE h) {
 }
 
 template <class T> T* CHandleMap<T>::LookupPermanent(HANDLE h) {
-	T *p = 0;
-	Lookup(m_permanentMap, h, p);
-	return p;
+	return Lookup(m_permanentMap, h).value_or((T*)0);
 }
 
 template <class T> T* CHandleMap<T>::LookupTemporary(HANDLE h) {
-	T *p = 0;
-	Lookup(m_temporaryMap, h, p);
-	return p;
+	return Lookup(m_temporaryMap, h).value_or((T*)0);
 }
 #endif
 
@@ -728,7 +724,7 @@ public:
 	~AFX_MODULE_THREAD_STATE();
 	CThreadHandleMaps& GetHandleMaps();
 private:
-	std::auto_ptr<CThreadHandleMaps> m_handleMaps;
+	std::unique_ptr<CThreadHandleMaps> m_handleMaps;
 };
 
 AFX_API AFX_MODULE_THREAD_STATE * AFXAPI AfxGetModuleThreadState();
@@ -954,5 +950,3 @@ inline SYSTEM_INFO AFXAPI GetSystemInfo() {
 #else
 	typedef HINSTANCE HINST;
 #endif
-
-

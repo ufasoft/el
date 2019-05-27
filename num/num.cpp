@@ -17,14 +17,14 @@ namespace Ext { namespace Num {
 Bn::Bn(const BigInteger& bn) {
 	::mpz_init(m_z);
 	int n = (bn.Length+8)/8;
-	byte *p = (byte*)alloca(n);
+	uint8_t *p = (uint8_t*)alloca(n);
 	bn.ToBytes(p, n);
 	mpz_import(m_z, n, -1, 1, -1, 0, p); //!!!Sgn
 }
 
 BigInteger Bn::ToBigInteger() const {
 	size_t n = (mpz_sizeinbase(m_z, 2) + 7) / 8 ;
-	byte *p = (byte*)alloca(n+1);
+	uint8_t *p = (uint8_t*)alloca(n+1);
 	memset(p, 0, n+1);
 	mpz_export(p, 0, -1, 1, -1, 0, m_z);				//!!!Sgn
 	return BigInteger(p, n+1);
@@ -64,15 +64,15 @@ Bn& Bn::operator*=(unsigned long n) {
 	mpz_mul_ui(m_z, m_z, n);
 	return *this;
 }
-Bn Bn::FromBinary(const ConstBuf& cbuf, Endian endian) {
+Bn Bn::FromBinary(RCSpan cbuf, Endian endian) {
 	Bn r;
-	mpz_import(r.m_z, cbuf.Size, endian==Endian::Big ? 1 : -1, 1, -1, 0, cbuf.P); //!!!Sgn
+	mpz_import(r.m_z, cbuf.size(), endian == Endian::Big ? 1 : -1, 1, -1, 0, cbuf.data()); //!!!Sgn
 	return r;
 }
 
-void Bn::ToBinary(byte *p, size_t n) const {
+void Bn::ToBinary(uint8_t *p, size_t n) const {
 	size_t count = (mpz_sizeinbase(m_z, 2) + 7) / 8;
-	byte *buf = (byte*)alloca(count);
+	uint8_t *buf = (uint8_t*)alloca(count);
 	mpz_export(buf, &count, 1, 1, -1, 0, m_z);				//!!!Sgn
 	if (n < count)
 		Throw(E_INVALIDARG);

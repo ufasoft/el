@@ -359,7 +359,7 @@ void thread_group::remove_thread(ThreadBase *t) {
 
 void thread_group::interrupt_all() {
 	EXT_LOCK (m_cs) {
-		for (CThreadColl::iterator it=m_threads.begin(), e=m_threads.end(); it!=e; ++it) {
+		for (CThreadColl::iterator it = m_threads.begin(), e = m_threads.end(); it != e; ++it) {
 			ThreadBase *t = it->get();
 			t->m_bAutoDelete = false;
 			if (*t)
@@ -630,7 +630,7 @@ CThreadSlotData::CThreadSlotData()
 void CThreadSlotData::DeleteValues(HINSTANCE hInst, bool bAll) {
 	EXT_LOCK (m_criticalSection) {
 		if (bAll) {
-			for (CTDatas::iterator it=m_tdatas.begin(), e=m_tdatas.end(); it!=e; ++it)
+			for (CTDatas::iterator it = m_tdatas.begin(), e = m_tdatas.end(); it != e; ++it)
 				DeleteValues(&it->second, hInst);
 		} else if (CThreadData* pData = (CThreadData*)(void*)m_tls.Value)
 			DeleteValues(pData, hInst);
@@ -667,9 +667,9 @@ void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
 }
 
 void ThreadBase::OnEndThread(bool bDelete) {
-#if UCFG_WIN32
-	TRC(5, Name);
-#endif
+	if (!!Name) {
+		TRC(6, Name);
+	}
 
 	OnEnd();
 	if (bDelete)

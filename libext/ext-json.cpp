@@ -99,7 +99,7 @@ public:
 
 	String ToString() const override {
 		if (const char *s = ::json_string_value(m_json))
-			return Encoding::UTF8.GetChars(ConstBuf(s, strlen(s)));
+			return Encoding::UTF8.GetChars(Span((const uint8_t*)s, strlen(s)));
 		Throw(ExtErr::InvalidCast);
 	}
 
@@ -150,7 +150,7 @@ public:
 			os << s;
 			FreeWrap(s);
 		} else
-			os << "null";		
+			os << "null";
 	}
 private:
 	JsonHandle m_json;
@@ -226,13 +226,13 @@ protected:
 		return r;
 	}
 
-	pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf) override {
+	pair<VarValue, Blob> ParseStream(Stream& stm, RCSpan preBuf) override {
 #if JANSSON_VERSION_HEX >= 0x020400
 		CallbackData cbd;
 		cbd.LastChunk = preBuf;
 		cbd.m_pStm = &stm;
-		cbd.LastChunkPos = int(-(ssize_t)preBuf.Size);
-		
+		cbd.LastChunkPos = int(-(ssize_t)preBuf.size());
+
 		json_error_t err;
 		if (json_t *json = json_load_callback(&LoadCallback, &cbd, JSON_DISABLE_EOF_CHECK, &err)) {
 			int off = err.position - std::max(cbd.LastChunkPos, 0);
@@ -370,10 +370,10 @@ class JsonParser : public MarkupParser {
 	}
 };
 
-VarValue AFXAPI ParseJson(RCString s) {	
+VarValue AFXAPI ParseJson(RCString s) {
 	string ss(s.c_str());
 	istringstream is(ss);
-	return MarkupParser::CreateJsonParser()->Parse(is);		
+	return MarkupParser::CreateJsonParser()->Parse(is);
 }
 
 #endif // UCFG_JSON == UCFG_JSON_JSONCPP

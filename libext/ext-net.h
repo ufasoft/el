@@ -95,11 +95,9 @@ ENUM_CLASS(ProtocolType) {
 
 class IPAddress : public CPrintable {
 	typedef IPAddress class_type;
-	
+
 	void CreateCommon();
 public:
-	enum CAddressType { AF_DOMAIN_NAME = 99 };
-
 	EXT_DATA static const IPAddress Any, Broadcast, Loopback, None, IPv6Any, IPv6Loopback, IPv6None;
 
 	static size_t FamilySize(AddressFamily fam) {
@@ -121,13 +119,10 @@ public:
 	Ext::AddressFamily get_AddressFamily() const { return Ext::AddressFamily(m_sockaddr.sa_family); }
 	void put_AddressFamily(Ext::AddressFamily fam) { m_sockaddr.sa_family = (short)fam; }
 	DEFPROP_CONST(Ext::AddressFamily, AddressFamily);
-	
-	String m_domainname;
 
 	IPAddress();
 
 	IPAddress(const IPAddress& ha)
-		:	m_domainname(nullptr)
 	{
 		operator=(ha);
 	}
@@ -136,7 +131,7 @@ public:
 
 	IPAddress(const sockaddr& sa);
 
-	explicit IPAddress(const ConstBuf& mb);
+	explicit IPAddress(RCSpan mb);
 //!!!	IPAddress(RCString domainname);
 	//!!!RIPAddress& operator=(RCString domainname);
 	IPAddress& operator=(const IPAddress& ha);
@@ -148,13 +143,12 @@ public:
 	String ToString() const;
 
 	Blob GetAddressBytes() const;
-	
+
 	uint32_t get_ScopeId() const { return m_sin6.sin6_scope_id; }
 	void put_ScopeId(uint32_t v) {  m_sin6.sin6_scope_id = v; }
 	DEFPROP_CONST(uint32_t, ScopeId);
 
 	uint32_t GetIP() const;
-	void Normalize();
 	static IPAddress AFXAPI Parse(RCString ipString);
 	static bool AFXAPI TryParse(RCString s, IPAddress& ip);
 
@@ -169,7 +163,7 @@ public:
 
 	bool get_IsIPv6Teredo() const;
 	DEFPROP_GET(bool, IsIPv6Teredo);
-	
+
 	friend class IPEndPoint;
 };
 
@@ -184,8 +178,28 @@ EXT_DEF_HASH(Ext::IPAddress) namespace Ext {
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPAddress& ha);
 const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPAddress& ha);
 
+class EndPoint : public Object, public CPrintable {
+	typedef EndPoint class_type;
+public:
+	virtual ~EndPoint() {}
 
-class IPEndPoint : public CPrintable {
+	virtual Ext::AddressFamily get_AddressFamily() const { return AddressFamily::Unspecified; }
+	DEFPROP_VIRTUAL_GET_CONST(Ext::AddressFamily, AddressFamily);
+};
+
+class InternetEndPoint : public EndPoint {
+	typedef EndPoint base;
+	typedef InternetEndPoint class_type;
+
+	uint16_t m_port;
+public:
+	virtual uint16_t get_Port() const { return m_port; }
+	virtual void put_Port(uint16_t port) { m_port = port; }
+	DEFPROP_VIRTUAL_CONST(uint16_t, Port);
+};
+
+class IPEndPoint : public InternetEndPoint {
+	typedef InternetEndPoint base;
 	typedef IPEndPoint class_type;
 public:
 	IPAddress Address;
@@ -196,15 +210,13 @@ public:
 		Port = port;
 	}
 
-	explicit IPEndPoint(RCString s, uint16_t port = 0);
-
 	explicit IPEndPoint(const IPAddress& a, uint16_t port = 0)
 		:	Address(a)
 	{
 		Port = port;
 	}
 
-	explicit IPEndPoint(const ConstBuf& mb)
+	explicit IPEndPoint(RCSpan mb)
 		:	Address(mb)
 	{
 	}
@@ -232,38 +244,55 @@ public:
 		return *this;
 	}
 
-	Ext::AddressFamily get_AddressFamily() const { return Address.AddressFamily; }
+	Ext::AddressFamily get_AddressFamily() const override { return Address.AddressFamily; }
 	DEFPROP_GET_CONST(Ext::AddressFamily, AddressFamily);
 
-	uint16_t get_Port() const { return ntohs(Address.m_sin.sin_port); }
-	void put_Port(uint16_t port) { Address.m_sin.sin_port = htons(port); }
-	DEFPROP_CONST(uint16_t, Port);
+	uint16_t get_Port() const override { return ntohs(Address.m_sin.sin_port); }
+
+	void put_Port(uint16_t port) override {
+		base::put_Port(port);
+		Address.m_sin.sin_port = htons(port);
+	}
 
 	const sockaddr *c_sockaddr() const;
 	size_t sockaddr_len() const;
 
-	IPEndPoint Normalize() const {
-		IPEndPoint ep(*this);
-		ep.Address.Normalize();
-		return ep;
-	}
-
+	String ToString() const override;
 	EXT_API static IPEndPoint AFXAPI Parse(RCString s);
-	
-	String ToString() const { return Address.ToString()+":"+Convert::ToString(Port); }
 
 	bool operator<(const IPEndPoint& hp) const { return Address<hp.Address || Address==hp.Address && Port<hp.Port; }
 	bool operator==(const IPEndPoint& hp) const { return Address==hp.Address && Address.m_sin.sin_port==hp.Address.m_sin.sin_port; }
 	bool operator!=(const IPEndPoint& hp) const { return !operator==(hp); }
 };
 
-}
+class DnsEndPoint : public InternetEndPoint {
+	typedef InternetEndPoint base;
+public:
+	String Host;
+
+	DnsEndPoint(RCString host, uint16_t port)
+		: Host(host)
+	{
+		Port = port;
+	}
+
+	Ext::AddressFamily get_AddressFamily() const override { return AddressFamily::Unspecified; }
+	DEFPROP_GET_CONST(Ext::AddressFamily, AddressFamily);
+
+	String ToString() const override { return Host + ":" + Convert::ToString(Port); }
+};
+
+} // Ext::
 
 namespace EXT_HASH_VALUE_NS {
-inline size_t hash_value(const Ext::IPEndPoint& hp) { return hash_value(hp.Address) ^ std::hash<uint16_t>()(hp.Port); }
+	inline size_t hash_value(const Ext::IPEndPoint& ep) { return hash_value(ep.Address) ^ std::hash<uint16_t>()(ep.Port); }
+	inline size_t hash_value(const Ext::DnsEndPoint& ep) { return hash_value(ep.Host) ^ std::hash<uint16_t>()(ep.Port); }
 }
 
-EXT_DEF_HASH(Ext::IPEndPoint) namespace Ext {
+EXT_DEF_HASH(Ext::IPEndPoint)
+EXT_DEF_HASH(Ext::DnsEndPoint)
+
+namespace Ext {
 
 inline BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPEndPoint& hp) {
 	return wr << hp.Address << (uint16_t)hp.Port;
@@ -288,7 +317,7 @@ class Dns {
 public:
 	AFX_API static String GetHostName();
 	AFX_API static IPHostEntry AFXAPI GetHostEntry(RCString hostNameOrAddress);
-	AFX_API static IPHostEntry AFXAPI GetHostEntry(const IPAddress& address);	
+	AFX_API static IPHostEntry AFXAPI GetHostEntry(const IPAddress& address);
 	AFX_API static vector<IPAddress> GetHostAddresses(RCString hostNameOrAddress);
 };
 
@@ -331,7 +360,7 @@ public:
 
 	typedef SafeHandleAdapter<Socket, SafeHandle::HandleAccess> HandleAccess;
 	typedef SafeHandleAdapter<Socket, SafeHandle::BlockingHandleAccess> BlockingHandleAccess;
-	
+
 	class COSSupportsIPver {
 	public:
 		COSSupportsIPver(AddressFamily af)
@@ -375,7 +404,7 @@ public:
 //!!!R	void Create(uint16_t nPort = 0, int nSocketType = SOCK_STREAM, uint32_t host = 0);
 	virtual int Receive(void *buf, int len, int flags = 0);
 	virtual int Send(const void *buf, int len, int flags = 0);
-	virtual void SendTo(const ConstBuf& cbuf, const IPEndPoint& ep);
+	virtual void SendTo(RCSpan cbuf, const IPEndPoint& ep);
 	//!!!  void Close();
 
 	IPEndPoint get_LocalEndPoint();
@@ -386,7 +415,7 @@ public:
 
 	bool Connect(RCString hostAddress, uint16_t hostPort);
 
-	bool Connect(const IPEndPoint& hp) { return ConnectHelper(hp); }
+	bool Connect(const EndPoint& ep) { return ConnectHelper(ep); }
 
 	void Bind(const IPEndPoint& ep = IPEndPoint());
 	void Listen(int backLog = SOMAXCONN);
@@ -407,7 +436,7 @@ public:
 	SOCKET Detach();
 
 	void GetSocketOption(int optionLevel, int optionName, void *pVal, socklen_t& len);
-	
+
 	int GetSocketOption(int optionLevel, int optionName) {
 		int n;
 		socklen_t size = sizeof n;
@@ -417,15 +446,15 @@ public:
 		return n;
 	}
 
-	void SetSocketOption(int optionLevel, int optionName, const ConstBuf& mb);
+	void SetSocketOption(int optionLevel, int optionName, RCSpan mb);
 
 	void SetSocketOption(int optionLevel, int optionName, bool v) {
 		int n = v;
-		SetSocketOption(optionLevel, optionName, ConstBuf(&n, sizeof n));
+		SetSocketOption(optionLevel, optionName, Span((uint8_t*)&n, sizeof n));
 	}
 
 	void SetSocketOption(int optionLevel, int optionName, int v) {
-		SetSocketOption(optionLevel, optionName, ConstBuf(&v, sizeof v));
+		SetSocketOption(optionLevel, optionName, Span((uint8_t*)&v, sizeof v));
 	}
 
 	LingerOption get_LingerState() {
@@ -441,7 +470,7 @@ public:
 		linger lng;
 		lng.l_onoff = lo.Enabled;
 		lng.l_linger = (u_short)lo.LingerTime;
-		SetSocketOption(SOL_SOCKET, SO_LINGER, ConstBuf(&lng, sizeof lng));
+		SetSocketOption(SOL_SOCKET, SO_LINGER, Span((uint8_t*)&lng, sizeof lng));
 	}
 	DEFPROP(LingerOption, LingerState);
 
@@ -455,7 +484,7 @@ public:
 	}
 	void put_ReuseAddress(bool b) {
 		uint32_t v = b;
-		SetSocketOption(SOL_SOCKET, SO_REUSEADDR, ConstBuf(&v, sizeof v));
+		SetSocketOption(SOL_SOCKET, SO_REUSEADDR, Span((uint8_t*)&v, sizeof v));
 	}
 	DEFPROP(bool, ReuseAddress);
 
@@ -471,9 +500,9 @@ public:
 	DEF_INT_PROPERTY(Ttl, IPPROTO_IP, IP_TTL);
 
 #	undef DEF_INT_PROPERTY
-	
 
-	void IOControl(int code, const Buf& mb);
+
+	void IOControl(int code, const span<uint8_t>& mb);
 
 	void SetKeepAliveTime(int ms);
 
@@ -492,13 +521,13 @@ public:
 		Flags = (Flags & ~O_NONBLOCK) | (b ? 0 : O_NONBLOCK);
 #else
 		DWORD d = !b;
-		IOControl(FIONBIO, Buf(&d, sizeof d));
+		IOControl(FIONBIO, span<uint8_t>((uint8_t*)&d, sizeof d));
 #endif
 		m_bBlocking = b;
 	}
 	DEFPROP(bool, Blocking);
 protected:
-	virtual bool ConnectHelper(const IPEndPoint& ep);
+	virtual bool ConnectHelper(const EndPoint& ep);
 	void ReleaseHandle(intptr_t h) const;
 private:
 	CBool m_bBlocking;
@@ -554,13 +583,13 @@ public:
 				try {
 					m_arKeepers[i]->m_sock.Shutdown();
 				} catch (RCExc) {
-				}		
+				}
 			}
 		}
-#endif	
+#endif
 
 		EXT_LOCK (MtxCallingAPI) {
-			for (size_t i=0; i<m_arKeepers.size(); i++)
+			for (size_t i = 0; i < m_arKeepers.size(); i++)
 				m_arKeepers[i]->m_sock.Close();
 #if UCFG_WIN32_FULL
 			QueueAPC();
@@ -608,7 +637,7 @@ public:
 protected:
 	void BeforeStart() override {
 		TRC(2, "Listening on " << m_ep);
-		
+
 		m_sockListen.Bind(m_ep);
 		m_sockListen.Listen();
 	}
@@ -640,10 +669,10 @@ public:
 	}
 
 	virtual ~CSocketLooper() {}
-	virtual Blob ProcessSrc(const ConstBuf& cbuf, bool& bDisconnectAfterData) { return nullptr; }
-	virtual Blob ProcessDest(const ConstBuf& cbuf, bool& bDisconnectAfterData) { return nullptr; }
-	
-	virtual void Send(Socket& sock, const ConstBuf& mb);
+	virtual Blob ProcessSrc(RCSpan cbuf, bool& bDisconnectAfterData) { return nullptr; }
+	virtual Blob ProcessDest(RCSpan cbuf, bool& bDisconnectAfterData) { return nullptr; }
+
+	virtual void Send(Socket& sock, RCSpan mb);
 	virtual TimeSpan GetTimeout() { return TimeSpan(-1); }
 	virtual bool NeedToCancel() { return false; }
 	void Loop(Socket& sockS, Socket& sockD);
@@ -665,7 +694,7 @@ public:
 		:	m_sock(sock)
 	{}
 
-				
+
 	size_t Read(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
 //!!!R	int ReadByte() const override;
@@ -684,82 +713,12 @@ public:
 		:	Stream(Client)
 	{}
 
-	virtual void Connect(const IPEndPoint& ep) {
+	virtual void Connect(const EndPoint& ep) {
 		Client.Connect(ep);
 	}
 };
 
-// URI spec as of RFC3986
-class Uri {
-	typedef Uri class_type;
-public:
-	Uri(RCString uriString = String())
-		:	m_uriString(uriString)
-	{
-	}
-
-	~Uri();
-
-	static String AFXAPI UnescapeDataString(RCString s);
-
-	String get_Host() {
-		EnsureAnalyzed();
-		return m_host;
-	}
-	DEFPROP_GET(String, Host);
-
-	String get_OriginalString() { return m_uriString; }
-	DEFPROP_GET(String, OriginalString);
-
-	String get_PathAndQuery() {
-		EnsureAnalyzed();
-		return m_path+m_extra;
-	}
-	DEFPROP_GET(String, PathAndQuery);
-
-	int get_Port() {
-		EnsureAnalyzed();
-		return m_port;
-	}
-	DEFPROP_GET(int, Port);
-
-	String get_Query() {
-		EnsureAnalyzed();
-		return m_extra;
-	}
-	DEFPROP_GET(String, Query);
-
-	String get_Scheme() {
-		EnsureAnalyzed();
-		return m_scheme;
-	}
-	DEFPROP_GET(String, Scheme);
-
-	String get_UserName() {
-		EnsureAnalyzed();
-		return m_username;
-	}
-	DEFPROP_GET(String, UserName);
-
-	String get_Password() {
-		EnsureAnalyzed();
-		return m_password;
-	}
-	DEFPROP_GET(String, Password);
-
-	String ToString() const {
-		return m_uriString;
-	}
-private:
-	String m_uriString;
-	String m_scheme, m_host, m_path, m_extra, m_username, m_password;
-	int m_port;
-	CBool m_bAnalyzed;
-
-	void EnsureAnalyzed();
-};
 
 void _cdecl SocketsCleanup();
 
 } // Ext::
-

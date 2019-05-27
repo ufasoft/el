@@ -155,9 +155,9 @@ void AFXAPI Write7BitEncoded(uint8_t*& p, uint64_t v);
 class Convert {
 public:
 	static AFX_API Blob AFXAPI FromBase64String(RCString s);
-	static AFX_API String AFXAPI ToBase64String(const ConstBuf& mb);
-	static AFX_API Blob AFXAPI FromBase32String(RCString s);
-	static AFX_API String AFXAPI ToBase32String(const ConstBuf& mb);
+	static AFX_API String AFXAPI ToBase64String(RCSpan mb);
+	static AFX_API Blob AFXAPI FromBase32String(RCString s, const uint8_t *table = 0);
+	static AFX_API String AFXAPI ToBase32String(RCSpan mb, const char* table = 0);
 	static AFX_API uint32_t AFXAPI ToUInt32(RCString s, int fromBase = 10);
 	static AFX_API uint64_t AFXAPI ToUInt64(RCString s, int fromBase = 10);
 	static AFX_API int64_t AFXAPI ToInt64(RCString s, int fromBase = 10);
@@ -224,16 +224,16 @@ protected:
 
 class CMemReadStream : public MemStreamWithPosition {
 public:
-	ConstBuf m_mb;
+	Span m_mb;
 
-	CMemReadStream(const ConstBuf& mb)
+	CMemReadStream(RCSpan mb)
 		: m_mb(mb) {}
 
-	uint64_t get_Length() const override { return m_mb.Size; }
-	bool Eof() const override { return m_pos == m_mb.Size; }
+	uint64_t get_Length() const override { return m_mb.size(); }
+	bool Eof() const override { return m_pos == m_mb.size(); }
 
 	void put_Position(uint64_t pos) const override {
-		if (pos > m_mb.Size)
+		if (pos > m_mb.size())
 			Throw(E_FAIL);
 		m_pos = (size_t)pos;
 	}
@@ -259,24 +259,24 @@ private:
 
 class CMemWriteStream : public MemStreamWithPosition {
 public:
-	Buf m_mb;
+	span<uint8_t> m_mb;
 
-	CMemWriteStream(const Buf& mb)
+	CMemWriteStream(const span<uint8_t>& mb)
 		: m_mb(mb) {}
 
-	uint64_t get_Length() const override { return m_mb.Size; }
-	bool Eof() const override { return m_pos == m_mb.Size; }
+	uint64_t get_Length() const override { return m_mb.size(); }
+	bool Eof() const override { return m_pos == m_mb.size(); }
 
 	void put_Position(uint64_t pos) const override {
-		if (pos > m_mb.Size)
+		if (pos > m_mb.size())
 			Throw(E_FAIL);
 		m_pos = (size_t)pos;
 	}
 
 	void WriteBuffer(const void* buf, size_t count) override {
-		if (count > m_mb.Size - m_pos)
+		if (count > m_mb.size() - m_pos)
 			Throw(ExtErr::EndOfStream);
-		memcpy(m_mb.P + m_pos, buf, count);
+		memcpy(m_mb.data() + m_pos, buf, count);
 		m_pos += count;
 	}
 };
@@ -299,14 +299,16 @@ public:
 	}
 
 	uint64_t get_Length() const override { return m_size; }
+    size_t size() const { return m_size; }
+    const uint8_t *data() const { return m_data; }
 	void WriteBuffer(const void* buf, size_t count) override;
 	bool Eof() const override;
 	void Reset(size_t capacity = DEFAULT_CAPACITY);
 
-	operator ConstBuf() const { return ConstBuf(m_data, m_size); }
+	Span AsSpan() const { return Span(m_data, m_size); }    //!!!O obsolete
 
 	class Blob get_Blob() const {
-		return Ext::Blob(operator ConstBuf());
+		return Ext::Blob(AsSpan());
 	}
 	DEFPROP_GET(class Blob, Blob);
 
@@ -424,18 +426,18 @@ public:
 	explicit MacAddress(int64_t n64 = 0)
 		: m_n64(n64) {}
 
-	explicit MacAddress(const ConstBuf& mb) {
-		if (mb.Size != 6)
+	explicit MacAddress(RCSpan mb) {
+		if (mb.size() != 6)
 			Throw(E_FAIL);
-		m_n64 = *(DWORD*)mb.P | (uint64_t(*((uint16_t*)mb.P + 2)) << 32);
+		m_n64 = *(uint32_t*)mb.data() | (uint64_t(*((uint16_t*)mb.data() + 2)) << 32);
 	}
 
 	explicit MacAddress(RCString s);
 
-	operator Blob() const { return Blob(&m_n64, 6); }
+	Span AsSpan() const { return Span((uint8_t*)&m_n64, 6); }
 
 	void CopyTo(void* p) const {
-		*(DWORD*)p = (DWORD)m_n64;
+		*(uint32_t*)p = (uint32_t)m_n64;
 		*((uint16_t*)p + 2) = uint16_t(m_n64 >> 32);
 	}
 
@@ -487,9 +489,9 @@ public:
 	static bool AFXAPI SetThreadIgnoreIncorrectChars(bool v);
 	static Encoding* AFXAPI GetEncoding(RCString name);
 	static Encoding* AFXAPI GetEncoding(int codepage);
-	virtual size_t GetCharCount(const ConstBuf& mb);
-	virtual size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
-	EXT_API virtual std::vector<String::value_type> GetChars(const ConstBuf& mb);
+	virtual size_t GetCharCount(RCSpan mb);
+	virtual size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
+	EXT_API virtual std::vector<String::value_type> GetChars(RCSpan mb);
 	virtual size_t GetByteCount(const String::value_type* chars, size_t charCount);
 	virtual size_t GetByteCount(RCString s) { return GetByteCount(s, s.length()); }
 	virtual size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
@@ -531,12 +533,12 @@ public:
 
 	Blob GetBytes(RCString s);
 	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(const ConstBuf& mb);
-	EXT_API std::vector<String::value_type> GetChars(const ConstBuf& mb);
-	size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
+	size_t GetCharCount(RCSpan mb);
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
 
 protected:
-	void Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bool>& visitor);
+	void Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor);
 	void PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<uint8_t, bool>& visitor);
 
 private:
@@ -548,9 +550,9 @@ class ASCIIEncoding : public Encoding {
 public:
 	Blob GetBytes(RCString s);
 	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(const ConstBuf& mb);
-	EXT_API std::vector<String::value_type> GetChars(const ConstBuf& mb);
-	size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
+	size_t GetCharCount(RCSpan mb);
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
 };
 
 class CodePageEncoding : public Encoding {
@@ -744,7 +746,7 @@ private:
 	Stream& m_stm;
 };
 
-unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed);
-uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed);
+unsigned int MurmurHashAligned2(RCSpan cbuf, uint32_t seed);
+uint32_t MurmurHash3_32(RCSpan cbuf, uint32_t seed);
 
 } // namespace Ext

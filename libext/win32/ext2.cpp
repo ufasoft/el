@@ -22,6 +22,7 @@
 
 #if UCFG_WIN32_FULL
 #	pragma comment(lib, "version")
+#	pragma comment(lib, "kernel32")
 #endif
 
 namespace Ext {
@@ -127,9 +128,9 @@ e->Delete();
 return hr;
 }*/
 
-void AFXAPI SelfRegisterDll(RCString path) {
+void AFXAPI SelfRegisterDll(const path& p) {
 	CDynamicLibrary lib;
-	lib.Load(path);
+	lib.Load(p);
 	typedef HRESULT (STDAPICALLTYPE *CTLREGPROC)();
 	CTLREGPROC proc = (CTLREGPROC)lib.GetProcAddress("DllRegisterServer");
 	OleCheck(proc());

@@ -749,7 +749,7 @@ static void blake2s_update(blake2s_state *S, const uchar *input, uint input_size
             input_size -= fill;
         } else {
             neoscrypt_copy(S->buf + left, input, input_size);
-            S->buflen += input_size; 
+            S->buflen += input_size;
             /* Do not compress */
             input += input_size;
             input_size = 0;
@@ -1009,14 +1009,14 @@ void neoscrypt(const uchar *password, uchar *output, uint profile) {
 
 }
 
-CArray8UInt32 CalcNeoSCryptHash(const ConstBuf& password, int profile) {
-	ASSERT(password.Size == 80);
+CArray8UInt32 CalcNeoSCryptHash(RCSpan password, int profile) {
+	ASSERT(password.size() == 80);
 
 	switch (profile) {
 	case 0:
 		{
 			uint32_t x[8];
-			neoscrypt(password.P, (byte*)x, 0);
+			neoscrypt(password.data(), (uint8_t*)x, 0);
 			CArray8UInt32 r;
 			for (int i=0; i<8; ++i)
 				r[i] = x[i];															//!!!Endianess

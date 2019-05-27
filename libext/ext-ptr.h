@@ -249,6 +249,9 @@ public:
 		return m_pimpl ? EXT_CONVERTIBLE_TO_TRUE : 0;
 	}
 
+	const T* operator->() const { return m_pimpl.get(); }
+	T* operator->() { return m_pimpl.get(); }
+
 	Pimpl& operator=(const Pimpl& v) {
 		m_pimpl = v.m_pimpl;
 		return *this;

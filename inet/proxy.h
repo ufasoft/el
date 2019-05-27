@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -6,7 +6,7 @@
 #pragma once
 
 #include <el/libext/ext-net.h>
-#include <el/libext/ext-http.h>
+#include <el/inet/http.h>
 
 
 //!!!#include "ProxyMsg.h"
@@ -35,7 +35,7 @@ ENUM_CLASS(QueryType) {
 
 struct CProxyQuery {
 	QueryType Typ;
-	IPEndPoint Ep;
+	const EndPoint *Ep;
 };
 
 inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
@@ -46,19 +46,19 @@ inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
 	case QueryType::Resolve:		os << "QueryType::Resolve"; break;
 	case QueryType::RevResolve:		os << "QueryType::RevResolve"; break;
 	}
-	return os << " " << pq.Ep;
+	return os << " " << *pq.Ep;
 }
 
 #pragma pack(push,1)
 
 struct CSocks5Header {
-	byte Cmd;
-	byte AddrType;
+	uint8_t Cmd;
+	uint8_t AddrType;
 	IPEndPoint EndPoint;
 };
 
 struct SSocks5ReplyHeader {
-	byte m_ver,
+	uint8_t m_ver,
 		m_rep,
 		m_rsv,
 		m_atyp;
@@ -66,7 +66,7 @@ struct SSocks5ReplyHeader {
 
 struct UDP_REPLY {
 	uint16_t m_rsv;
-	byte m_frag,
+	uint8_t m_frag,
 		m_atype;
 	uint32_t m_host;
 	uint16_t m_port;
@@ -90,7 +90,7 @@ public:
 	{}
 
 	void AssociateUDP();
-	void SendTo(const ConstBuf& cbuf, const IPEndPoint& ep) override;
+	void SendTo(RCSpan cbuf, const IPEndPoint& ep) override;
 	Blob ReceiveUDP(IPEndPoint& hp);
 	static DWORD GetTimeout();
 	static DWORD GetType();
@@ -99,7 +99,7 @@ protected:
 	IPEndPoint m_ep;
 
 	static void ConnectToProxy(Stream& stm);
-	bool ConnectHelper(const IPEndPoint& hp) override;
+	bool ConnectHelper(const EndPoint& ep) override;
 private:
 	IPEndPoint m_remoteHostPort;
 };
@@ -121,7 +121,7 @@ public:
 	virtual ~CProxyBase() {};
 	virtual void Authenticate(Stream& stm) {}
 	virtual IPEndPoint Connect(Stream& stm, const CProxyQuery& q) = 0;
-	void ConnectWithResolving(Stream& stm, const IPEndPoint& hp);
+	void ConnectWithResolving(Stream& stm, const EndPoint& ep);
 };
 
 class CSocks4Proxy : public CProxyBase {
@@ -131,7 +131,7 @@ public:
 
 class CSocks5Proxy : public CProxyBase {
 public:
-	virtual IPEndPoint TcpBy(Stream& stm, const IPEndPoint& hp, byte cmd);
+	virtual IPEndPoint TcpBy(Stream& stm, const EndPoint& ep, uint8_t cmd);
 	void Authenticate(Stream& stm) override;
 	IPEndPoint Connect(Stream& stm, const CProxyQuery& q) override;
 };

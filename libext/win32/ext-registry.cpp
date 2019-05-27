@@ -18,7 +18,7 @@
 namespace Ext {
 using namespace std;
 
-CRegistryValue::CRegistryValue(uint32_t typ, byte *p, int len)
+CRegistryValue::CRegistryValue(uint32_t typ, uint8_t *p, int len)
 	:	m_type(typ)
 	,	m_blob(p, len)
 {
@@ -65,7 +65,7 @@ CRegistryValue::CRegistryValue(RCString s, bool bExpand)
 {
 }
 
-CRegistryValue::CRegistryValue(const ConstBuf& mb)
+CRegistryValue::CRegistryValue(RCSpan mb)
 	:	m_type(REG_BINARY)
 	,	m_blob(mb)
 {
@@ -374,7 +374,7 @@ CRegistryValue RegistryKey::QueryValue(RCString name) {
 #if !UCFG_WIN32
 	valueLen += sizeof(KEY_VALUE_PARTIAL_INFORMATION);
 #endif
-	byte *p = (byte*)alloca(valueLen);
+	uint8_t *p = (uint8_t*)alloca(valueLen);
 #if UCFG_WIN32
 	DWORD typ;
 	RegCheck(::RegQueryValueEx(_self, name, 0, &typ, p, &valueLen));
@@ -395,7 +395,7 @@ CRegistryValue RegistryKey::TryQueryValue(RCString name, const CRegistryValue& d
 #if !UCFG_WIN32
 	valueLen += sizeof(KEY_VALUE_PARTIAL_INFORMATION);
 #endif
-	byte *p = (byte*)alloca(valueLen);
+	uint8_t *p = (uint8_t*)alloca(valueLen);
 #if UCFG_WIN32
 	DWORD typ;
 	LONG rc = ::RegQueryValueEx(_self, name, 0, &typ, p, &valueLen);
