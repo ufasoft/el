@@ -48,7 +48,8 @@ void HttpConnection::ReadHeaders() {
 		Throw(E_FAIL);
 	static regex reHttpReq("^(\\S+)\\s+(\\S+)");
 	smatch m;
-	if (regex_match(string(headers[0]), m, reHttpReq)) {
+	string sh(headers[0]);
+	if (regex_match(sh, m, reHttpReq)) {
 		Request.Method = String(m[1]).ToUpper();
 		Request.Path = m[2];
 	}

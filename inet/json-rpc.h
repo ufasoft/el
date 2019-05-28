@@ -19,7 +19,7 @@ const error_category& json_rpc_category();
 
 inline error_code make_error_code(json_rpc_errc v) { return error_code((int)v, json_rpc_category()); }
 
-typedef unordered_map<String, VarValue> CJsonNamedParams;
+typedef std::unordered_map<String, VarValue> CJsonNamedParams;
 
 class JsonRpcException : public Exception {
 	typedef Exception base;
@@ -28,7 +28,7 @@ public:
 	VarValue Data;
 
 	JsonRpcException(int code, RCString msg)
-		:	base(error_code(code, json_rpc_category()), msg)		
+		:	base(error_code(code, json_rpc_category()), msg)
 //		,	Code(code)
 	{}
 
@@ -62,10 +62,10 @@ public:
 	bool V20;
 
 	JsonResponse()
-		:	Success(true)
-		,	V20(false)
-		,	Code(0)
-		,	Id(nullptr)
+		: Id(nullptr)
+		, Code(0)
+		, Success(true)
+		, V20(false)
 	{}
 
 	VarValue ToVarValue() const;
@@ -91,9 +91,9 @@ public:
 	String Notification(RCString method, const vector<VarValue>& params = vector<VarValue>(), ptr<JsonRpcRequest> req = nullptr);
 	JsonResponse Response(const VarValue& v);
 	void ServerLoop(Stream& stm);
-	
+
 protected:
-	virtual void SendChunk(Stream& stm, const ConstBuf& cbuf);
+	virtual void SendChunk(Stream& stm, RCSpan cbuf);
 	virtual VarValue CallMethod(RCString name, const VarValue& params) { Throw(ExtErr::JSON_RPC_MethodNotFound); }
 private:
 	std::mutex MtxReqs;

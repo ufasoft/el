@@ -7,14 +7,14 @@
 
 #include "json-rpc.h"
 
-namespace Ext { namespace Inet { 
+namespace Ext { namespace Inet {
 
 const error_category& json_rpc_category() {
 	static class json_rpc_category_impl : public error_category {
 		typedef error_category base;
 
 		const char *name() const noexcept override { return "JSON-RPC"; }
-		
+
 		string message(int errval) const override {
 			switch (errval) {
 			case  json_rpc_errc::ParseError: return "Parse Error";
@@ -165,7 +165,7 @@ VarValue JsonRpc::Call(Stream& stm, RCString method, const vector<VarValue>& par
 	return ProcessResponse(MarkupParser::CreateJsonParser()->ParseStream(stm).first);
 }
 
-VarValue JsonRpc::Call(Stream& stm, RCString method, const VarValue& arg0) {	
+VarValue JsonRpc::Call(Stream& stm, RCString method, const VarValue& arg0) {
 	return Call(stm, method, vector<VarValue>(1, arg0));
 }
 
@@ -207,8 +207,8 @@ VarValue JsonRpc::ProcessRequest(const VarValue& v) {
 	return resp.ToVarValue();
 }
 
-void JsonRpc::SendChunk(Stream& stm, const ConstBuf& cbuf) {
-	stm.WriteBuf(cbuf);
+void JsonRpc::SendChunk(Stream& stm, RCSpan cbuf) {
+	stm.Write(cbuf);
 }
 
 void JsonRpc::ServerLoop(Stream& stm) {

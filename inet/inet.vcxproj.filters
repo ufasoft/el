@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Http">
+      <UniqueIdentifier>{b161aad5-e4a3-42f5-9d98-b0f0b863ba04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="comp">
+      <UniqueIdentifier>{52f90962-785c-42b7-9194-1da8f1518ffd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="json-rpc">
+      <UniqueIdentifier>{9a6bd74f-6668-4cf2-bd4b-7458d6f4626a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="proxy">
+      <UniqueIdentifier>{2b47c4bd-edd4-4d49-96c3-6f52d34b58c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="p2p">
+      <UniqueIdentifier>{e5fc9e24-3cec-40e8-90c9-737aefe5812d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="protocols">
+      <UniqueIdentifier>{c17456f7-8c85-4baa-a574-c3ee41ca6191}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="client">
+      <UniqueIdentifier>{50b8b3c6-757a-4131-a797-28e2aba96ac3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="http-server.cpp">
+      <Filter>Http</Filter>
+    </ClCompile>
+    <ClCompile Include="http.cpp">
+      <Filter>Http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\comp\stdafx.cpp">
+      <Filter>comp</Filter>
+    </ClCompile>
+    <ClCompile Include="json-rpc.cpp">
+      <Filter>json-rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="proxy.cpp">
+      <Filter>proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="internet.cpp">
+      <Filter>Http</Filter>
+    </ClCompile>
+    <ClCompile Include="proxy-client.cpp">
+      <Filter>proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="irc-client.cpp">
+      <Filter>protocols</Filter>
+    </ClCompile>
+    <ClCompile Include="async-text-client.cpp">
+      <Filter>client</Filter>
+    </ClCompile>
+    <ClCompile Include="detect-global-ip.cpp">
+      <Filter>p2p</Filter>
+    </ClCompile>
+    <ClCompile Include="p2p-net.cpp">
+      <Filter>p2p</Filter>
+    </ClCompile>
+    <ClCompile Include="p2p-peers.cpp">
+      <Filter>p2p</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="detect-global-ip.h">
+      <Filter>p2p</Filter>
+    </ClInclude>
+    <ClInclude Include="p2p-net.h">
+      <Filter>p2p</Filter>
+    </ClInclude>
+    <ClInclude Include="p2p-peers.h">
+      <Filter>p2p</Filter>
+    </ClInclude>
+    <ClInclude Include="http.h">
+      <Filter>Http</Filter>
+    </ClInclude>
+    <ClInclude Include="irc-client.h">
+      <Filter>protocols</Filter>
+    </ClInclude>
+    <ClInclude Include="json-rpc.h">
+      <Filter>json-rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="http-server.h">
+      <Filter>Http</Filter>
+    </ClInclude>
+    <ClInclude Include="async-text-client.h">
+      <Filter>client</Filter>
+    </ClInclude>
+    <ClInclude Include="proxy.h">
+      <Filter>proxy</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

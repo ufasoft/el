@@ -304,8 +304,6 @@ inline Blob operator+(RCSpan mb1, RCSpan mb2) {
 	return r;
 }
 
-EXT_API std::ostream& __stdcall operator<<(std::ostream& os, RCSpan cbuf);
-EXT_API std::wostream& __stdcall operator<<(std::wostream& os, RCSpan cbuf);
 
 inline std::ostream& __stdcall operator<<(std::ostream& os, const Blob& blob) { return os << Span(blob); }
 inline std::wostream& __stdcall operator<<(std::wostream& os, const Blob& blob) { return os << Span(blob); }
@@ -341,6 +339,10 @@ public:
 
 namespace std {
     inline size_t size(const Ext::Blob& blob) { return blob.Size; }
+
+	EXT_API ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf);
+	EXT_API wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf);
+
 }
 
 namespace EXT_HASH_VALUE_NS {
