@@ -18,14 +18,8 @@
 #include <el/win/nt.h>
 
 
-
-#pragma comment(lib, "psapi")// for GetModuleInformation
-
-#ifdef _M_IX86
-#	pragma comment(lib, "c:\\dk\\wdk7\\lib\\win7\\i386\\ntdll.lib")
-#elif defined(_M_X64)
-#	pragma comment(lib, "c:\\dk\\wdk7\\lib\\win7\\amd64\\ntdll.lib")
-#endif
+#pragma comment(lib, "psapi")  // for GetModuleInformation
+#pragma comment(lib, "ntdll")
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 

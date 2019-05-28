@@ -236,6 +236,24 @@
     <ClCompile Include="..\crt\crt-eh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ext-cpu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="safehandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="conf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\win\nt-ldr-tls.cpp">
+      <Filter>Source Files\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="..\crt\fputwc.cpp">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\crt\write.cpp">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext-cpp.h">

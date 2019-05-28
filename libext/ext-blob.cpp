@@ -244,8 +244,11 @@ void Blob::Replace(size_t offset, size_t size, RCSpan mb) {
 	memcpy(data + offset, mb.data(), mb.size());
 }
 
+} // Ext::
 
-ostream& __stdcall operator<<(ostream& os, RCSpan cbuf) {
+namespace std {
+
+ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf) {
 	static const char s_upperHexDigits[] = "0123456789ABCDEF",
  					  s_lowerHexDigits[] = "0123456789abcdef";
 	if (!cbuf.data())
@@ -258,7 +261,7 @@ ostream& __stdcall operator<<(ostream& os, RCSpan cbuf) {
 	return os;
 }
 
-wostream& __stdcall operator<<(wostream& os, RCSpan cbuf) {
+wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf) {
 	static const char s_upperHexDigits[] = "0123456789ABCDEF",
 		s_lowerHexDigits[] = "0123456789abcdef";
 	if (!cbuf.data())
@@ -272,6 +275,4 @@ wostream& __stdcall operator<<(wostream& os, RCSpan cbuf) {
 }
 
 
-} // Ext::
-
-
+} // std::

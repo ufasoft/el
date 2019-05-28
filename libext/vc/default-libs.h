@@ -23,6 +23,7 @@
 #	endif
 
 #	if UCFG_CRT=='U' && defined(WIN32) && !defined(_CRTBLD)
+#error!!!
 #		pragma comment(lib, "c++")
 #	elif UCFG_FRAMEWORK && UCFG_USE_OLD_MSVCRTDLL && defined(WIN32)
 #		if !UCFG_WCE
@@ -44,11 +45,11 @@
 #				ifdef _DEBUG
 #					ifdef CRTDBG_MAP_ALLOC
 #						pragma comment(lib, "\\src\\foreign\\lib\\o_msvcrtd.lib") //!!!
-#					else	  
+#					else
 #						pragma comment(lib, "\\src\\foreign\\lib\\o_msvcrt.lib")
 //!!!#					pragma comment(lib, "C:\\DK\\WDK\\lib\\crt\\i386\\msvcrt")
 
-#					endif	
+#					endif
 #					define _AFX_NO_DEBUG_CRT
 #				else
 #					pragma comment(lib, "\\src\\foreign\\lib\\o_msvcrt.lib")
@@ -68,5 +69,3 @@
 #ifndef _AFXDLL
 #	define _ALLOW_RUNTIME_LIBRARY_MISMATCH
 #endif
-
-

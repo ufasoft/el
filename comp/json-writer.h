@@ -50,7 +50,7 @@ public:
 	}
 
 	template <typename K, typename V>
-	void Write(const unordered_map<K, V>& m) {
+	void Write(const std::unordered_map<K, V>& m) {
 		typedef unordered_map<K, V> CMap;
 		JsonWriterObject jwo(*this);
 		EXT_FOR (const CMap::value_type& kv, m) {

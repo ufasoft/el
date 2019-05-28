@@ -1,10 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
 
 #pragma once
 
@@ -27,7 +24,7 @@ extern EXT_DATA const struct defer_lock_t {} defer_lock;
 extern EXT_DATA const struct try_to_lock_t {} try_to_lock;
 
 template <class M>
-class lock_guard : public Ext::NonCopiable {
+class lock_guard : public Ext::noncopyable {
 	typedef lock_guard class_type;
 public:
 	typedef M mutex_type;
@@ -51,7 +48,7 @@ private:
 };
 
 template <class M>
-class unique_lock : public Ext::NonCopiable {
+class unique_lock : public Ext::noncopyable {
 	typedef unique_lock class_type;
 public:
 	typedef M mutex_type;
@@ -120,16 +117,16 @@ public:
 
 	void lock() {
 		if (!m_pm)
-			throw system_error(errc::operation_not_permitted);
+			throw system_error(make_error_code(errc::operation_not_permitted));
 		m_pm->lock();
 		m_owns = true;
 	}
 
 	bool try_lock() {
 		if (!m_pm)
-			throw system_error(errc::operation_not_permitted);
+			throw system_error(make_error_code(errc::operation_not_permitted));
 		if (m_owns)
-			throw system_error(errc::resource_deadlock_would_occur);
+			throw system_error(make_error_code(errc::resource_deadlock_would_occur));
 		return m_owns = m_pm->try_lock();
 	}
 
@@ -152,9 +149,9 @@ struct OnceBase {
 };
 #define EXT_ONCE_BASE_DEFINED
 
-class once_flag : Ext::NonCopiable {
+class once_flag : Ext::noncopyable {
 public:
-	volatile Ext::Int32 m_flag;
+	volatile int32_t m_flag;
 #if UCFG_WIN32_FULL
 	INIT_ONCE m_initOnce;
 #endif

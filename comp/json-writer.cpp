@@ -33,10 +33,10 @@ String JsonEscapeString(RCString s) {
 				ostringstream os;
 				os << "\\u" << setw(4) << setfill('0') << int(ch);
 				string str = os.str();
-				v.insert(v.end(), str.begin(), str.end());			
+				v.insert(v.end(), str.begin(), str.end());
 			} else
 				v.push_back(ch);
-		}		
+		}
 	}
 	return String(&v[0], v.size());
 }
@@ -118,7 +118,7 @@ JsonWriterObject::JsonWriterObject(JsonTextWriter& writer, RCString name)
 	Writer.Indentation++;
 	Writer.WriteIndent();
 	if (name != nullptr)
-		Writer.m_os << "\"" << JsonEscapeString(name) << "\": ";		
+		Writer.m_os << "\"" << JsonEscapeString(name) << "\": ";
 	Writer.m_os << "{\n";
 	Writer.FirstItem = true;
 	m_prevMode = exchange(Writer.Mode, JsonMode::Object);
@@ -136,7 +136,7 @@ JsonWriterArray::JsonWriterArray(JsonTextWriter& writer, RCString name)
 	Writer.Indentation++;
 	Writer.WriteIndent();
 	if (name != nullptr)
-		Writer.m_os << "\"" << JsonEscapeString(name) << "\": ";		
+		Writer.m_os << "\"" << JsonEscapeString(name) << "\": ";
 	Writer.m_os << "[\n";
 	Writer.FirstItem = true;
 	m_prevMode = exchange(Writer.Mode, JsonMode::Object);
