@@ -25,6 +25,7 @@ private:
 class Encoding;
 
 class EXTCLASS String {
+	Blob m_blob;
 public:
 	typedef String class_type;
 
@@ -297,8 +298,6 @@ public:
 #endif
 
 private:
-	Blob m_blob;
-
 	void Init(Encoding *enc, const char *lpch, ssize_t nLength);
 	void Init(const value_type *lpch, ssize_t nLength);
 	void MakeDirty() noexcept;
@@ -424,6 +423,10 @@ namespace std {
 
 	inline long long AFXAPI stoll(Ext::RCString s, size_t *idx = 0, int base = 10) {
 		return stoll(Ext::explicit_cast<string>(s), idx, base);
+	}
+
+	inline unsigned long long AFXAPI stoull(Ext::RCString s, size_t *idx = 0, int base = 10) {
+		return stoull(Ext::explicit_cast<string>(s), idx, base);
 	}
 
 	inline double AFXAPI stod(Ext::RCString s, size_t *idx = 0) {
