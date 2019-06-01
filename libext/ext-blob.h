@@ -304,10 +304,6 @@ inline Blob operator+(RCSpan mb1, RCSpan mb2) {
 	return r;
 }
 
-
-inline std::ostream& __stdcall operator<<(std::ostream& os, const Blob& blob) { return os << Span(blob); }
-inline std::wostream& __stdcall operator<<(std::wostream& os, const Blob& blob) { return os << Span(blob); }
-
 template <class T> class StaticList : noncopyable {
   public:
 	static T* Root;
@@ -343,6 +339,8 @@ namespace std {
 	EXT_API ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf);
 	EXT_API wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf);
 
+	inline ostream& __stdcall operator<<(ostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
+	inline wostream& __stdcall operator<<(wostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
 }
 
 namespace EXT_HASH_VALUE_NS {
