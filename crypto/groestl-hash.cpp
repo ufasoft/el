@@ -234,7 +234,7 @@ hashval Groestl512Hash::ComputeHash(RCSpan mb) {
 #if UCFG_IMP_GROESTL=='S'
 	sph_groestl512_context ctx;
 	sph_groestl512_init(&ctx);
-	sph_groestl512(&ctx, mb.P, mb.Size);
+	sph_groestl512(&ctx, mb.data(), mb.size());
 	hashval r(64);
 	sph_groestl512_close(&ctx, r.data());
 	return r;
@@ -245,19 +245,21 @@ hashval Groestl512Hash::ComputeHash(RCSpan mb) {
 
 #if UCFG_IMP_GROESTL!='T'
 static uint8_t MulRow(uint64_t a, uint64_t b) {
-	byte *pa = (uint8_t*)&a, *pb = (uint8_t*)&b;
+	uint8_t *pa = (uint8_t*)&a, *pb = (uint8_t*)&b;
 	uint8_t r = Mul(pa[0], pb[0]);
 	for (int i = 1; i<8; ++i)
 		r ^= Mul(pa[i], pb[i]);
 	return r;
 }
 
+/*!!!? Not used
 static uint64_t MulPolynom(uint64_t col, uint64_t p) {
 	uint64_t r = MulRow(col, p);
 	for (int i = 1; i<8; ++i)
 		r |= uint64_t(MulRow(col, _rotl64(p, i * 8))) << i * 8;
 	return r;
 }
+*/
 
 static uint64_t MulColumnAsLe(uint64_t col) {		// returns Little-endian.
 	uint64_t r;
