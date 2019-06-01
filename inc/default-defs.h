@@ -176,9 +176,15 @@
 
 #define _MSVCRT_WINDOWS
 
+//!!!? not defined in SDK
 //#define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!? defined in sdkddkver.h
-#define _WIN32_WINNT_WIN10_TH2 0x0A01 //!!!? not defined in SDK
-#define _WIN32_WINNT_WIN10_RS1 0x0A02 //!!!? not defined in SDK
+#define _WIN32_WINNT_WIN10_TH2 0x0A01
+#define _WIN32_WINNT_WIN10_RS1 0x0A02
+#define _WIN32_WINNT_WIN10_RS2 0x0A03
+#define _WIN32_WINNT_WIN10_RS3 0x0A04
+#define _WIN32_WINNT_WIN10_RS4 0x0A05
+#define _NT_TARGET_VERSION_WIN10_RS4 _WIN32_WINNT_WIN10_RS4
+#define _WIN32_WINNT_WIN10_RS5 0x0A06
 
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
 
@@ -189,6 +195,14 @@
 #define _APISET_MINWIN_VERSION 0x200
 
 #define PSAPI_VERSION 1 // to use psapi.dll instead of new kernel32 replacement
+
+#ifndef UCFG_WIN_CRYPT
+#	define UCFG_WIN_CRYPT 0			// To avoid warnings in windows.h
+#endif
+
+#if !UCFG_WIN_CRYPT
+#	define NOCRYPT
+#endif
 
 #ifndef __SPECSTRINGS_STRICT_LEVEL //!!!
 #	define __SPECSTRINGS_STRICT_LEVEL 0
