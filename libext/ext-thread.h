@@ -1,3 +1,8 @@
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(queue)
@@ -112,7 +117,7 @@ public:
 	static ThreadBase* AFXAPI get_CurrentThread();
 	static ThreadBase* AFXAPI TryGetCurrentThread();
 	void SetCurrentThread();
-	STATIC_PROPERTY_DEF_GET(ThreadBase, ThreadBase*, CurrentThread);
+	EXT_DATA STATIC_PROPERTY_DEF_GET(ThreadBase, ThreadBase*, CurrentThread);
 //!!!#endif
 
 	bool Join(int ms = INFINITE);
@@ -210,7 +215,7 @@ public:
 #endif
 	//!!!D	static CTls t_pCurThreader;//!!!
 	thread_group& GetThreadRef();
-	void SleepImp(DWORD dwMilliseconds);
+	void SleepImp(unsigned long ms);
 protected:
 #if UCFG_USE_PTHREADS
 	mutable pthread_t m_ptid;
@@ -261,10 +266,16 @@ void AFXAPI sleep_for(const TimeSpan& span);
 } // Ext::this_thread::
 
 class thread_group : noncopyable {
+	atomic<int32_t> m_aRef;
+protected:
+	mutable CCriticalSection m_cs;				// Often locked from static ctr/dtor, which not allowed by VC std::mutex implementation
+	typedef std::unordered_set<ptr<ThreadBase>> CThreadColl;
+	CThreadColl m_threads;
 public:
 	CEvent m_evFinal;
 	//!!!         m_evFinish;
 	atomic<int32_t> aRefCountActiveThreads;
+	bool m_bSync;
 
 	thread_group(bool bSync = true);
 	virtual ~thread_group();	
@@ -286,14 +297,6 @@ public:
 	bool StopChild(ThreadBase *t, int msTimeout = INFINITE);
 	void interrupt_all();
 	void join_all();
-protected:
-	mutable CCriticalSection m_cs;				// Often locked from static ctr/dtor, which not allowed by VC std::mutex implementation
-	typedef std::unordered_set<ptr<ThreadBase> > CThreadColl;
-	CThreadColl m_threads;
-private:
-	atomic<int32_t> m_aRef;
-public:
-	bool m_bSync;
 };
 
 
@@ -542,11 +545,19 @@ protected:
 	void OnAPC() override;
 };
 
-
 class ThreadPool : public Object {
 public:
-	static ThreadPool *I;
+	typedef InterlockedPolicy interlocked_policy;
 
+	static ThreadPool *I;
+protected:
+	thread_group m_tr;
+	CEvent m_evStop;
+	CSemaphore m_sem;
+
+	CCriticalSection m_cs;
+	std::queue<ptr<WorkItem>> m_queue;
+public:
 	ThreadPool();
 
 	~ThreadPool() {
@@ -575,13 +586,6 @@ public:
 		return QueueUserWorkItem(wi.get());
 	}
 protected:
-	thread_group m_tr;
-	CEvent m_evStop;
-	CSemaphore m_sem;
-	
-	CCriticalSection m_cs;
-	std::queue<ptr<WorkItem>> m_queue;
-
 	static void Ensure();
 	
 friend class PoolThread;

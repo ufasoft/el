@@ -16,7 +16,7 @@
 
 namespace Ext {
 
-class CCommandLineInfo : public Object { //!!!
+class CCommandLineInfo : public InterlockedObject { //!!!
 public:
 	enum { FileNew, FileOpen, FilePrint, FilePrintTo, FileDDE, AppRegister,
 		AppUnregister, FileNothing = -1 } m_nShellCommand;

@@ -329,8 +329,8 @@ CGlobalTracePrefix::~CGlobalTracePrefix() {
 }
 
 CFunTrace::CFunTrace(const char *funName, int trclevel)
-	: m_trclevel(trclevel)
-	, m_funName(funName)
+	: m_funName(funName)
+	, m_trclevel(trclevel)	
 {
 	int& refLevel = t_level;
 	TRC(m_trclevel, String(' ', refLevel * 2) + ">" + m_funName);

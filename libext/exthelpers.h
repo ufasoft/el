@@ -140,6 +140,7 @@ template <typename T> T exchangeZero(T& v) { return std::exchange(v, (T)0); }
 //#define SwapRetZero exchangeZero					//!!!O
 
 class CBool {
+	bool m_b;
 public:
 	CBool(bool b = false)
 		: m_b(b)
@@ -151,25 +152,15 @@ public:
 
 	operator bool() const volatile { return m_b; }
 
-/*!!!R	EXPLICIT_OPERATOR_BOOL() const volatile {
-		return m_b ? EXT_CONVERTIBLE_TO_TRUE : 0;
-	}*/
-
-	/*!!!R
-	struct _Boolean { int i; }; operator int _Boolean::*() const volatile {
-		return m_b ? &_Boolean::i : 0;
-	}*/
-
 	bool& Ref() { return m_b; }
-private:
-	bool m_b;
 };
 
 template <typename T>
 class CInt {
+	T m_v;
 public:
 	CInt(T v = 0)
-		:	m_v(v)
+		: m_v(v)
 	{}
 
 	operator T() const { return m_v; }
@@ -179,8 +170,6 @@ public:
 
 	CInt& operator++() { ++m_v; return (*this); }
 	T operator++(int) { return m_v++; }
-private:
-	T m_v;
 };
 
 template <typename T>
@@ -190,15 +179,15 @@ public:
 	T m_prev;
 
 	Keeper(T& t, const T& v)
-		:	m_t(t)
-		,	m_prev(m_t)
+		: m_t(t)
+		, m_prev(m_t)
 	{
 		t = v;
 	}
 
 	Keeper(volatile T& t, const T& v)
-		:	m_t(t)
-		,	m_prev(m_t)
+		: m_t(t)
+		, m_prev(m_t)
 	{
 		t = v;
 	}
@@ -409,13 +398,13 @@ class CRuntimeClass;
 
 class Object {
 public:
-	typedef NonInterlockedPolicy interlocked_policy;
+//	typedef NonInterlockedPolicy interlocked_policy;	// Must be explicit for safity
 
 	static const AFX_DATA CRuntimeClass classObject;
 	mutable atomic<int> m_aRef;
 
 	Object()
-		:	m_aRef(0)
+		: m_aRef(0)
 	{
 	}
 
@@ -432,6 +421,8 @@ public:
 	virtual ~Object() {
 	}
 
+	int RefCount() const noexcept { return m_aRef.load(); }
+
 	bool IsHeaped() const { return m_aRef < (10000); }			//!!! should be replaced to some num limits
 	void InitInStack() { m_aRef = 20000; }
 
@@ -444,9 +435,19 @@ public:
 
 };
 
-	// generate static object constructor for class registration
-	void AFXAPI AfxClassInit(CRuntimeClass* pNewClass);
-	struct AFX_CLASSINIT
+class InterlockedObject : public Object {
+public:
+	typedef InterlockedPolicy interlocked_policy;
+};
+
+class NonInterlockedObject : public Object {
+public:
+	typedef NonInterlockedPolicy interlocked_policy;
+};
+
+// generate static object constructor for class registration
+void AFXAPI AfxClassInit(CRuntimeClass* pNewClass);
+struct AFX_CLASSINIT
 	{ AFX_CLASSINIT(CRuntimeClass* pNewClass) { AfxClassInit(pNewClass); } };
 
 	class /*!!!AFX_CLASS*/ CRuntimeClass {
@@ -660,7 +661,6 @@ namespace Ext {
 
 
 
-
 //!!!#if UCFG_FRAMEWORK && !defined(_CRTBLD)
 
 class CLocalTracePrefix {
@@ -686,6 +686,7 @@ public:
 };
 
 class AFX_CLASS CTrace {
+	static Stream *s_pOstream, *s_pSecondStream;
 public:
 	typedef unsigned long (_cdecl* PFN_DbgPrint)(const char *format, ...);
 	EXT_DATA static PFN_DbgPrint s_pTrcPrint;
@@ -699,8 +700,6 @@ public:
 	static void AFXAPI SetOStream(Stream *os);
 	static void AFXAPI SetSecondOStream(Stream *os);
 private:
-	static Stream *s_pOstream, *s_pSecondStream;
-
 	friend class CTraceWriter;
 };
 
@@ -748,12 +747,14 @@ template <typename R> int FindSignature(const unsigned char* sig, size_t len, R 
 #endif
 
 class EXT_API CFunTrace {
+	const char* m_funName;
+	int m_trclevel;
 public:
 
 #if UCFG_WDM
 	CFunTrace(const char *funName, int trclevel = 0)
-		:	m_trclevel(trclevel)
-		,	m_funName(funName)
+		: m_funName(funName)
+		, m_trclevel(trclevel)
 	{
 		KdPrint((">%s\n", m_funName));
 	}
@@ -767,10 +768,6 @@ public:
 	CFunTrace(const char *funName, int trclevel = 0);
 	~CFunTrace();
 #endif
-
-private:
-	int m_trclevel;
-	const char *m_funName;
 };
 
 #ifdef _MSC_VER

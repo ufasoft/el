@@ -55,6 +55,35 @@ size_t BufferedStream::Read(void *buf, size_t count) const {
 	return cb;
 }
 
+int64_t MemStreamWithPosition::Seek(int64_t offset, SeekOrigin origin) const {
+	switch (origin) {
+	case SeekOrigin::Begin:
+		put_Position(offset);
+		break;
+	case SeekOrigin::Current:
+		put_Position(m_pos + offset);
+		break;
+	case SeekOrigin::End:
+		put_Position(Length + offset);
+		break;
+	}
+	return m_pos;
+}
+
+void CMemWriteStream::WriteBuffer(const void* buf, size_t count) {
+	if (count > m_mb.size() - m_pos)
+		Throw(ExtErr::EndOfStream);
+	memcpy(m_mb.data() + m_pos, buf, count);
+	m_pos += count;
+}
+
+MemoryStream::MemoryStream(size_t capacity)
+	: m_data((uint8_t*)Ext::Malloc(capacity))
+	, m_size(0)
+	, m_capacity(capacity)
+{
+}
+
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
 	auto nextPos = m_pos + count;
 	if (nextPos > m_capacity) {
@@ -110,7 +139,7 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 	const int MAX_LINE = 4096;
 	char vec[MAX_LINE];
 	char *p = vec;
-	for (int i=0; i<MAX_LINE; i++) {		//!!!
+	for (int i = 0; i < MAX_LINE; i++) { //!!!
 		char ch;
 		stm.ReadBuffer(&ch, 1);
 		if (pDupStream)

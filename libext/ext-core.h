@@ -86,6 +86,7 @@ inline uint64_t htobe(uint64_t v) { return htobe64(v); }
 inline uint64_t betoh(uint64_t v) { return be64toh(v); }
 
 template <typename T> class BeInt {
+	T m_val;
 public:
 	BeInt(T v = 0)
 		: m_val(htobe(v)) {}
@@ -96,9 +97,6 @@ public:
 		m_val = htobe(v);
 		return *this;
 	}
-
-private:
-	T m_val;
 };
 
 typedef BeInt<uint16_t> BeUInt16;
@@ -111,19 +109,10 @@ inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
 }
 
 inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
-	if (s == nullptr)
-		return os << "<#nullptr>";
-	else
-		return os << (std::wstring)explicit_cast<std::wstring>(s);
+	return s == nullptr
+		? os << "<#nullptr>"
+		: os << (std::wstring)explicit_cast<std::wstring>(s);
 }
-
-/*!!!
-inline std::istream& AFXAPI operator>>(std::istream& is, String& s) {
-	std::string bs;
-	is >> bs;
-	s = bs;
-	return is;
-}*/
 
 inline std::istream& AFXAPI getline(std::istream& is, String& s, char delim = '\n') {
 	std::string bs;
@@ -195,31 +184,15 @@ public:
 };
 
 class MemStreamWithPosition : public Stream {
+protected:
+	mutable size_t m_pos;
 public:
 	MemStreamWithPosition()
 		: m_pos(0) {}
 
 	uint64_t get_Position() const override { return m_pos; }
-
 	void put_Position(uint64_t pos) const override { m_pos = (size_t)pos; }
-
-	int64_t Seek(int64_t offset, SeekOrigin origin) const override {
-		switch (origin) {
-		case SeekOrigin::Begin:
-			put_Position(offset);
-			break;
-		case SeekOrigin::Current:
-			put_Position(m_pos + offset);
-			break;
-		case SeekOrigin::End:
-			put_Position(Length + offset);
-			break;
-		}
-		return m_pos;
-	}
-
-protected:
-	mutable size_t m_pos;
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override;
 };
 
 class CMemReadStream : public MemStreamWithPosition {
@@ -247,14 +220,12 @@ public:
 class CBlobReadStream : public CMemReadStream {
 	typedef CMemReadStream base;
 
+	const Blob m_blob;
 public:
 	CBlobReadStream(const Blob& blob)
 		: base(blob)
 		, m_blob(blob) // m_mb now points to the same buffer as m_blob
 	{}
-
-private:
-	const Blob m_blob;
 };
 
 class CMemWriteStream : public MemStreamWithPosition {
@@ -266,33 +237,24 @@ public:
 
 	uint64_t get_Length() const override { return m_mb.size(); }
 	bool Eof() const override { return m_pos == m_mb.size(); }
+	void WriteBuffer(const void* buf, size_t count) override;
 
 	void put_Position(uint64_t pos) const override {
 		if (pos > m_mb.size())
 			Throw(E_FAIL);
 		m_pos = (size_t)pos;
 	}
-
-	void WriteBuffer(const void* buf, size_t count) override {
-		if (count > m_mb.size() - m_pos)
-			Throw(ExtErr::EndOfStream);
-		memcpy(m_mb.data() + m_pos, buf, count);
-		m_pos += count;
-	}
 };
 
 class EXTAPI MemoryStream : public MemStreamWithPosition {
+	uint8_t* m_data;
+	size_t m_size, m_capacity;
 public:
 	typedef MemoryStream class_type;
 
 	static const size_t DEFAULT_CAPACITY = 256;
 
-	MemoryStream(size_t capacity = DEFAULT_CAPACITY)
-		: m_data((uint8_t*)Ext::Malloc(capacity))
-		, m_size(0)
-		, m_capacity(capacity)
-	{
-	}
+	MemoryStream(size_t capacity = DEFAULT_CAPACITY);
 
 	~MemoryStream() {
 		free(m_data);
@@ -314,10 +276,6 @@ public:
 
 	size_t get_Capacity() const { return m_capacity; }
 	DEFPROP_GET(size_t, Capacity);
-
-private:
-	uint8_t* m_data;
-	size_t m_size, m_capacity;
 };
 
 AFX_API String AFXAPI operator+(const String& s, const char* lpsz); // friend declaration in the "class String" is not enough
@@ -466,7 +424,7 @@ namespace Ext {
 
 class UTF8Encoding;
 
-class Encoding : public Object {
+class Encoding : public InterlockedObject {
 public:
 	EXT_DATA static Encoding* s_Default;
 	EXT_DATA static UTF8Encoding UTF8;
@@ -734,16 +692,14 @@ class StreamWriter {
 public:
 	Ext::Encoding& Encoding;
 	String NewLine;
+	Stream& BaseStream;
 
 	StreamWriter(Stream& stm, Ext::Encoding& enc = Ext::Encoding::Default())
 		: Encoding(enc)
 		, NewLine("\r\n")
-		, m_stm(stm) {}
+		, BaseStream(stm) {}
 
 	void WriteLine(RCString line);
-
-private:
-	Stream& m_stm;
 };
 
 unsigned int MurmurHashAligned2(RCSpan cbuf, uint32_t seed);

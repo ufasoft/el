@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -236,7 +236,7 @@ LAB_OUT:
 }
 
 void StreamWriter::WriteLine(RCString line) {
-	m_stm.Write(Encoding.GetBytes(line + NewLine));
+	BaseStream.Write(Encoding.GetBytes(line + NewLine));
 }
 
 uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
@@ -244,17 +244,17 @@ uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
 
 	uint64_t r = 0;
 #if UCFG_STDSTL
-	for (size_t i=0, e=min(size_t(64), size_t(bs.size()-pos)); i<e; ++i)
-		r |= uint64_t(bs[pos+i]) << i;
+	for (size_t i = 0, e = min(size_t(64), size_t(bs.size() - pos)); i < e; ++i)
+		r |= uint64_t(bs[pos + i]) << i;
 #else
-	size_t idx = pos/bs.bits_per_block;
+	size_t idx = pos / bs.bits_per_block;
 	const uint8_t *pb = (const uint8_t *)&bs.m_data[idx];
 	ssize_t outRangeBits = max(ssize_t(pos + 64 - bs.size()), (ssize_t)0);
 	if (0 == outRangeBits)
-		return *(uint64_t*)pb;
-	size_t n = std::min(size_t(8), (bs.num_blocks()-idx)*bs.bits_per_block/8);
-	for (size_t i=0; i<n; ++i)
-		((uint8_t*)&r)[i] = pb[i];
+		return *(uint64_t *)pb;
+	size_t n = std::min(size_t(8), (bs.num_blocks() - idx) * bs.bits_per_block / 8);
+	for (size_t i = 0; i < n; ++i)
+		((uint8_t *)&r)[i] = pb[i];
 	r &= uint64_t(-1) >> outRangeBits;
 #endif
 	return r;

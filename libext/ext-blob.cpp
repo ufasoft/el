@@ -24,37 +24,37 @@ CBlobBufBase::Char *CBlobBufBase::Detach() {
 #endif
 
 CStringBlobBuf::CStringBlobBuf(size_t len)
-	:	m_apChar(0)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
-	:	m_apChar(0)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
 	if (p)
-		memcpy(this+1, p, len);
+		memcpy(this + 1, p, len);
 	else
-		memset(this+1, 0, len);
+		memset(this + 1, 0, len);
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(size_t len, const void *buf, size_t copyLen)
-	:	m_apChar(0)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
-	memcpy(this+1, buf, copyLen);
+	memcpy(this + 1, buf, copyLen);
 	memset((uint8_t *)(this + 1) + copyLen, 0, len - copyLen + sizeof(String::value_type));
 }
 
@@ -148,12 +148,12 @@ Blob& Blob::operator=(const Blob& val) {
 }
 
 Blob& Blob::operator+=(RCSpan mb) {
-	size_t prevSize = Size;
+	size_t prevSize = size();
 	if (mb.data() == constData()) {
-		Size = prevSize + mb.size();
+		resize(prevSize + mb.size());
 		memcpy(data() + prevSize, data(), mb.size());
 	} else {
-		Size = prevSize + mb.size();
+		resize(prevSize + mb.size());
 		memcpy(data() + prevSize, mb.data(), mb.size());
 	}
 	return *this;
@@ -180,13 +180,13 @@ bool Blob::operator==(const Blob& blob) const noexcept {
 	if (m_pData == blob.m_pData)
 		return true;
 	if (m_pData) {
-		size_t size = Size;
-		if (!blob.m_pData || size!=blob.Size)
+		size_t sz = size();
+		if (!blob.m_pData || sz != blob.size())
 			return false;
 #if defined(_MSC_VER) && defined(_M_IX86)
-		return mem2equal((const wchar_t*)constData(), (const wchar_t*)blob.constData(), (size+1)/2);		// because trailing 2 zeros allow compare by 2-bytes
+		return mem2equal((const wchar_t *)constData(), (const wchar_t *)blob.constData(), (sz + 1) / 2); // because trailing 2 zeros allow compare by 2-bytes
 #else
-		return !memcmp(constData(), blob.constData(), size);
+		return !memcmp(constData(), blob.constData(), sz);
 #endif
 	}
 	return false;
@@ -200,8 +200,8 @@ bool Blob::operator<(const Blob& blob) const noexcept {
 		return blob.m_pData;
 	if (!blob.m_pData)
 		return false;
-	int n = memcmp(constData(), blob.constData(), min(Size, blob.Size));
-	return n ? n<0 : Size<blob.Size;
+	int n = memcmp(constData(), blob.constData(), min(size(), blob.size()));
+	return n ? n < 0 : size() < blob.size();
 }
 
 void Blob::Cow() {
@@ -223,26 +223,136 @@ Blob Blob::FromHexString(RCString s) {
 	return blob;
 }
 
-void Blob::put_Size(size_t size) {
+void Blob::resize(size_t size) {
 	m_pData = m_pData ? m_pData->SetSize(size) : new(size, false) CStringBlobBuf(size);
 }
 
-void Blob::Replace(size_t offset, size_t size, RCSpan mb) {
+void Blob::Replace(size_t offset, size_t sz, RCSpan mb) {
 	Cow();
 	uint8_t *data;
-	uint8_t newSize = get_Size() + mb.size() - size;
-	if (mb.size() >= size) {
-		put_Size(newSize);
+	uint8_t newSize = size() + mb.size() - sz;
+	if (mb.size() >= sz) {
+		resize(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.size(), data + offset + size, newSize - offset - mb.size());
+		memmove(data + offset + mb.size(), data + offset + sz, newSize - offset - mb.size());
 	} else {
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.size(), data + offset + size, Size - offset - size);
-		put_Size(newSize);
+		memmove(data + offset + mb.size(), data + offset + sz, size() - offset - sz);
+		resize(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
 	}
 	memcpy(data + offset, mb.data(), mb.size());
 }
+
+AutoBlobBase::AutoBlobBase(const AutoBlobBase& x, size_t szSpace) {
+	if (x.IsInHeap(szSpace))
+		memcpy(m_p = (uint8_t*)Malloc(m_size = x.m_size), x.m_p, x.m_size);
+	else {
+		size_t sz = x.m_p - x.m_space;
+		memcpy(m_space, x.m_space, sz);
+		m_p = m_space + sz;
+	}
+}
+
+AutoBlobBase::AutoBlobBase(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept {
+	m_p = 0;
+	if (rv.IsInHeap(szSpace)) {
+		m_p = exchange(rv.m_p, nullptr);
+		m_size = rv.m_size;
+	} else if (rv.m_p) {
+		size_t sz = rv.Size(szSpace);
+		memcpy(m_space, rv.m_space, sz);
+		m_p = m_space + sz;
+	}
+}
+
+AutoBlobBase::AutoBlobBase(RCSpan s, size_t szSpace) {
+	size_t sz = s.size();
+	uint8_t* p;
+	m_p = sz <= szSpace
+		? (p = m_space) + sz
+		: p = (uint8_t*)Malloc(m_size = sz);
+	memcpy(p, s.data(), sz);
+}
+
+void AutoBlobBase::DoAssign(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept {
+	bool isInHeap = IsInHeap(szSpace);
+	if (rv.IsInHeap(szSpace)) {
+		if (isInHeap) {
+			std::swap(m_p, rv.m_p);
+			std::swap(m_size, rv.m_size);
+		} else {
+			m_p = exchange(rv.m_p, nullptr);
+			m_size = rv.m_size;
+		}
+	} else {
+		size_t sz = rv.Size(szSpace);
+		size_t mySize = Size(szSpace);
+		memcpy(m_space, rv.m_space, sz);
+		if (isInHeap) {
+			rv.m_size = mySize;
+			rv.m_p = m_p;
+		}
+		m_p = m_space + sz;
+	}
+}
+
+void AutoBlobBase::DoAssign(RCSpan s, size_t szSpace) {
+	const uint8_t* data = s.data();
+	if (m_p != data) {
+		if (IsInHeap(szSpace))
+			free(exchange(m_p, (uint8_t*)0));
+		size_t sz = s.size();
+		uint8_t* p;
+		m_p = sz <= szSpace
+			? (p = m_space) + sz
+			: p = (uint8_t*)Malloc(m_size = sz);
+		memcpy(p, data, sz);
+	}
+}
+
+void AutoBlobBase::DoAssignIfNull(RCSpan s, size_t szSpace) {
+	if (m_p)
+		return;
+	size_t sz = s.size();
+	if (sz <= szSpace) {
+		memcpy(m_space, s.data(), sz);
+		m_p = m_space + sz;
+	} else {
+		uint8_t* p = (uint8_t*)memcpy(Malloc(sz), s.data(), m_size = sz);
+		if (Interlocked::CompareExchange(m_p, p, (uint8_t*)0))
+			free(p);
+	}
+}
+
+
+void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
+	size_t szCur = Size(szSpace);
+	bool isInHeap = IsInHeap(szSpace);
+	if (sz <= szCur) {
+		if (isInHeap)
+			m_size = sz;
+		else
+			m_p = m_space + sz;
+	} else if (sz <= szSpace) {
+		if (isInHeap) {
+			memcpy(m_space, m_p, szCur);
+			free(m_p);
+		}
+		if (bZeroContent)
+			memset(m_space + szCur, 0, sz - szCur);
+		m_p = m_space + sz;
+	} else {
+		uint8_t* p = (uint8_t*)memcpy(Malloc(sz), Data(szSpace), szCur);
+		if (isInHeap)
+			free(m_p);
+		m_p = p;
+		m_size = sz;
+		if (bZeroContent)
+			memset(p + szCur, 0, sz - szCur);
+	}
+}
+
 
 } // Ext::
 

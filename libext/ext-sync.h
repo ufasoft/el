@@ -84,6 +84,15 @@ private:
 };
 
 class AFX_CLASS CCriticalSection : public CSyncObject {
+protected:
+#if UCFG_USE_PTHREADS
+	pthread_mutex_t m_mutex;
+#elif defined WDM_DRIVER
+	KSPIN_LOCK m_spinLock;
+	KIRQL m_oldIrql;
+#else
+	CRITICAL_SECTION m_sect;
+#endif
 public:
 #if UCFG_USE_POSIX
 	typedef pthread_mutex_t *native_handle_type;
@@ -143,14 +152,6 @@ public:
 
 protected:
 
-#if UCFG_USE_PTHREADS
-	pthread_mutex_t m_mutex;
-#elif defined WDM_DRIVER
-    KSPIN_LOCK m_spinLock;
-	KIRQL m_oldIrql;
-#else
-	CRITICAL_SECTION m_sect;
-#endif
 	void Init();
 
 friend class CEvent;
@@ -191,7 +192,7 @@ public:
 	mutable T *m_sync;
 
 	CScopedLock(const CScopedLock& sl)
-		:	m_sync(exchange(sl.m_sync, nullptr))
+		: m_sync(exchange(sl.m_sync, nullptr))
 	{}
 
 	CScopedLock(T& sync)

@@ -93,7 +93,7 @@ CAppBase::CAppBase()
 #if UCFG_USE_RESOURCES
 	{
 		FileVersionInfo vi;
-		if (vi.m_blob.Size != 0) {
+		if (vi.m_blob.size()) {
 			FileDescription = vi.FileDescription;
 			SVersion = vi.GetProductVersionN().ToString(2);
 			LegalCopyright = vi.LegalCopyright;
@@ -387,7 +387,6 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 #else
 	setlocale(LC_CTYPE, "");
 #endif
-
 	if (const char *slevel = getenv("UCFG_TRC")) {
 		if (!CTrace::GetOStream())
 			CTrace::SetOStream(new CIosStream(clog));
@@ -429,13 +428,13 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 					Environment::ExitCode = 3;  // Compilation error
 					break;
 				default:
-					wcerr << ex.what() << endl;
+					wcerr << "\n" << ex.what() << endl;
 					Environment::ExitCode = 2;
 				}
 			}
 		}
 	} catch (const exception& ex) {
-		cerr << ex.what() << endl;
+		cerr << "\n" << ex.what() << endl;
 		Environment::ExitCode = 2;
 	}
 #if UCFG_COMPLEX_WINAPP || !UCFG_EXTENDED

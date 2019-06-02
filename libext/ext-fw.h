@@ -135,7 +135,7 @@ protected:
 	void *m_p;
 
 	DlProcWrapBase()
-		:	m_p(0)
+		: m_p(0)
 	{}
 
 	DlProcWrapBase(RCString dll, RCString funname);
@@ -168,15 +168,15 @@ template <typename F> bool GetProcAddress(F& pfn, RCString dll, RCString funname
 	return GetProcAddress(pfn, ::GetModuleHandle(dll), funname);
 }
 
-class ResourceObj : public Object {
+class ResourceObj : public InterlockedObject {
+	HMODULE m_hModule;
+	HRSRC m_hRsrc;
+	HGLOBAL m_hglbResource;
+	void* m_p;
 public:
 	ResourceObj(HMODULE hModule, HRSRC hRsrc);
 	~ResourceObj();
 private:
-	HMODULE m_hModule;
-	HRSRC m_hRsrc;
-	HGLOBAL m_hglbResource;
-	void *m_p;
 
 	friend class Resource;
 };
@@ -324,12 +324,12 @@ public:
 		bool BufferingEnabled;
 
 		OpenInfo(const path& p = path())
-			:	Path(p)
-			,	Mode(FileMode::Open)
-			,	Access(FileAccess::ReadWrite)
-			,	Share(FileShare::None)
-			,	Options(FileOptions::None)
-			,	BufferingEnabled(true)
+			: Path(p)
+			, Mode(FileMode::Open)
+			, Access(FileAccess::ReadWrite)
+			, Share(FileShare::None)
+			, Options(FileOptions::None)
+			, BufferingEnabled(true)
 		{}
 	};
 
@@ -411,6 +411,8 @@ ENUM_CLASS(MemoryMappedFileRights) {
 } END_ENUM_CLASS(MemoryMappedFileRights);
 
 class VirtualMem : noncopyable {
+	void* m_address;
+	size_t m_size;
 public:
 	VirtualMem(size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePage = false)
 		: m_address(0)
@@ -436,9 +438,6 @@ public:
 		m_address = a;
 		m_size = size;
 	}
-private:
-	void *m_address;
-	size_t m_size;
 };
 
 class MemoryMappedFile ;
@@ -449,14 +448,15 @@ public:
 	void *Address;
 	size_t Size;
 	MemoryMappedFileAccess Access;
-	bool AddressFixed;
+	bool AddressFixed, LargePages;
 
 	MemoryMappedView()
-		:	Offset(0)
-		,	Address(0)
-		,	Size(0)
-		,	Access(MemoryMappedFileAccess::ReadWrite)
-		,	AddressFixed(false)
+		: Offset(0)
+		, Address(0)
+		, Size(0)
+		, Access(MemoryMappedFileAccess::ReadWrite)
+		, AddressFixed(false)
+		, LargePages(false)
 	{
 	}
 
@@ -465,11 +465,11 @@ public:
 	}
 
 	MemoryMappedView(const MemoryMappedView& v)
-		:	Offset(0)
-		,	Address(0)
-		,	Size(0)
-		,	Access(MemoryMappedFileAccess::ReadWrite)
-		,	AddressFixed(false)
+		: Offset(0)
+		, Address(0)
+		, Size(0)
+		, Access(MemoryMappedFileAccess::ReadWrite)
+		, AddressFixed(false)
 	{
 		if (v.Address)
 			Throw(E_FAIL);
@@ -495,16 +495,15 @@ class MemoryMappedFile {
 public:
 	SafeHandle m_hMapFile;
 	MemoryMappedFileAccess Access;
-//!!!R	size_t Size;
 
 	MemoryMappedFile()
-		:	Access(MemoryMappedFileAccess::None)
+		: Access(MemoryMappedFileAccess::None)
 	{
 	}
 
 	MemoryMappedFile(EXT_RV_REF(MemoryMappedFile) rv)
-		:	m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
-		,	Access(rv.Access)
+		: m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
+		, Access(rv.Access)
 	{}
 
 	void Close() {
@@ -526,11 +525,11 @@ public:
 	intptr_t GetHandle() { return m_hMapFile.DangerousGetHandle(); }
 #endif
 
-	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePages = false);
 	static MemoryMappedFile AFXAPI CreateFromFile(const path& p, FileMode mode = FileMode::Open, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI OpenExisting(RCString mapName, MemoryMappedFileRights rights = MemoryMappedFileRights::ReadWrite, HandleInheritability inheritability = HandleInheritability::None);
 
-	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access);
+	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access, bool bLargePages = false);
 	MemoryMappedView CreateView(uint64_t offset, size_t size = 0) { return CreateView(offset, size, Access); }
 };
 
@@ -540,14 +539,14 @@ public:
 //!!!	mutable File m_ownFile;
 	observer_ptr<File> m_pFile;
 	mutable FILE *m_fstm;
-	CBool TextMode;
 
 #if UCFG_WIN32_FULL
 	observer_ptr<OVERLAPPED> m_ovl;
 #endif
+	CBool TextMode;
 
 	FileStream()
-		:	m_fstm(0)
+		: m_fstm(0)
 	{
 	}
 
@@ -556,16 +555,16 @@ public:
 , OVERLAPPED *ovl = nullptr
 #endif
 )
-		:	m_pFile(&file)
-		,	m_fstm(0)
+		: m_pFile(&file)
+		, m_fstm(0)
 #if UCFG_WIN32_FULL
-		,	m_ovl(ovl)
+		, m_ovl(ovl)
 #endif
 	{
 	}
 
 	FileStream(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read, size_t bufferSize = 4096, FileOptions options = FileOptions::None)
-		:	m_fstm(0)
+		: m_fstm(0)
 	{
 		Open(p, mode, access, share, bufferSize, options);
 	}
@@ -632,10 +631,12 @@ public:
 
 class PositionOwningFileStream : public FileStream {
 	typedef FileStream base;
+protected:
+	mutable uint64_t m_pos;
 public:
 	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0)
-		:	base(file)
-		,	m_pos(pos)
+		: base(file)
+		, m_pos(pos)
  	{
 	}
 
@@ -655,20 +656,22 @@ public:
 	size_t Read(void *buf, size_t count) const override;
 	void ReadBuffer(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
-protected:
-	mutable uint64_t m_pos;
 };
 
 class TraceStream : public FileStream {
 	typedef FileStream base;
-public:
-	TraceStream(const path& p, bool bAppend = false);
 protected:
 	File m_file;
+public:
+	TraceStream(const path& p, bool bAppend = false);
 };
 
 class CycledTraceStream : public TraceStream {
 	typedef TraceStream base;
+
+	path m_path;
+	std::shared_mutex m_mtx;
+	size_t m_maxSize, m_threshold;
 public:
 	CycledTraceStream(const path& p, bool bAppend = false, size_t maxSize = 10000000)
 		: base(p, bAppend)
@@ -678,10 +681,6 @@ public:
 	{}
 
 	void WriteBuffer(const void *buf, size_t count) override;
-private:
-	path m_path;
-	std::shared_mutex m_mtx;
-	size_t m_maxSize, m_threshold;
 };
 
 class Guid : public GUID {
@@ -739,10 +738,10 @@ public:
 	int Major, Minor, Build, Revision;
 
 	explicit Version(int major = 0, int minor = 0, int build = -1, int revision = -1)
-		:	Major(major)
-		,	Minor(minor)
-		,	Build(build)
-		,	Revision(revision)
+		: Major(major)
+		, Minor(minor)
+		, Build(build)
+		, Revision(revision)
 	{}
 
 	explicit Version(RCString s);
@@ -751,15 +750,14 @@ public:
 	static Version AFXAPI FromFileInfo(int ms, int ls, int fieldCount = 4);
 #endif
 
-	bool operator==(const Version& ver) const {
-		return Major==ver.Major && Minor==ver.Minor && Build==ver.Build && Revision==ver.Revision;
+	bool operator==(const Version& x) const {
+		return Major == x.Major && Minor == x.Minor && Build == x.Build && Revision == x.Revision;
 	}
 
-	bool operator<(const Version& ver) const {
-		return Major<ver.Major ||
-			Major==ver.Major && (Minor<ver.Minor ||
-			                     Minor==ver.Minor && (Build<ver.Build ||
-								                      Build==ver.Build  && Revision<ver.Revision));
+	bool operator<(const Version& x) const {
+		return Major < x.Major
+			|| Major == x.Major
+				&& (Minor < x.Minor || Minor == x.Minor && (Build < x.Build || Build == x.Build && Revision < x.Revision));
 	}
 
 	String ToString(int fieldCount) const;
@@ -805,21 +803,19 @@ struct IAnnoy {
 };
 
 class EXTAPI CAnnoyer {
+	observer_ptr<IAnnoy> m_iAnnoy;
+	DateTime m_prev;
+	TimeSpan m_period;
 public:
 	CAnnoyer(IAnnoy *iAnnoy = 0)
-		:	m_iAnnoy(iAnnoy)
-		,	m_period(TimeSpan::FromSeconds(1))
+		: m_iAnnoy(iAnnoy)
+		, m_period(TimeSpan::FromSeconds(1))
 	{
 	}
 
 	void Request();
 protected:
 	virtual void OnAnnoy();
-private:
-	observer_ptr<IAnnoy> m_iAnnoy;
-
-	DateTime m_prev;
-	TimeSpan m_period;
 };
 
 #if !UCFG_WCE
@@ -901,8 +897,8 @@ public:
 	bool m_bDir;
 
 	FileSystemInfo(const path& name, bool bDir)
-		:	FullPath(name)
-		,	m_bDir(bDir)
+		: FullPath(name)
+		, m_bDir(bDir)
 	{}
 
 	DWORD get_Attributes() const;
@@ -1297,7 +1293,7 @@ ENUM_CLASS(VarType) {
 
 class VarValue;
 
-class VarValueObj : public Object {
+class VarValueObj : public InterlockedObject {
 public:
 	virtual bool HasKey(RCString key) const =0;
 	virtual VarType type() const =0;
@@ -1378,7 +1374,7 @@ EXT_DEF_HASH(Ext::VarValue)
 namespace Ext {
 
 
-class MarkupParser : public Object {
+class MarkupParser : public InterlockedObject {
 public:
 	int Indent;
 	CBool Compact;
@@ -1547,6 +1543,9 @@ public:
 		StandardOutput,
 		StandardError;
 #endif
+protected:
+	int m_stat_loc;
+	mutable CInt<pid_t> m_pid;
 public:
 	ProcessObj();
 #if UCFG_WIN32
@@ -1599,9 +1598,6 @@ protected:
 	}
 
 	void CommonInit();
-
-	int m_stat_loc;
-	mutable CInt<pid_t> m_pid;
 };
 
 
@@ -1661,9 +1657,10 @@ public:
 };
 
 class POpen : noncopyable {
+	FILE* m_stream;
 public:
 	POpen(RCString command, RCString mode)
-		:	m_stream(::popen(command, mode))
+		: m_stream(::popen(command, mode))
 	{
 		CCheck(m_stream ? 1 : -1);
 	}
@@ -1685,10 +1682,7 @@ public:
 	}
 
 	operator FILE*() { return m_stream; }
-private:
-	FILE *m_stream;
 };
-
 
 
 

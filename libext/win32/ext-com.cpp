@@ -281,7 +281,7 @@ Blob::Blob(BSTR bstr) {
 Blob::operator COleVariant() const {
 	COleVariant v;
 	if (m_pData) {
-		if (!(v.bstrVal = SysAllocStringByteLen((char*)constData(), (UINT)Size)))
+		if (!(v.bstrVal = SysAllocStringByteLen((char*)constData(), (UINT)size())))
 			Throw(E_OUTOFMEMORY);
 		v.vt = VT_BSTR;
 	} else
@@ -296,14 +296,14 @@ void Blob::SetVariant(const VARIANT& v) {
 			SAFEARRAY *psa = v.parray;
 			CSafeArray sa(psa);
 			int len = sa.GetUBound()+1;
-			Size = len;
+			resize(len);
 			memcpy(data(), CSafeArrayAccessData(sa).GetData(), len);
 		}
 		break;
 	case VT_BSTR:
 		{
 			int len = SysStringByteLen(v.bstrVal);
-			Size = len;
+			resize(len);
 			memcpy(data(), v.bstrVal, len);
 		}
 		break;

@@ -61,4 +61,25 @@ DECLSPEC_NORETURN __forceinline void AFXAPI Throw(ExtErr v) {
 }
 #endif
 
+template <typename T, class L>
+bool between(const T& v, const T& lo, const T& hi, L pred) {
+	return !pred(v, lo) && !pred(hi, v);
+}
+
+template <typename T>
+bool between(const T& v, const T& lo, const T& hi) {
+	return between<T, std::less<T>>(v, lo, hi, std::less<T>());
+}
+
+template <typename T, class L>
+inline bool Between(T v, T lo, T hi, L pred) {
+	return !pred(v, lo) && !pred(hi, v);
+}
+
+template <typename T>
+inline bool Between(T v, T lo, T hi) {
+	return Between<T, std::less<T>>(v, lo, hi, std::less<T>());
+}
+
+
 } // namespace Ext

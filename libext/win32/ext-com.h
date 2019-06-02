@@ -637,7 +637,7 @@ public:
 	ITypeInfo *GetTypeInfo(const IID *piid);
 };
 
-class CComObjectRootBase : public Object {
+class CComObjectRootBase : public InterlockedObject {
 	typedef CComObjectRootBase class_type;
 	typedef Object base;
 public:
@@ -781,14 +781,14 @@ public:
 
 #if UCFG_COM_IMPLOBJ
 
-class CComGeneralClass : public Object {
+class CComGeneralClass : public InterlockedObject {
 public:
 	CLSID m_clsid;
 	String m_progID;
 	String m_indProgID;
+	EXT_ATL_CREATORFUNC *m_pfnCreateInstance;
 	int m_descID;
 	DWORD m_flags;
-	EXT_ATL_CREATORFUNC *m_pfnCreateInstance;
 
 	CComGeneralClass(const CLSID& clsid, EXT_ATL_CREATORFUNC *pfn, int descID, RCString progID = nullptr, RCString indProgID = nullptr,
 		DWORD flags = THREADFLAGS_APARTMENT);

@@ -386,8 +386,8 @@ public:
 	}
 
 	Socket(EXT_RV_REF(Socket) rv)
-		:	base(static_cast<EXT_RV_REF(SafeHandle)>(rv))
-		,	m_bBlocking(rv.m_bBlocking)
+		: base(static_cast<EXT_RV_REF(SafeHandle)>(rv))
+		, m_bBlocking(rv.m_bBlocking)
 	{}
 
 	virtual ~Socket();

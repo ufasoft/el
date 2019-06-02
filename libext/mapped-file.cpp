@@ -27,7 +27,7 @@ static int MemoryMappedFileAccessToInt(MemoryMappedFileAccess access) {
 	case MemoryMappedFileAccess::ReadExecute:		return PROT_READ | PROT_EXEC;
 	case MemoryMappedFileAccess::ReadWriteExecute:	return PROT_READ | PROT_WRITE | PROT_EXEC;
 	default:
-		Throw(E_INVALIDARG);	
+		Throw(E_INVALIDARG);
 	}
 #else
 	switch (access) {
@@ -39,18 +39,18 @@ static int MemoryMappedFileAccessToInt(MemoryMappedFileAccess access) {
 	case MemoryMappedFileAccess::ReadExecute:		return PAGE_EXECUTE_READ;
 	case MemoryMappedFileAccess::ReadWriteExecute:	return PAGE_EXECUTE_READWRITE;
 	default:
-		Throw(E_INVALIDARG);	
+		Throw(E_INVALIDARG);
 	}
 #endif
 }
 
 
 MemoryMappedView::MemoryMappedView(EXT_RV_REF(MemoryMappedView) rv)
-	:	Offset(exchange(rv.Offset, 0))
-	,	Address(exchange(rv.Address, nullptr))
-	,	Size(exchange(rv.Size, 0))
-	,	Access(rv.Access)
-	,	AddressFixed(rv.AddressFixed)
+	: Offset(exchange(rv.Offset, 0))
+	, Address(exchange(rv.Address, nullptr))
+	, Size(exchange(rv.Size, 0))
+	, Access(rv.Access)
+	, AddressFixed(rv.AddressFixed)
 {
 }
 
@@ -90,6 +90,8 @@ void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size,
 #	if UCFG_WCE
 	Win32Check((Address = ::MapViewOfFile((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size)) != 0);
 #	else
+	if (LargePages)
+		dwAccess |= FILE_MAP_LARGE_PAGES;
 	Win32Check((Address = ::MapViewOfFileEx((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size, desiredAddress)) != 0);
 #	endif
 #endif
@@ -125,19 +127,22 @@ void AFXAPI MemoryMappedView::Protect(void *p, size_t size, MemoryMappedFileAcce
 #endif
 }
 
-MemoryMappedView MemoryMappedFile::CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access) {
+MemoryMappedView MemoryMappedFile::CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access, bool bLargePages) {
 	MemoryMappedView r;
 	r.Access = access;
+	r.LargePages = bLargePages;
 	r.Map(_self, offset, size);
 	return std::move(r);
 }
 
-MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access) {
+MemoryMappedFile MemoryMappedFile::CreateFromFile(File& file, RCString mapName, uint64_t capacity, MemoryMappedFileAccess access, bool bLargePages) {
 	int prot = MemoryMappedFileAccessToInt(access);
 	MemoryMappedFile r;
 	r.Access = access;
-#if UCFG_WIN32	
-	r.m_hMapFile.Attach((intptr_t)::CreateFileMapping((HANDLE)file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));	
+#if UCFG_WIN32
+	if (bLargePages)
+		prot |= SEC_LARGE_PAGES | SEC_COMMIT;
+	r.m_hMapFile.Attach((intptr_t)::CreateFileMapping((HANDLE)file.DangerousGetHandle(), 0, prot, uint32_t(capacity>>32), uint32_t(capacity), mapName));
 #else
 	Throw(E_NOTIMPL);
 #endif
@@ -161,7 +166,7 @@ MemoryMappedFile MemoryMappedFile::OpenExisting(RCString mapName, MemoryMappedFi
 		dwAccess |= FILE_MAP_WRITE;
 	if (int(rights) & int(MemoryMappedFileRights::Execute))
 		dwAccess |= FILE_MAP_EXECUTE;
-	r.m_hMapFile.Attach((intptr_t)::OpenFileMapping(dwAccess, inheritability==HandleInheritability::Inheritable, mapName));
+	r.m_hMapFile.Attach((intptr_t)::OpenFileMapping(dwAccess, inheritability == HandleInheritability::Inheritable, mapName));
 #else
 	Throw(E_NOTIMPL);
 #endif
@@ -173,13 +178,13 @@ void VirtualMem::Alloc(size_t size, MemoryMappedFileAccess access, bool bLargePa
 		Throw(E_FAIL);
 	m_size = size;
 #if UCFG_USE_POSIX
-	int flags = 0 
+	int flags = 0
 		| (bLargePage ? MAP_HUGETLB : 0;
 	void *a = ::mmap(0, size, MemoryMappedFileAccessToInt(access), flags, 0, 0);
 	CCheck(a != MAP_FAILED);
 	m_address = a;
 #else
-	Win32Check(bool(m_address = (uint8_t*)::VirtualAlloc(0, size, MEM_COMMIT | (bLargePage ? MEM_LARGE_PAGES : 0), MemoryMappedFileAccessToInt(access))));
+	Win32Check(bool(m_address = (uint8_t*)::VirtualAlloc(0, size, MEM_COMMIT | (bLargePage ? MEM_LARGE_PAGES | MEM_RESERVE : 0), MemoryMappedFileAccessToInt(access))));
 #endif
 }
 
@@ -196,4 +201,3 @@ void VirtualMem::Free() {
 
 
 } // Ext::
-

@@ -8,13 +8,19 @@
 
 #include <chrono>
 
-namespace ExtSTL { namespace sys {
+#include "ext-blob.h"
+#include "ext-string.h"
+
+namespace ExtSTL { namespace filesystem {
 using namespace std;
 using namespace Ext;
 
 class path {
 public:
 	typedef Ext::String string_type;
+private:
+	string_type m_s;
+public:
 #if UCFG_USE_POSIX
 	typedef char value_type;
 	static const value_type preferred_separator = '/';
@@ -27,22 +33,25 @@ public:
 	}
 
 	path(const char *s)
-		:	m_s(s)
+		: m_s(s)
 	{}
 
 	path(const wchar_t *s)
-		:	m_s(s)
+		: m_s(s)
 	{}
 
 	path(const string_type& s)
-		:	m_s(s)
+		: m_s(s)
 	{}
 
 	path(const wstring& s)
-		:	m_s(s)
+		: m_s(s)
 	{}
 
 	class iterator : public std::iterator<bidirectional_iterator_tag, path> {
+		const path* m_pPath;
+		string_type m_el;
+		string_type::const_iterator m_from, m_to;
 	public:
 		iterator()
 			: m_pPath(0)
@@ -75,10 +84,6 @@ public:
 		bool operator==(const iterator& it) const { return m_pPath==it.m_pPath && m_from==it.m_from && m_to==it.m_to; }
 		bool operator!=(const iterator& it) const { return !(*this == it); }
 	private:
-		const path *m_pPath;
-		string_type m_el;
-		string_type::const_iterator m_from, m_to;
-
 		void Retrieve();
 	};
 
@@ -125,39 +130,35 @@ public:
 
 	bool is_relative() const { return !is_absolute(); }
 
-
 private:
-	string_type m_s;
-
-	static bool IsSeparator(value_type ch) { return ch==preferred_separator || ch=='/'; }
-
+	static bool IsSeparator(value_type ch) { return ch == preferred_separator || ch=='/'; }
 	size_t RootNameLen() const;
 };
 
 class filesystem_error : public system_error {
 	typedef system_error base;
+
+	path m_p1, m_p2;
 public:
 	filesystem_error(const string& msg, error_code ec)
-		:	base(ec, msg) {
+		: base(ec, msg) {
 	}
 
 	filesystem_error(const string& msg, const path& p1, error_code ec)
-		:	base(ec, msg)
-		,	m_p1(p1)
+		: base(ec, msg)
+		, m_p1(p1)
 	{
 	}
 
 	filesystem_error(const string& msg, const path& p1, const path& p2, error_code ec)
-		:	base(ec, msg)
-		,	m_p1(p1)
-		,	m_p2(p2)
+		: base(ec, msg)
+		, m_p1(p1)
+		, m_p2(p2)
 	{
 	}
 
 	const path& path1() const noexcept { return m_p1; }
 	const path& path2() const noexcept { return m_p2; }
-private:
-	path m_p1, m_p2;
 };
 
 
@@ -191,10 +192,12 @@ ENUM_CLASS(perms) {
 } END_ENUM_CLASS(perms);
 
 class file_status {
+	file_type m_type;
+	perms m_perms;
 public:
 	explicit file_status(file_type typ = file_type::none, perms per = perms::unknown) noexcept
-		:	m_type(typ)
-		,	m_perms(per)
+		: m_type(typ)
+		, m_perms(per)
 	{}
 
 	file_type type() const noexcept { return m_type; }
@@ -202,9 +205,6 @@ public:
 
 	perms permissions() const noexcept { return m_perms; }
 	void permissions(perms v) noexcept { m_perms = v; }
-private:
-	file_type m_type;
-	perms m_perms;
 };
 
 inline bool status_known(file_status s) noexcept { return s.type() != file_type::none; }			//!!!? file_type::unknown in the MS's implementation
@@ -252,33 +252,35 @@ file_time_type last_write_time(const path& p, error_code& ec) noexcept;
 file_time_type last_write_time(const path& p);
 
 class directory_entry : public Ext::totally_ordered<directory_entry> {
+	ExtSTL::filesystem::path m_path;
+	mutable file_status m_status, m_symlink_status;
 public:
-	directory_entry(const path& p = ExtSTL::sys::path(), file_status s = file_status(), file_status sls = file_status())
-		:	m_path(p)
-		,	m_status(s)
-		,	m_symlink_status(sls)
+	directory_entry(const path& p = ExtSTL::filesystem::path(), file_status s = file_status(), file_status sls = file_status())
+		: m_path(p)
+		, m_status(s)
+		, m_symlink_status(sls)
 	{}
 
 	bool operator==(const directory_entry& de) const noexcept { return m_path == de.m_path; }
 	bool operator<(const directory_entry& de) const noexcept { return m_path < de.m_path; }
-	const ExtSTL::sys::path& path() const noexcept { return m_path; }
+	const ExtSTL::filesystem::path& path() const noexcept { return m_path; }
 
 	file_status symlink_status(error_code& ec) const noexcept;
 	file_status symlink_status() const;
 	file_status status(error_code& ec) const noexcept;
 	file_status status() const;
-private:
-	ExtSTL::sys::path m_path;
-	mutable file_status m_status, m_symlink_status;
 };
 
-struct DirectoryObj : public Ext::Object {
+struct DirectoryObj : public Ext::InterlockedObject {
 	intptr_t m_dir;
 
 	~DirectoryObj();
 };
 
 class directory_iterator : public iterator<input_iterator_tag, directory_entry> {
+	Ext::ptr<DirectoryObj> m_p;
+	path m_prefix;
+	directory_entry m_entry;
 public:
 	directory_iterator() {}
 	
@@ -292,11 +294,7 @@ public:
 
 	directory_iterator& operator++();
 	directory_iterator& increment(error_code& ec) noexcept;
-private:
-	Ext::ptr<DirectoryObj> m_p;
-	path m_prefix;
-	directory_entry m_entry;
-	
+private:	
 	void Init(const path& p, error_code& ec) noexcept;
 };
 
@@ -345,25 +343,25 @@ basic_ostream<T>& operator<<(basic_ostream<T>& os, const path& p) {
 	return os << p.native();
 }
 
-}} // ExtSTL::sys::
+}} // ExtSTL::filesystem::
 
-namespace std { namespace sys {
-using ExtSTL::sys::exists;
-using ExtSTL::sys::path;
-using ExtSTL::sys::copy_file;
-using ExtSTL::sys::copy_options;
-using ExtSTL::sys::current_path;
-using ExtSTL::sys::create_directory;
-using ExtSTL::sys::create_directories;
-using ExtSTL::sys::file_size;
-using ExtSTL::sys::temp_directory_path;
-using ExtSTL::sys::directory_iterator;
-using ExtSTL::sys::is_regular_file;
-using ExtSTL::sys::is_directory;
-using ExtSTL::sys::status;
-using ExtSTL::sys::symlink_status;
-using ExtSTL::sys::remove;
-using ExtSTL::sys::rename;
+namespace std { namespace filesystem {
+using ExtSTL::filesystem::exists;
+using ExtSTL::filesystem::path;
+using ExtSTL::filesystem::copy_file;
+using ExtSTL::filesystem::copy_options;
+using ExtSTL::filesystem::current_path;
+using ExtSTL::filesystem::create_directory;
+using ExtSTL::filesystem::create_directories;
+using ExtSTL::filesystem::file_size;
+using ExtSTL::filesystem::temp_directory_path;
+using ExtSTL::filesystem::directory_iterator;
+using ExtSTL::filesystem::is_regular_file;
+using ExtSTL::filesystem::is_directory;
+using ExtSTL::filesystem::status;
+using ExtSTL::filesystem::symlink_status;
+using ExtSTL::filesystem::remove;
+using ExtSTL::filesystem::rename;
 }}
 
 

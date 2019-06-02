@@ -86,7 +86,7 @@ int AFXAPI Win32Check(LRESULT i) {
 }
 
 bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
-	Win32Check(b || ::GetLastError()==allowableError);
+	Win32Check(b || ::GetLastError() == allowableError);
 	return b;
 }
 

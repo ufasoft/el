@@ -77,7 +77,7 @@ void CRegistryValue::Init(const CStringVector& ar) {
 		i;
 	for (i=0; i<ar.size(); i++)
 		size += ar[i].length()+1;
-	m_blob.Size = size*sizeof(TCHAR);
+	m_blob.resize(size * sizeof(TCHAR));
 	TCHAR *p = (TCHAR*)m_blob.data();
 	for (i=0; i<ar.size(); i++) {
 		_tcscpy(p, ar[i]);
@@ -222,7 +222,7 @@ void RegistryKey::SetValue(RCString name, RCString value) {
 }
 
 void RegistryKey::SetValue(RCString name, const CRegistryValue& rv) {
-	RegCheck(RegSetValueEx(_self, String(name), 0, rv.m_type, rv.m_blob.constData(), (DWORD)rv.m_blob.Size));
+	RegCheck(RegSetValueEx(_self, String(name), 0, rv.m_type, rv.m_blob.constData(), (DWORD)rv.m_blob.size()));
 }
 
 void RegistryKey::GetSubKey(int idx, RegistryKey& sk) {

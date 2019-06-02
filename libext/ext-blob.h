@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -233,7 +233,7 @@ public:
 	void swap(Blob& x) noexcept { std::swap(m_pData, x.m_pData); }
 
 	operator Span() const noexcept {
-		return m_pData ? Span(constData(), Size) : Span();
+		return m_pData ? Span(constData(), size()) : Span();
 	}
 
 	void AssignIfNull(const Blob& val);
@@ -253,13 +253,10 @@ public:
 
 	static Blob AFXAPI FromHexString(RCString s);
 
-	size_t get_Size() const EXT_FAST_NOEXCEPT { return m_pData->GetSize(); }
-	void put_Size(size_t size);
-	DEFPROP_CONST(size_t, Size);
-
-    size_t size() const { return m_pData->GetSize(); }
-
+	bool empty() const EXT_FAST_NOEXCEPT { return !m_pData || !m_pData->GetSize(); }
+	size_t size() const EXT_FAST_NOEXCEPT { return m_pData->GetSize(); }
 	size_t max_size() const noexcept { return SIZE_MAX - 2; }
+	void resize(size_t sz);
 
 	// we don't use property feature to explicit call constData() for efficiency
 	uint8_t* data();
@@ -267,22 +264,21 @@ public:
 	__forceinline const uint8_t* constData() const noexcept { return (const uint8_t*)m_pData->GetBSTR(); }
 
 	const uint8_t* begin() const { return constData(); }
-	const uint8_t* end() const { return constData() + Size; }
+	const uint8_t* end() const { return constData() + size(); }
 
 	uint8_t operator[](size_t idx) const {
-		if (idx >= Size)
+		if (idx >= size())
 			Throw(ExtErr::IndexOutOfRange);
 		return constData()[idx];
 	}
 
 	uint8_t& operator[](size_t idx) {
-		if (idx >= Size)
+		if (idx >= size())
 			Throw(ExtErr::IndexOutOfRange);
 		return data()[idx];
 	}
 
 	void Replace(size_t offset, size_t size, RCSpan mb);
-
 protected:
 	void Cow();
 #if UCFG_COM
@@ -303,6 +299,86 @@ inline Blob operator+(RCSpan mb1, RCSpan mb2) {
 	memcpy(r.data() + mb1.size(), mb2.data(), mb2.size());
 	return r;
 }
+
+class AutoBlobBase {
+protected:
+	uint8_t* volatile m_p;
+
+	union {
+		uint8_t m_space[1];
+		size_t m_size;
+	};
+
+	AutoBlobBase(uint8_t *p = nullptr) noexcept
+		: m_p(p)
+	{}
+
+	AutoBlobBase(const AutoBlobBase& x, size_t szSpace);
+	AutoBlobBase(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept;
+	AutoBlobBase(RCSpan s, size_t szSpace);
+	void DoAssign(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept;
+	void DoAssign(RCSpan s, size_t szSpace);
+	void DoAssignIfNull(RCSpan s, size_t szSpace);
+	bool IsInHeap(size_t szSpace) const noexcept { return size_t(m_p - m_space) > szSpace && m_p; }
+	size_t Size(size_t szSpace) const noexcept { return IsInHeap(szSpace) ? m_size : m_p ? m_p - m_space : 0; }
+	uint8_t* Data(size_t szSpace) noexcept { return IsInHeap(szSpace) ? m_p : m_p ? m_space : nullptr; }
+	void DoResize(size_t sz, bool bZeroContent, size_t szSpace);
+};
+
+// Blob with reserved space in auto memory
+// Non Thread-safe
+template <unsigned SZ>
+class AutoBlob : public AutoBlobBase {
+	typedef AutoBlobBase base;
+
+	uint8_t m_additionalSpace[SZ - sizeof(m_size)];
+public:
+	AutoBlob() : base(m_space) {}
+	AutoBlob(const AutoBlob& x) : base(x, SZ) {}
+	AutoBlob(EXT_RV_REF(AutoBlob) rv) noexcept : base(static_cast<EXT_RV_REF(AutoBlobBase)>(rv), SZ) {}
+	explicit AutoBlob(RCSpan s) : base(s, SZ) {}
+	explicit AutoBlob(nullptr_t) noexcept : base(nullptr) {}
+
+	explicit AutoBlob(size_t sz, bool bZeroContent = true) {
+		m_p = sz <= SZ 	? m_space + sz : (uint8_t*)Malloc(m_size = sz);
+		if (bZeroContent)
+			memset(m_p, 0, sz);
+	}
+
+	~AutoBlob() {
+		if (IsInHeap(SZ))
+			free(m_p);
+	}
+
+	AutoBlob& operator=(EXT_RV_REF(AutoBlob) rv) noexcept {
+		DoAssign(static_cast<EXT_RV_REF(AutoBlobBase)>(rv), SZ);
+		return *this;
+	}
+
+	AutoBlob& operator=(RCSpan s) {
+		DoAssign(s, SZ);
+		return *this;
+	}
+
+	AutoBlob& operator=(const AutoBlob& x) { return operator=(Span(x)); }
+
+	AutoBlob& operator=(nullptr_t) {
+		if (IsInHeap(SZ))
+			free(m_p);
+		m_p = nullptr;
+		return *this;
+	}
+
+	bool operator==(const AutoBlob x) const { return Equal(Span(*this), Span(x)); }
+	bool operator!=(const AutoBlob x) const { return !operator==(x); }
+	bool operator!() const noexcept { return !m_p; }
+	const uint8_t* data() const noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
+	uint8_t* data() noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
+	operator Span() const noexcept { return Span(IsInHeap(SZ) ? m_p : m_space, size()); }
+	size_t size() const noexcept { return IsInHeap(SZ) ? m_size : m_p ? m_p - m_space : 0; }
+	void resize(size_t sz, bool bZeroContent = true) { DoResize(sz, bZeroContent, SZ); }
+	void AssignIfNull(RCSpan s) { DoAssignIfNull(s, SZ); }
+};
 
 template <class T> class StaticList : noncopyable {
   public:
@@ -334,7 +410,7 @@ public:
 } // namespace Ext
 
 namespace std {
-    inline size_t size(const Ext::Blob& blob) { return blob.Size; }
+    inline size_t size(const Ext::Blob& blob) { return blob.size(); }
 
 	EXT_API ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf);
 	EXT_API wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf);
@@ -345,7 +421,7 @@ namespace std {
 
 namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::Blob& blob) {
-	return Ext::hash_value(blob.constData(), blob.Size);
+	return Ext::hash_value(blob.constData(), blob.size());
 }
 } // namespace EXT_HASH_VALUE_NS
 

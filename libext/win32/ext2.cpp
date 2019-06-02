@@ -66,7 +66,7 @@ FileVersionInfo::FileVersionInfo(RCString fileName) {
 	if (!size && !fileName)
 		return; //!!!
 	Win32Check(size);
-	m_blob.Size = size;
+	m_blob.resize(size);
 	Win32Check(GetFileVersionInfo((TCHAR*)(const TCHAR*)s, 0, size, m_blob.data()));
 }
 

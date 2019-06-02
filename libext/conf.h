@@ -11,7 +11,7 @@ namespace Ext {
 using namespace std;
 
 class Conf : noncopyable {
-    class Binder : public Object {
+    class Binder : public NonInterlockedObject {
     public:
     	String Help;
 

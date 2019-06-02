@@ -121,6 +121,8 @@ extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 namespace Ext {
 
 template <typename T> class PtrBase {
+protected:
+	T* m_p;
 public:
 	typedef T element_type;
 	typedef T *pointer;
@@ -136,8 +138,6 @@ public:
 		pointer r = m_p;
 		m_p = nullptr;
 		return r;
-
-		//!!!R		return exchange(m_p, nullptr);
 	}
 
 	void swap(PtrBase &p) noexcept {
@@ -146,9 +146,6 @@ public:
 		m_p = p;
 		p.m_p = t;
 	}
-
-protected:
-	T *m_p;
 };
 
 } // namespace Ext
@@ -289,12 +286,10 @@ using std::pair;
 
 namespace Ext {
 class noncopyable {
+	noncopyable(const noncopyable&);
+	noncopyable& operator=(const noncopyable&);
 protected:
 	noncopyable() {}
-
-private:
-	noncopyable(const noncopyable &);
-	noncopyable &operator=(const noncopyable &);
 };
 } // namespace Ext
 
@@ -424,8 +419,7 @@ public:
 #	if UCFG_ALLOCATOR == 'T' && UCFG_HEAP_CHECK
 		;
 #	else
-	{
-	}
+	{}
 #	endif
 };
 
@@ -491,6 +485,7 @@ inline void __fastcall AlignedFree(void *p) {
 */
 
 class AlignedMem {
+	void* m_p;
 public:
 	AlignedMem(size_t size = 0, size_t align = 0)
 		: m_p(0) {
@@ -512,9 +507,6 @@ public:
 	}
 
 	void *get() { return m_p; }
-
-private:
-	void *m_p;
 };
 
 } // namespace Ext

@@ -132,12 +132,12 @@ const BinaryReader& BinaryReader::operator>>(Blob& blob) const {
 
 	size_t size = ReadSize();
 	if (size <= INITIAL_BUFSIZE) {
-		blob.Size = size;
+		blob.resize(size);
 		Read(blob.data(), size);
 	} else {																			// to prevent OutOfMemory exception if just error in the Size field
-		for (size_t curSize = INITIAL_BUFSIZE, offset=0; offset<size; offset=curSize) {
-			blob.Size = curSize = min(size_t(curSize*2), size);
-			Read(blob.data()+offset, curSize-offset);
+		for (size_t curSize = INITIAL_BUFSIZE, offset = 0; offset < size; offset = curSize) {
+			blob.resize(curSize = min(size_t(curSize * 2), size));
+			Read(blob.data() + offset, curSize - offset);
 		}
 	}
 	return _self;
@@ -180,7 +180,7 @@ uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p) {
 	const uint8_t* q = p; //O local pointer is faster
 	uint8_t b = *q++;
 	uint64_t r = b & 0x7F;									//O for 1-byte records
-	for (int shift = 7; b & 0x80;) {
+	for (uint8_t shift = 7; b & 0x80;) {
 		r |= uint64_t((b = *q++) & 0x7F) << shift;
 		if ((shift += 7) >= 64)
 			Throw(E_FAIL);
@@ -206,7 +206,7 @@ void BinaryWriter::Write7BitEncoded(uint64_t v) {
 
 uint64_t BinaryReader::Read7BitEncoded() const {
 	uint64_t r = 0;
-	for (int shift=0; shift<64; shift+=7) {
+	for (int shift = 0; shift < 64; shift += 7) {
 		uint8_t b = ReadByte();
 		r |= uint64_t(b & 0x7F) << shift;
 		if (!(b & 0x80))

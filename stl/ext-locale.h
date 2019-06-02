@@ -41,7 +41,7 @@ public:
 		atomic<int> m_aVal;
 	};
 
-	class facet : public Ext::Object {
+	class facet : public Ext::InterlockedObject {
 	public:
 		virtual ~facet() {}
 
