@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -127,9 +127,9 @@ BinaryWriter& BinaryWriter::Write(RCSpan mb) {
 	return _self;
 }
 
-const BinaryReader& BinaryReader::operator>>(Blob& blob) const {
-	const size_t INITIAL_BUFSIZE = 512;
+static const size_t INITIAL_BUFSIZE = 4096;
 
+const BinaryReader& BinaryReader::operator>>(Blob& blob) const {
 	size_t size = ReadSize();
 	if (size <= INITIAL_BUFSIZE) {
 		blob.resize(size);
@@ -141,6 +141,19 @@ const BinaryReader& BinaryReader::operator>>(Blob& blob) const {
 		}
 	}
 	return _self;
+}
+
+void AutoBlobBase::DoRead(const BinaryReader& rd, size_t szSpace) {
+	size_t size = rd.ReadSize();
+	if (size <= INITIAL_BUFSIZE) {
+		DoResize(size, false, szSpace);
+		rd.Read(Data(szSpace), size);
+	} else {																			// to prevent OutOfMemory exception if just error in the Size field
+		for (size_t curSize = INITIAL_BUFSIZE, offset = 0; offset < size; offset = curSize) {
+			DoResize(curSize = min(size_t(curSize * 2), size), false, szSpace);
+			rd.Read(Data(szSpace) + offset, curSize - offset);
+		}
+	}
 }
 
 void BinaryWriter::WriteString(RCString v) {

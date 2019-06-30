@@ -285,7 +285,7 @@ Blob File::ReadAllBytes(const path& p) {
 	if (len > numeric_limits<size_t>::max())
 		Throw(E_OUTOFMEMORY);
 	Blob blob(0, (size_t)len);
-	stm.ReadBuffer(blob.data(), blob.Size);
+	stm.ReadBuffer(blob.data(), blob.size());
 	return blob;
 }
 
@@ -419,8 +419,8 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 
 uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
-	CCheck(r>=0 ? 0 : -1);
+	ssize_t r = offset >= 0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
+	CCheck(r >= 0 ? 0 : -1);
 	return r;
 #elif UCFG_NTAPI
 	IO_STATUS_BLOCK iost;

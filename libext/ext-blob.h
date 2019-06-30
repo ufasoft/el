@@ -30,6 +30,7 @@ using std::span;
 
 class CStringBlobBuf;
 class COleVariant;
+class BinaryReader;
 
 #if !UCFG_MINISTL
 using std::exchange;
@@ -39,6 +40,7 @@ using std::exchange;
 template <class T, size_t MAXSIZE> class vararray : public std::array<T, MAXSIZE> {
 	typedef std::array<T, MAXSIZE> base;
 
+	size_t m_size;
 public:
 	using base::begin;
 	using base::data;
@@ -68,9 +70,6 @@ public:
 
 	typename base::const_iterator end() const { return begin() + size(); }
 	typename base::iterator end() { return begin() + size(); }
-
-private:
-	size_t m_size;
 };
 #endif // UCFG_FULL && !UCFG_MINISTL
 
@@ -129,7 +128,7 @@ public:
 	uint32_t m_size;
 
 	CStringBlobBuf(size_t len = 0);
-	CStringBlobBuf(const void* p, size_t len);
+	CStringBlobBuf(const void* p, size_t len, bool bZeroContent = true);
 	CStringBlobBuf(size_t len, const void* buf, size_t copyLen);
 
 	~CStringBlobBuf() noexcept {
@@ -209,6 +208,7 @@ public:
 	Blob(std::nullptr_t) : m_pData(0) {}
 
 	Blob(const void* buf, size_t len);
+	Blob(size_t len, nullptr_t);	// Non-initializing ctor
 	Blob(RCSpan mb);
 	Blob(const span<uint8_t>& mb);
 #if UCFG_COM
@@ -323,6 +323,7 @@ protected:
 	size_t Size(size_t szSpace) const noexcept { return IsInHeap(szSpace) ? m_size : m_p ? m_p - m_space : 0; }
 	uint8_t* Data(size_t szSpace) noexcept { return IsInHeap(szSpace) ? m_p : m_p ? m_space : nullptr; }
 	void DoResize(size_t sz, bool bZeroContent, size_t szSpace);
+	void DoRead(const BinaryReader& rd, size_t szSpace);
 };
 
 // Blob with reserved space in auto memory
@@ -369,15 +370,18 @@ public:
 		return *this;
 	}
 
-	bool operator==(const AutoBlob x) const { return Equal(Span(*this), Span(x)); }
-	bool operator!=(const AutoBlob x) const { return !operator==(x); }
+	uint8_t operator[](size_t idx) const noexcept { return data()[idx]; }
+	bool operator==(const AutoBlob& x) const { return Equal(Span(*this), Span(x)); }
+	bool operator!=(const AutoBlob& x) const { return !operator==(x); }
 	bool operator!() const noexcept { return !m_p; }
 	const uint8_t* data() const noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
 	uint8_t* data() noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
 	operator Span() const noexcept { return Span(IsInHeap(SZ) ? m_p : m_space, size()); }
 	size_t size() const noexcept { return IsInHeap(SZ) ? m_size : m_p ? m_p - m_space : 0; }
+	bool empty() const noexcept { return !m_p || m_p == m_space; }
 	void resize(size_t sz, bool bZeroContent = true) { DoResize(sz, bZeroContent, SZ); }
 	void AssignIfNull(RCSpan s) { DoAssignIfNull(s, SZ); }
+	void Read(const BinaryReader& rd) { base::DoRead(rd, SZ); }
 };
 
 template <class T> class StaticList : noncopyable {

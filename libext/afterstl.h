@@ -16,7 +16,7 @@ using std::unordered_map,
 template <class T> class Array {
 public:
 	Array(size_t size)
-		:	m_p(new T[size])
+		: m_p(new T[size])
 	{
 	}
 
@@ -33,7 +33,7 @@ private:
 template<> class Array<char> {
 public:
 	Array(size_t size)
-		:	m_p((char*)Malloc(size))
+		: m_p((char*)Malloc(size))
 	{
 	}
 
@@ -580,15 +580,6 @@ public:
 	}
 };
 
-template <typename T, class L>
-bool between(const T& v, const T& lo, const T& hi, L pred) {
-	return !pred(v, lo) && !pred(hi, v);
-}
-
-template <typename T>
-bool between(const T& v, const T& lo, const T& hi) {
-	return between<T, std::less<T>>(v, lo, hi, std::less<T>());
-}
 
 template <typename T>
 T RoundUpToMultiple(const T& x, const T& mul) {

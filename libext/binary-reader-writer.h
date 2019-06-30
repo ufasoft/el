@@ -61,9 +61,10 @@ public:
 	}
 
 	uint8_t ReadByte() const {
-		uint8_t r;
-		*this >> r;
-		return r;
+		int r = BaseStream.ReadByte();
+		if (r < 0)
+			Throw(ExtErr::EndOfStream);
+		return (uint8_t)r;
 	}
 
 	bool ReadBoolean() const {
@@ -99,7 +100,7 @@ public:
 		return r;
 	}
 
-	uint32_t ReadUInt32() const {
+	__forceinline uint32_t ReadUInt32() const {
 		uint32_t r;
 		ReadType(r, true_type());
 		return r;
@@ -198,8 +199,10 @@ public:
 
 	const BinaryReader& operator>>(Blob& blob) const;
 
+	//!!!TODO operator>>() for AutoBlob<>
+
 	Blob ReadBytes(size_t size) const {
-		Blob r(0, size);
+		Blob r(size, nullptr);
 		Read(r.data(), size);
 		return r;
 	}
@@ -308,6 +311,9 @@ public:
 	void Write(const GUID& v) { Write(&v, sizeof v); }
 #endif
 };
+
+template <unsigned SZ>
+BinaryWriter& operator<<(BinaryWriter& wr, const AutoBlob<SZ>& blob) { return wr.Write(Span(blob)); }
 
 template <class W, typename T>
 void Write(W& wr, const std::vector<T>& ar) {

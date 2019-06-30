@@ -33,7 +33,7 @@ CStringBlobBuf::CStringBlobBuf(size_t len)
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
-CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
+CStringBlobBuf::CStringBlobBuf(const void *p, size_t len, bool bZeroContent)
 	: m_apChar(0)
 #ifdef _WIN64
 	, m_pad(0)
@@ -42,7 +42,7 @@ CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
 {
 	if (p)
 		memcpy(this + 1, p, len);
-	else
+	else if (bZeroContent)
 		memset(this + 1, 0, len);
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
@@ -118,6 +118,10 @@ Blob::Blob(const Blob& blob) noexcept
 
 Blob::Blob(const void *buf, size_t len) {
 	m_pData = new(len, false) CStringBlobBuf(buf, len);
+}
+
+Blob::Blob(size_t len, nullptr_t) {
+	m_pData = new(len, false) CStringBlobBuf(0, len, false);
 }
 
 Blob::Blob(RCSpan mb) {
@@ -325,7 +329,6 @@ void AutoBlobBase::DoAssignIfNull(RCSpan s, size_t szSpace) {
 	}
 }
 
-
 void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
 	size_t szCur = Size(szSpace);
 	bool isInHeap = IsInHeap(szSpace);
@@ -352,7 +355,6 @@ void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
 			memset(p + szCur, 0, sz - szCur);
 	}
 }
-
 
 } // Ext::
 

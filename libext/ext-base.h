@@ -156,6 +156,7 @@ EXT_DEFINE_EXC(NotImplementedExc, Exception, E_NOTIMPL)
 EXT_DEFINE_EXC(UnspecifiedException, Exception, E_FAIL)
 EXT_DEFINE_EXC(AccessDeniedException, Exception, E_ACCESSDENIED)
 
+
 /*!!!R
 class IOExc : public Exception {
 	typedef Exception base;

@@ -184,17 +184,18 @@ private:
 
 class Resource {
 	typedef Resource class_type;
+
+#if UCFG_WIN32
+	ptr<ResourceObj> m_pimpl;
+#else
+	Blob m_blob;
+#endif
 public:
 	Resource(const CResID& resID, const CResID& resType, HMODULE hModule = 0);
 
 	const uint8_t *data() const;
 	size_t size() const;
 private:
-#if UCFG_WIN32
-	ptr<ResourceObj> m_pimpl;
-#else
-	Blob m_blob;
-#endif
 };
 
 
@@ -763,6 +764,32 @@ public:
 	String ToString(int fieldCount) const;
 	String ToString() const override;
 };
+
+
+class VersionException : public Exception {
+	typedef Exception base;
+public:
+	Ext::Version Version;
+
+	VersionException(const Ext::Version& ver = Ext::Version()) : base(ExtErr::DB_Version), Version(ver) {}
+
+	~VersionException() noexcept {} //!!! GCC 4.6
+protected:
+	String get_Message() const override { return base::get_Message() + " " + Version.ToString(2); }
+};
+
+class UnsupportedOldVersionException : public VersionException {
+	typedef VersionException base;
+public:
+	UnsupportedOldVersionException(const Ext::Version& ver = Ext::Version()) : base(ver) {}
+};
+
+class UnsupportedNewVersionException : public VersionException {
+	typedef VersionException base;
+public:
+	UnsupportedNewVersionException(const Ext::Version& ver = Ext::Version()) : base(ver) {}
+};
+
 
 
 } // Ext::
