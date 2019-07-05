@@ -634,13 +634,9 @@ class PositionOwningFileStream : public FileStream {
 	typedef FileStream base;
 protected:
 	mutable uint64_t m_pos;
+	uint64_t m_maxPos;
 public:
-	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0)
-		: base(file)
-		, m_pos(pos)
- 	{
-	}
-
+	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0, uint64_t maxLen = _UI64_MAX);
 	uint64_t get_Position() const override { return m_pos; }
 	void put_Position(uint64_t pos) const override { m_pos = pos; }
 	bool Eof() const override {	return m_pos == m_pFile->Length; }

@@ -762,16 +762,21 @@ void FileStream::Flush() {
 		Throw(E_FAIL);
 }
 
+PositionOwningFileStream::PositionOwningFileStream(Ext::File& file, uint64_t pos, uint64_t maxLen)
+	: base(file)
+	, m_pos(pos)
+	, m_maxPos(maxLen == _UI64_MAX ? maxLen : (min)(pos + maxLen, m_pFile->Length))
+{
+}
+
 size_t PositionOwningFileStream::Read(void *buf, size_t count) const {
-	uint32_t cb = m_pFile->Read(buf, count, m_pos);
+	uint32_t cb = m_pFile->Read(buf, (min)(count, m_maxPos - m_pos), m_pos);
 	m_pos += cb;
 	return cb;
 }
 
 void PositionOwningFileStream::ReadBuffer(void *buf, size_t count) const {
-	uint32_t cb = m_pFile->Read(buf, count, m_pos);
-	m_pos += cb;
-	if (cb != count)
+	if (Read(buf, count) != count)
 		Throw(ExtErr::EndOfStream);
 }
 
