@@ -77,10 +77,10 @@ void LinkSendThread::Execute() {
 void Link::SendBinary(RCSpan buf) {
 	EXT_LOCK (Mtx) {
 		m_dtLastSend = Clock::now();
-		bool bHasToSend = DataToSend.Size;
+		bool bHasToSend = DataToSend.size();
 		DataToSend += buf;
 		if (!bHasToSend) {
-			int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.Size);
+			int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.size());
 			if (rc >= 0)
 				DataToSend.Replace(0, rc, Span());
 		}
@@ -249,7 +249,7 @@ LAB_FOUND:
 		size_t cbReceived = 0;
 		if (FirstByte != -1) {
 			cbReceived = 1;
-			blobMessage.Size = std::max(size_t(blobMessage.Size), size_t(1));
+			blobMessage.resize(std::max(size_t(blobMessage.size()), size_t(1)));
 			blobMessage.data()[0] = (uint8_t)exchange(FirstByte, -1);
 		}
 
@@ -259,14 +259,14 @@ LAB_FOUND:
 		}
 
 		if (LineBased)
-			blobMessage.Size = std::max(size_t(blobMessage.Size), size_t(1024));
+			blobMessage.resize(std::max(size_t(blobMessage.size()), size_t(1024)));
 
 		Socket::BlockingHandleAccess hp(Tcp.Client);
 
 		timeval timevalTimeOut;
 		TimeSpan::FromSeconds(std::min(std::min((int)duration_cast<seconds>(PingTimeout).count(), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timevalTimeOut);
 		while (!m_bStop) {
-			bool bHasToSend = EXT_LOCKED(Mtx, DataToSend.Size);
+			bool bHasToSend = EXT_LOCKED(Mtx, DataToSend.size());
 			fd_set readfds, writefds;
 			FD_ZERO(&readfds);
 			FD_ZERO(&writefds);
@@ -289,19 +289,19 @@ LAB_FOUND:
 						}
 					}
 
-					int rc = Tcp.Client.Receive(blobMessage.data()+cbReceived, blobMessage.Size-cbReceived);
+					int rc = Tcp.Client.Receive(blobMessage.data() + cbReceived, blobMessage.size() - cbReceived);
 					if (!rc)
 						goto LAB_EOF;
 					if (rc < 0)
 						break;
 					cbReceived += rc;
 
-					if (!LineBased && cbReceived == blobMessage.Size) {
+					if (!LineBased && cbReceived == blobMessage.size()) {
 						do {
 							if (!bReceivingPayload) {
 								bReceivingPayload = true;
 								if (size_t cbPayload = GetMessagePayloadSize(blobMessage)) {
-									blobMessage.put_Size(blobMessage.Size + cbPayload);
+									blobMessage.resize(blobMessage.size() + cbPayload);
 									break;
 								}
 							}
@@ -309,7 +309,7 @@ LAB_FOUND:
 								CMemReadStream stm(blobMessage);
 								ReceiveAndProcessMessage(BinaryReader(stm));
 
-								blobMessage.Size = cbHdr;
+								blobMessage.resize(cbHdr);
 								bReceivingPayload = false;
 								cbReceived = 0;
 							}
@@ -323,8 +323,8 @@ LAB_FOUND:
 
 			if (bHasToSend && FD_ISSET(hp, &writefds)) {
 				EXT_LOCK (Mtx) {
-					while (DataToSend.Size) {
-						int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.Size);
+					while (DataToSend.size()) {
+						int rc = Tcp.Client.Send(DataToSend.constData(), DataToSend.size());
 						if (rc < 0)
 							break;
 						DataToSend.Replace(0, rc, Span());
@@ -391,7 +391,7 @@ ListeningThread::ListeningThread(P2P::NetManager& netManager, thread_group& tr, 
 void ListeningThread::StartListener(P2P::NetManager& netManager, thread_group& tr, AddressFamily family) {
 	try {
 		(new P2P::ListeningThread(netManager, tr, family))->Start();
-	} catch (RCExc ex) {
+	} catch (RCExc DBG_PARAM(ex)) {
 		TRC(2, ex.what());
 	}
 }

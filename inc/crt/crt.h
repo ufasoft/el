@@ -39,7 +39,7 @@ void _cdecl API_ftime(struct _timeb *timeptr);
 time_t _cdecl API_mktime(struct tm * _Tm);
 #define mktime API_mktime
 
-struct tm * _cdecl API_localtime32(const time_t * _Time);	
+struct tm * _cdecl API_localtime32(const time_t * _Time);
 #define localtime API_localtime32
 
 struct tm * _cdecl API_gmtime(const time_t * _Time);
@@ -70,7 +70,7 @@ errno_t _cdecl API_memmove_s(void * dst, size_t sizeInBytes, const void * src, s
 #define memmove_s API_memmove_s
 
 int _cdecl API_sprintf_s(char *dst, size_t dstsize, const char *format, ...);
-#define sprintf_s API_sprintf_s	
+#define sprintf_s API_sprintf_s
 
 int _cdecl API_vscprintf(const char *format, va_list list);
 #define _vscprintf API_vscprintf
@@ -162,7 +162,7 @@ return _stat(name, (struct _stat32 *)s);
 		int __cdecl API__wstat64i32(const wchar_t *filename, struct API_stat64i32 * _Stat);
 #			define stat API_stat64i32
 #			define _stat API_stat64i32
-		
+
 
 #	endif
 */
@@ -199,7 +199,7 @@ int __cdecl API_close(int fh);
 #ifndef _USE_32BIT_TIME_T
 	intptr_t _cdecl API__findfirst64i32(const char * _Filename, struct _finddata64i32_t * _FindData);
 #	define _findfirst API__findfirst64i32
-		
+
 	int _cdecl API__findnext64i32(intptr_t _FindHandle, struct _finddata64i32_t * _FindData);
 #	define _findnext API__findnext64i32
 
@@ -274,8 +274,10 @@ double __cdecl API_difftime(time_t time1, time_t time2);
 double API_nan(const char *tagp);
 #define nan API_nan
 
-#undef signbit
-#define signbit(v) ((int)(v < 0))
+#ifndef __cplusplus
+#	undef signbit
+#	define signbit(v) ((int)(v < 0))
+#endif
 
 #ifdef __cplusplus
 	int __cdecl API_open(const char *fn, int flags, int mask = 0);
@@ -287,5 +289,3 @@ errno_t __cdecl API_gmtime64_s(struct tm *ptm, const __time64_t *timp);
 #define _gmtime64_s API_gmtime64_s
 
 __END_DECLS
-
-

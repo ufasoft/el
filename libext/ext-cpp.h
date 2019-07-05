@@ -892,6 +892,9 @@ class Stream;
 
 #			if !UCFG_MINISTL && !defined(_CRTBLD)
 class EXT_CLASS CTraceWriter {
+	std::ostringstream m_os;
+	Ext::Stream* m_pos;
+	bool m_bPrintDate;
 public:
 	CTraceWriter(int level, const char *funname = 0) noexcept;
 	CTraceWriter(Ext::Stream *pos) noexcept;
@@ -901,12 +904,7 @@ public:
 	void Printf(const char *fmt, ...);
 	static CTraceWriter &AFXAPI CreatePreObject(char *obj, int level, const char *funname);
 	static void AFXAPI StaticPrintf(int level, const char *funname, const char *fmt, ...);
-
 private:
-	std::ostringstream m_os;
-	Ext::Stream *m_pos;
-	bool m_bPrintDate;
-
 	void Init(const char *funname);
 };
 #			endif // !UCFG_MINISTL

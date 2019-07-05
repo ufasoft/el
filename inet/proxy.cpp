@@ -264,7 +264,7 @@ IPEndPoint CSocks4Proxy::Connect(Stream& stm, const CProxyQuery& q) {
 		wr.Write((const char*)dnsEp->Host, dnsEp->Host.length() + 1);
 	}
 	Blob blob = qs.Blob;
-	stm.WriteBuffer(blob.constData(), blob.Size);
+	stm.WriteBuffer(blob.constData(), blob.size());
 	uint8_t buf[8];
 	stm.ReadBuffer(buf, 8);//!!!
 	switch (buf[1]) {

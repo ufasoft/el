@@ -382,7 +382,7 @@ inline intptr_t AFXAPI GetThreadNumber() {
 }
 
 CTraceWriter::CTraceWriter(int level, const char* funname) noexcept
-	:	m_pos(level & CTrace::s_nLevel ? CTrace::s_pOstream : 0)
+	: m_pos(level & CTrace::s_nLevel ? CTrace::s_pOstream : 0)
 {
 	if (m_pos) {
 		m_bPrintDate = CTrace::s_bPrintDate;
@@ -391,8 +391,8 @@ CTraceWriter::CTraceWriter(int level, const char* funname) noexcept
 }
 
 CTraceWriter::CTraceWriter(Ext::Stream *pos) noexcept
-	:	m_pos(pos)
-	,	m_bPrintDate(true)
+	: m_pos(pos)
+	, m_bPrintDate(true)
 {
 	Init(0);
 }
@@ -424,14 +424,15 @@ CTraceWriter::~CTraceWriter() noexcept {
 	if (m_pos) {
 		m_os.put('\n');
 		string str = m_os.str();
-		LocalDateTime dt = Clock::now().ToLocalTime();
-		tm t = dt;
-		int mst = dt.Ticks / 1000 % 10000;
+		DateTime dt = Clock::now();
+		tm t;
+		dt.ToLocalTm(t);
+		int mst = dt.Ticks / 100 % 100000;
 		long long tid = GetThreadNumber();
 		char bufTime[20], buf[100];
-		sprintf(bufTime, " %02d:%02d:%02d.%04d ", t.tm_hour, t.tm_min, t.tm_sec, mst);
+		sprintf(bufTime, " %02d:%02d:%02d.%05d ", t.tm_hour, t.tm_min, t.tm_sec, mst);
 		if (m_bPrintDate)
-			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d%s", tid, 1900+int(t.tm_year), t.tm_mon, t.tm_mday, bufTime);
+			sprintf(buf, EXT_TID_FORMATTER " %4d-%02d-%02d%s", tid, 1900 + int(t.tm_year), t.tm_mon, t.tm_mday, bufTime);
 		else
 			sprintf(buf, EXT_TID_FORMATTER "%s", tid, bufTime);
 		string date_s = buf + str;

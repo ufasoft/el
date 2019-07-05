@@ -22,6 +22,8 @@ extern const int64_t Unix_FileTime_Offset, Unix_DateTime_Offset;
 
 class DateTimeBase {
 	typedef DateTimeBase class_type;
+protected:
+	int64_t m_ticks;
 public:
 	int64_t get_Ticks() const { return m_ticks; }
 	DEFPROP_GET_CONST(int64_t, Ticks);
@@ -34,10 +36,8 @@ public:
 		m_ticks = rd.ReadInt64();
 	}
 protected:
-	int64_t m_ticks;
-
 	DateTimeBase(int64_t ticks = 0)
-		:	m_ticks(ticks)
+		: m_ticks(ticks)
 	{}
 
 	friend BinaryReader& AFXAPI operator>>(BinaryReader& rd, DateTimeBase& dt);
@@ -68,7 +68,7 @@ public:
 	static const EXT_DATA TimeSpan MaxValue;
 
 	explicit TimeSpan(int64_t ticks = 0)
-		:	base(ticks)
+		: base(ticks)
 	{}
 
 	template <class T, class U>
@@ -206,11 +206,11 @@ public:
 	}
 
 	DateTime(const DateTime& dt)
-		:	base(dt.m_ticks)
+		: base(dt.m_ticks)
 	{}
 
 	explicit DateTime(int64_t ticks)
-		:	base(ticks)
+		: base(ticks)
 	{}
 
 	template <typename D>
@@ -220,7 +220,7 @@ public:
 	}
 
 	DateTime(const FILETIME& ft)
-		:	base((int64_t&)ft + FileTimeOffset)
+		: base((int64_t&)ft + FileTimeOffset)
 	{
 	}
 
@@ -236,16 +236,23 @@ public:
 
 #endif
 
-
 	operator time_point() const {
 		return time_point(duration(Ticks - from_time_t(0).Ticks));
 	}
 
-	void ToTimeval(timeval& tv)  const;
-	operator tm() const;
+	void ToTimeval(timeval& tv) const;
+	void ToTm(tm& r) const;	// Optimized
+	void ToLocalTm(tm& r) const;	// Optimized
+	
+	operator tm() const {
+		tm r;
+		ToTm(r);
+		return r;
+	}
 
 	static int64_t AFXAPI SimpleUtc();
 	static DateTime AFXAPI from_time_t(int64_t epoch);
+	int64_t ToUnixTimeSeconds() const { return (Ticks - TimevalOffset) / 10000000; }
 	static DateTime AFXAPI FromAsctime(RCString s);
 
 	int get_Hour() const {
@@ -322,7 +329,7 @@ public:
 
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
 
-	LocalDateTime ToLocalTime();
+	LocalDateTime ToLocalTime() const;
 
 #if UCFG_USE_PTHREADS
 	operator timespec() const;
@@ -442,8 +449,8 @@ public:
 	{}
 
 	explicit LocalDateTime(const DateTime& dt, int off = 0)
-		:	base(dt)
-		,	OffsetSeconds(off)
+		: base(dt)
+		, OffsetSeconds(off)
 	{}
 
 	DateTime ToUniversalTime();

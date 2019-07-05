@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -29,6 +29,7 @@
 #endif
 
 namespace Ext {
+using namespace std;
 
 class Socket;
 class CSocketHandleKeeper;
@@ -140,7 +141,7 @@ public:
 	bool operator<(const IPAddress& ha) const;
 	bool operator==(const IPAddress& ha) const;
 	bool operator!=(const IPAddress& ha) const { return !operator==(ha); }
-	String ToString() const;
+	void Print(ostream& os) const override;
 
 	Blob GetAddressBytes() const;
 
@@ -173,7 +174,9 @@ namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::IPAddress& ha) { return ha.GetHashCode(); }
 }
 
-EXT_DEF_HASH(Ext::IPAddress) namespace Ext {
+EXT_DEF_HASH(Ext::IPAddress)
+
+namespace Ext {
 
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const IPAddress& ha);
 const BinaryReader& AFXAPI operator>>(const BinaryReader& rd, IPAddress& ha);
@@ -205,24 +208,24 @@ public:
 	IPAddress Address;
 
 	explicit IPEndPoint(uint32_t host = 0, uint16_t port = 0)
-		:	Address(host)
+		: Address(host)
 	{
 		Port = port;
 	}
 
 	explicit IPEndPoint(const IPAddress& a, uint16_t port = 0)
-		:	Address(a)
+		: Address(a)
 	{
 		Port = port;
 	}
 
 	explicit IPEndPoint(RCSpan mb)
-		:	Address(mb)
+		: Address(mb)
 	{
 	}
 
 	IPEndPoint(const sockaddr& sa)
-		:	Address(sa)
+		: Address(sa)
 	{
 		switch (sa.sa_family) {
 		case AF_INET:
@@ -257,7 +260,7 @@ public:
 	const sockaddr *c_sockaddr() const;
 	size_t sockaddr_len() const;
 
-	String ToString() const override;
+	void Print(ostream& os) const override;
 	EXT_API static IPEndPoint AFXAPI Parse(RCString s);
 
 	bool operator<(const IPEndPoint& hp) const { return Address<hp.Address || Address==hp.Address && Port<hp.Port; }
@@ -571,7 +574,7 @@ public:
 	CBool m_bClosing;
 
 	SocketThreadWrap()
-//!!!R		:	m_lock(&m_csCallingAPI)
+//!!!R		: m_lock(&m_csCallingAPI)
 	{}
 
 	void Stop() override {
@@ -664,7 +667,7 @@ public:
 	CBool NoSignal;
 
 	CSocketLooper()
-		:	m_bDoShutdown(true)
+		: m_bDoShutdown(true)
 	{
 	}
 
@@ -681,7 +684,6 @@ public:
 AFX_API int AFXAPI SocketCheck(int code);
 AFX_API void AFXAPI SocketCodeCheck(int code);
 //!!!R AFX_API DWORD AFXAPI NameToHost(const String& name);
-AFX_API String AFXAPI HostToStr(DWORD host);
 DECLSPEC_NORETURN AFX_API void AFXAPI ThrowWSALastError();
 
 
@@ -691,7 +693,7 @@ public:
 	CBool NoSignal;
 
 	NetworkStream(Socket& sock)
-		:	m_sock(sock)
+		: m_sock(sock)
 	{}
 
 
@@ -710,7 +712,7 @@ public:
 	NetworkStream Stream;
 
 	TcpClient()
-		:	Stream(Client)
+		: Stream(Client)
 	{}
 
 	virtual void Connect(const EndPoint& ep) {

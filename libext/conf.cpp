@@ -67,6 +67,12 @@ void Conf::Bind(String name, int& val, int def, String help) {
 	m_nameToBinder[name.ToLower()] = binder;
 }
 
+void Conf::Bind(String name, int64_t& val, int64_t def, String help) {
+	ptr<Binder> binder = new Int64Binder(val, def);
+	binder->Help = help;
+	m_nameToBinder[name.ToLower()] = binder;
+}
+
 void Conf::Bind(String name, String& val, RCString def, String help) {
 	ptr<Binder> binder = new StringBinder(val, def);
 	binder->Help = help;

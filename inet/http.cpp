@@ -784,8 +784,8 @@ class WebRequestKeeper {
 	HttpWebRequest *m_prev;
 public:
 	WebRequestKeeper(HttpWebRequest*& cur, HttpWebRequest& req)
-		:	m_cur(cur)
-		,	m_prev(cur)
+		: m_cur(cur)
+		, m_prev(cur)
 	{
 		cur = &req;
 	}
@@ -796,11 +796,11 @@ public:
 };
 
 WebClient::WebClient()
-	:	UserAgent(nullptr)
-	,	CurrentRequest(0)
-	,	Encoding(&Encoding::Default())
-	,	CacheLevel(RequestCacheLevel::Default)
-	,	Proxy(new WebProxy(nullptr))
+	: UserAgent(nullptr)
+	, CurrentRequest(0)
+	, Encoding(&Encoding::Default())
+	, CacheLevel(RequestCacheLevel::Default)
+	, Proxy(new WebProxy(nullptr))
 {}
 
 InetStream& WebClient::DoRequest(HttpWebRequest& req, RCSpan data) {
@@ -939,7 +939,7 @@ ptr<WebProxy> WebProxy::FromString(RCString s) {
 
 String CHttpHeader::ParseHeader(const vector<String>& ar, bool bIncludeFirstLine, bool bEmailHeader) {
 	Headers.clear();
-	Data.Size = 0;
+	Data.resize(0);
 	m_bDataSkipped = false;
 	int i=0;
 	if (!bIncludeFirstLine) {

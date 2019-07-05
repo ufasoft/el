@@ -62,6 +62,20 @@ class Conf : noncopyable {
 		}
 	};
 
+	class Int64Binder : public BinderBase<int64_t> {
+		typedef BinderBase<int64_t> base;
+	public:
+		Int64Binder(int64_t& refVal, int64_t def)
+			: base(refVal, def)
+		{}
+
+		String ToString() override { return Convert::ToString(m_refVal); }
+
+		void Parse(RCString s) override {
+			m_refVal = atoll(s);
+		}
+	};
+
 	class StringBinder : public BinderBase<String> {
 		typedef BinderBase<String> base;
 	public:
@@ -103,6 +117,7 @@ public:
 	void SaveSample(ostream& os);
 	void Bind(String name, bool& val, bool def = false, String help = nullptr);
 	void Bind(String name, int& val, int def = 0, String help = nullptr);
+	void Bind(String name, int64_t& val, int64_t def = 0, String help = nullptr);
 	void Bind(String name, String& val, RCString def = "", String help = nullptr);
 	void Bind(String name, vector<String>& val, String help = nullptr);
 };

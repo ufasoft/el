@@ -139,13 +139,6 @@ extern "C" int __cdecl API_inet_pton(int af, const char *src, void *dst) {
 
 #endif // UCFG_WIN32
 
-String AFXAPI HostToStr(DWORD host) {
-	char buf[20];
-	const uint8_t* ar = (const uint8_t*)&host;
-	sprintf(buf, "%d.%d.%d.%d", ar[3], ar[2], ar[1], ar[0]);
-	return buf;
-}
-
 static const in6_addr s_loopback6 = IN6ADDR_LOOPBACK_INIT,
 						s_any6 = IN6ADDR_ANY_INIT,
 							s_none6 = { 0 };
@@ -265,24 +258,29 @@ bool IPAddress::TryParse(RCString s, IPAddress& ip) {
 	return false;
 }
 
-String IPAddress::ToString() const {
+void IPAddress::Print(ostream& os) const {
+	char buf[INET6_ADDRSTRLEN];
+	const uint8_t* p;
+
 	switch ((int)get_AddressFamily()) {
 	case AF_INET:
-		return HostToStr(ntohl(m_sin.sin_addr.s_addr));
+		p = (const uint8_t*)&m_sin.sin_addr.s_addr;
+		sprintf(buf, "%d.%d.%d.%d", p[0], p[1], p[2], p[3]);
+		break;
 	case AF_INET6:
-		{
-			char buf[INET6_ADDRSTRLEN];
-			if (!::inet_ntop((int)get_AddressFamily(), (void*)&m_sin6.sin6_addr, buf, sizeof buf))
-				return "<#IPv6 address>";	//!!!? XP fails if IPv6 not installed //was CCheck(-1);
-			return buf;
-		}
+		if (!::inet_ntop((int)get_AddressFamily(), (void*)& m_sin6.sin6_addr, buf, sizeof buf))
+			strcpy(buf, "<#IPv6 address>");	//!!!? XP fails if IPv6 not installed //was CCheck(-1);
+		break;
 #if UCFG_USE_POSIX && !defined(__FreeBSD__)
 	case AF_PACKET:
-		return ":AF_PACKET:";
+		strcpy(buf, ":AF_PACKET:");
+		break;
 #endif
 	default:
-		return "Address Family "+Convert::ToString((int)get_AddressFamily());
+		os << "Address Family " << (int)get_AddressFamily();
+		return;
 	}
+	os << buf;
 }
 
 IPAddress& IPAddress::operator=(const IPAddress& ha) {
@@ -434,9 +432,9 @@ size_t IPEndPoint::sockaddr_len() const {
 	}
 }
 
-String IPEndPoint::ToString() const {
-	return (AddressFamily == Ext::AddressFamily::InterNetworkV6 ? "[" + Address.ToString() + "]" : Address.ToString())
-		+ ":" + Convert::ToString(Port);
+void IPEndPoint::Print(ostream& os) const {
+	(AddressFamily == Ext::AddressFamily::InterNetworkV6 ? (os << "[" << Address << "]") : (os << Address))
+		<< ":" << Port;
 }
 
 IPEndPoint IPEndPoint::Parse(RCString s) {
@@ -572,7 +570,7 @@ IPHostEntry::IPHostEntry(hostent *phost) {
 
 IPHostEntry Dns::GetHostEntry(const IPAddress& address) {
 	Blob blob = address.GetAddressBytes();
-	if (hostent *phost = gethostbyaddr((const char*)blob.constData(), blob.Size, (int)address.get_AddressFamily()))
+	if (hostent *phost = gethostbyaddr((const char*)blob.constData(), blob.size(), (int)address.get_AddressFamily()))
 		return IPHostEntry(phost);
 	else
 		ThrowWSALastError();

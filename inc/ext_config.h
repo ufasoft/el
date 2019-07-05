@@ -33,7 +33,7 @@
 #ifndef UCFG_STDSTL
 #	if !defined(WDM_DRIVER) && (!defined(_MSC_VER) || UCFG_WCE || UCFG_MINISTL)
 #		define UCFG_STDSTL 1
-#		define _YVALS_CORE_H
+//!!!? #		define _YVALS_CORE_H
 #else
 #		define UCFG_STDSTL 0
 #	endif

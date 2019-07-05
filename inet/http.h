@@ -26,6 +26,11 @@ class HttpWebResponse;
 // URI spec as of RFC3986
 class Uri {
 	typedef Uri class_type;
+
+	String m_uriString;
+	String m_scheme, m_host, m_path, m_extra, m_username, m_password;
+	int m_port;
+	CBool m_bAnalyzed;
 public:
 	Uri(RCString uriString = String())
 		: m_uriString(uriString)
@@ -85,11 +90,6 @@ public:
 		return m_uriString;
 	}
 private:
-	String m_uriString;
-	String m_scheme, m_host, m_path, m_extra, m_username, m_password;
-	int m_port;
-	CBool m_bAnalyzed;
-
 	void EnsureAnalyzed();
 };
 
@@ -266,6 +266,22 @@ public:
 };
 
 class WebRequest {
+protected:
+	class Impl : public NonInterlockedObject {
+	public:
+#if !UCFG_USE_LIBCURL
+		CInternetSession m_sess;
+		CInternetConnection m_conn;
+
+		Impl()
+			: m_sess(true)
+		{}
+#endif
+	};
+
+	DWORD m_serviceType;
+private:
+	ptr<Impl> m_pimpl;
 public:
 	String Method;
 	Uri RequestUri;
@@ -284,19 +300,6 @@ public:
 	void Connect();
 #endif
 protected:
-	class Impl : public Object {
-	public:
-#if !UCFG_USE_LIBCURL
-		CInternetSession m_sess;
-		CInternetConnection m_conn;
-
-		Impl()
-			:	m_sess(true)
-		{}
-#endif
-	};
-
-	DWORD m_serviceType;
 
 #if !UCFG_USE_LIBCURL
 	CInternetSession& Session();
@@ -309,8 +312,6 @@ protected:
 #if UCFG_USE_LIBCURL
 	int m_timeout;
 #endif
-private:
-	ptr<Impl> m_pimpl;
 };
 
 template <int WSIZE = 4096>
@@ -386,12 +387,33 @@ class HttpWebRequest;
 
 class HttpWebResponse : public Object {
 	typedef HttpWebResponse class_type;
+
+	class Impl : public NonInterlockedObject {
+	public:
+		HttpWebRequest& m_req;
+		CHttpInternetConnection m_conn;
+		InetStream m_stm;
+
+		Impl(HttpWebRequest& req)
+			: m_req(req)
+		{
+			m_stm.m_pResponseImpl = this;
+		}
+
+#if UCFG_USE_LIBCURL
+		String m_statusDesc;
+		WebHeaderCollection m_headers;
+#endif
+	};
+
+	ptr<Impl> m_pImpl;
+
 public:
 	HttpWebResponse()
 	{}
 
 	HttpWebResponse(HttpWebRequest& req)
-		:	m_pImpl(new Impl(req))
+		: m_pImpl(new Impl(req))
 	{
 	}
 
@@ -444,25 +466,6 @@ public:
 
 
 private:
-	class Impl : public Object {
-	public:
-		HttpWebRequest& m_req;
-		CHttpInternetConnection m_conn;
-		InetStream m_stm;
-
-		Impl(HttpWebRequest& req)
-			:	m_req(req)
-		{
-			m_stm.m_pResponseImpl = this;
-		}
-
-#if UCFG_USE_LIBCURL
-		String m_statusDesc;
-		WebHeaderCollection m_headers;
-#endif
-	};
-
-	ptr<Impl> m_pImpl;
 
 	String GetString(DWORD dwInfoLevel);
 

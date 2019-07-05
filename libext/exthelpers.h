@@ -810,7 +810,7 @@ String TruncPrettyFunction(const char *fn);
 #	define DBG_PARAM(param) param
 #	define TRC_CUT_PREFIX(prefix) Ext::CLocalTracePrefix _localTracePrefix(prefix);
 #	define TRC_GLOBAL_CUT_PREFIX(prefix) static Ext::CGlobalTracePrefix EXT_UNIQUE_SUFFIX(_globalTracePrefix)(prefix);
-#	define TRC(level, s) { if ((1<<level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1<<level, EXT_TRC_FUNCNAME).Stream() << s; }
+#	define TRC(level, s) { if ((1 << level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1 << level, EXT_TRC_FUNCNAME).Stream() << s; }
 
 #	define TRCP(level, s) { if (level & Ext::CTrace::s_nLevel) {				\
 		char obj[sizeof(Ext::CTraceWriter)];									\

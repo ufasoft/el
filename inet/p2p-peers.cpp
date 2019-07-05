@@ -41,7 +41,7 @@ Blob Peer::GetGroup() const {
 	vector<uint8_t> v;
 	const IPAddress& ip = get_EndPoint().Address;
 	Blob blob = ip.GetAddressBytes();
-	if (4 == blob.Size) {
+	if (4 == blob.size()) {
 		v.push_back(4);
 		v.push_back(blob.data()[0]);
 		v.push_back(blob.data()[1]);

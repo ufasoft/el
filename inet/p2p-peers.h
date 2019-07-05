@@ -224,6 +224,7 @@ public:
 	mutex MtxPeers;
 	typedef vector<ptr<LinkBase>> CLinks;
 	CLinks Links;
+	//----
 
 	int MaxLinks;
 	int MaxOutboundConnections;

@@ -50,7 +50,7 @@ const int INTERNET_BUF_SIZE = 8192;
 String CInternetFile::ReadString() {
 	Blob buf(0, INTERNET_BUF_SIZE);
 	DWORD dw;
-	Win32Check(::InternetReadFile(m_hInternet, buf.data(), buf.Size, &dw));
+	Win32Check(::InternetReadFile(m_hInternet, buf.data(), buf.size(), &dw));
 	return String((const char*)buf.data(), dw);
 }
 

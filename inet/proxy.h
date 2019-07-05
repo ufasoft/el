@@ -105,7 +105,7 @@ private:
 };
 
 
-class CProxyBase : public Object {
+class CProxyBase : public NonInterlockedObject {
 public:
 	enum EStage {
 		STAGE_CONNECTED,

@@ -61,14 +61,14 @@ const int64_t DateTime::TimevalOffset(621355968000000000LL);
 
 
 const int64_t Unix_FileTime_Offset = 116444736000000000LL,
-               Unix_DateTime_Offset = DateTime::FileTimeOffset+Unix_FileTime_Offset;
+               Unix_DateTime_Offset = DateTime::FileTimeOffset + Unix_FileTime_Offset;
 
 #if !UCFG_WDM
 
 const int64_t DateTime::OADateOffset = DateTime(1899, 12, 30).Ticks;
 
 TimeSpan::TimeSpan(const timeval& tv)
-	:	base(tv.tv_sec*10000000+tv.tv_usec*10)
+	: base(tv.tv_sec*10000000+tv.tv_usec*10)
 {
 }
 
@@ -115,7 +115,7 @@ DateTime::DateTime(const SYSTEMTIME& st) {
 #endif
 
 DateTime DateTime::from_time_t(int64_t epoch) {
-	return DateTime(epoch*10000000 + Unix_DateTime_Offset);
+	return DateTime(epoch * 10000000 + Unix_DateTime_Offset);
 }
 
 String TimeSpan::ToString(int w) const {
@@ -444,7 +444,7 @@ public:
 
 #endif // _WIN32
 
-LocalDateTime DateTime::ToLocalTime() {
+LocalDateTime DateTime::ToLocalTime() const {
 #if UCFG_USE_POSIX
 	timeval tv;
 	ToTimeval(tv);
@@ -584,22 +584,22 @@ DateTime::operator timespec() const {
 
 #	if UCFG_WIN32 || UCFG_USE_PTHREADS
 void DateTime::ToTimeval(timeval& tv) const {
-	int64_t t = Ticks-TimevalOffset;
-	tv.tv_sec = long(t/10000000);
-	tv.tv_usec = long((t % 10000000)/10);
+	int64_t t = Ticks - TimevalOffset;
+	tv.tv_sec = long(t / 10000000);
+	tv.tv_usec = long((t % 10000000) / 10);
 }
 #	endif
 
 #endif // defined(_WIN32) && defined(_M_IX86)
 
 
-DateTime::operator tm() const {
+void DateTime::ToTm(tm& r) const {
 #if UCFG_WDM
 	LARGE_INTEGER li;
-	li.QuadPart = Ticks-FileTimeOffset;
+	li.QuadPart = Ticks - FileTimeOffset;
     TIME_FIELDS tf;
     ::RtlTimeToTimeFields(&li, &tf);
-    tm r = { 0 };
+	memset(&r, 0, sizeof r);
     r.tm_sec = tf.Second;
     r.tm_min = tf.Minute;
     r.tm_hour = tf.Hour;
@@ -609,12 +609,22 @@ DateTime::operator tm() const {
     r.tm_wday = tf.Weekday;
  //!!!TODO    r.rm_yday = ;
     return r;
+#elif UCFG_MSC_VERSION
+	__time64_t t64 = ToUnixTimeSeconds();
+	if (errno_t e = _gmtime64_s(&r, &t64))
+		Throw(error_code(e, generic_category()));
 #else
-	timeval tv;
-	ToTimeval(tv);
-	time_t tim = tv.tv_sec;
-    tm r;
-	return *gmtime_r(&tim, &r);
+	gmtime_r(&tim, &r);
+#endif
+}
+
+void DateTime::ToLocalTm(tm& r) const {
+#if UCFG_MSC_VERSION
+	__time64_t t64 = ToUnixTimeSeconds();
+	if (errno_t e = _localtime64_s(&r, &t64))
+		Throw(error_code(e, generic_category()));
+#else
+	ToLocalTime().ToTm(r);
 #endif
 }
 
