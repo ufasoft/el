@@ -176,24 +176,12 @@ MacAddress::MacAddress(RCString s)
 		*p++ = (uint8_t)Convert::ToUInt32(ar[i], 16);
 }
 
-String MacAddress::ToString() const {
-	ostringstream os;
-	os << _self;
-	return os.str();
+void MacAddress::Print(ostream& os) const {
+	Span s = AsSpan();
+	char buf[20];
+	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", s[0], s[1], s[2], s[3], s[4], s[5]);
+	os << buf;
 }
-
-ostream& AFXAPI operator<<(ostream& os, const MacAddress& mac) {
-	ios::fmtflags flags = os.flags();
-	Span s = mac.AsSpan();
-	for (size_t i = 0; i < s.size(); ++i) {
-		if (i)
-			os << ':';
-		os << hex << (int)s[i];
-	}
-	os.flags(flags);
-	return os;
-}
-
 
 int StreamReader::ReadChar() {
 	if (m_prevChar == -1)

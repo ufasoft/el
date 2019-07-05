@@ -186,7 +186,7 @@ const BinaryReader& BinaryReader::operator>>(CStringVector& ar) const {
 Blob BinaryReader::ReadToEnd() const {
 	MemoryStream ms;
 	BaseStream.CopyTo(ms);
-	return ms.Blob;
+	return ms.AsSpan();
 }
 
 uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p) {

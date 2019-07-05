@@ -1,3 +1,9 @@
+;/*######   Copyright (c) 2001-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+;#                                                                                                                                     #
+;# 		See LICENSE for licensing information                                                                                         #
+;#####################################################################################################################################*/
+
+
 IFNDEF __JWASM__
 	IFNDEF @CPU
 		X64	EQU	1

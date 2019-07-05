@@ -1034,8 +1034,6 @@ namespace Ext {
 
 class StreamToBlob : MemoryStream, public BinaryWriter {
 public:
-	using MemoryStream::get_Blob;
-
 	StreamToBlob(size_t capacity = 0)
 		: MemoryStream(capacity)
 		, BinaryWriter(static_cast<MemoryStream &>(*this)) {}

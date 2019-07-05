@@ -248,8 +248,8 @@ size_t Encoding::GetBytes(const String::value_type *chars, size_t charCount, uin
 
 Blob Encoding::GetBytes(RCString s) {
 	Blob blob(0, GetByteCount(s));
-	size_t n = GetBytes(s, s.length(), blob.data(), blob.Size);
-	ASSERT(n == blob.Size);
+	size_t n = GetBytes(s, s.length(), blob.data(), blob.size());
+	ASSERT(n == blob.size());
 	return blob;
 }
 
@@ -354,7 +354,7 @@ Blob UTF8Encoding::GetBytes(RCString s) {
 		}
 	} v;
 	PassToBytes(s, s.length(), v);
-	return v.ms.Blob;
+	return v.ms.AsSpan();
 }
 
 size_t UTF8Encoding::GetBytes(const String::value_type *chars, size_t charCount, uint8_t *bytes, size_t byteCount) {

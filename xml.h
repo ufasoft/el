@@ -65,7 +65,7 @@ ENUM_CLASS(XmlNodeType)  {
 	EndEntity,
 	XmlDeclaration
 } END_ENUM_CLASS(XmlNodeType);
-	
+
 class XmlException : public SystemException {
 	typedef SystemException base;
 public:
@@ -117,7 +117,7 @@ private:
 
 interface IXmlAttributeCollection {
 	virtual String GetAttribute(const CStrPtr& name) const =0;
-	virtual String GetAttribute(int idx) const { Throw(E_NOTIMPL); } 
+	virtual String GetAttribute(int idx) const { Throw(E_NOTIMPL); }
 };
 
 
@@ -189,6 +189,9 @@ public:
 	XmlNode(nullptr_t null = nullptr)
 		:	base()
 	{}
+
+    bool operator==(const XmlNode& a) const { return base::operator==(a); }
+    bool operator!=(const XmlNode& a) const { return !operator==(a); }
 
 	XmlNodeType get_NodeType() const {
 		DOMNodeType r;
@@ -391,7 +394,7 @@ class XmlLinkedNode : public XmlNode {
 
 class XmlElement : public XmlWrap<XmlLinkedNode, IXMLDOMElement>, public IXmlAttributeCollection {
 	typedef XmlElement class_type;
-public:	
+public:
 	String GetAttribute(const CStrPtr& name) const override;
 	String GetAttribute(int idx) const override { Throw(E_NOTIMPL); } //!!!
 
@@ -406,7 +409,7 @@ public:
 	}
 
 	bool HasAttribute(RCString name) { return GetAttributeNode(name); }
-	
+
 	bool get_IsEmpty() { return !FirstChild; }
 	DEFPROP_GET(bool, IsEmpty);
 
@@ -598,7 +601,7 @@ public:
 	String get_Value() const override;
 	int get_Depth() const override;
 	Ext::ReadState get_ReadState() const override;
-	
+
 	String GetAttribute(int idx) const override;
 	String GetAttribute(const CStrPtr& name) const override;
 	bool IsEmptyElement() const override;
@@ -633,7 +636,7 @@ protected:
 	String get_Message() const override;
 private:
 	xmlError m_xmlError;
-	
+
 	LibxmlXmlException& operator=(const LibxmlXmlException&);
 };
 
@@ -756,16 +759,16 @@ public:
 	Ext::XmlFormatting Formatting;
 
 	XmlTextWriter(std::ostream& os, Ext::Encoding *enc = &Ext::Encoding::UTF8)
-		:	m_os(os)
-		,	Encoding(enc)
+		: Encoding(enc)
+		, m_os(os)
 	{
 		CommonInit();
 	}
 
 	XmlTextWriter(RCString filename, Ext::Encoding *enc = &Ext::Encoding::UTF8)
-		:	m_ofs(filename.c_str())
-		,	m_os(m_ofs)
-		,	Encoding(enc)
+		: Encoding(enc)
+		, m_ofs(filename.c_str())
+		, m_os(m_ofs)
 	{
 		CommonInit();
 	}
@@ -816,11 +819,17 @@ std::string quote_normalize(const std::string& input);
 
 class XmlNodeReader : public XmlReader {
 	typedef XmlReader base;
+
+	XmlNode m_startNode;
+	mutable XmlNode m_cur, m_linkedNode;
+	mutable int m_depth;
+	mutable Ext::ReadState m_readState;
+	mutable CBool m_bEndElement;
 public:
 	XmlNodeReader(const XmlNode& startNode)
-		:	m_startNode(startNode)
-		,	m_readState(Ext::ReadState::Initial)
-		,	m_depth(0)
+		: m_startNode(startNode)
+		, m_readState(Ext::ReadState::Initial)
+		, m_depth(0)
 	{}
 
 	Ext::ReadState get_ReadState() const override { return m_readState; }
@@ -841,12 +850,6 @@ public:
 	bool Read() const override;
 	void Skip() const override;
 	void Close() const override;
-private:
-	XmlNode m_startNode;
-	mutable XmlNode m_cur, m_linkedNode;
-	mutable Ext::ReadState m_readState;
-	mutable CBool m_bEndElement;
-	mutable int m_depth;
 };
 #endif // UCFG_WIN32
 
@@ -856,7 +859,7 @@ class XmlString {
 public:
 	xmlChar *m_p;
 	String m_sNull;
-	
+
 	XmlString(xmlChar *p, RCString sNull = nullptr)
 		:	m_p(p)
 		,	m_sNull(sNull)
@@ -881,15 +884,18 @@ class XPathNodeIterator;
 class XPathNavigator;
 
 template<> struct ptr_traits<XPathNavigator> {
-	typedef Object::interlocked_policy interlocked_policy;
+	typedef NonInterlockedPolicy interlocked_policy;
 };
 
 template<> struct ptr_traits<XPathNodeIterator> {
-	typedef Object::interlocked_policy interlocked_policy;
+	typedef NonInterlockedPolicy interlocked_policy;
 };
 
 class XPathDocument : public Object {
 	typedef XPathDocument class_type;
+
+	observer_ptr<Ext::Encoding> m_pEncoding;
+	xmlDocPtr m_doc;
 public:
 	XPathDocument(RCString filename);
 	EXT_XML_API XPathDocument(std::istream& is);
@@ -900,18 +906,17 @@ public:
 	}
 
 	ptr<XPathNavigator> CreateNavigator();
-private:
-	observer_ptr<Ext::Encoding> m_pEncoding;
-	xmlDocPtr m_doc;		
-
 };
 
-class XPathNavigator : public Object {
+class XPathNavigator : public NonInterlockedObject {
 	typedef XPathNavigator class_type;
+
+	xmlXPathContextPtr m_ctx;
+	xmlNodePtr m_node;
 public:
 	XPathNavigator()
-		:	m_ctx(0)
-		,	m_node(0)
+		: m_ctx(0)
+		, m_node(0)
 	{}
 
 	~XPathNavigator() {
@@ -921,24 +926,24 @@ public:
 
 	ptr<XPathNodeIterator> Select(RCString xpath);
 	ptr<XPathNavigator> SelectSingleNode(RCString xpath);
-	String GetAttribute(RCString name);	
+	String GetAttribute(RCString name);
 
 	String get_Value();
 	DEFPROP_GET(String, Value);
 private:
-	xmlXPathContextPtr m_ctx;
-	xmlNodePtr m_node;
-
 	friend class XPathDocument;
 	friend class XPathNodeIterator;
 };
 
-class XPathNodeIterator : public Object {
+class XPathNodeIterator : public NonInterlockedObject {
 	typedef XPathNodeIterator class_type;
+
+	xmlXPathObjectPtr m_p;
+	int m_i;
 public:
 	XPathNodeIterator()
-		:	m_p(0)
-		,	m_i(-1)
+		: m_p(0)
+		, m_i(-1)
 	{}
 
 	~XPathNodeIterator() {
@@ -951,9 +956,6 @@ public:
 	ptr<XPathNavigator> get_Current();
 	DEFPROP_GET(ptr<XPathNavigator>, Current);
 private:
-	xmlXPathObjectPtr m_p;
-	int m_i;
-
 	friend class XPathNavigator;
 };
 

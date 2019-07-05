@@ -137,6 +137,7 @@ inline void AFXAPI PutLeUInt64(void* p, uint64_t v) { *(uint64_t UNALIGNED*)p = 
 __END_DECLS
 
 namespace Ext {
+using namespace std;
 
 uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p);
 void AFXAPI Write7BitEncoded(uint8_t*& p, uint64_t v);
@@ -247,34 +248,27 @@ public:
 };
 
 class EXTAPI MemoryStream : public MemStreamWithPosition {
-	uint8_t* m_data;
-	size_t m_size, m_capacity;
+	typedef MemStreamWithPosition base;
 public:
 	typedef MemoryStream class_type;
 
 	static const size_t DEFAULT_CAPACITY = 256;
-
+private:
+	typedef AutoBlob<DEFAULT_CAPACITY> CBlob;
+	CBlob m_blob;
+	size_t m_size;
+public:
 	MemoryStream(size_t capacity = DEFAULT_CAPACITY);
-
-	~MemoryStream() {
-		free(m_data);
-	}
-
 	uint64_t get_Length() const override { return m_size; }
     size_t size() const { return m_size; }
-    const uint8_t *data() const { return m_data; }
+    const uint8_t *data() const { return m_blob.data(); }
 	void WriteBuffer(const void* buf, size_t count) override;
 	bool Eof() const override;
 	void Reset(size_t capacity = DEFAULT_CAPACITY);
 
-	Span AsSpan() const { return Span(m_data, m_size); }    //!!!O obsolete
+	Span AsSpan() const { return Span(m_blob.data(), m_size); }    //!!!O obsolete
 
-	class Blob get_Blob() const {
-		return Ext::Blob(AsSpan());
-	}
-	DEFPROP_GET(class Blob, Blob);
-
-	size_t get_Capacity() const { return m_capacity; }
+	size_t get_Capacity() const { return m_blob.size(); }
 	DEFPROP_GET(size_t, Capacity);
 };
 
@@ -294,7 +288,9 @@ inline String AFXAPI operator+(const String::value_type* p, const String& s) { r
 
 class CIosStream : public Stream {
 	typedef CIosStream class_type;
-
+protected:
+	std::istream* m_pis;
+	std::ostream* m_pos;	
 public:
 	CIosStream(std::istream& ifs)
 		: m_pis(&ifs)
@@ -346,25 +342,21 @@ public:
 	}
 
 protected:
-	std::istream* m_pis;
-	std::ostream* m_pos;
-
 	CIosStream()
 		: m_pis(0)
 		, m_pos(0) {}
 };
 
 class StringInputStream : public CIosStream {
+	String m_s;
+	std::istringstream m_is;
 public:
 	StringInputStream(RCString s)
 		: m_s(s)
-		, m_is(m_s.c_str()) {
+		, m_is(m_s.c_str())
+	{
 		m_pis = &m_is;
 	}
-
-private:
-	String m_s;
-	std::istringstream m_is;
 };
 
 template <typename EL, typename TR> inline std::basic_ostream<EL, TR>& operator<<(std::basic_ostream<EL, TR>& os, const CPrintable& ob) { return os << ob.ToString(); }
@@ -374,7 +366,7 @@ inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) {
 	return os;
 }
 
-class MacAddress : totally_ordered<MacAddress> {
+class MacAddress : totally_ordered<MacAddress>, public CPrintable {
 public:
 	uint64_t m_n64;
 
@@ -387,7 +379,8 @@ public:
 	explicit MacAddress(RCSpan mb) {
 		if (mb.size() != 6)
 			Throw(E_FAIL);
-		m_n64 = *(uint32_t*)mb.data() | (uint64_t(*((uint16_t*)mb.data() + 2)) << 32);
+		m_n64 = 0;
+		memcpy(&m_n64, mb.data(), 6);
 	}
 
 	explicit MacAddress(RCString s);
@@ -395,8 +388,7 @@ public:
 	Span AsSpan() const { return Span((uint8_t*)&m_n64, 6); }
 
 	void CopyTo(void* p) const {
-		*(uint32_t*)p = (uint32_t)m_n64;
-		*((uint16_t*)p + 2) = uint16_t(m_n64 >> 32);
+		memcpy(p, &m_n64, 6);
 	}
 
 	bool operator<(MacAddress mac) const { return m_n64 < mac.m_n64; }
@@ -405,10 +397,8 @@ public:
 	static MacAddress __stdcall Null() { return MacAddress(); }
 	static MacAddress __stdcall Broadcast() { return MacAddress(0xFFFFFFFFFFFFLL); }
 
-	String ToString() const;
+	void Print(ostream& os) const override;
 };
-
-EXT_API std::ostream& __stdcall operator<<(std::ostream& os, const MacAddress& mac);
 
 #if !UCFG_WCE
 } // Ext::
@@ -425,16 +415,30 @@ namespace Ext {
 class UTF8Encoding;
 
 class Encoding : public InterlockedObject {
+protected:
+#if UCFG_WDM
+	static bool t_IgnoreIncorrectChars;
+#else
+	static EXT_THREAD_PTR(Encoding) t_IgnoreIncorrectChars;
+#endif
+
+	typedef std::unordered_map<String, ptr<Encoding>> CEncodingMap;
+	static CEncodingMap s_encodingMap;
+
+#if UCFG_USE_POSIX
+	iconv_t m_iconvTo;
+	iconv_t m_iconvFrom;
+#endif
 public:
 	EXT_DATA static Encoding* s_Default;
 	EXT_DATA static UTF8Encoding UTF8;
 
-	static Encoding& AFXAPI Default();
-
-	int CodePage;
 	String Name;
+	int CodePage;
 
 	Encoding(int codePage = 0);
+
+	static Encoding& AFXAPI Default();
 
 	virtual ~Encoding() {
 #if UCFG_USE_POSIX
@@ -456,35 +460,20 @@ public:
 	virtual Blob GetBytes(RCString s);
 
 	class CIgnoreIncorrectChars {
+		bool m_prev;
 	public:
 		CIgnoreIncorrectChars(bool v = true)
 			: m_prev(SetThreadIgnoreIncorrectChars(v)) {}
 
 		~CIgnoreIncorrectChars() { SetThreadIgnoreIncorrectChars(m_prev); }
-
-	private:
-		bool m_prev;
 	};
-
-protected:
-#if UCFG_WDM
-	static bool t_IgnoreIncorrectChars;
-#else
-	static EXT_THREAD_PTR(Encoding) t_IgnoreIncorrectChars;
-#endif
-
-	typedef std::unordered_map<String, ptr<Encoding>> CEncodingMap;
-	static CEncodingMap s_encodingMap;
-
-#if UCFG_USE_POSIX
-	iconv_t m_iconvTo;
-	iconv_t m_iconvFrom;
-#endif
 };
 
 class UTF8Encoding : public Encoding {
 	typedef Encoding base;
 
+	typedef std::codecvt_utf8_utf16<wchar_t> Cvt;
+	Cvt m_cvt;
 public:
 	UTF8Encoding()
 		: base(CP_UTF8) {}
@@ -498,10 +487,6 @@ public:
 protected:
 	void Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor);
 	void PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<uint8_t, bool>& visitor);
-
-private:
-	typedef std::codecvt_utf8_utf16<wchar_t> Cvt;
-	Cvt m_cvt;
 };
 
 class ASCIIEncoding : public Encoding {
@@ -655,6 +640,7 @@ public:
 typedef void(_cdecl* PFNAtExit)();
 
 class AtExitRegistration {
+	PFNAtExit m_pfn;
 public:
 	AtExitRegistration(PFNAtExit pfn)
 		: m_pfn(pfn) {
@@ -662,16 +648,15 @@ public:
 	}
 
 	~AtExitRegistration() { UnregisterAtExit(m_pfn); }
-
-private:
-	PFNAtExit m_pfn;
 };
 
 class StreamReader {
 public:
 	Stream& BaseStream;
 	Ext::Encoding& Encoding;
-
+private:
+	int m_prevChar;
+public:
 	StreamReader(Stream& stm, Ext::Encoding& enc = Ext::Encoding::Default())
 		: BaseStream(stm)
 		, Encoding(enc)
@@ -681,10 +666,7 @@ public:
 	EXT_API std::pair<String, bool> ReadLineEx();
 
 	String ReadLine() { return ReadLineEx().first; }
-
 private:
-	int m_prevChar;
-
 	int ReadChar();
 };
 

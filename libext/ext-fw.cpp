@@ -639,7 +639,7 @@ String NameValueCollection::ToString() const {
 String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 	Blob blob = enc.GetBytes(s);
 	ostringstream os;
-	for (size_t i=0; i<blob.Size; ++i)	{
+	for (size_t i = 0; i < blob.size(); ++i) {
 		char ch = blob.constData()[i];
 		if (ch == ' ')
 			os << '+';
@@ -654,21 +654,19 @@ String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 String HttpUtility::UrlDecode(RCString s, Encoding& enc) {
 	Blob blob = enc.GetBytes(s);
 	ostringstream os;
-	for (size_t i=0; i<blob.Size; ++i)	 {
+	for (size_t i = 0; i < blob.size(); ++i) {
 		char ch = blob.constData()[i];
 		switch (ch) {
 		case '+':
 			os << ' ';
 			break;
-		case '%':
-			{
-				if (i+2 > blob.Size)
+		case '%': {
+			if (i + 2 > blob.size())
 					Throw(E_FAIL);
-				String c1((char)blob.constData()[++i]),
+			String c1((char)blob.constData()[++i]),
 					c2((char)blob.constData()[++i]);
-				os << (char)Convert::ToUInt32(c1+c2, 16);
-			}
-			break;
+			os << (char)Convert::ToUInt32(c1 + c2, 16);
+		} break;
 		default:
 			os << ch;
 		}
@@ -738,7 +736,7 @@ Blob Convert::FromBase64String(RCString s) {
 			break;
 		wr << uint8_t(ch2 << 6 | ch3);
 	}
-	return ms.Blob;
+	return ms.AsSpan();
 }
 
 String Convert::ToBase64String(RCSpan mb) {
@@ -1390,8 +1388,8 @@ bool PersistentCache::Lookup(RCString key, Blob& blob) {
 	if (!exists(fn))
 		return false;
 	FileStream fs(fn.c_str(), FileMode::Open, FileAccess::Read);
-	blob.Size = (size_t)fs.Length;
-	fs.ReadBuffer(blob.data(), blob.Size);
+	blob.resize((size_t)fs.Length);
+	fs.ReadBuffer(blob.data(), blob.size());
 	return true;
 }
 

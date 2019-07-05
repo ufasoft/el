@@ -263,7 +263,7 @@ IPEndPoint CSocks4Proxy::Connect(Stream& stm, const CProxyQuery& q) {
 		wr.Write(szPassword,strlen(szPassword)+1);
 		wr.Write((const char*)dnsEp->Host, dnsEp->Host.length() + 1);
 	}
-	Blob blob = qs.Blob;
+	Blob blob = qs.AsSpan();
 	stm.WriteBuffer(blob.constData(), blob.size());
 	uint8_t buf[8];
 	stm.ReadBuffer(buf, 8);//!!!
