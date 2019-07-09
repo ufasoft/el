@@ -60,11 +60,11 @@ class Acl {
 public:
 	Acl(ACL *pacl);
 	Acl(size_t size);
-	operator bool() const { return m_blob.Size != 0; }
-	operator ACL*() const { return  _self ? (ACL*)m_blob.data() : 0; }
+	operator bool() const { return m_blob.size() != 0; }
+	operator ACL*() const { return  *this ? (ACL*)m_blob.data() : 0; }
 
 	size_t get_Count() const ;
-	DEFPROP_GET_CONST(size_t,Count);
+	DEFPROP_GET_CONST(size_t, Count);
 
 	Ace operator[](int idx);
 

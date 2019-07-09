@@ -65,7 +65,7 @@ CRegistryValue DiDeviceInfo::GetRegistryProperty(DWORD prop) {
 }
 
 void DiDeviceInfo::SetRegistryProperty(DWORD prop, const CRegistryValue rv) {
-	Win32Check(::SetupDiSetDeviceRegistryProperty(m_p->m_h, &m_data, prop, rv.m_blob.data(), (DWORD)rv.m_blob.Size));
+	Win32Check(::SetupDiSetDeviceRegistryProperty(m_p->m_h, &m_data, prop, rv.m_blob.data(), (DWORD)rv.m_blob.size()));
 }
 
 void DiDeviceInfo::ChangeState(DWORD state) {
@@ -162,13 +162,13 @@ Resources::iterator& Resources::iterator::operator++() {
 }
 
 const SP_DRVINFO_DETAIL_DATA& DiDriverInfo::GetDetailData() {
-	if (m_blobDetailData.Size == 0) {
+	if (m_blobDetailData.size() == 0) {
 		DWORD dw;
 		Win32Check(::SetupDiGetDriverInfoDetail(m_pDCD->m_h, 0, &m_drvinfo_data, 0, 0, &dw), ERROR_INSUFFICIENT_BUFFER);
-		m_blobDetailData.Size = dw;
+		m_blobDetailData.resize(dw);
 		SP_DRVINFO_DETAIL_DATA *detData = (SP_DRVINFO_DETAIL_DATA*)m_blobDetailData.data();
 		detData->cbSize = sizeof(SP_DRVINFO_DETAIL_DATA);
-		Win32Check(::SetupDiGetDriverInfoDetail(m_pDCD->m_h, 0, &m_drvinfo_data, detData, m_blobDetailData.Size, 0));
+		Win32Check(::SetupDiGetDriverInfoDetail(m_pDCD->m_h, 0, &m_drvinfo_data, detData, m_blobDetailData.size(), 0));
 	}
 	return *(SP_DRVINFO_DETAIL_DATA*)m_blobDetailData.data();
 }

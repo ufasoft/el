@@ -3,8 +3,6 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#pragma once
-
 #include <el/ext.h>
 
 #include <windows.h>

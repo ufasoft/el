@@ -22,7 +22,7 @@ class DiDrivers;
 
 void SetupDiCheck(HDEVINFO h);
 
-class Obj_DiClassDevs : public Object {
+class Obj_DiClassDevs : public NonInterlockedObject {
 public:
 	HDEVINFO m_h;
 
@@ -45,14 +45,14 @@ public:
 	}
 };
 
-class Obj_LogConf : public Object {
+class Obj_LogConf : public NonInterlockedObject {
 public:
 	LOG_CONF m_h;
 
 	~Obj_LogConf();
 };
 
-class Obj_HwResource : public Object {
+class Obj_HwResource : public NonInterlockedObject {
 public:
 	RES_DES m_h;
 	RESOURCEID m_type;
@@ -258,8 +258,8 @@ public:
 	}
 
 	DiDriverInfo(ptr<Obj_DiClassDevs> pDCD, const SP_DRVINFO_DATA& drvinfo_data)
-		:	m_pDCD(pDCD)
-		,	m_drvinfo_data(drvinfo_data)
+		: m_drvinfo_data(drvinfo_data) 
+		, m_pDCD(pDCD)
 	{}
 
 	const SP_DRVINFO_DETAIL_DATA& GetDetailData();
