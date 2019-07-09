@@ -29,10 +29,8 @@ const int P2P_CONNECT_TIMEOUT = 5000;
 const int PERIODIC_SECONDS = 10;
 const int PERIODIC_SEND_SECONDS = 10;
 
-class Message : public Object, public CPersistent {
+class Message : public InterlockedObject, public CPersistent {
 public:
-	typedef InterlockedPolicy interlocked_policy;
-
 	DateTime Timestamp;
 	ptr<P2P::Link> LinkPtr;
 
@@ -91,10 +89,11 @@ public:
 	TimeSpan TimeOffset;
 	int FirstByte;
 	int PeerVersion;
-	CBool UseMagic;
-	CBool LineBased; //!!!TODO
-	CBool IsOneShot; // seed
-	CBool Whitelisted;
+	CBool UseMagic,
+		LineBased, //!!!TODO
+		IsOneShot, // seed
+		Whitelisted,
+		SentOtherPeersAddresses;
 
 	Link(P2P::NetManager* netManager, thread_group* tr)
 		: base(netManager, tr)
@@ -112,7 +111,7 @@ public:
 	virtual size_t GetMessagePayloadSize(RCSpan buf);
 	virtual ptr<Message> RecvMessage(const BinaryReader& rd);
 	virtual void OnMessage(Message* m);
-	virtual void ReceiveAndProcessMessage(const BinaryReader& rd);
+	virtual void ReceiveAndProcessMessage(const BinaryReader& rd, const DateTime& timestamp);
 	virtual void ReceiveAndProcessLineMessage(RCSpan bufLine);
 	virtual void OnCloseLink();
 	virtual void OnPingTimeout();
@@ -141,6 +140,8 @@ protected:
 class ListeningThread : public SocketThread {
 	typedef SocketThread base;
 
+	AddressFamily m_af;
+	Socket m_sock;
 public:
 	P2P::NetManager& NetManager;
 
@@ -153,8 +154,6 @@ protected:
 	void Execute() override;
 
 private:
-	AddressFamily m_af;
-	Socket m_sock;
 
 	void ChosePort();
 };
@@ -165,8 +164,8 @@ class Net : public PeerManager {
 public:
 	thread_group m_tr;
 	TimeSpan StallingTimeout;
-	CBool Runned;
 	uint32_t ProtocolMagic;
+	CBool Runned;
 	bool Listen;
 
 	Net(P2P::NetManager& netManager);

@@ -57,6 +57,11 @@ template <class U> friend class CHandleKeeper;
 #ifndef WDM_DRIVER
 
 class EXTAPI CTls : noncopyable {
+#if UCFG_USE_PTHREADS
+	pthread_key_t m_key;
+#else
+	unsigned long m_key; //!!! was ULONG
+#endif
 public:
 	typedef CTls class_type;
 
@@ -73,12 +78,6 @@ public:
 
 	void put_Value(const void *p);
 	DEFPROP(void*, Value);
-private:
-#if UCFG_USE_PTHREADS
-	pthread_key_t m_key;
-#else
-	unsigned long m_key; //!!! was ULONG
-#endif
 };
 
 template <class T>
@@ -154,6 +153,9 @@ public:
 #endif // !WDM_DRIVER
 
 template <class H> class CHandleKeeper {
+protected:
+	mutable const H* m_hp;
+	mutable CBool m_bIncremented;
 public:
 	CHandleKeeper(const H& hp)
 		: m_hp(&hp)
@@ -202,22 +204,25 @@ public:
 			m_hp->Release(false);
 		}
 	}
-protected:
-	mutable const H *m_hp;
-	mutable CBool m_bIncremented;
 };
 
 
 class EXTAPI SafeHandle : public Object, public CHandleBase<SafeHandle> {
-	typedef CHandleBase<SafeHandle> base;
-	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
 public:
-	typedef intptr_t handle_type;
-
 #ifndef WDM_DRIVER
 	//!!!R static CTls t_pCurrentHandle;
 	static EXT_THREAD_PTR(void) t_pCurrentHandle;
 #endif
+protected:
+	const intptr_t m_invalidHandleValue;
+private:
+	typedef CHandleBase<SafeHandle> base;
+	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
+
+	mutable atomic<intptr_t> m_aHandle;
+	CBool m_bOwn;
+public:
+	typedef intptr_t handle_type;
 
 	SafeHandle()
 		: m_invalidHandleValue(-1)
@@ -280,11 +285,11 @@ public:
 		{}
 
 		HandleAccess(const HandleAccess& ha)
-			:	base(ha)
+			: base(ha)
 		{}
 
 		HandleAccess(const SafeHandle& h)
-			:	base(h)
+			: base(h)
 		{}
 
 		~HandleAccess();
@@ -301,24 +306,18 @@ public:
 	};
 
 	class BlockingHandleAccess : public HandleAccess {
+		HandleAccess* m_pPrev;
 	public:
 		BlockingHandleAccess(const SafeHandle& h);
 		~BlockingHandleAccess();
-	private:
-		HandleAccess *m_pPrev;
 	};
 
 	void InternalReleaseHandle() const override;
 	intptr_t DangerousGetHandleEx() const { return m_aHandle.load(); }
 protected:
-	const intptr_t m_invalidHandleValue;
-
 	void ReplaceHandle(intptr_t h) { m_aHandle = h; }
 	virtual void ReleaseHandle(intptr_t h) const;
 private:
-	mutable atomic<intptr_t> m_aHandle;
-	CBool m_bOwn;
-
 	void AfterAttach(bool bOwn);
 
 	template <class T> friend class CHandleKeeper;
@@ -335,8 +334,8 @@ typename T::handle_type BlockingHandle(T& x) {
 }
 
 ENUM_CLASS(HandleInheritability) {
-	None,
-	Inheritable
+	None
+	, Inheritable
 } END_ENUM_CLASS(HandleInheritability);
 
 } // Ext::

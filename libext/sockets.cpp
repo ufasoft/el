@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -228,14 +228,14 @@ void Socket::Shutdown(int how) {
 }
 
 int Socket::Receive(void *buf, int len, int flags) {
-	int r = recv(BlockingHandleAccess(_self), (char*)buf, len, flags);
+	int r = ::recv(BlockingHandleAccess(_self), (char*)buf, len, flags);
 	if (SOCKET_ERROR == r && WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
 	return r;
 }
 
 int Socket::Send(const void *buf, int len, int flags) {
-	int r = send(BlockingHandleAccess(_self), (char*)buf, len, flags);
+	int r = ::send(BlockingHandleAccess(_self), (char*)buf, len, flags);
 	if (SOCKET_ERROR == r && WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
 	return r;
@@ -247,7 +247,7 @@ int Socket::ReceiveFrom(void *buf, int len, IPEndPoint& ep) {
 	sockaddr& sa =  *(sockaddr*)bufSockaddr;
 	sa.sa_family = AF_INET;
 	socklen_t addrLen = sizeof(bufSockaddr);
-	int r = recvfrom(BlockingHandleAccess(_self), (char*)buf, len, 0, &sa, &addrLen);
+	int r = ::recvfrom(BlockingHandleAccess(_self), (char*)buf, len, 0, &sa, &addrLen);
 	if (r == SOCKET_ERROR && WSAGetLastError() != WSA(EWOULDBLOCK))
 		ThrowWSALastError();
 	ep = IPEndPoint(sa);
@@ -353,20 +353,19 @@ void CSocketLooper::Loop(Socket& sockS, Socket& sockD) {
 
 	class CLoopKeeper {
 	public:
-		bool m_bLive, m_bAccepts,
-			m_bIncoming;
 		CSocketLooper& m_socketLooper;
 		Socket &m_sock, &m_sockOther;
 		Socket::BlockingHandleAccess m_hp;
+		bool m_bLive, m_bAccepts, m_bIncoming;
 
 		CLoopKeeper(CSocketLooper& socketLooper, Socket& sock, Socket& sockOther, bool bIncoming = false)
-			:	m_socketLooper(socketLooper)
-			,	m_sock(sock)
-			,	m_hp(m_sock)
-			,	m_sockOther(sockOther)
-			,	m_bLive(true)
-			,	m_bAccepts(true)
-			,	m_bIncoming(bIncoming)
+			: m_socketLooper(socketLooper)
+			, m_sock(sock)
+			, m_hp(m_sock)
+			, m_sockOther(sockOther)
+			, m_bLive(true)
+			, m_bAccepts(true)
+			, m_bIncoming(bIncoming)
 		{}
 
 		bool Process(fd_set *fdset) {

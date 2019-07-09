@@ -123,7 +123,7 @@ void Link::OnMessage(Message *m) {
 		Net->OnMessage(m);
 }
 
-void Link::ReceiveAndProcessMessage(const BinaryReader& rd) {
+void Link::ReceiveAndProcessMessage(const BinaryReader& rd, const DateTime& timestamp) {
 	ptr<Message> msg;
 	try {
 //!!!				DBG_LOCAL_IGNORE_NAME(E_EXT_Protocol_Violation, ignE_EXT_Protocol_Violation);
@@ -136,14 +136,13 @@ void Link::ReceiveAndProcessMessage(const BinaryReader& rd) {
 			NetManager->BanPeer(*Peer);
 		throw;
 	}
-	DateTime now = Clock::now();
 	EXT_LOCK (Mtx) {
-		m_dtLastRecv = now;
+		m_dtLastRecv = timestamp;
 		if (Peer)
-			Peer->LastLive = now;
+			Peer->LastLive = timestamp;
 	}
 	if (msg) {
-		msg->Timestamp = now;
+		msg->Timestamp = timestamp;
 		msg->LinkPtr = this;
 		OnMessage(msg);
 	}
@@ -290,6 +289,7 @@ LAB_FOUND:
 					}
 
 					int rc = Tcp.Client.Receive(blobMessage.data() + cbReceived, blobMessage.size() - cbReceived);
+					now = Clock::now();
 					if (!rc)
 						goto LAB_EOF;
 					if (rc < 0)
@@ -307,7 +307,7 @@ LAB_FOUND:
 							}
 							if (bReceivingPayload) {
 								CMemReadStream stm(blobMessage);
-								ReceiveAndProcessMessage(BinaryReader(stm));
+								ReceiveAndProcessMessage(BinaryReader(stm), now);
 
 								blobMessage.resize(cbHdr);
 								bReceivingPayload = false;
