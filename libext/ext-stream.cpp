@@ -78,24 +78,17 @@ void CMemWriteStream::WriteBuffer(const void* buf, size_t count) {
 }
 
 MemoryStream::MemoryStream(size_t capacity)
-	: m_data((uint8_t*)Ext::Malloc(capacity))
+	: m_blob(capacity, false)
 	, m_size(0)
-	, m_capacity(capacity)
 {
 }
 
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
 	auto nextPos = m_pos + count;
-	if (nextPos > m_capacity) {
-		m_capacity = max3(m_capacity * 2, nextPos, DEFAULT_CAPACITY);
-#if UCFG_HAS_REALLOC
-		m_data = (uint8_t*)Ext::Realloc(m_data, m_capacity);
-#else
-		free(exchange(m_data, (uint8_t*)memcpy(Ext::Malloc(m_capacity), data, m_size)));
-#endif
-	}
+	if (nextPos > m_blob.size())
+		m_blob.resize(max3(m_blob.size() * 2, nextPos, DEFAULT_CAPACITY), false);
 	m_size = max(m_size, nextPos);
-	memcpy(&m_data[exchange(m_pos, nextPos)], buf, count);
+	memcpy(m_blob.data() + exchange(m_pos, nextPos), buf, count);
 }
 
 bool MemoryStream::Eof() const {
@@ -103,8 +96,7 @@ bool MemoryStream::Eof() const {
 }
 
 void MemoryStream::Reset(size_t capacity) {
-	free(exchange(m_data, nullptr));
-	m_data = (uint8_t *)Ext::Malloc(m_capacity = capacity);
+	m_blob = CBlob(capacity, false);
 	m_size = 0;
 }
 
