@@ -20,7 +20,7 @@ ENUM_CLASS(DbType) {
 	String
 } END_ENUM_CLASS(DbType);
 
-interface IDataRecord : public Object {
+interface IDataRecord : public NonInterlockedObject {
 	virtual int32_t GetInt32(int i) =0;
 	virtual int64_t GetInt64(int i) =0;
 	virtual double GetDouble(int i) =0;
@@ -45,6 +45,8 @@ interface IDataReader : public IDataRecord {
 };
 
 interface IDbCommand : public Object {
+	typedef NonInterlockedPolicy interlocked_policy;
+
 	String CommandText;
 
 	virtual IDbCommand& Bind(int column, std::nullptr_t) =0;
@@ -135,7 +137,7 @@ class DbException : public Exception {
 	typedef Exception base;
 public:
 	DbException(const error_code& ec, RCString s)
-		:	base(ec, s)
+		: base(ec, s)
 	{
 	}
 };
