@@ -173,7 +173,7 @@ void XmlTextWriter::Close() {
 
 void XmlTextWriter::WriteQuotedString(RCString value) {
 	Blob blob = Encoding->GetBytes(value);
-	m_os << quote(string((char*)blob.constData(), blob.Size));
+	m_os << quote(string((char*)blob.constData(), blob.size()));
 }
 
 void XmlTextWriter::WriteAttributeString(const char *name, RCString value) {

@@ -43,8 +43,25 @@ T *XmlCheck(T *p) {
 	return p;
 }
 
+static class libxml_error_category : public ErrorCategoryBase {
+	typedef ErrorCategoryBase base;
+public:
+	libxml_error_category()
+		: base("libxml", FACILITY_LIBXML) {
+	}
+
+	string message(int errval) const override {
+		return "Libxml error";
+	}
+
+} s_libxmlErrorCategory;
+
+const error_category& libxml_category() {
+	return s_libxmlErrorCategory;
+}
+
 LibxmlXmlException::LibxmlXmlException(xmlError *err)
-	:	base(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_LIBXML, err->code), err->message)
+	:	base(error_code(err->code, libxml_category()), err->message)
 {
 	ZeroStruct(m_xmlError);
 	XmlCheck(xmlCopyError(err, &m_xmlError));
