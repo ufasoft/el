@@ -25,7 +25,7 @@ String::String(char ch, ssize_t nRepeat) {
 	Encoding& enc = Encoding::Default();
 	enc.GetChars(Span((const uint8_t*)&ch, 1), &wch, 1);
 #endif
-	m_blob.Size = nRepeat*sizeof(String::value_type);
+	m_blob.resize(nRepeat * sizeof(String::value_type));
 	fill_n((value_type*)m_blob.data(), nRepeat, wch);
 }
 
@@ -192,7 +192,7 @@ const char *String::c_str() const {  //!!! optimize
 
 String::operator explicit_cast<std::string>() const {
 	Blob bytes = Encoding::Default().GetBytes(_self);
-	return std::string((const char*)bytes.constData(), bytes.Size);
+	return std::string((const char*)bytes.constData(), bytes.size());
 }
 
 void String::CopyTo(char *ar, size_t size) const {
@@ -252,7 +252,7 @@ int String::Replace(RCString sOld, RCString sNew) {
 
 
 String::String(value_type ch, ssize_t nRepeat) {
-	m_blob.Size = nRepeat * sizeof(value_type);
+	m_blob.resize(nRepeat * sizeof(value_type));
 	fill_n((value_type*)m_blob.data(), nRepeat, ch);
 }
 
@@ -322,7 +322,7 @@ String& String::operator=(const value_type *lpsz) {
 		if (!m_blob.m_pData)
 			m_blob.m_pData = new(len, false) CStringBlobBuf(len);
 		else
-			m_blob.Size = len;
+			m_blob.resize(len);
 		memcpy(m_blob.data(), lpsz, len);
 	} else
 		Release(exchange(m_blob.m_pData, nullptr));
@@ -393,11 +393,11 @@ int String::CompareNoCase(const String& s) const {
 }
 
 bool String::empty() const noexcept {
-	return !m_blob.m_pData || m_blob.Size == 0;
+	return m_blob.empty();
 }
 
 void String::clear() {		//  noexcept
-	m_blob.Size = 0;		//!!!TODO make this function noexcept
+	m_blob.resize(0);		//!!!TODO make this function noexcept
 	MakeDirty();
 }
 
@@ -441,7 +441,7 @@ String String::Right(ssize_t nCount) const {
 	if (nCount >= length())
 		return _self;
 	String dest;
-	dest.m_blob.Size = nCount * sizeof(value_type);
+	dest.m_blob.resize(nCount * sizeof(value_type));
 	memcpy(dest.m_blob.data(), m_blob.constData()+(length() - nCount)*sizeof(value_type), nCount*sizeof(value_type));
 	return dest;
 }
@@ -452,7 +452,7 @@ String String::Left(ssize_t nCount) const {
 	if (nCount >= length())
 		return _self;
 	String dest;
-	dest.m_blob.Size = nCount * sizeof(value_type);
+	dest.m_blob.resize(nCount * sizeof(value_type));
 	memcpy(dest.m_blob.data(), m_blob.constData(), nCount*sizeof(value_type));
 	return dest;
 }
@@ -534,13 +534,18 @@ void String::Replace(int offset, int size, const String& s) {
 
 #if UCFG_COM
 BSTR String::AllocSysString() const {
-	return ::SysAllocString(Bstr);
+	if (BSTR r = ::SysAllocString(Bstr))
+		return r;
+	Throw(E_OUTOFMEMORY);
 }
 
 LPOLESTR String::AllocOleString() const {
-	LPOLESTR p = (LPOLESTR)CoTaskMemAlloc(m_blob.Size+sizeof(wchar_t));
-	memcpy(p, Bstr, m_blob.Size+sizeof(wchar_t));
-	return p;
+	size_t szFull = m_blob.size() + sizeof(OLECHAR);
+	if (LPOLESTR p = (LPOLESTR)::CoTaskMemAlloc(szFull)) {
+		memcpy(p, Bstr, szFull);
+		return p;
+	}
+	Throw(E_OUTOFMEMORY);
 }
 #endif
 
@@ -548,7 +553,7 @@ String AFXAPI operator+(const String& string1, const String& string2) {
 	size_t len1 = string1.length() * sizeof(String::value_type),
 		len2 = string2.length() * sizeof(String::value_type);
 	String s;
-	s.m_blob.Size = len1+len2;
+	s.m_blob.resize(len1 + len2);
 	memcpy(s.m_blob.data(), string1.m_blob.constData(), len1);
 	memcpy(s.m_blob.data()+len1, string2.m_blob.constData(), len2);
 	return s;

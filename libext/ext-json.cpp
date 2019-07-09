@@ -214,11 +214,11 @@ protected:
 		CallbackData& cbd = *(CallbackData*)data;
 		size_t r;
 		if (cbd.LastChunkPos < 0) {
-			int off = int(ssize_t(cbd.LastChunk.Size) + cbd.LastChunkPos);
-			memcpy(buffer, cbd.LastChunk.constData()+off, r = std::min(buflen, size_t(cbd.LastChunk.Size) - off));
+			int off = int(ssize_t(cbd.LastChunk.size()) + cbd.LastChunkPos);
+			memcpy(buffer, cbd.LastChunk.constData() + off, r = std::min(buflen, size_t(cbd.LastChunk.size()) - off));
 			cbd.LastChunkPos += int(r);
 		} else {
-			cbd.LastChunkPos += cbd.LastChunk.Size;
+			cbd.LastChunkPos += cbd.LastChunk.size();
 			r = cbd.m_pStm->Read(buffer, buflen);
 			cbd.Eof |= true;
 			cbd.LastChunk = Blob(buffer, r);
@@ -236,7 +236,7 @@ protected:
 		json_error_t err;
 		if (json_t *json = json_load_callback(&LoadCallback, &cbd, JSON_DISABLE_EOF_CHECK, &err)) {
 			int off = err.position - std::max(cbd.LastChunkPos, 0);
-			return make_pair(JsonVarValueObj::FromJsonT(json), Blob(cbd.LastChunk.constData() + off, cbd.LastChunk.Size - off));
+			return make_pair(JsonVarValueObj::FromJsonT(json), Blob(cbd.LastChunk.constData() + off, cbd.LastChunk.size() - off));
 		} else {
 			if (!cbd.Eof)
 				JanssonCheck(json, err);

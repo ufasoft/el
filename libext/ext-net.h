@@ -70,28 +70,28 @@ private:
 };
 
 ENUM_CLASS(AddressFamily) {
-	Unknown		= -1,
-	Unspecified		= AF_UNSPEC,
-	Unix			= AF_UNIX,
-	InterNetwork	= AF_INET,
-	InterNetworkV6	= AF_INET6,
+	Unknown			= -1
+	, Unspecified	= AF_UNSPEC
+	, Unix			= AF_UNIX
+	, InterNetwork	= AF_INET
+	, InterNetworkV6	= AF_INET6
 } END_ENUM_CLASS(AddressFamily);
 
 ENUM_CLASS(SocketType) {
-	Unknown = -1,
-	Stream = SOCK_STREAM,
-	Dgram = SOCK_DGRAM,
-	Raw = SOCK_RAW,
-	Rdm = SOCK_RDM,
-	Seqpacket = SOCK_SEQPACKET
+	Unknown = -1
+	, Stream = SOCK_STREAM
+	, Dgram = SOCK_DGRAM
+	, Raw = SOCK_RAW
+	, Rdm = SOCK_RDM
+	, Seqpacket = SOCK_SEQPACKET
 } END_ENUM_CLASS(SocketType);
 
 ENUM_CLASS(ProtocolType) {
-	Unknown = -1,
-	Unspecified		= 0,
-	Igmp			= IPPROTO_IGMP,
-	Tcp				= IPPROTO_TCP,
-	Udp				= IPPROTO_UDP,
+	Unknown			= -1
+	, Unspecified	= 0
+	, Igmp			= IPPROTO_IGMP
+	, Tcp			= IPPROTO_TCP
+	, Udp			= IPPROTO_UDP
 } END_ENUM_CLASS(ProtocolType);
 
 class IPAddress : public CPrintable {
@@ -325,18 +325,17 @@ public:
 };
 
 class IPAddrInfo : noncopyable {
+	addrinfo* m_ai;
 public:
 	IPAddrInfo(RCString hostname = Dns::GetHostName());
 	~IPAddrInfo();
 	vector<IPAddress> GetIPAddresses() const;
-private:
-	addrinfo *m_ai;
 };
 
 template <class C, class B> class SafeHandleAdapter : public B {
 public:
 	SafeHandleAdapter(C& c)
-		:	B(c)
+		: B(c)
 	{}
 
 	operator typename C::handle_type() {
@@ -365,16 +364,15 @@ public:
 	typedef SafeHandleAdapter<Socket, SafeHandle::BlockingHandleAccess> BlockingHandleAccess;
 
 	class COSSupportsIPver {
+		AddressFamily m_af;
+		int m_supports;
 	public:
 		COSSupportsIPver(AddressFamily af)
-			:	m_af(af)
-			,	m_supports(-1)
+			: m_af(af)
+			, m_supports(-1)
 		{}
 
 		operator bool();
-	private:
-		AddressFamily m_af;
-		int m_supports;
 	};
 
 	EXT_DATA static COSSupportsIPver OSSupportsIPv4, OSSupportsIPv6;

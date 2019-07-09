@@ -268,7 +268,7 @@ public:
 	void Replace(int offset, int size, const String& s);
 	int Replace(RCString sOld, RCString sNew);
 
-	size_t length() const noexcept { return m_blob.Size / sizeof(value_type); }
+	size_t length() const noexcept { return m_blob.size() / sizeof(value_type); }
 
 	size_t size() const noexcept { return length(); }
 

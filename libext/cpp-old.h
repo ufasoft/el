@@ -82,7 +82,7 @@ namespace std {
 #	define EXT_CONVERTIBLE_TO_TRUE true
 #	define _TYPEDEF_BOOL_TYPE
 #else
-#	define EXPLICIT_OPERATOR_BOOL struct _Boolean { int i; }; operator int _Boolean::* 
+#	define EXPLICIT_OPERATOR_BOOL struct _Boolean { int i; }; operator int _Boolean::*
 #	define EXT_OPERATOR_BOOL operator _Bool_type
 #	define EXT_CONVERTIBLE_TO_TRUE (&_Boolean::i)
 #endif
@@ -183,11 +183,13 @@ inline int __cdecl uncaught_exceptions() noexcept { return __uncaught_exceptions
 
 #if !UCFG_STD_CLAMP
 
-template <typename T, class L> T clamp(const T& v, const T& lo, const T& hi, L pred) {
+template <typename T, class L>
+T clamp(const T& v, const T& lo, const T& hi, L pred) {
 	return pred(v, lo) ? lo : pred(hi, v) ? hi : v;
 }
 
-template <typename T> T clamp(const T& v, const T& lo, const T& hi) {
+template <typename T>
+T clamp(const T& v, const T& lo, const T& hi) {
 	return clamp<T, std::less<T>>(v, lo, hi, std::less<T>());
 }
 
@@ -247,4 +249,3 @@ private:
 
 
 } // std::
-

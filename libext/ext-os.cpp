@@ -83,7 +83,7 @@ int64_t COperatingSystem::get_PerformanceFrequency() {
 
 
 CSyncObject::CSyncObject(RCString pstrName)
-	:	m_bAlreadyExists(false)
+	: m_bAlreadyExists(false)
 {
 }
 
@@ -124,7 +124,7 @@ void CSyncObject::Unlock(int32_t lCount, int32_t *lprevCount) {
 
 
 CCriticalSection::CCriticalSection()
-	:	CSyncObject(nullptr)
+	: CSyncObject(nullptr)
 {
 	Init();
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-//#include EXT_HEADER_OPTIONAL
+#include EXT_HEADER_OPTIONAL
 
 namespace Ext {
 using std::pair;
-//using std::optional;
-//!!!? using std::nullopt;
+using std::optional;
+using std::nullopt;
 
 #ifndef UCFG_DEFAULT_CACHE_SIZE
 #	define UCFG_DEFAULT_CACHE_SIZE 256

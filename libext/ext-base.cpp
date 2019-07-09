@@ -355,7 +355,7 @@ void AFXAPI ProcessExceptionInCatch() {
 String CEscape::Escape(CEscape& esc, RCString s) {
 	UTF8Encoding utf8;
 	Blob blob = utf8.GetBytes(s);
-	size_t size = blob.Size;
+	size_t size = blob.size();
 	ostringstream os;
 	const char *p = (const char*)blob.constData();
 	for (size_t i=0; i<size; ++i) {

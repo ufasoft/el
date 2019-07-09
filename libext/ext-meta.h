@@ -1,17 +1,7 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #ifndef STATIC_ASSERT
-#	define _PasteToken(x,y) x##y
-#	define _Join(x,y) _PasteToken(x,y)
-#	define STATIC_ASSERT(e) typedef char _Join(_STATIC_ASSERT_, __COUNTER__) [(e)?1:-1]
+#	define STATIC_ASSERT(e) typedef char EXT_UNIQUE_SUFFIX(_STATIC_ASSERT_) [(e)?1:-1]
 #endif
 
 
@@ -121,7 +111,7 @@ template <> struct is_floating_point_type<long double>	: yes_base {};
 /*!!!R
 template <typename T> struct is_numeric_type {
 	enum { value = is_integral<T>::value ||
-					is_floating_point<T>::value	
+					is_floating_point<T>::value
 	};
 
 	typedef typename select_first_type_if<true_type, false_type, value>::type type;
