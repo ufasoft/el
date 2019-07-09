@@ -25,7 +25,7 @@ Blob PBKDF2(PseudoRandomFunction& prf, RCSpan password, RCSpan salt, uint32_t c,
 		hashval u = prf(password, salt_i), rh = u;
 		for (uint32_t j = 1; j < c; ++j)
 			VectorXor(rh.data(), Span(u = prf(password, Span(u))).data(), hlen);
-		memcpy(r.data() + (i-1)*hlen, rh.data(), (min)(hlen, r.Size - (i-1)*hlen));
+		memcpy(r.data() + (i - 1) * hlen, rh.data(), (min)(hlen, r.size() - (i - 1) * hlen));
 	}
 	return r;
 }

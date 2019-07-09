@@ -34,7 +34,7 @@ Blob BlockCipher::Encrypt(RCSpan cbuf) {
 	MemoryStream ms;
 	uint8_t *tdata = (uint8_t*)alloca(cbBlock), *block = (uint8_t*)alloca(cbBlock);
 	if (Mode != CipherMode::ECB) {
-		if (IV.Size != cbBlock)
+		if (IV.size() != cbBlock)
 			Throw(errc::invalid_argument);
 		memcpy(block, IV.constData(), cbBlock);
 	}
@@ -92,7 +92,7 @@ Blob BlockCipher::Decrypt(RCSpan cbuf) {
 	uint8_t *tdata = (uint8_t *)alloca(cbBlock),
 		*block = (uint8_t*)alloca(cbBlock);
 	if (Mode != CipherMode::ECB) {
-		if (IV.Size != cbBlock)
+		if (IV.size() != cbBlock)
 			Throw(errc::invalid_argument);
 		memcpy(tdata, IV.constData(), cbBlock);
 	}

@@ -148,22 +148,22 @@ Blob CngKey::Export(CngKeyBlobFormat format) const {
 	switch (format) {
 	case CngKeyBlobFormat::OSslEccPrivateBlob:
 		SslCheck((size = ::i2d_PrivateKey(key, 0)) >= 0);
-		r.Size = size;
+		r.resize(size);
 		SslCheck(::i2d_PrivateKey(key, &(buf = r.data())) == size);
 		break;
 	case CngKeyBlobFormat::OSslEccPrivateBignum:
 		{
 			const BIGNUM *bn = ::EC_KEY_get0_private_key(EVP_PKEY_get0_EC_KEY(key));
 			SslCheck(bn);
-			r.Size = BN_num_bytes(bn);
-			if (::BN_bn2bin(bn, r.data()) != r.Size)
+			r.resize(BN_num_bytes(bn));
+			if (::BN_bn2bin(bn, r.data()) != r.size())
 				Throw(E_FAIL);
 		}
 		break;
 	case CngKeyBlobFormat::OSslEccPublicBlob:
 //		SslCheck(size = ::i2o_ECPublicKey(key, 0));
 		SslCheck((size = ::i2d_PublicKey(key, 0)) >= 0);
-		r.Size = size;
+		r.resize(size);
 //		SslCheck(::i2o_ECPublicKey(key, &(buf = r.data())) == size);
 		SslCheck(::i2d_PublicKey(key, &(buf = r.data())) == size);
 		break;
@@ -265,7 +265,7 @@ Blob ECDsa::SignHash(RCSpan hash) {
 	Blob r(0, size);
 	unsigned int nSize = 0;
 	SslCheck(::ECDSA_sign(0, hash.data(), hash.size(), r.data(), &nSize, ecKey) > 0);
-	r.Size = nSize;
+	r.resize(nSize);
 	return r;
 }
 

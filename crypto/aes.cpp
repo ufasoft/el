@@ -209,7 +209,7 @@ Blob Aes::CalcExpandedKey() const {
 	Blob r(0, BlockSize/8*(Rounds+1));
 	uint32_t *p = (uint32_t*)r.data();
 	ExpandedKey ekey(Key);
-	for (int i=0, n=r.Size/4; i<n; ++i)
+	for (int i = 0, n = r.size() / 4; i < n; ++i)
 		p[i] = ekey.Next();
 	return r;
 }
@@ -217,8 +217,8 @@ Blob Aes::CalcExpandedKey() const {
 Blob Aes::CalcInvExpandedKey() const {
 	Blob r(0, BlockSize/8*(Rounds+1));
 	uint32_t *p = (uint32_t*)r.data();
-	InvExpandedKey ekey(Key, r.Size/4, BlockSize/8/4);
-	for (int i=0, n=r.Size/4; i<n; ++i)
+	InvExpandedKey ekey(Key, r.size()/4, BlockSize/8/4);
+	for (int i = 0, n = r.size() / 4; i < n; ++i)
 		p[i] = ekey.Next();
 	return r;
 }
@@ -239,8 +239,8 @@ pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const uint8_t s
 	Blob data = Span(psz, strlen(password)) + Span(salt, 8);
 	while (nRounds--)
 		data = Span(sha.ComputeHash(data));
-	memcpy(r.first.data(), data.constData(), r.first.Size);
-	memcpy(r.second.data(), data.constData()+r.first.Size, r.second.Size);
+	memcpy(r.first.data(), data.constData(), r.first.size());
+	memcpy(r.second.data(), data.constData()+r.first.size(), r.second.size());
 #endif
 	return r;
 }

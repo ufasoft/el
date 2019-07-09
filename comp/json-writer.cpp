@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -42,9 +42,9 @@ String JsonEscapeString(RCString s) {
 }
 
 JsonTextWriter::JsonTextWriter(std::ostream& os)
-	:	m_os(os)
-	,	Mode(JsonMode::Object)
-	,	FirstItem(true)
+	: m_os(os)
+	, Mode(JsonMode::Object)
+	, FirstItem(true)
 {
 	CommonInit();
 }
@@ -131,7 +131,7 @@ JsonWriterObject::~JsonWriterObject() {
 }
 
 JsonWriterArray::JsonWriterArray(JsonTextWriter& writer, RCString name)
-	:	Writer(writer)
+	: Writer(writer)
 {
 	Writer.Indentation++;
 	Writer.WriteIndent();

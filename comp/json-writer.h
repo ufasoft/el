@@ -17,6 +17,9 @@ ENUM_CLASS (JsonMode) {
 } END_ENUM_CLASS(JsonMode);
 
 class JsonTextWriter {
+	std::ostream& m_os;
+	CBool m_bOpenedElement,
+		m_bEoled;
 public:
 	JsonMode Mode;
 	int Indentation;
@@ -66,10 +69,6 @@ public:
 		}
 	}
 private:
-	std::ostream& m_os;
-	CBool m_bOpenedElement,
-		  m_bEoled;
-
 	void CommonInit();
 
 	friend class JsonWriterObject;
@@ -87,13 +86,12 @@ private:
 };
 
 class JsonWriterArray {
+	JsonMode m_prevMode;
 public:
 	JsonTextWriter& Writer;
 
 	JsonWriterArray(JsonTextWriter& writer, RCString name = nullptr);
 	~JsonWriterArray();
-private:
-	JsonMode m_prevMode;
 };
 
 
