@@ -10,7 +10,7 @@
 
 namespace Ext { namespace Inet { namespace P2P {
 
-const int MAX_OUTBOUND_CONNECTIONS = 4;
+const int MAX_OUTBOUND_CONNECTIONS = 8;
 
 const int MAX_LINKS = MAX_OUTBOUND_CONNECTIONS * 2;
 const int MAX_PEER_MISBEHAVINGS = 100;
@@ -275,4 +275,3 @@ private:
 
 
 }}} // Ext::Inet::P2P::
-
