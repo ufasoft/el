@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -154,8 +154,15 @@ public:
 	int ListeningPort;
 	CBool SoftPortRestriction;
 
+protected:
+	mutex MtxLocalIPs;
+	set<IPAddress> LocalIPs;
+
+	mutex MtxBannedIPs;
+	unordered_set<IPAddress> BannedIPs;
+public:
 	NetManager()
-		:	ListeningPort(0)
+		: ListeningPort(0)
 	{}
 
 	virtual Link *CreateLink(thread_group& tr);
@@ -178,13 +185,6 @@ public:
 	void AddLocal(const IPAddress& ip) {
 		EXT_LOCKED(MtxLocalIPs, LocalIPs.insert(ip));
 	}
-
-protected:
-	mutex MtxLocalIPs;
-	set<IPAddress> LocalIPs;
-
-	mutex MtxBannedIPs;
-	unordered_set<IPAddress> BannedIPs;
 };
 
 

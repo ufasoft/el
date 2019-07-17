@@ -55,7 +55,7 @@ public:
 		SafeHandle::handle_type m_handle;
 
 		HandleAccess(const ThreadBase& t) 
-			:	m_handle(&t==TryGetCurrentThread() ? (intptr_t)::GetCurrentThread() : 0)
+			: m_handle(&t==TryGetCurrentThread() ? (intptr_t)::GetCurrentThread() : 0)
 		{
 			if (!m_handle) {
 				m_hp = &t;
@@ -122,8 +122,8 @@ public:
 
 	bool Join(int ms = INFINITE);
 
-	DWORD get_ExitCode();
-	DEFPROP_GET(DWORD, ExitCode);
+	uint32_t get_ExitCode();
+	DEFPROP_GET(uint32_t, ExitCode);
 
 	String get_Name() const { return m_name; }
 	void put_Name(RCString name);
@@ -240,6 +240,7 @@ protected:
 private:
 	void OnEndThread(bool bDelete);
 	uint32_t CppThreadThunk();
+
 	friend class Process;
 };
 
@@ -407,7 +408,9 @@ public:
 	LPVOID m_pThreadParams;
 	AFX_THREADPROC m_pfnThreadProc;
 	void (*m_lpfnOleTermOrFreeLib)();
-
+protected:
+	HRESULT m_hr;
+public:
 	CWinThread(thread_group *ownRef = 0);
 
 	CWinThread(AFX_THREADPROC pfnThreadProc, LPVOID pParam);
@@ -441,8 +444,6 @@ public:
 #endif
 
 protected:
-	HRESULT m_hr;
-
 #if UCFG_EXTENDED  
 	void Execute();
 	void OnEnd();
@@ -456,9 +457,9 @@ intptr_t AFXAPI GetThreadNumber();
 
 class Thread
 #ifdef WIN32
-	:	public CWinThread
+	: public CWinThread
 #else
-	:	public ThreadBase
+	: public ThreadBase
 #endif
 {
 #ifdef WIN32
@@ -469,7 +470,7 @@ class Thread
 
 public:
 	Thread(thread_group *ownRef = 0)
-		:	base(ownRef)
+		: base(ownRef)
 	{}
 
 	void Execute() override {
@@ -489,7 +490,7 @@ public:
 	CBool Finished, m_bStop;
 
 	WorkItem()
-		:	HResult(S_OK)
+		: HResult(S_OK)
 	{}
 
 #if UCFG_WIN32_FULL

@@ -247,15 +247,16 @@ static int s_initThrowImp = (SetThrowImp(&ThrowImp), 1);
 
 #endif // UCFG_CRT=='U' && !UCFG_WDM
 
-
-
-
-DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
+static void TraceError(const error_code& ec, const char* funname, int nLine) {		// In separate function to decrease stack frame size of ThrowImp(). Important during unwinding
 #if UCFG_EH_SUPPORT_IGNORE
 	if (!CLocalIgnoreBase::ErrorCodeIsIgnored(ec)) {
-		TRC(1, funname <<  "(Ln" << nLine << "): " << (ec.category()==hresult_category() ? EXT_STR("HRESULT:" << hex << ec.value()) : EXT_STR(ec)) << " " << ec.message());
+		TRC(1, funname << "(Ln" << nLine << "): " << (ec.category() == hresult_category() ? EXT_STR("HRESULT:" << hex << ec.value()) : EXT_STR(ec)) << " " << ec.message());
 	}
 #endif
+}
+
+DECLSPEC_NORETURN void AFXAPI ThrowImp(const error_code& ec, const char *funname, int nLine) {
+	TraceError(ec, funname, nLine);
 	ThrowImp(ec);
 }
 

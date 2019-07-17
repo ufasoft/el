@@ -381,9 +381,9 @@ void Link::Stop() {
 }
 
 ListeningThread::ListeningThread(P2P::NetManager& netManager, thread_group& tr, AddressFamily af)
-	:	base(&tr)
-	,	NetManager(netManager)
-	,	m_af(af)
+	: base(&tr)
+	, NetManager(netManager)
+	, m_af(af)
 {
 //	StackSize = UCFG_THREAD_STACK_SIZE;
 }

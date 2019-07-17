@@ -410,7 +410,7 @@ void ThreadBase::Delete() {
 void ThreadBase::Execute() {
 }
 
-DWORD ThreadBase::get_ExitCode() {
+uint32_t ThreadBase::get_ExitCode() {
 #if UCFG_USE_PTHREADS
 	return m_exitCode;
 #else
@@ -435,7 +435,7 @@ void ThreadBase::put_Name(RCString name) {
 	ASSERT(m_nThreadID);
 	THREADNAME_INFO info = { 0x1000, m_name, m_nThreadID };
 	__try {
-		RaiseException(0x406D1388, 0, sizeof(info)/sizeof(DWORD), (ULONG_PTR*)&info);
+		RaiseException(0x406D1388, 0, sizeof(info) / sizeof(DWORD), (ULONG_PTR*)&info);
 	} __except(EXCEPTION_CONTINUE_EXECUTION) {
 	}
 #endif
@@ -843,6 +843,7 @@ void ThreadBase::Start(DWORD flags) {
 			ThreadBase::DefaultStackSize = !!sStackSize ? Convert::ToUInt32(sStackSize) : UCFG_THREAD_STACK_SIZE;
 		}
 		StackSize = ThreadBase::DefaultStackSize;
+		StackOffset = (std::max)((ssize_t)0, ssize_t(StackSize - UCFG_THREAD_REAL_STACK_SIZE));
 	}
 #ifdef _WIN32
 	if (StackSize)
@@ -923,7 +924,7 @@ void CSeparateThread::Create(DWORD flags) {
 
 #ifdef WIN32
 CWinThread::CWinThread(thread_group *ownRef)
-	:	ThreadBase(ownRef)
+	: ThreadBase(ownRef)
 {
 	m_pThreadParams = 0;
 	m_pfnThreadProc = 0;

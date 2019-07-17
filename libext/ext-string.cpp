@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-20159 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -41,7 +41,7 @@ void String::SetAt(size_t nIndex, char ch) {
 }
 
 String::String(const char *lpch, ssize_t nLength)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 #ifdef WDM_DRIVER
 	Init(nullptr, lpch, nLength);
@@ -51,7 +51,7 @@ String::String(const char *lpch, ssize_t nLength)
 }
 
 String::String(const char *lpsz)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 #ifdef WDM_DRIVER
 	size_t len = lpsz ? strlen(lpsz) : -1;
@@ -66,18 +66,18 @@ String::String(const char *lpsz)
 #if defined(_NATIVE_WCHAR_T_DEFINED) && UCFG_STRING_CHAR/8 == __SIZEOF_WCHAR_T__
 
 String::String(const uint16_t *lpch, ssize_t nLength)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	Init(lpch, nLength);
 }
 
 String::String(const uint16_t *lpsz)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	int len = -1;
 	if (lpsz) {
 		len = 0;
-		for (const uint16_t *p=lpsz; *p; ++p)
+		for (const uint16_t* p = lpsz; *p; ++p)
 			++len;
 	}
 	Init((const value_type*)nullptr, len);
@@ -107,13 +107,13 @@ String::String(const wchar_t *lpsz) {
 	size_t len = wcslen(lpsz);
 	Init((const value_type*)0, len);				//!!! not correct for UTF-32
 	value_type *p = (value_type*)m_blob.data();
-	for (int i=0; i<len; ++i)
+	for (int i = 0; i < len; ++i)
 		p[i] = value_type(lpsz[i]);
 }
 #endif
 
 String::String(const std::string& s)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 #ifdef WDM_DRIVER
 	Init(nullptr, s.c_str(), s.size());
@@ -123,18 +123,18 @@ String::String(const std::string& s)
 }
 
 String::String(const std::wstring& s)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	Init((const value_type*)0, s.size());				//!!! not correct for UTF-32
 	value_type *p = (value_type*)m_blob.data();
-	for (size_t i=0; i<s.size(); ++i)
+	for (size_t i = 0; i < s.size(); ++i)
 		p[i] = value_type(s[i]);
 }
 
 #if UCFG_COM
 
 String::String(const _bstr_t& bstr)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	const wchar_t *p = bstr;
 	Init(p, p ? wcslen(p) : -1);
@@ -213,9 +213,9 @@ bool String::StartsWith(const String& s) const noexcept {
 
 int String::FindOneOf(RCString sCharSet) const {
 	value_type ch;
-	for (const value_type *pbeg=_self, *p=pbeg, *c=sCharSet; (ch=*p); ++p)
+	for (const value_type *pbeg = _self, *p = pbeg, *c = sCharSet; (ch = *p); ++p)
 		if (StrChr(c, ch))
-			return int(p-pbeg);  //!!! shoul be ssize_t
+			return int(p - pbeg); //!!! shoul be ssize_t
 	return -1;
 }
 
@@ -257,7 +257,7 @@ String::String(value_type ch, ssize_t nRepeat) {
 }
 
 String::String(const value_type *lpsz)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	Init(lpsz, lpsz ? traits_type::length(lpsz) : -1);
 }
@@ -271,7 +271,7 @@ Init(p, strlen(p));  //!!! May be multibyte
 }*/
 
 String::String(const std::vector<value_type>& vec)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	Init(vec.empty() ? 0 : &vec[0], vec.size());
 }
@@ -283,7 +283,7 @@ void String::MakeDirty() noexcept {
 
 #if UCFG_WDM
 String::String(UNICODE_STRING *pus)
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 {
 	if (pus)
 		Init(pus->Buffer, pus->Length/sizeof(wchar_t));
@@ -342,7 +342,7 @@ void String::CopyTo(value_type *ar, size_t size) const {
 }
 
 int String::compare(size_type p1, size_type c1, const value_type *s, size_type c2) const {
-	int r = traits_type::compare((const value_type*)m_blob.constData()+p1, s, (min)(c1, c2));
+	int r = traits_type::compare((const value_type*)m_blob.constData() + p1, s, (min)(c1, c2));
 	return r ? r : c1 == c2 ? 0 : c1 < c2 ? -1 : 1;
 }
 
@@ -372,8 +372,8 @@ static locale& s_locale_not_used = UserLocale();	// initialize while one thread,
 int String::CompareNoCase(const String& s) const {
 	value_type *s1 = (value_type*)m_blob.constData(),
 		*s2 = (value_type*)s.m_blob.constData();
-	for (size_t len1=length(), len2=s.length();; --len1, --len2) {
-		value_type ch1=*s1++, ch2=*s2++;
+	for (size_t len1 = length(), len2 = s.length();; --len1, --len2) {
+		value_type ch1 = *s1++, ch2 = *s2++;
 #if UCFG_USE_POSIX
 		ch1 = (value_type)tolower<wchar_t>(ch1, UserLocale());
 		ch2 = (value_type)tolower<wchar_t>(ch2, UserLocale());
@@ -403,7 +403,7 @@ void String::clear() {		//  noexcept
 
 String::size_type String::find(value_type ch, size_type pos) const noexcept {
 	const value_type *p = _self;
-	for (size_t i=pos, e=size(); i<e; ++i)
+	for (size_t i = pos, e = size(); i < e; ++i)
 		if (p[i] == ch)
 			return i;
 	return npos;
@@ -414,8 +414,8 @@ String::size_type String::find(const value_type *s, size_type pos, size_type cou
 	if (count <= size()) {
 		const value_type *p = _self,
 			*q = s;
-		for (size_t i=pos, e=size()-count; i<=e; ++i)
-			if (!memcmp(p+i, q, cbS))
+		for (size_t i = pos, e = size() - count; i <= e; ++i)
+			if (!memcmp(p + i, q, cbS))
 				return i;
 	}
 	return npos;
@@ -423,7 +423,7 @@ String::size_type String::find(const value_type *s, size_type pos, size_type cou
 
 String::size_type String::rfind(value_type ch, size_type pos) const noexcept {
 	const value_type *p = _self;
-	for (size_t i = pos<length() ? pos+1 : length(); i--;)
+	for (size_t i = pos < length() ? pos + 1 : length(); i--;)
 		if (p[i] == ch)
 			return i;
 	return npos;
@@ -442,7 +442,7 @@ String String::Right(ssize_t nCount) const {
 		return _self;
 	String dest;
 	dest.m_blob.resize(nCount * sizeof(value_type));
-	memcpy(dest.m_blob.data(), m_blob.constData()+(length() - nCount)*sizeof(value_type), nCount*sizeof(value_type));
+	memcpy(dest.m_blob.data(), m_blob.constData() + (length() - nCount) * sizeof(value_type), nCount * sizeof(value_type));
 	return dest;
 }
 
@@ -480,7 +480,7 @@ String String::TrimEnd(RCString trimChars) const {
 		} else if (trimChars.find(ch) == npos)
 			break;
 	}
-	return Left(int(i+1));
+	return Left(int(i + 1));
 }
 
 vector<String> String::Split(RCString separator, size_t count) const {
@@ -582,14 +582,14 @@ return wcscmp((wchar_t*)s1.m_blob.Data, (wchar_t*)s2.m_blob.Data) < 0;
 }*/
 
 bool AFXAPI operator==(const String& s1, const char * s2) { return s1 == String(s2); }
-bool AFXAPI operator!=(const String& s1, const String& s2) noexcept { return !(s1==s2); }
+bool AFXAPI operator!=(const String& s1, const String& s2) noexcept { return !(s1 == s2); }
 bool AFXAPI operator>(const String& s1, const String& s2) noexcept { return s1.compare(s2) > 0; }
 bool AFXAPI operator<=(const String& s1, const String& s2) noexcept { return s1.compare(s2) <= 0; }
 bool AFXAPI operator>=(const String& s1, const String& s2) noexcept { return s1.compare(s2) >= 0; }
 
-bool AFXAPI operator==(const char * s1, const String& s2) { return String(s1)==s2; }
-bool AFXAPI operator!=(const String& s1, const char * s2) { return !(s1==s2); }
-bool AFXAPI operator!=(const char * s1, const String& s2) { return !(s1==s2); }
+bool AFXAPI operator==(const char * s1, const String& s2) { return String(s1) == s2; }
+bool AFXAPI operator!=(const String& s1, const char * s2) { return !(s1 == s2); }
+bool AFXAPI operator!=(const char * s1, const String& s2) { return !(s1 == s2); }
 bool AFXAPI operator<(const String& s1, const char *s2) { return s1.compare(s2) < 0; }
 bool AFXAPI operator<(const char * s1, const String& s2) { return s2.compare(s1) > 0; }
 bool AFXAPI operator>(const String& s1, const char * s2) { return s1.compare(s2) > 0; }
@@ -599,10 +599,10 @@ bool AFXAPI operator<=(const char * s1, const String& s2) { return s2.compare(s1
 bool AFXAPI operator>=(const String& s1, const char * s2) { return s1.compare(s2) >= 0; }
 bool AFXAPI operator>=(const char * s1, const String& s2) { return s2.compare(s1) <= 0; }
 
-bool AFXAPI operator==(const String& s1, const String::value_type *s2) { return s1==String(s2); }
-bool AFXAPI operator==(const String::value_type * s1, const String& s2) { return String(s1)==s2; }
-bool AFXAPI operator!=(const String& s1, const String::value_type *s2) { return !(s1==s2); }
-bool AFXAPI operator!=(const String::value_type * s1, const String& s2) { return !(s1==s2); }
+bool AFXAPI operator==(const String& s1, const String::value_type *s2) { return s1 == String(s2); }
+bool AFXAPI operator==(const String::value_type * s1, const String& s2) { return String(s1) == s2; }
+bool AFXAPI operator!=(const String& s1, const String::value_type *s2) { return !(s1 == s2); }
+bool AFXAPI operator!=(const String::value_type * s1, const String& s2) { return !(s1 == s2); }
 bool AFXAPI operator<(const String& s1, const String::value_type *s2) { return s1.compare(s2) < 0; }
 bool AFXAPI operator<(const String::value_type * s1, const String& s2) { return s2.compare(s1) > 0; }
 bool AFXAPI operator>(const String& s1, const String::value_type *s2) { return s1.compare(s2) > 0; }
@@ -612,6 +612,15 @@ bool AFXAPI operator<=(const String::value_type * s1, const String& s2) { return
 bool AFXAPI operator>=(const String& s1, const String::value_type *s2) { return s1.compare(s2) >= 0; }
 bool AFXAPI operator>=(const String::value_type * s1, const String& s2) { return s2.compare(s1) <= 0; }
 
+
+String MulticharToString(int n) {
+	uint64_t ar[2] = { (unsigned)n, 0 };
+#if _MSC_VER
+	return _strrev((char*)ar);
+#else
+	return strrev((char*)ar);			//!!!? Test it
+#endif
+}
 
 
 } // Ext::
@@ -707,4 +716,3 @@ extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
 
 
 #endif // UCFG_WIN32
-

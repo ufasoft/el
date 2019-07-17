@@ -444,10 +444,10 @@ String Environment::GetEnvironmentVariable(RCString s) {
 #elif UCFG_WCE
 	return nullptr;
 #else
-	_TCHAR *p = (_TCHAR*)alloca(256*sizeof(_TCHAR));
+	_TCHAR* p = (_TCHAR*)alloca(256 * sizeof(_TCHAR));
 	DWORD dw = ::GetEnvironmentVariable(s, p, 256);
 	if (dw > 256) {
-		p = (_TCHAR*)alloca(dw*sizeof(_TCHAR));
+		p = (_TCHAR*)alloca(dw * sizeof(_TCHAR));
 		dw = ::GetEnvironmentVariable(s, p, dw);
 	}
 	if (dw)
@@ -1822,6 +1822,7 @@ HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
 		return E_FAIL;
 	}
 }
+
 
 
 } // Ext::
