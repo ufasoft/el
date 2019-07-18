@@ -496,10 +496,10 @@
 #endif
 
 #ifndef UCFG_THREAD_STACK_SIZE						// Can be changed by UCFG_THREAD_STACK_SIZE environment variable
-#	if UCFG_PLATFORM_X64							// Minimal stack in Windows is 65K, but 128K gives space reserver.
+#	if UCFG_PLATFORM_X64							// Minimal stack in Windows is 64K, but 128K gives space reserve.
 #		define UCFG_THREAD_STACK_SIZE 262144		// x64 doubles stack requirement
 #	else
-#		define UCFG_THREAD_STACK_SIZE 131072		// 65K may be not enough under profiler
+#		define UCFG_THREAD_STACK_SIZE 131072		// 64K may be not enough under profiler
 #	endif
 #endif
 
