@@ -843,7 +843,6 @@ void ThreadBase::Start(DWORD flags) {
 			ThreadBase::DefaultStackSize = !!sStackSize ? Convert::ToUInt32(sStackSize) : UCFG_THREAD_STACK_SIZE;
 		}
 		StackSize = ThreadBase::DefaultStackSize;
-		StackOffset = (std::max)((ssize_t)0, ssize_t(StackSize - UCFG_THREAD_REAL_STACK_SIZE));
 	}
 #ifdef _WIN32
 	if (StackSize)
