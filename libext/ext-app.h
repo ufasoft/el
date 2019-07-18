@@ -76,6 +76,7 @@ public:
 
 	path m_appDataDir;
 
+	virtual path GetBaseDataFolder();
 	path get_AppDataDir();
 	DEFPROP_GET(path, AppDataDir);
 

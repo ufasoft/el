@@ -184,10 +184,30 @@ String CAppBase::GetInternalName() {
 #endif
 }
 
+path AFXAPI CAppBase::GetBaseDataFolder() {
+	path r;
+#	if !UCFG_WCE
+	try {
+		r = path(Environment::GetEnvironmentVariable("APPDATA").c_str());
+		if (r.empty())
+			r = Environment::GetFolderPath(SpecialFolder::ApplicationData);
+	} catch (RCExc) {
+		r = System.WindowsDirectory / "Application Data";
+	}
+#	endif
+#if UCFG_COMPLEX_WINAPP
+	r /= path(GetCompanyName().c_str());
+#else
+	r /= UCFG_MANUFACTURER;
+#endif
+	create_directory(r);
+	return r;
+}
+
 path CAppBase::get_AppDataDir() {
 	if (m_appDataDir.empty()) {
 #if UCFG_WIN32
-		path dir = GetAppDataManufacturerFolder() / path(GetInternalName().c_str());
+		path dir = GetBaseDataFolder() / path(GetInternalName().c_str());
 #elif UCFG_USE_POSIX
 		path dir = Environment::GetFolderPath(SpecialFolder::ApplicationData) / ("."+GetInternalName());
 #endif
