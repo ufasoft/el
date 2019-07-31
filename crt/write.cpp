@@ -10,8 +10,6 @@
 #include <errno.h>
 #include <crtversion.h>
 
-#include <corecrt_internal.h>
-#include <corecrt_internal_lowio.h>
 
 #include <windows.h>
 
@@ -25,7 +23,19 @@ __int64 __cdecl _lseeki64_nolock(int fh, __int64 _Offset, int _Origin);
 #define FAPPEND         0x20
 
 #if _VC_CRT_MAJOR_VERSION>=14
-/*!!!?
+
+#ifndef _CHECK_FH_CLEAR_OSSERR_RETURN
+#	define _NO_CONSOLE_FILENO -2
+#	define _CHECK_FH_CLEAR_OSSERR_RETURN( handle, errorcode, retexpr )            \
+    {                                                                          \
+        if(handle == _NO_CONSOLE_FILENO)                                       \
+        {                                                                      \
+            _doserrno = 0L;                                                    \
+            errno = errorcode;                                                 \
+            return ( retexpr );                                                \
+        }                                                                      \
+    }
+
 	struct __crt_lowio_handle_data {
 		CRITICAL_SECTION           lock;
 		intptr_t                   osfhnd;          // underlying OS file HANDLE
@@ -34,7 +44,8 @@ __int64 __cdecl _lseeki64_nolock(int fh, __int64 _Offset, int _Origin);
 		char				      textmode;
 		// ...
 	};
-*/	
+#endif
+
 	void __cdecl __acrt_errno_map_os_error(unsigned long const oserrno);
 	void __cdecl __acrt_lowio_lock_fh(int fh);
 	void __cdecl __acrt_lowio_unlock_fh(int fh);
