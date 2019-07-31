@@ -98,7 +98,8 @@ ENUM_CLASS(ExtErr) {
 	, LogonFailure
 	, PasswordTooShort
 	, Checksum
-	
+	, Padding								= 90
+
 	, DB_NoRecord = 2000
 	, DB_DupKey
 	, DB_Corrupt

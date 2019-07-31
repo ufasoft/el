@@ -398,7 +398,6 @@ inline std::string ToLower(const std::string& s) {
 	return r;
 }
 
-String MulticharToString(int n);
 
 
 

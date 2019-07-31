@@ -131,6 +131,28 @@ COperatingSystem::COsVerInfo COperatingSystem::get_Version() {
 }
 #endif
 
+Architecture RuntimeInformation::OSArchitecture() {
+#if defined _M_X64
+	return Architecture::X64;
+#elif defined _M_IX86
+	return Architecture::X86;
+#elif defined _M_ARM
+	return Architecture::Arm;
+#elif defined _M_ARM64
+	return Architecture::Arm64;
+#elif defined _M_MIPS
+	return Architecture::Mips;
+#elif defined _M_MIPS64
+	return Architecture::Mips64;
+#elif defined _M_IA64
+	return Architecture::IA64;
+#elif defined _M_SHX
+	return Architecture::SHX;
+#else
+	return Architecture::Unknown;
+#endif	
+}
+
 String Environment::GetMachineType() {
 #if UCFG_USE_POSIX
 	utsname u;
@@ -186,11 +208,14 @@ String Environment::GetMachineVersion() {
 		break;
 #if UCFG_WIN32_FULL
 	case PROCESSOR_ARCHITECTURE_AMD64:
-		s = "AMD64";
+		s = EXT_STR("x64 " << si.wProcessorLevel << "." << si.wProcessorRevision);
 		break;
 #endif
 	case PROCESSOR_ARCHITECTURE_ARM:
 		s = "ARM";
+		break;
+	case PROCESSOR_ARCHITECTURE_ARM64:
+		s = "ARM64";
 		break;
 	default:
 		s = "Unknown CPU";
@@ -293,6 +318,26 @@ String Version::ToString() const {
 	return ToString(Revision!=-1 ? 4 : Build!=-1 ? 3 : 2);
 }
 
+const OSPlatform
+	OSPlatform::Windows("Windows")
+	, OSPlatform::Linux("Linux")
+	, OSPlatform::OSX("OSX")
+	, OSPlatform::Unix("Unix");
+
+bool RuntimeInformation::IsOSPlatform(const OSPlatform& platform) {
+#ifdef _WIN32
+	return platform == OSPlatform::Windows;
+#elif defined __APPLE__
+	return platform == OSPlatform::OSX;
+#elif defined __linux__
+	return platform == OSPlatform::Linux;
+#elif defined __unix__
+	return platform == OSPlatform::Unix;
+#else
+	return false;
+#endif
+}
+
 OperatingSystem::OperatingSystem() {
 	Platform = PlatformID::Unix;
 #ifdef _WIN32
@@ -372,7 +417,7 @@ int32_t AFXAPI Environment::TickCount() {
 #if UCFG_WIN32_FULL
 
 Environment::CStringsKeeper::CStringsKeeper()
-	:	m_p(0)
+	: m_p(0)
 {
 	if (!(m_p = (LPTSTR)::GetEnvironmentStrings()))
 		Throw(ExtErr::UnknownWin32Error);
@@ -699,7 +744,7 @@ public:
 	static const char s_toBase64[];
 
 	CBase64Table()
-		:	vector<int>((size_t)256, EOF)
+		: vector<int>((size_t)256, EOF)
 	{
 		for (uint8_t i = (uint8_t)strlen(s_toBase64); i--;) // to eliminate trailing zero
 			_self[s_toBase64[i]] = i;
@@ -770,6 +815,7 @@ class BitWriteStream {
 public:
 	Stream& Base;
 	int Offset;
+	uint8_t m_prevValue;
 
 	BitWriteStream(Stream& bas)
 		: Base(bas)
@@ -793,16 +839,14 @@ public:
 		Offset = 0;
 		m_prevValue = 0;
 	}
-public:
-	uint8_t m_prevValue;
 };
 
-static Blob FromBaseX(int charsInGroup, RCString s, const uint8_t valTable[]) {
+static Blob FromBaseX(int charsInGroup, int bits, RCString s, const uint8_t valTable[]) {
 	MemoryStream ms;
 	BitWriteStream bs(ms);
 	for (size_t i = 0; i < s.size(); i += charsInGroup) {
-		for (size_t j = 0; j < charsInGroup; ++j) {
-			wchar_t ch = s[i+j];
+		for (size_t j = 0; j < charsInGroup && i + j < s.size() ; ++j) {
+			wchar_t ch = s[i + j];
 			if ('=' == ch) {
 				bs.Offset = 0;
 				bs.Flush();
@@ -810,11 +854,11 @@ static Blob FromBaseX(int charsInGroup, RCString s, const uint8_t valTable[]) {
 			}
 			if (uint16_t(ch) >= 256)
 				Throw(errc::invalid_argument);
-			bs.Write(5, valTable[ch]);
+			bs.Write(bits, valTable[ch]);
 		}
 	}
-	if (bs.Offset)
-		Throw(errc::invalid_argument);
+	if (charsInGroup > 1 && bs.Offset || charsInGroup == 1 && bs.Offset >= bits || bs.m_prevValue)
+		Throw(ExtErr::Padding);
 	return Blob(ms.AsSpan());
 }
 
@@ -838,9 +882,10 @@ public:
 	static const char s_toBase32[];
 
 	CBase32Table()
-		: vector<uint8_t>((size_t)256, 0) {
+		: vector<uint8_t>((size_t)256, 0)
+	{
 		for (uint8_t i = (uint8_t)strlen(s_toBase32); i--;) // to eliminate trailing zero
-			_self[s_toBase32[i]] = i;
+			_self[s_toBase32[i]] = _self[tolower(s_toBase32[i])] = i;
 	}
 };
 
@@ -849,7 +894,7 @@ static InterlockedSingleton<CBase32Table> s_pBase32Table;
 const char CBase32Table::s_toBase32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 Blob Convert::FromBase32String(RCString s, const uint8_t* table) {
-	return FromBaseX(8, s.ToUpper(), table ? table : &(*s_pBase32Table)[0]);
+	return FromBaseX(1, 5, s, table ? table : &(*s_pBase32Table)[0]);
 }
 
 String Convert::ToBase32String(RCSpan mb, const char *table) {
@@ -996,7 +1041,7 @@ int AFXAPI Rand() {
 #if UCFG_USE_POSIX
 	return (unsigned int)time(0) % ((unsigned int)RAND_MAX+1);
 #else
-	return int (System.PerformanceCounter % (RAND_MAX+1));
+	return int(System.PerformanceCounter % (RAND_MAX + 1));
 #endif
 }
 
@@ -1079,6 +1124,16 @@ void CAnnoyer::Request() {
 		m_period += m_period;
 	}
 }
+
+HashAlgorithm::HashAlgorithm()
+	: BlockSize(0)
+	, HashSize(0)
+	, IsHaifa(false)
+	, IsBigEndian(true)
+	, IsLenBigEndian(true)
+	, IsBlockCounted(false)
+	, Is64Bit(false)
+{}
 
 void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
 	if (IsBigEndian == UCFG_LITLE_ENDIAN) {
@@ -1476,25 +1531,25 @@ void AFXAPI LogObjectCounters(bool fFull) {
 }
 
 ProcessStartInfo::ProcessStartInfo(const path& fileName, RCString arguments)
-	:	Flags(0)
-	,	FileName(fileName)
-	,	Arguments(arguments)
+	: Flags(0)
+	, FileName(fileName)
+	, Arguments(arguments)
 #if !UCFG_WCE
-	,	EnvironmentVariables(Environment::GetEnvironmentVariables())
+	, EnvironmentVariables(Environment::GetEnvironmentVariables())
 #endif
 {}
 
 ProcessObj::ProcessObj()
-	:	SafeHandle(0, false)
-	,	m_stat_loc(0)
+	: SafeHandle(0, false)
+	, m_stat_loc(0)
 {
 	CommonInit();
 }
 
 #if UCFG_WIN32
 ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
-	:	SafeHandle(0, false)
-	,	m_stat_loc(0)
+	: SafeHandle(0, false)
+	, m_stat_loc(0)
 {
 	Attach(handle, bOwn);
 	CommonInit();

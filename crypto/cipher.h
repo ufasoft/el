@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -20,6 +20,8 @@ ENUM_CLASS(PaddingMode) {
 
 class BlockCipher {
 	typedef BlockCipher class_type;
+protected:
+	Blob m_key;
 public:
 	Blob IV;
 	int BlockSize, KeySize; 	// bits
@@ -28,11 +30,11 @@ public:
 	PaddingMode Padding;
 
 	BlockCipher()
-		:	BlockSize(128)
-		,	KeySize(256)
-		,	Rounds(128)
-		,	Mode(CipherMode::CBC)
-		,	Padding(PaddingMode::PKCS7)
+		: BlockSize(128)
+		, KeySize(256)
+		, Rounds(128)
+		, Mode(CipherMode::CBC)
+		, Padding(PaddingMode::PKCS7)
 	{}
 
 	Span get_Key() const { return m_key; }
@@ -45,8 +47,6 @@ public:
 
 	virtual Blob Encrypt(RCSpan cbuf);
 	virtual Blob Decrypt(RCSpan cbuf);
-protected:
-	Blob m_key;
 
 	void Pad(uint8_t* tdata, size_t cbPad) const;
 	virtual void InitParams() {}

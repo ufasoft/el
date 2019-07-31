@@ -108,8 +108,8 @@ hashval RIPEMD160::ComputeHash(Stream& stm) {
 }
 
 hashval RIPEMD160::ComputeHash(RCSpan mb) {
-	byte buf[20];
-	SslCheck(::RIPEMD160(mb.P, mb.Size, buf));
+	uint8_t buf[20];
+	SslCheck(::RIPEMD160(mb.data(), mb.size(), buf));
 	return hashval(buf, sizeof buf);
 }
 

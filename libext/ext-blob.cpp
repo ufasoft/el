@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -69,7 +69,7 @@ void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len, bool) {
 }
 
 CStringBlobBuf *CStringBlobBuf::Clone() {
-	return new(m_size, false) CStringBlobBuf(this+1, m_size);
+	return new (m_size, false) CStringBlobBuf(this + 1, m_size);
 }
 
 CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
@@ -134,6 +134,12 @@ Blob::Blob(const span<uint8_t>& mb) {
 
 Blob::~Blob() {
 	Release(m_pData);
+}
+
+Blob::operator Span() const noexcept {
+	if (impl_class *p = m_pData)
+		return Span((const uint8_t*)p->GetBSTR(), p->GetSize());
+	return Span();
 }
 
 void Blob::AssignIfNull(const Blob& val) {
@@ -220,9 +226,9 @@ uint8_t *Blob::data() {
 
 Blob Blob::FromHexString(RCString s) {
 	size_t len = s.length() / 2;
-	Blob blob(0, len);
+	Blob blob(len, nullptr);
 	uint8_t *p = blob.data();
-	for (size_t i=0; i<len; ++i)
+	for (size_t i = 0; i < len; ++i)
 		p[i] = (uint8_t)stoi(s.substr(i * 2, 2), 0, 16);
 	return blob;
 }
@@ -360,9 +366,11 @@ void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
 
 namespace std {
 
+static const char
+	s_upperHexDigits[] = "0123456789ABCDEF",
+	s_lowerHexDigits[] = "0123456789abcdef";
+
 ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf) {
-	static const char s_upperHexDigits[] = "0123456789ABCDEF",
- 					  s_lowerHexDigits[] = "0123456789abcdef";
 	if (!cbuf.data())
 		return os << "<#nullptr>";
 	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
@@ -374,8 +382,6 @@ ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf) {
 }
 
 wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf) {
-	static const char s_upperHexDigits[] = "0123456789ABCDEF",
-		s_lowerHexDigits[] = "0123456789abcdef";
 	if (!cbuf.data())
 		return os << "<#nullptr>";
 	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;

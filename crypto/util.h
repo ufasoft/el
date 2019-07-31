@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#pragma once 
+#pragma once
 
 #ifndef UCFG_USE_OPENSSL
 #	define UCFG_USE_OPENSSL 0

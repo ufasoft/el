@@ -56,6 +56,7 @@ public:
 	void CopyTo(Stream& dest, size_t bufsize = DEFAULT_BUF_SIZE) const;
 protected:
 	Stream() {}
+	Stream(const Stream&) {}
 };
 
 class BufferedStream : public Stream {

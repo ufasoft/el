@@ -16,7 +16,7 @@ class COleControlSite;
 class COleBlob : public Blob {
 public:
 	COleBlob()
-		:	Blob(new COleBlobBuf)
+		: Blob(new COleBlobBuf)
 	{}
 
 	COleBlob(const void *buf, int len) {
@@ -26,7 +26,7 @@ public:
 	}
 
 	COleBlob(const VARIANT& v)
-		:	Blob(new COleBlobBuf)
+		: Blob(new COleBlobBuf)
 	{
 		SetVariant(v);
 	}
@@ -42,9 +42,11 @@ public:
 
 
 class CComPtrBase {
+protected:
+	IUnknown* m_unk;
 public:
 	CComPtrBase()
-		:	m_unk(0)
+		: m_unk(0)
 	{}
 
 	CComPtrBase(const CComPtrBase& p);
@@ -60,8 +62,6 @@ public:
 	bool operator==(IUnknown *lp) const;
 	bool operator!() const { return m_unk == 0; }
 protected:
-	IUnknown *m_unk;
-
 	IUnknown **operator&();
 	void Assign(IUnknown *lp, const IID *piid);
 
@@ -83,16 +83,16 @@ public:
 	{}
 
 	CComPtr2(const CComPtr2& p)
-		:	CComPtrBase((T*)p)
+		: CComPtrBase((T*)p)
 	{
 	}
 
 	CComPtr2(T * lp)
-		:	CComPtrBase(lp)
+		: CComPtrBase(lp)
 	{}
 
 	CComPtr2(IUnknown *unk, const IID *piid)
-		:	base(unk, piid)
+		: base(unk, piid)
 	{}
 
 
@@ -184,11 +184,11 @@ public:
 	{}
 
 	CComPtr(T * lp)
-		:	CComPtr2(lp)
+		: CComPtr2(lp)
 	{}
 
 	CComPtr(IUnknown *unk)
-		:	CComPtr2(unk, piid)
+		: CComPtr2(unk, piid)
 	{}
 
 
@@ -205,7 +205,7 @@ public:
 	{}
 
 	CComPtr(IUnknown *unk)
-		:	CComPtr2(unk, &__uuidof(IUnknown))
+		: CComPtr2(unk, &__uuidof(IUnknown))
 	{}
 };
 
@@ -320,11 +320,11 @@ public:
 	typedef CSafeArray class_type;
 
 	CSafeArray(SAFEARRAY *&sa)
-		:	m_sa(sa)
+		: m_sa(sa)
 	{}
 
 	CSafeArray(const CSafeArray& sa)
-		:	m_sa(sa.m_sa)
+		: m_sa(sa.m_sa)
 	{}
 
 	virtual ~CSafeArray() {
@@ -406,7 +406,7 @@ class AFX_CLASS CSafeArrayAccessData {
 	void *m_p;
 public:
 	CSafeArrayAccessData(const CSafeArray& sa)
-		:	m_sa(sa)
+		: m_sa(sa)
 	{
 		m_p = m_sa.AccessData();
 	}
@@ -436,7 +436,7 @@ public:
 	LPOLESTR m_str;
 
 	COleString()
-		:	m_str(0)
+		: m_str(0)
 	{}
 
 	~COleString() {
@@ -535,8 +535,8 @@ public:
 
 class CVariantIterator {		//!!!
 	COleSafeArray m_ar;
-	int m_i;
 	CComPtr<IEnumVARIANT> m_en;
+	int m_i;
 public:
 	CVariantIterator(const VARIANT& ar);
 	bool Next(COleVariant& v);
@@ -561,7 +561,7 @@ public:
 	CComPtr<IStream> m_stream;
 
 	CIStream(IStream *stream = 0)
-		:	m_stream(stream)
+		: m_stream(stream)
 	{}
 
 	size_t Read(void *buf, size_t count) const override;
@@ -591,7 +591,7 @@ public:
 	CComPtr<IStorage> m_storage;
 
 	CIStorage(IStorage *storage = 0)
-		:	m_storage(storage)
+		: m_storage(storage)
 	{}
 
 	void CreateFile(RCString name, DWORD grfMode = STGM_READWRITE | STGM_SHARE_EXCLUSIVE);
@@ -612,11 +612,10 @@ public:
 	}
 };
 
-
 class CBstrReadStream : public CMemReadStream {
 public:
 	CBstrReadStream(BSTR bstr)
-		:	CMemReadStream(Span((const uint8_t*)bstr, SysStringByteLen(bstr)))
+		: CMemReadStream(Span((const uint8_t*)bstr, SysStringByteLen(bstr)))
 	{}
 };
 
@@ -678,8 +677,7 @@ typedef CComObjectRootBase *(AFXAPI EXT_ATL_CREATORFUNC)();
 class CInternalUnknown : public IUnknown {
 public:
 	STDMETHOD(QueryInterface)(REFIID riid, void **ppvObjOut) { \
-		if (riid == IID_IUnknown)
-		{
+		if (riid == IID_IUnknown) {
 			m_pRoot->InternalAddRef();
 			*ppvObjOut = this;
 			return S_OK;
@@ -696,7 +694,7 @@ public:
 		CComObjectRootBase *m_pRoot;
 
 		CInternalUnknown(CComObjectRootBase *pRoot)
-			:m_pRoot(pRoot)
+			: m_pRoot(pRoot)
 		{}
 };
 #endif // UCFG_COM_IMPLOBJ
@@ -933,8 +931,8 @@ public:
 	CBool m_bAutoDelete;
 
 	CIStreamWrap(Stream& stm, bool bAutoDelete = false)
-		:	m_stm(stm)
-		,	m_bAutoDelete(bAutoDelete)
+		: m_stm(stm)
+		, m_bAutoDelete(bAutoDelete)
 	{}
 
 	DECLARE_STANDARD_UNKNOWN()
@@ -1005,14 +1003,14 @@ public:
 
 class ComExc : public Exception {
 	typedef Exception base;
-public:
-	ComExc(HRESULT hr, IErrorInfo* perrinfo = 0)
-		:	base(hr)
-		,	m_comError(hr, perrinfo)
-	{}
 protected:
 	_com_error m_comError;
-
+public:
+	ComExc(HRESULT hr, IErrorInfo* perrinfo = 0)
+		: base(hr)
+		, m_comError(hr, perrinfo)
+	{}
+protected:
 	String get_Message() const override { return (LPCWSTR)m_comError.Description(); }
 };
 

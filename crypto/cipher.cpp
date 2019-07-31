@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -18,10 +18,10 @@ using namespace std;
 void BlockCipher::Pad(uint8_t *tdata, size_t cbPad) const {
 	switch (Padding) {
 	case PaddingMode::Zeros:
-		memset(tdata+BlockSize/8-cbPad, 0, cbPad);
+		memset(tdata + BlockSize / 8 - cbPad, 0, cbPad);
 		break;
 	case PaddingMode::PKCS7:
-		memset(tdata+BlockSize/8-cbPad, cbPad, cbPad);
+		memset(tdata + BlockSize / 8 - cbPad, cbPad, cbPad);
 		break;
 	default:
 		Throw(E_NOTIMPL);
@@ -43,9 +43,9 @@ Blob BlockCipher::Encrypt(RCSpan cbuf) {
 			Throw(errc::invalid_argument);
 	}
 	Blob ekey = CalcExpandedKey();
-	for (size_t pos=0; ; pos+=cbBlock) {
+	for (size_t pos = 0;; pos += cbBlock) {
 		size_t size = (min)(cbuf.size() - pos, size_t(cbBlock));
-		if (0 == size && (Padding==PaddingMode::None || Padding==PaddingMode::Zeros))
+		if (0 == size && (Padding == PaddingMode::None || Padding == PaddingMode::Zeros))
 			break;
 		memcpy(tdata, cbuf.data()+pos, size);
 		if (size < cbBlock)
@@ -83,7 +83,7 @@ Blob BlockCipher::Encrypt(RCSpan cbuf) {
 
 Blob BlockCipher::Decrypt(RCSpan cbuf) {
 	InitParams();
-	const int cbBlock = BlockSize/8;
+	const int cbBlock = BlockSize / 8;
 	if (Mode == CipherMode::OFB)
 		return Encrypt(cbuf);
 	if (cbuf.size() % cbBlock)
@@ -97,7 +97,7 @@ Blob BlockCipher::Decrypt(RCSpan cbuf) {
 		memcpy(tdata, IV.constData(), cbBlock);
 	}
 	Span state = IV;
-	Blob ekey = Mode==CipherMode::CFB ? CalcExpandedKey() : CalcInvExpandedKey();
+	Blob ekey = Mode == CipherMode::CFB ? CalcExpandedKey() : CalcInvExpandedKey();
 	for (size_t pos = 0; pos < cbuf.size(); pos += cbBlock) {
 		memcpy(block, cbuf.data() + pos, cbBlock);
 		switch (Mode) {
@@ -136,7 +136,6 @@ Blob BlockCipher::Decrypt(RCSpan cbuf) {
 	}
 	return ms.AsSpan();
 }
-
 
 
 

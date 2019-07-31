@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -82,7 +82,7 @@ public:
 	{}
 
 	Size(const SIZE& size)
-		:	SIZE(size)
+		: SIZE(size)
 	{}
 
 	Size(int initCX, int initCY) {
@@ -372,15 +372,15 @@ public:
 	SafeHandle::HandleAccess m_ha;
 
 	COvlEvent()
-		:	m_ha(m_ev)
+		: m_ha(m_ev)
 	{
 		ZeroStruct(*static_cast<OVERLAPPED*>(this));
 		hEvent = (HANDLE)(intptr_t)m_ha;
 	}
 
 	COvlEvent(bool)
-		:	m_ev(false, true)
-		,	m_ha(m_ev)
+		: m_ev(false, true)
+		, m_ha(m_ev)
 	{
 		ZeroStruct(*static_cast<OVERLAPPED*>(this));
 		hEvent = (HANDLE)(intptr_t)m_ha;
@@ -388,30 +388,30 @@ public:
 };
 
 ENUM_CLASS(DialogResult) {
-	Yes = IDYES,
-		No = IDNO,
-		Cancel = IDCANCEL
+	Yes			= IDYES
+	, No		= IDNO
+	, Cancel	= IDCANCEL
 } END_ENUM_CLASS(DialogResult)
 
 ENUM_CLASS(MessageBoxButtons) {
-	OK	= MB_OK,
-		OKCancel	= MB_OKCANCEL,
-		AbortRetryIgnore = MB_ABORTRETRYIGNORE,
-		YesNoCancel	= MB_YESNOCANCEL,
-		YesNo		= MB_YESNO,
-		RetryCancel	= MB_RETRYCANCEL
-	} END_ENUM_CLASS(MessageBoxButtons)
+	OK				= MB_OK
+	, OKCancel		= MB_OKCANCEL
+	, AbortRetryIgnore = MB_ABORTRETRYIGNORE
+	, YesNoCancel	= MB_YESNOCANCEL
+	, YesNo			= MB_YESNO
+	, RetryCancel	= MB_RETRYCANCEL
+} END_ENUM_CLASS(MessageBoxButtons)
 
 ENUM_CLASS(MessageBoxIcon) {
-		Stop		= MB_ICONSTOP,
-		Exclamation = MB_ICONEXCLAMATION,
-		Error		= MB_ICONERROR,
-		Warning		= MB_ICONWARNING,
-		Information = MB_ICONINFORMATION,
-		Question	= MB_ICONQUESTION,
-		Hand		= MB_ICONHAND,
-		Asterisk	= MB_ICONASTERISK
-	} END_ENUM_CLASS(MessageBoxIcon)
+	Stop			= MB_ICONSTOP
+	, Exclamation	= MB_ICONEXCLAMATION
+	, Error			= MB_ICONERROR
+	, Warning		= MB_ICONWARNING
+	, Information	= MB_ICONINFORMATION
+	, Question		= MB_ICONQUESTION
+	, Hand			= MB_ICONHAND
+	, Asterisk		= MB_ICONASTERISK
+} END_ENUM_CLASS(MessageBoxIcon)
 
 class MessageBox {
 public:
@@ -419,34 +419,33 @@ public:
 	EXT_API static DialogResult AFXAPI Show(RCString text, RCString caption, int buttons, MessageBoxIcon icon = (MessageBoxIcon)0);
 };
 
-
 enum COsVersion {
-	OSVER_FLAG_NT      = 0x200,
-	OSVER_FLAG_UNICODE = 0x20,
-	OSVER_FLAG_CE      = 0x40 | OSVER_FLAG_UNICODE,
-	OSVER_FLAG_SERVER   = 0x80,
-	OSVER_FLAG_2K_BRANCH = 0x100 | OSVER_FLAG_NT | OSVER_FLAG_UNICODE,
-
-	OSVER_95      = 1,
-	OSVER_98      = 2,
-	OSVER_ME      = 3,
-	OSVER_NT4     = 4 | OSVER_FLAG_NT | OSVER_FLAG_UNICODE,
-	OSVER_2000    = 5 | OSVER_FLAG_2K_BRANCH,
-	OSVER_XP      = 6 | OSVER_FLAG_2K_BRANCH,
-	OSVER_CE      = 7 | OSVER_FLAG_CE,
-	OSVER_CE_4		= 8 | OSVER_FLAG_CE,
-	OSVER_SERVER_2003 = 9 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER,
-	OSVER_VISTA = 10 | OSVER_FLAG_2K_BRANCH,
-	OSVER_2008 = 10 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER,
-	OSVER_CE_5  = 9 | OSVER_FLAG_CE,
-	OSVER_CE_6  = 10 | OSVER_FLAG_CE,
-	OSVER_CE_FUTURE  = 11 | OSVER_FLAG_CE,
-	OSVER_7 = 13 | OSVER_FLAG_2K_BRANCH,
-	OSVER_2008_R2 = 13 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER,
-	OSVER_8 = 14 | OSVER_FLAG_2K_BRANCH,
-	OSVER_8_1 = 15 | OSVER_FLAG_2K_BRANCH,
-	OSVER_10 = 16 | OSVER_FLAG_2K_BRANCH,
-	OSVER_FUTURE = 17 | OSVER_FLAG_2K_BRANCH
+	OSVER_FLAG_NT      = 0x200
+	, OSVER_FLAG_UNICODE = 0x20
+	, OSVER_FLAG_CE      = 0x40 | OSVER_FLAG_UNICODE
+	, OSVER_FLAG_SERVER   = 0x80
+	, OSVER_FLAG_2K_BRANCH = 0x100 | OSVER_FLAG_NT | OSVER_FLAG_UNICODE
+	
+	, OSVER_95      = 1
+	, OSVER_98      = 2
+	, OSVER_ME      = 3
+	, OSVER_NT4     = 4 | OSVER_FLAG_NT | OSVER_FLAG_UNICODE
+	, OSVER_2000    = 5 | OSVER_FLAG_2K_BRANCH
+	, OSVER_XP      = 6 | OSVER_FLAG_2K_BRANCH
+	, OSVER_CE      = 7 | OSVER_FLAG_CE
+	, OSVER_CE_4		= 8 | OSVER_FLAG_CE
+	, OSVER_SERVER_2003 = 9 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER
+	, OSVER_VISTA = 10 | OSVER_FLAG_2K_BRANCH
+	, OSVER_2008 = 10 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER
+	, OSVER_CE_5  = 9 | OSVER_FLAG_CE
+	, OSVER_CE_6  = 10 | OSVER_FLAG_CE
+	, OSVER_CE_FUTURE  = 11 | OSVER_FLAG_CE
+	, OSVER_7 = 13 | OSVER_FLAG_2K_BRANCH
+	, OSVER_2008_R2 = 13 | OSVER_FLAG_2K_BRANCH | OSVER_FLAG_SERVER
+	, OSVER_8 = 14 | OSVER_FLAG_2K_BRANCH
+	, OSVER_8_1 = 15 | OSVER_FLAG_2K_BRANCH
+	, OSVER_10 = 16 | OSVER_FLAG_2K_BRANCH
+	, OSVER_FUTURE = 17 | OSVER_FLAG_2K_BRANCH
 };
 
 AFX_API COsVersion AFXAPI GetOsVersion();
@@ -505,6 +504,7 @@ public:
 };
 
 class ProcessModule {
+	MODULEINFO m_mi;
 public:
 	Process Process;
 	CInt<HMODULE> HModule;
@@ -533,14 +533,15 @@ public:
 		return Ext::FileVersionInfo(FileName);
 	}
 	DEFPROP_GET_CONST(Ext::FileVersionInfo, FileVersionInfo);
-private:
-	MODULEINFO m_mi;
 };
 
 std::vector<ProcessModule> GetProcessModules(Process& process);
 
 class Wow64FsRedirectionKeeper {
 	typedef Wow64FsRedirectionKeeper class_type;
+
+	void* m_oldValue;
+	CBool m_bDisabled;
 public:
 	Wow64FsRedirectionKeeper() {}
 
@@ -551,9 +552,6 @@ public:
 	void Disable();
 	~Wow64FsRedirectionKeeper();
 private:
-	void *m_oldValue;
-	CBool m_bDisabled;
-
 	EXT_DISABLE_COPY_CONSTRUCTOR
 };
 
@@ -562,7 +560,7 @@ public:
 	void *m_address;
 
 	CVirtualMemory()
-		:	m_address(0)
+		: m_address(0)
 	{}
 
 	CVirtualMemory(void *lpAddress, DWORD dwSize, DWORD flAllocationType = MEM_RESERVE, DWORD flProtect = PAGE_READWRITE);
@@ -573,6 +571,7 @@ public:
 };
 
 class CHeap {
+	HANDLE m_h;
 public:
 	CHeap();
 	~CHeap();
@@ -580,8 +579,6 @@ public:
 	size_t Size(void *p, DWORD flags = 0);
 	void *Alloc(size_t size, DWORD flags = 0);
 	void Free(void *p, DWORD flags = 0);
-private:
-	HANDLE m_h;
 };
 
 #if UCFG_WND
@@ -774,7 +771,6 @@ public:
 #endif
 	bool m_bDLL;
 
-
 	~AFX_MODULE_STATE();
 
 	path get_FileName();
@@ -913,7 +909,7 @@ class CodepageCvt : public std::codecvt<wchar_t, char, mbstate_t> {
 	typedef std::codecvt<wchar_t, char, mbstate_t> base;
 public:
 	explicit CodepageCvt(int cp)
-		:	m_cp(cp)
+		: m_cp(cp)
 	{}
 private:
 	int m_cp;

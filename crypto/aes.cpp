@@ -178,7 +178,7 @@ void Aes::EncryptBlock(RCSpan ekey, uint8_t *data) {
 
 void Aes::DecryptBlock(RCSpan ekey, uint8_t *data) {
 	uint32_t *b = (uint32_t*)data,
-		*e = (uint32_t*)(data + BlockSize/8);
+		*e = (uint32_t*)(data + BlockSize / 8);
 	std::reverse(b, e);
 	EncDec(ekey, b, g_aesInvSubByte, InvMixColumn);
 	std::reverse(b, e);
@@ -187,20 +187,17 @@ void Aes::DecryptBlock(RCSpan ekey, uint8_t *data) {
 #if UCFG_USE_OPENSSL
 
 class CipherCtx {
+	EVP_CIPHER_CTX* m_ctx;
 public:
-	CipherCtx() {
-		::EVP_CIPHER_CTX_init(&m_ctx);
-	}
+	CipherCtx()
+		: m_ctx(::EVP_CIPHER_CTX_new())
+	{}
 
 	~CipherCtx() {
-	    SslCheck(::EVP_CIPHER_CTX_cleanup(&m_ctx));
+		::EVP_CIPHER_CTX_free(m_ctx);
 	}
 
-	operator EVP_CIPHER_CTX*() {
-		return &m_ctx;
-	}
-private:
-	EVP_CIPHER_CTX m_ctx;
+	operator EVP_CIPHER_CTX* () { return m_ctx; }
 };
 
 #else
@@ -248,26 +245,31 @@ pair<Blob, Blob> Aes::GetKeyAndIVFromPassword(RCString password, const uint8_t s
 #if UCFG_USE_OPENSSL
 
 Blob Aes::Encrypt(RCSpan cbuf) {
-	int rlen = cbuf.Size+AES_BLOCK_SIZE, flen = 0;
+	int rlen = cbuf.size() + AES_BLOCK_SIZE, flen = 0;
 	Blob r(0, rlen);
 
 	CipherCtx ctx;
     SslCheck(::EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), 0, m_key.constData(), IV.constData()));
-    SslCheck(::EVP_EncryptUpdate(ctx, r.data(), &rlen, cbuf.P, cbuf.Size));
+	if (Padding == PaddingMode::None)
+		SslCheck(::EVP_CIPHER_CTX_set_padding(ctx, false));
+	SslCheck(::EVP_EncryptUpdate(ctx, r.data(), &rlen, cbuf.data(), cbuf.size()));
     SslCheck(::EVP_EncryptFinal_ex(ctx, r.data()+rlen, &flen));
-	r.Size = rlen+flen;
+	r.resize(rlen + flen);
 	return r;
 }
 
 Blob Aes::Decrypt(RCSpan cbuf) {
-	int rlen = cbuf.Size, flen = 0;
+	int rlen = cbuf.size(), flen = 0;
 	Blob r(0, rlen);
+	uint8_t* rdata = r.data();
 
 	CipherCtx ctx;
     SslCheck(::EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), 0, m_key.constData(), IV.constData()));
-    SslCheck(::EVP_DecryptUpdate(ctx, r.data(), &rlen, cbuf.P, cbuf.Size));
-    SslCheck(::EVP_DecryptFinal_ex(ctx, r.data()+rlen, &flen));
-	r.Size = rlen+flen;
+	if (Padding == PaddingMode::None)
+		SslCheck(::EVP_CIPHER_CTX_set_padding(ctx, false));
+	SslCheck(::EVP_DecryptUpdate(ctx, rdata, &rlen, cbuf.data(), cbuf.size()));
+	SslCheck(::EVP_DecryptFinal_ex(ctx, rdata + rlen, &flen));
+	r.resize(rlen + flen);
 	return r;
 }
 

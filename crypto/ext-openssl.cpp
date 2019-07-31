@@ -5,6 +5,8 @@
 
 #include <el/ext.h>
 
+#if UCFG_USE_OPENSSL
+
 #define OPENSSL_NO_SCTP
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -25,7 +27,7 @@ static class OpensslCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
 	OpensslCategory()
-		:	base("OpenSSL", FACILITY_OPENSSL)
+		: base("OpenSSL", FACILITY_OPENSSL)
 	{}
 
 	string message(int errval) const override {
@@ -184,3 +186,5 @@ BigInteger sqrt_mod(const BigInteger& x, const BigInteger& mod) {
 
 
 }} // Ext::Crypto
+
+#endif // UCFG_USE_OPENSSL

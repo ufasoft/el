@@ -103,7 +103,7 @@ String AFXAPI TryGetVersionString(const FileVersionInfo& vi, RCString name, RCSt
 bool AFXAPI IsConsole() {
 	BYTE *base = (BYTE*)GetModuleHandle(0);
 	IMAGE_DOS_HEADER *dh = (IMAGE_DOS_HEADER*)base;
-	IMAGE_OPTIONAL_HEADER32 *oh = (IMAGE_OPTIONAL_HEADER32*)(base+dh->e_lfanew+IMAGE_SIZEOF_FILE_HEADER+4);
+	IMAGE_OPTIONAL_HEADER32 *oh = (IMAGE_OPTIONAL_HEADER32 *)(base + dh->e_lfanew + IMAGE_SIZEOF_FILE_HEADER + 4);
 	return oh->Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
 }
 

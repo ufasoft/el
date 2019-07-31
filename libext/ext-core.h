@@ -171,6 +171,9 @@ public:
 	static String AFXAPI ToString(int16_t v, int base = 10) { return ToString(int32_t(v), base); }
 	static String AFXAPI ToString(uint16_t v, int base = 10) { return ToString(uint32_t(v), base); }
 	static String AFXAPI ToString(double d);
+
+	static String AFXAPI MulticharToString(int n);
+	static int AFXAPI ToMultiChar(const char *s);
 #ifdef WIN32
 	static AFX_API Blob AFXAPI ToAnsiBytes(wchar_t ch);
 #endif

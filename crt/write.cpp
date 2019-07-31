@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com      ####
+/*######   Copyright (c) 2015-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,6 +9,9 @@
 #include <io.h>
 #include <errno.h>
 #include <crtversion.h>
+
+#include <corecrt_internal.h>
+#include <corecrt_internal_lowio.h>
 
 #include <windows.h>
 
@@ -22,7 +25,7 @@ __int64 __cdecl _lseeki64_nolock(int fh, __int64 _Offset, int _Origin);
 #define FAPPEND         0x20
 
 #if _VC_CRT_MAJOR_VERSION>=14
-
+/*!!!?
 	struct __crt_lowio_handle_data {
 		CRITICAL_SECTION           lock;
 		intptr_t                   osfhnd;          // underlying OS file HANDLE
@@ -31,7 +34,7 @@ __int64 __cdecl _lseeki64_nolock(int fh, __int64 _Offset, int _Origin);
 		char				      textmode;
 		// ...
 	};
-	
+*/	
 	void __cdecl __acrt_errno_map_os_error(unsigned long const oserrno);
 	void __cdecl __acrt_lowio_lock_fh(int fh);
 	void __cdecl __acrt_lowio_unlock_fh(int fh);
@@ -162,12 +165,10 @@ extern "C" int __cdecl _write_nolock(int fh, const void *buffer, unsigned size) 
 }
 
 extern "C" int __cdecl _write(int fh, const void *buffer, unsigned size) {
+	_CHECK_FH_CLEAR_OSSERR_RETURN(fh, EBADF, -1);
 	CFileHandleLock lockFileHandle(fh);
 
 	return _write_nolock(fh, buffer, size);
 }
-
-
-
 
 

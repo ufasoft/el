@@ -57,7 +57,7 @@ CLSID AFXAPI StringToCLSID(RCString s) {
 }
 
 CComPtrBase::CComPtrBase(const CComPtrBase& p)
-	:	m_unk(p.m_unk)
+	: m_unk(p.m_unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -94,7 +94,7 @@ void CComPtrBase::Assign(IUnknown *lp, const IID *piid) {
 
 /*!!!R
 CUnkPtr::CUnkPtr(IUnknown *unk)
-:	m_unk(unk)
+	: m_unk(unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -106,12 +106,12 @@ CUnkPtr::~CUnkPtr() {
 }
 
 CUnkPtr::CUnkPtr()
-:	m_unk(0)
+	: m_unk(0)
 {
 }
 
 CUnkPtr::CUnkPtr(const CUnkPtr& p)
-:	m_unk(p.m_unk)
+	: m_unk(p.m_unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -480,8 +480,7 @@ COleVariant AFXAPI AsImmediate(const VARIANT& v) {
 }
 
 CUniType AFXAPI UniType(const COleVariant& v) {
-	switch (v.vt)
-	{
+	switch (v.vt) {
 	case VT_UI1:
 	case VT_I2:
 	case VT_I4:
@@ -501,13 +500,13 @@ CUniType AFXAPI UniType(const COleVariant& v) {
 
 
 CUsingCOM::CUsingCOM(DWORD dwCoInit)
-	:	m_bInitialized(false)
+	: m_bInitialized(false)
 {
 	Initialize(dwCoInit);
 }
 
 CUsingCOM::CUsingCOM(_NoInit)
-	:	m_bInitialized(false)
+	: m_bInitialized(false)
 {
 }
 
@@ -660,7 +659,7 @@ bool Convert::ToBoolean(const VARIANT& v) {
 
 
 CComBSTR::CComBSTR()
-:	m_str(0)
+	: m_str(0)
 {
 }
 
@@ -995,13 +994,13 @@ VARIANT COleVariant::Detach() {
 }
 
 COleSafeArray::COleSafeArray()
-	:	m_dwDims(0)
-	,	m_dwElementSize(0)
+	: m_dwDims(0)
+	, m_dwElementSize(0)
 {
 }
 
 COleSafeArray::COleSafeArray(const COleSafeArray& varSrc)
-	:	COleVariant(varSrc)
+	: COleVariant(varSrc)
 {
 	m_dwDims = GetDim();
 	m_dwElementSize = GetElemSize();
@@ -1127,8 +1126,7 @@ VARTYPE CSafeArray::get_Vartype() const {
 }
 
 COleVariant CSafeArray::operator[](long idx) const {
-	switch (Vartype)
-	{
+	switch (Vartype) {
 	case VT_BSTR:
 		{
 			CComBSTR bstr;
@@ -1147,7 +1145,7 @@ COleVariant CSafeArray::operator[](long idx) const {
 }
 
 COleSafeArrayAccessData::COleSafeArrayAccessData(COleSafeArray& sa)
-:	m_sa(sa)
+	: m_sa(sa)
 {
 	m_sa.AccessData(&m_p);
 }
@@ -1349,8 +1347,8 @@ void COleCurrency::SetStatus(CurrencyStatus status) {
 }
 
 COleDispatchDriver::COleDispatchDriver(LPDISPATCH lpDispatch, bool bAutoRelease)
-	:	m_lpDispatch(lpDispatch)
-	,	m_bAutoRelease(bAutoRelease)
+	: m_lpDispatch(lpDispatch)
+	, m_bAutoRelease(bAutoRelease)
 {
 }
 
@@ -1681,7 +1679,7 @@ CDispatchDriver::CDispatchDriver() {
 }
 
 CDispatchDriver::CDispatchDriver(IDispatch *pdisp)
-	:	COleDispatchDriver(pdisp)
+	: COleDispatchDriver(pdisp)
 {
 	pdisp->AddRef();
 }
@@ -1736,7 +1734,7 @@ COleVariant CDispatchDriver::CallMethod(RCString name, const char* pbParamInfo, 
 }
 
 CVariantIterator::CVariantIterator(const VARIANT& ar)
-	:	m_i(0)
+	: m_i(0)
 {
 	COleVariant v = AsImmediate(ar);
 	if (v.vt & VT_ARRAY)

@@ -170,7 +170,7 @@ const char *String::c_str() const {  //!!! optimize
 		atomic<char*> &apChar = pData->AsStringBlobBuf()->m_apChar;
 		if (!apChar.load()) {
 			Encoding& enc = Encoding::Default();
-			for (size_t n=(pData->GetSize()/sizeof(value_type))+1, len=n+1;; len<<=1) {
+			for (size_t n = (pData->GetSize() / sizeof(value_type)) + 1, len = n + 1;; len <<= 1) {
 				Array<char> p(len);
 				size_t r;
 				if ((r = enc.GetBytes((const value_type*)pData->GetBSTR(), n, (uint8_t*)p.get(), len)) < len) {
@@ -432,7 +432,7 @@ String::size_type String::rfind(value_type ch, size_type pos) const noexcept {
 String String::substr(size_type pos, size_type count) const {
 	if (pos > size())
 		Throw(ExtErr::IndexOutOfRange);
-	return !pos && count>=size() ? _self : String((const value_type*)_self + pos, min(count, size()-pos));
+	return !pos && count >= size() ? _self : String((const value_type*)_self + pos, min(count, size() - pos));
 }
 
 String String::Right(ssize_t nCount) const {
@@ -611,16 +611,6 @@ bool AFXAPI operator<=(const String& s1, const String::value_type *s2) { return 
 bool AFXAPI operator<=(const String::value_type * s1, const String& s2) { return s2.compare(s1) >= 0; }
 bool AFXAPI operator>=(const String& s1, const String::value_type *s2) { return s1.compare(s2) >= 0; }
 bool AFXAPI operator>=(const String::value_type * s1, const String& s2) { return s2.compare(s1) <= 0; }
-
-
-String MulticharToString(int n) {
-	uint64_t ar[2] = { (unsigned)n, 0 };
-#if _MSC_VER
-	return _strrev((char*)ar);
-#else
-	return strrev((char*)ar);			//!!!? Test it
-#endif
-}
 
 
 } // Ext::

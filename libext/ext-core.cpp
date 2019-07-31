@@ -165,6 +165,25 @@ String Convert::ToString(double d) {
 }
 #endif
 
+String Convert::MulticharToString(int n) {
+	uint64_t ar[2] = { htole((unsigned)n), 0 };
+#if _MSC_VER
+	return _strrev((char*)ar);
+#else
+	return strrev((char*)ar);
+#endif
+}
+
+int Convert::ToMultiChar(const char* s) {
+	size_t len = strlen(s);
+	if (len > sizeof(int))
+		return -1;
+	int r = 0;
+	for (int i = 0; i < len; ++i)
+		r = (r << 8) | (unsigned char)s[i];
+	return r;
+}
+
 MacAddress::MacAddress(RCString s)
 	:	m_n64(0)
 {

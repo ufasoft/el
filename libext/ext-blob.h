@@ -162,6 +162,7 @@ public:
 
 #if UCFG_WIN32 && UCFG_BLOB_POLYMORPHIC && UCFG_COM
 class COleBlobBuf : public CBlobBufBase {
+	BSTR m_bstr;
 public:
 	COleBlobBuf();
 	~COleBlobBuf();
@@ -177,9 +178,6 @@ public:
 
 	CBlobBufBase* Clone();
 	CBlobBufBase* SetSize(size_t size);
-
-  private:
-	BSTR m_bstr;
 };
 #endif
 
@@ -232,10 +230,7 @@ public:
 
 	void swap(Blob& x) noexcept { std::swap(m_pData, x.m_pData); }
 
-	operator Span() const noexcept {
-		return m_pData ? Span(constData(), size()) : Span();
-	}
-
+	operator Span() const noexcept;
 	void AssignIfNull(const Blob& val);
 	Blob& operator=(const Blob& val);
 	Blob& operator=(RCSpan mb) { return operator=(Blob(mb)); }

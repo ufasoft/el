@@ -50,6 +50,7 @@ class SqliteConnection;
 class SqliteCommand;
 
 class SqliteReader : public IDataReader {
+	SqliteCommand& m_cmd;
 public:
 	SqliteReader(SqliteCommand& cmd);
 	~SqliteReader();
@@ -62,8 +63,6 @@ public:
 	int FieldCount() override;
 	String GetName(int idx) override;
 	bool Read() override;
-private:
-	SqliteCommand& m_cmd;
 };
 
 class DbDataReader : public Pimpl<SqliteReader> {

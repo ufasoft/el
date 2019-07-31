@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -953,13 +953,44 @@ public:
 
 #endif // UCFG_WIN32_FULL
 
-ENUM_CLASS(PlatformID) {
-	Win32S,
-	Win32Windows,
-	Win32NT,
-	WinCE,
-	Unix,
-	XBox
+ENUM_CLASS(Architecture) {
+	X86
+	, X64
+	, Arm
+	, Arm64
+	, MIPS
+	, MIPS64
+	, IA64
+	, SHX
+	, Unknown = 255
+} END_ENUM_CLASS(Architecture);
+
+class OSPlatform {
+public:
+	static const OSPlatform Windows, Linux, OSX, Unix;
+
+	String Name;
+
+	OSPlatform(RCString name)
+		: Name(name)
+	{}
+
+	bool operator==(const OSPlatform& o) const { return Name == o.Name; }
+};
+
+class RuntimeInformation {
+public:
+	static bool IsOSPlatform(const OSPlatform& platform);
+	static Architecture OSArchitecture();
+};
+
+ENUM_CLASS(PlatformID) {	//!!!Obsolete
+	Win32S
+	, Win32Windows
+	, Win32NT
+	, WinCE
+	, Unix
+	, XBox
 } END_ENUM_CLASS(PlatformID);
 
 class OperatingSystem : public CPrintable {
@@ -1105,6 +1136,7 @@ public:
 	EXT_API static path AFXAPI GetFolderPath(SpecialFolder folder);
 	static String AFXAPI GetMachineType();
 	static String AFXAPI GetMachineVersion();
+	static bool AFXAPI Is64BitProcess() { return sizeof(void*) == 8; }
 	static bool AFXAPI Is64BitOperatingSystem();
 
 	int get_ProcessorCount();
@@ -1188,17 +1220,10 @@ public:
 	size_t BlockSize,
 		HashSize;
 	bool IsHaifa, IsBigEndian, IsLenBigEndian, IsBlockCounted;
-
-	HashAlgorithm()
-		:	BlockSize(0)
-		,	HashSize(0)
-		,	IsHaifa(false)
-		,	IsBigEndian(true)
-		,	IsLenBigEndian(true)
-		,	IsBlockCounted(false)
-		,	Is64Bit(false)
-	{}
-
+protected:
+	bool Is64Bit;
+public:
+	HashAlgorithm();
 	virtual ~HashAlgorithm() {}
 	virtual hashval ComputeHash(Stream& stm);				//!!!TODO should be const
 	virtual hashval ComputeHash(RCSpan mb);
@@ -1209,13 +1234,10 @@ public:
 	virtual void PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept;
 	virtual void OutTransform(void *dst) noexcept {}
 protected:
-	bool Is64Bit;
-
 	hashval Finalize(void *hash, Stream& stm, uint64_t processedLen);
 };
 
 hashval HMAC(HashAlgorithm& halgo, RCSpan key, RCSpan text);
-
 
 class Crc32 : public HashAlgorithm {
 	typedef HashAlgorithm base;
@@ -1229,9 +1251,10 @@ extern EXT_DATA std::mutex g_mfcCS;
 #if UCFG_USE_POSIX
 
 class MessageCatalog {
+	nl_catd m_catd;
 public:
 	MessageCatalog()
-		:	m_catd(nl_catd(-1))
+		: m_catd(nl_catd(-1))
 	{
 	}
 
@@ -1251,8 +1274,6 @@ public:
 	String GetMessage(int set_id, int msg_id, const char *s = 0) {
 		return ::catgets(m_catd, set_id, msg_id, s);
 	}
-private:
-	nl_catd m_catd;
 };
 
 
@@ -1305,13 +1326,13 @@ AFX_API HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif
 
 ENUM_CLASS(VarType) {
-	Null,
-	Int,
-	Float,
-	Bool,
-	String,
-	Array,
-	Map
+	Null
+	, Int
+	, Float
+	, Bool
+	, String
+	, Array
+	, Map
 } END_ENUM_CLASS(VarType);
 
 class VarValue;
@@ -1403,7 +1424,7 @@ public:
 	CBool Compact;
 
 	MarkupParser()
-		:	Indent(0)
+		: Indent(0)
 	{}
 
 	virtual ~MarkupParser() {
@@ -1470,11 +1491,12 @@ private:
 };
 
 class Temperature : public CPrintable {
+	float m_kelvin;				// float to be atomic
 public:
 	EXT_DATA static const Temperature Zero;
 
 	Temperature()
-		:	m_kelvin(0)
+		: m_kelvin(0)
 	{}
 
 	static Temperature FromKelvin(float v) { return Temperature(v); };
@@ -1490,10 +1512,8 @@ public:
 
 	String ToString() const;
 private:
-	float m_kelvin;				// float to be atomic
-
 	explicit Temperature(float kelvin)
-		:	m_kelvin(kelvin)
+		: m_kelvin(kelvin)
 	{}
 };
 
@@ -1537,16 +1557,16 @@ public:
 
 
 struct ProcessStartInfo {
-	std::map<String, String> EnvironmentVariables;
+	map<String, String> EnvironmentVariables;
 	path FileName,
 		WorkingDirectory;
 	String Arguments;
+	uint32_t Flags;
 	CBool CreateNewWindow,
 		CreateNoWindow,
 		RedirectStandardInput,
 		RedirectStandardOutput,
 		RedirectStandardError;
-	uint32_t Flags;
 
 	ProcessStartInfo(const path& fileName = path(), RCString arguments = String());
 };
