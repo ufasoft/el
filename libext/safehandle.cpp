@@ -101,8 +101,8 @@ SafeHandle::~SafeHandle() {
 }
 
 SafeHandle::SafeHandle(EXT_RV_REF(SafeHandle) rv)
-	:	m_invalidHandleValue(rv.m_invalidHandleValue)
-	,	m_bOwn(rv.m_bOwn)
+	: m_invalidHandleValue(rv.m_invalidHandleValue)
+	, m_bOwn(rv.m_bOwn)
 {
 	m_aHandle = rv.m_aHandle.load();
 	m_aState = rv.m_aState.load();
@@ -244,7 +244,7 @@ bool SafeHandle::Valid() const {
 }
 
 SafeHandle::BlockingHandleAccess::BlockingHandleAccess(const SafeHandle& h)
-	:	HandleAccess(h)
+	: HandleAccess(h)
 {
 #ifndef WDM_DRIVER
 	m_pPrev = (HandleAccess*)(void*)t_pCurrentHandle;

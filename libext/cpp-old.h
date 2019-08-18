@@ -240,8 +240,6 @@ public:
 	}
 	*/
 	void reset(pointer p) { m_p = p; }										//!!!TODO  = nullptr
-private:
-//!!!R	T *m_p;
 };
 
 #endif // !UCFG_STD_OBSERVER_PTR

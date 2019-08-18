@@ -20,16 +20,24 @@ public:
 };
 
 class locale {
+	static atomic<int> s_id;
+	static locale s_classic;
+
+	Ext::ptr<LocaleObjBase> m_pimpl;
 public:
+#if UCFG_FRAMEWORK
+	EXT_DATA static mutex s_cs;
+#endif
+
 	enum category {
-		none = 0,
-		collate = _M_COLLATE,
-		ctype = _M_CTYPE,
-		monetary = _M_MONETARY,
-		numeric = _M_NUMERIC,
-		time = _M_TIME,
-		messages = _M_MESSAGES,
-		all = _M_ALL
+		none		= 0
+		, collate	= _M_COLLATE
+		, ctype		= _M_CTYPE
+		, monetary	= _M_MONETARY
+		, numeric	= _M_NUMERIC
+		, time		= _M_TIME
+		, messages	= _M_MESSAGES
+		, all		= _M_ALL
 	};
 
 	class id : Ext::noncopyable {
@@ -54,10 +62,6 @@ public:
 		}
 	};
 
-#if UCFG_FRAMEWORK
-	EXT_DATA static mutex s_cs;
-#endif
-
 	locale();
 	explicit locale(const char *locname);
 
@@ -72,11 +76,6 @@ public:
 
 	const facet *GetFacet(size_t id) const;
 private:
-	static atomic<int> s_id;
-	static locale s_classic;
-
-	Ext::ptr<LocaleObjBase> m_pimpl;
-
 	static Ext::ptr<LocaleObjBase> Init();
 	void Init(const locale& loc, const facet *fac, int category, size_t id);
 };
@@ -131,24 +130,25 @@ EXT_API wchar_t AFXAPI toupper(wchar_t ch, const locale& loc = locale(0));
 EXT_API wchar_t AFXAPI tolower(wchar_t ch, const locale& loc = locale(0));
 
 struct ctype_base : public locale::facet {
+protected:
+	_Cvtvec m_cvt;
+public:
 	typedef short mask;
 
 	enum {
-		lower = _LOWER,
-		upper = _UPPER,
-		alpha = lower | upper | _XA,
-		digit = _DIGIT,
-		xdigit = _HEX,
-		alnum = alpha | digit,
-		punct = _PUNCT,
-		graph = alnum | punct,
-		print = graph | xdigit,
-		cntrl = _CONTROL,
-		space = _SPACE | _BLANK
+		lower = _LOWER
+		, upper = _UPPER
+		, alpha = lower | upper | _XA
+		, digit = _DIGIT
+		, xdigit = _HEX
+		, alnum = alpha | digit
+		, punct = _PUNCT
+		, graph = alnum | punct
+		, print = graph | xdigit
+		, cntrl = _CONTROL
+		, space = _SPACE | _BLANK
 	};
 protected:
-	_Cvtvec m_cvt;
-
 	ctype_base() {
 		Ext::ZeroStruct(m_cvt);		//!!!?
 	}

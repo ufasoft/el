@@ -106,13 +106,13 @@ public:
 		return r;
 	}
 
-	int64_t ReadInt64() const {
+	__forceinline int64_t ReadInt64() const {
 		int64_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	uint64_t ReadUInt64() const {
+	__forceinline uint64_t ReadUInt64() const {
 		uint64_t r;
 		ReadType(r, true_type());
 		return r;
@@ -326,10 +326,13 @@ void Write(W& wr, const std::vector<T>& ar) {
 class BitReader {
 public:
 	const Stream& BaseStream;
-
+private:
+	int m_n;
+	uint8_t m_b;
+public:
 	BitReader(const Stream& stm)
-		:	BaseStream(stm)
-		,	m_n(0)
+		: BaseStream(stm)
+		, m_n(0)
 	{
 	}
 
@@ -339,9 +342,6 @@ public:
 		return (m_b >> --m_n) & 1;
 	}
 private:
-	uint8_t m_b;
-	int m_n;
-
 	void ReadByte() {
 		BaseStream.ReadBuffer(&m_b, 1);
 		m_n = 8;

@@ -8,11 +8,10 @@
 namespace Ext {
 
 ENUM_CLASS(SeekOrigin) {
-	Begin,
-	Current,
-	End
+	Begin
+	, Current
+	, End
 } END_ENUM_CLASS(SeekOrigin);
-
 
 class EXTCLASS Stream {
 	typedef Stream class_type;
@@ -63,7 +62,11 @@ class BufferedStream : public Stream {
 	typedef Stream base;
 public:
 	Stream& UnderlyingStream;
-
+private:
+	mutable uint8_t* m_buf;
+	mutable size_t m_bufSize;
+	mutable size_t m_cur, m_end;
+public:
 	BufferedStream(Stream& stm, size_t bufferSize = DEFAULT_BUF_SIZE);
 
 	~BufferedStream() {
@@ -82,12 +85,7 @@ public:
 	}
 
 	size_t Read(void *buf, size_t count) const override;
-private:
-	uint8_t *m_buf;
-	size_t m_bufSize;
-	mutable size_t m_cur, m_end;
 };
-
 
 const std::error_category& AFXAPI zlib_category();
 
@@ -97,6 +95,12 @@ ENUM_CLASS(CompressionMode) {
 
 class CompressStream : public Stream {
 	typedef CompressStream class_type;
+protected:
+	Stream& m_stmBase;
+	void* m_pimpl;
+	mutable std::vector<uint8_t> m_sbuf, m_dbuf;
+	mutable int m_bufpos;
+	mutable CBool m_bInited, m_bByByteMode;
 public:
 	CompressionMode Mode;
 
@@ -108,12 +112,6 @@ public:
 	bool Eof() const override;
 	void SetByByteMode(bool v);
 protected:
-	mutable CBool m_bInited, m_bByByteMode;
-	void *m_pimpl;
-	mutable int m_bufpos;
-	mutable std::vector<uint8_t> m_sbuf, m_dbuf;
-	Stream& m_stmBase;
-
 	virtual void InitImp() const;
 private:
 	void ReadPortion() const;
@@ -124,7 +122,7 @@ class GZipStream : public CompressStream {
 	typedef CompressStream base;
 public:
 	GZipStream(Stream& stm, CompressionMode mode)
-		:	base(stm, mode)
+		: base(stm, mode)
 	{
 	}
 protected:

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -133,8 +133,8 @@ const error_category& AFXAPI hresult_category() {
 }
 
 Exception::Exception(HRESULT hr, RCString message)
-	:	base(hr, hresult_category(), message.empty() ? string() : string(explicit_cast<string>(message)))
-	,	m_message(message)
+	: base(hr, hresult_category(), message.empty() ? string() : string(explicit_cast<string>(message)))
+	, m_message(message)
 {
 #if !UCFG_WCE
 	if (CStackTrace::Use)

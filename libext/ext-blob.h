@@ -49,12 +49,14 @@ public:
 		: m_size(size) {}
 
 	vararray(const T* b, const T* e)
-		: m_size(e - b) {
+		: m_size(e - b)
+	{
 		std::copy_n(b, m_size, begin());
 	}
 
 	vararray(const T* b, size_t size)
-		: m_size(size) {
+		: m_size(size)
+	{
 		std::copy_n(b, m_size, begin());
 	}
 
@@ -377,17 +379,23 @@ public:
 	void resize(size_t sz, bool bZeroContent = true) { DoResize(sz, bZeroContent, SZ); }
 	void AssignIfNull(RCSpan s) { DoAssignIfNull(s, SZ); }
 	void Read(const BinaryReader& rd) { base::DoRead(rd, SZ); }
+
+	void push_back(uint8_t v) {
+		size_t sz = size();
+		resize(sz + 1, false);
+		data()[sz] = v;
+	}
 };
 
 template <class T> class StaticList : noncopyable {
-  public:
+public:
 	static T* Root;
 
 	T* Next;
 
 	StaticList() : Next(0) {}
 
-  protected:
+protected:
 	explicit StaticList(bool) : Next(Root) { Root = static_cast<T*>(this); }
 };
 

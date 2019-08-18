@@ -1057,18 +1057,18 @@ public:
 struct TraceThreadContext;
 
 class DbgFun {
+	TraceThreadContext* m_ctx;
+	const char* m_funName;
 public:
 	DbgFun(const char *funName)
-		: m_funName(funName) {
+		: m_funName(funName)
+	{
 		OutFormat("%d%% %ds>%%s\n", true);
 	}
 
 	~DbgFun() { OutFormat("%d%% %ds<%%s\n", false); }
 
 private:
-	TraceThreadContext *m_ctx;
-	const char *m_funName;
-
 	void OutFormat(const char *fs, bool bEnter);
 };
 #			endif

@@ -50,7 +50,7 @@ typedef char argv_char_t;
 
 class CAppBase
 #if UCFG_COMPLEX_WINAPP	
-	:	public CWinThread //!!! must be Thread
+	: public CWinThread //!!! must be Thread
 #endif
 {
 	typedef CAppBase class_type;
@@ -104,7 +104,7 @@ public:
 	static CAppBase *I;
 
 	CAppBase()
-		:	m_bPrintLogo(true)
+		: m_bPrintLogo(true)
 	{
 		I = this;
 	}
@@ -310,8 +310,8 @@ class CStreamHookThread : public Thread, public CConsoleStreamHook {
 	void Execute();
 public:
 	CStreamHookThread(thread_group *tr, FILE *file)
-		:	Thread(tr)
-		,	CConsoleStreamHook(file)
+		: Thread(tr)
+		, CConsoleStreamHook(file)
 	{}
 };
 

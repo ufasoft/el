@@ -20,10 +20,10 @@ class Exception;
 class SafeHandleBase {
 public:
 	enum StateBits {
-		SH_State_Closed = 1,
-		SH_State_Disposed = 2,
-		SH_State_RefCount = 0xfffffffc,
-		SH_RefCountOne = 4, // Amount to increment state field to yield a ref count increment of 1
+		SH_State_Closed		= 1
+		, SH_State_Disposed = 2
+		, SH_State_RefCount = 0xFFFFFFFC
+		, SH_RefCountOne	= 4, // Amount to increment state field to yield a ref count increment of 1
 	};
 
 	mutable atomic<int> m_aState;

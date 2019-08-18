@@ -222,7 +222,6 @@ protected:
 };
 
 
-
 class Random : public Ext::Random {
 public:
 	Random();
@@ -273,17 +272,17 @@ template <class T, class H2>
 class MerkleBranch {
 public:
 	std::vector<T> Vec;
-	int Index;
 	H2 m_h2;
+	int Index;
 
 	MerkleBranch()
-		:	Index(-1)
+		: Index(-1)
 	{}
 
 	T Apply(T hash) const {
 		if (Index < 0)
 			Throw(E_FAIL);
-		for (int i=0, idx=Index; i<Vec.size(); ++i, idx >>= 1)
+		for (int i = 0, idx = Index; i < Vec.size(); ++i, idx >>= 1)
 			hash = idx & 1 ? m_h2(Vec[i], hash) : m_h2(hash, Vec[i]);
 		return hash;
 	}
@@ -297,14 +296,14 @@ public:
 	int SourceSize;
 
 	MerkleTree()
-		:	SourceSize(-1)
+		: SourceSize(-1)
 	{}
 
 	template <class U, class H1>
 	MerkleTree(const vector<U>& ar, H1 h1, H2 h2)
-		:	base(ar.size())
-		,	SourceSize(int(ar.size()))
-		,	m_h2(h2)
+		: base(ar.size())
+		, SourceSize(int(ar.size()))
+		, m_h2(h2)
 	{
 		for (int i = 0; i < ar.size(); ++i)
 			(*this)[i] = h1(ar[i], i);
@@ -351,7 +350,7 @@ public:
 	vector<T> Items;
 
 	PartialMerkleTree(H2 h2)
-		:	m_h2(h2)
+		: m_h2(h2)
 	{}
 
 	T CalcHash(int height, size_t pos, const T *ar) const {

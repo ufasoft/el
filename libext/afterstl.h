@@ -193,7 +193,6 @@ optional<T> Lookup(const unordered_map<K, T>& m, const K& key) {
 	return i == m.end() ? optional<T>(nullopt) : i->second;
 }
 
-
 template <typename S1, typename S2>
 typename S1::const_iterator Search(const S1& s1, const S2& s2) {
 	return std::search(std::begin(s1), std::end(s1), std::begin(s2), std::end(s2));

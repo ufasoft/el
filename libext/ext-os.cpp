@@ -234,7 +234,7 @@ CEvent::CEvent(bool bInitiallyOwn, bool bManualReset, RCString name
 			   , LPSECURITY_ATTRIBUTES lpsaAttribute
 #endif
 )
-:	CSyncObject(name)
+	: CSyncObject(name)
 {
 #if UCFG_WDM
 	::KeInitializeEvent(&m_ev, bManualReset ? NotificationEvent : SynchronizationEvent, (BOOLEAN)bInitiallyOwn);
@@ -372,10 +372,10 @@ void AFXAPI AutoResetEvent::ReleasePooledHandle(HANDLE h) {
 
 CMutex::CMutex(bool bInitiallyOwn, RCString name
 #ifdef WIN32
-			   , LPSECURITY_ATTRIBUTES lpsaAttribute
+		, LPSECURITY_ATTRIBUTES lpsaAttribute
 #endif			   
 			   )
-:	CSyncObject(name)
+	: CSyncObject(name)
 {
 #if UCFG_WDM
 	::KeInitializeMutex(&m_mutex, 0);
@@ -419,7 +419,7 @@ CSemaphore::CSemaphore(LONG lInitialCount, LONG lMaxCount, RCString name
 	   , LPSECURITY_ATTRIBUTES lpsaAttributes
 #endif
 )
-	:	CSyncObject(name)
+	: CSyncObject(name)
 {
 #ifdef WIN32
 	AttachCreated((intptr_t)::CreateSemaphore(lpsaAttributes, lInitialCount, lMaxCount, name));

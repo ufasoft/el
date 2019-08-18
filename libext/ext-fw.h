@@ -6,7 +6,6 @@
 #pragma once
 
 
-
 #define CREATE_NEW          1 //!!!  windows
 typedef struct tagEXCEPINFO EXCEPINFO;
 
@@ -30,9 +29,7 @@ using std::istringstream;
 class Stream;
 class DirectoryInfo;
 
-
 typedef uint32_t (*AFX_THREADPROC)(void *);
-
 
 
 bool AFXAPI GetSilentUI();
@@ -129,11 +126,11 @@ enum _NoInit {
 #if UCFG_WIN32
 
 class DlProcWrapBase {
+protected:
+	void* m_p;
 public:
 	void Init(HMODULE hModule, RCString funname);
 protected:
-	void *m_p;
-
 	DlProcWrapBase()
 		: m_p(0)
 	{}
@@ -153,7 +150,7 @@ public:
 	}
 
 	DlProcWrap(RCString dll, RCString funname)
-		:	base(dll, funname)
+		: base(dll, funname)
 	{
 	}
 
@@ -219,7 +216,6 @@ public:
 
 
 
-
 #if !UCFG_USE_PTHREADS
 
 struct CTimesInfo {
@@ -236,48 +232,48 @@ struct CTimesInfo {
 
 //!!!O
 struct CFileStatus {
+	path AbsolutePath; // absolute path name
 	DateTime m_ctime;          // creation date/time of file
 	DateTime m_mtime;          // last modification date/time of file
 	DateTime m_atime;          // last access date/time of file
 	int64_t m_size;            // logical size of file in bytes
 	uint8_t m_attribute;	   // logical OR of File::Attribute enum values
 	uint8_t _m_padding;		   // pad the structure to a WORD
-	path AbsolutePath; // absolute path name
 };
 #endif
 
 ENUM_CLASS(FileMode) {
-	CreateNew,
-	Create,
-	Open,
-	OpenOrCreate,
-	Truncate,
-	Append
+	CreateNew
+	, Create
+	, Open
+	, OpenOrCreate
+	, Truncate
+	, Append
 } END_ENUM_CLASS(FileMode);
 
 ENUM_CLASS(FileAccess) {
-	Read = 1,
-	Write = 2,
-	ReadWrite = 3,
+	Read		= 1
+	, Write		= 2
+	, ReadWrite = 3,
 } END_ENUM_CLASS(FileAccess);
 
 ENUM_CLASS(FileShare) {
-	None = 0,
-	Read = 1,
-	Write = 2,
-	ReadWrite = 3,
-	Delete = 4,
-	Inheritable = 8
+	None		= 0
+	, Read		= 1
+	, Write		= 2
+	, ReadWrite = 3
+	, Delete	= 4
+	, Inheritable	= 8
 } END_ENUM_CLASS(FileShare);
 
 ENUM_CLASS(FileOptions) {
-	None = 0,
-	Asynchronous = 1,
-	DeleteOnClose = 2,
-	Encrypted = 4,
-	RandomAccess = 8,
-	SequentialScan = 16,
-	WriteThrough = 32
+	None = 0
+	, Asynchronous	= 1
+	, DeleteOnClose = 2
+	, Encrypted		= 4
+	, RandomAccess	= 8
+	, SequentialScan = 16
+	, WriteThrough	= 32
 } END_ENUM_CLASS(FileOptions);
 
 class AFX_CLASS File : public SafeHandle {
@@ -385,30 +381,30 @@ public:
 };
 
 ENUM_CLASS(MemoryMappedFileAccess) {
-	None 					= 0,
-	CopyOnWrite 			= 1,
-	Write 					= 2,
-	Read 					= 4,
-	ReadWrite 				= Read|Write,
-	Execute 				= 8,
-	ReadExecute 			= Read | Execute,
-	ReadWriteExecute 		= Read | Write | Execute
+	None 					= 0
+	, CopyOnWrite 			= 1
+	, Write 				= 2
+	, Read 					= 4
+	, ReadWrite 			= Read|Write
+	, Execute 				= 8
+	, ReadExecute 			= Read | Execute
+	, ReadWriteExecute 		= Read | Write | Execute
 } END_ENUM_CLASS(MemoryMappedFileAccess);
 
 ENUM_CLASS(MemoryMappedFileRights) {
-	CopyOnWrite 			= 1,
-	Write 					= 2,
-	Read 					= 4,
-	ReadWrite 				= Read|Write,
-	Execute 				= 8,
-	ReadExecute 			= Read | Execute,
-	ReadWriteExecute 		= Read | Write | Execute,
-	Delete 					= 0x10000,
-	ReadPermissions 		= 0x20000,
-	ChangePermissions 		= 0x40000,
-	TakeOwnership 			= 0x80000,
-	FullControl 			= CopyOnWrite | ReadWriteExecute | Delete | ReadPermissions | ChangePermissions | TakeOwnership,
-	AccessSystemSecurity 	= 0x1000000
+	CopyOnWrite 			= 1
+	, Write 				= 2
+	, Read 					= 4
+	, ReadWrite 			= Read|Write
+	, Execute 				= 8
+	, ReadExecute 			= Read | Execute
+	, ReadWriteExecute 		= Read | Write | Execute
+	, Delete 				= 0x10000
+	, ReadPermissions 		= 0x20000
+	, ChangePermissions 	= 0x40000
+	, TakeOwnership 		= 0x80000
+	, FullControl 			= CopyOnWrite | ReadWriteExecute | Delete | ReadPermissions | ChangePermissions | TakeOwnership
+	, AccessSystemSecurity 	= 0x1000000
 } END_ENUM_CLASS(MemoryMappedFileRights);
 
 class VirtualMem : noncopyable {
@@ -861,9 +857,10 @@ public:
 #if !UCFG_WCE
 
 class CDirectoryKeeper {													//!!! Non Thread-safe
+	path m_prevCurPath;
 public:
 	CDirectoryKeeper(const path& p)
-		:	m_prevCurPath(current_path())
+		: m_prevCurPath(current_path())
 	{
 		current_path(p);
 	}
@@ -871,8 +868,6 @@ public:
 	~CDirectoryKeeper() {
 		current_path(m_prevCurPath);
 	}
-private:
-	path m_prevCurPath;
 };
 
 #endif // !UCFG_WCE

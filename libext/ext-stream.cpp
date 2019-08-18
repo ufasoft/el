@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -48,6 +48,8 @@ size_t BufferedStream::Read(void *buf, size_t count) const {
 		if (count >= m_bufSize)
 			cb += UnderlyingStream.Read(buf, count);
 		else {
+			if (cb && m_bufSize < DEFAULT_BUF_SIZE)
+				delete[] exchange(m_buf, new uint8_t[m_bufSize = DEFAULT_BUF_SIZE]);
 			cb += (m_cur = (min)(count, m_end = UnderlyingStream.Read(m_buf, m_bufSize)));
 			memcpy(buf, m_buf, m_cur);
 		}
@@ -148,7 +150,6 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 	}
 	Throw(ExtErr::PROXY_VeryLongLine);
 }
-
 
 
 } // Ext::

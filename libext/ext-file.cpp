@@ -398,10 +398,10 @@ OVERLAPPED *File::SetOffsetForFileOp(OVERLAPPED& ov, int64_t offset) {
 
 void File::Write(const void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	if (offset >= 0)
-		CCheck(::pwrite((int)(intptr_t)HandleAccess(_self), buf, size, offset));
-	else
-		CCheck(::write((int)(intptr_t)HandleAccess(_self), buf, size));
+	CCheck(offset >= 0
+		? ::pwrite((int)(intptr_t)HandleAccess(_self), buf, size, offset)
+		: ::write((int)(intptr_t)HandleAccess(_self), buf, size)
+	);
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nWritten;
@@ -419,7 +419,9 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 
 uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	ssize_t r = offset >= 0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
+	ssize_t r = offset >= 0
+		? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset)
+		: ::read((int)(intptr_t)HandleAccess(_self), buf, size);
 	CCheck(r >= 0 ? 0 : -1);
 	return r;
 #elif UCFG_NTAPI

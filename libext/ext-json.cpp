@@ -32,7 +32,7 @@ static int s_initJanssonMalloc = (::json_set_alloc_funcs(&MallocWrap, &FreeWrap)
 class JsonHandle : noncopyable {
 public:
 	JsonHandle(json_t *h = 0)
-		:	m_h(h)
+		: m_h(h)
 	{}
 
 	~JsonHandle() {
@@ -58,7 +58,7 @@ private:
 class JsonVarValueObj : public VarValueObj {
 public:
 	JsonVarValueObj(json_t *json)
-		:	m_json(json)
+		: m_json(json)
 	{}
 
 	bool HasKey(RCString key) const override {

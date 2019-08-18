@@ -71,7 +71,7 @@ public:
 
 #if !UCFG_WDM      //!!!?
 TraceStream::TraceStream(const path& p, bool bAppend)
-	:	base(m_file)
+	: base(m_file)
 {
 	File::OpenInfo oi;
 	oi.Path = p;
@@ -116,7 +116,7 @@ void CycledTraceStream::WriteBuffer(const void *buf, size_t count) {
 
 String TruncPrettyFunction(const char *fn) {
 	const char *e = strchr(fn, '('), *b;
-	for (b=e-1; b!=fn; --b)
+	for (b = e - 1; b != fn; --b)
 		if (b[-1] == ' ')
 			break;
 	return String(b, e-b);
@@ -182,7 +182,7 @@ static class CNullStream : public ostream {
 	};
 public:
 	CNullStream()
-			:	ostream(&m_sbuf)
+			: ostream(&m_sbuf)
 		{
 		}
 private:
@@ -193,13 +193,13 @@ static class CWNullStream : public wostream {
 	class CWNullStreambuf : public wstreambuf {
 		int_type overflow(int_type ch) override { return ch; }
 	};
+
+	CWNullStreambuf m_sbuf;
 public:
 	CWNullStream()
-			:	wostream(&m_sbuf)
+			: wostream(&m_sbuf)
 		{
 		}
-private:
-	CWNullStreambuf m_sbuf;
 } s_wnullStream;
 
 ostream& AFXAPI GetNullStream() {

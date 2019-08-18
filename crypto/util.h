@@ -14,10 +14,9 @@ namespace Ext { namespace Crypto {
 using namespace std;
 
 
-
 template <typename A>
 inline void VectorXor(A& d, const A& s) {
-	for (size_t i=size(s); i--;)
+	for (size_t i = size(s); i--;)
 		d[i] ^= s[i];
 }
 
