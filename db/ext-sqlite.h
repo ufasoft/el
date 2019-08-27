@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -91,6 +91,8 @@ protected:
 };
 
 class SqliteCommand : public IDbCommand {
+	observer_ptr<sqlite_(stmt)> m_stmt;
+	CBool m_bNeedReset;
 public:
 	SqliteConnection& m_con;
 
@@ -126,9 +128,6 @@ public:
 	String ExecuteScalar() override;
 	int64_t ExecuteInt64Scalar();
 private:
-	observer_ptr<sqlite_(stmt)> m_stmt;
-	CBool m_bNeedReset;
-
 	sqlite_(stmt) *Handle();
 	sqlite_(stmt) *ResetHandle(bool bNewNeedReset = false);
 
@@ -137,6 +136,7 @@ private:
 };
 
 class SqliteConnection : public IDbConn, public ITransactionable {
+	observer_ptr<sqlite_db> m_db;
 public:
 	SqliteConnection() {
 	}
@@ -165,8 +165,6 @@ public:
 	void BeginTransaction() override;
 	void Commit() override;
 	void Rollback() override;
-private:
-	observer_ptr<sqlite_db> m_db;
 };
 
 class SqliteMalloc {
@@ -175,18 +173,16 @@ public:
 };
 
 class SqliteVfs {
+	sqlite_(vfs)* m_pimpl;
 public:
 	SqliteVfs(bool bDefault = true);
 	~SqliteVfs();
-protected:
-	sqlite_(vfs) *m_pimpl;
 };
 
 class MMappedSqliteVfs : public SqliteVfs {
 	typedef SqliteVfs base;
 public:
 	MMappedSqliteVfs();
-
 };
 
 

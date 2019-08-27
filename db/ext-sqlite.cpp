@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -90,7 +90,7 @@ static class SQLiteCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
 	SQLiteCategory()
-		:	base("SQLite", FACILITY_SQLITE)
+		: base("SQLite", FACILITY_SQLITE)
 	{}
 
 	string message(int errval) const override {
@@ -136,7 +136,7 @@ bool SqliteIsComplete16(const void *sql) {
 }
 
 SqliteReader::SqliteReader(SqliteCommand& cmd)
-	:	m_cmd(cmd)
+	: m_cmd(cmd)
 {
 }
 
@@ -202,7 +202,7 @@ SqliteCommand::SqliteCommand(SqliteConnection& con)
 }
 
 SqliteCommand::SqliteCommand(RCString cmdText, SqliteConnection& con)
-	:	m_con(con)
+	: m_con(con)
 {
 	m_con.Register(_self);
 	CommandText = cmdText;
@@ -579,7 +579,7 @@ int Sqlite_xOpen(sqlite3_vfs*vfs, const char *zName, sqlite3_file *file, int fla
 
 
 SqliteVfs::SqliteVfs(bool bDefault)
-	:	m_pimpl(new sqlite3_vfs)
+	: m_pimpl(new sqlite3_vfs)
 {
 	sqlite3_vfs *defaultVfs = ::sqlite3_vfs_find(0);
 	*m_pimpl = *defaultVfs;

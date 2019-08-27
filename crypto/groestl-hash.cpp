@@ -1,4 +1,4 @@
-﻿/*######   Copyright (c) 2015-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+﻿/*######   Copyright (c) 2015-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #																																	  #
@@ -146,21 +146,20 @@ BytePermutation<128> GroestlQ1024Permutation()
 }
 
 
-
 static void ExtendTable(uint8_t t[16]) {
-	for (int row=0; row<8; ++row)
+	for (int row = 0; row < 8; ++row)
 		t[row + 8] = uint8_t(8 * t[row] + row);
 }
 
 static void AddRoundConstantP(uint64_t d[], int i, int cols) {
 	uint8_t v = (uint8_t)i;
-	for (int c=0; c<cols; ++c, v+=0x10)
-		*(uint8_t*)(d + c) ^= v;
+	for (int c = 0; c < cols; ++c, v += 0x10)
+		*(uint8_t *)(d + c) ^= v;
 }
 
 static void AddRoundConstantQ(uint64_t d[], int i, int cols) {
-	for (int c=0; c<cols; ++c)
-		d[c] ^= 0xFFFFFFFFFFFFFFFFLL ^ (uint64_t((c<<4) | i) << 56);
+	for (int c = 0; c < cols; ++c)
+		d[c] ^= 0xFFFFFFFFFFFFFFFFLL ^ (uint64_t((c << 4) | i) << 56);
 }
 
 void InitGroestlTables() {
@@ -175,22 +174,22 @@ void InitGroestlTables() {
 	ExtendTable(s_shiftTableQ1024);
 
 	g_groestl_T_table = new uint64_t[8][256];
-	for (int i=0; i<256; ++i) {
+	for (int i = 0; i < 256; ++i) {
 		uint8_t a = g_aesSubByte[i];
-		uint8_t *p = (uint8_t*)&g_groestl_T_table[0][i];
+		uint8_t *p = (uint8_t *)&g_groestl_T_table[0][i];
 		p[7] = p[0] = Mul(2, a);
 		p[6] = p[3] = Mul(3, a);
 		p[5] = Mul(4, a);
 		p[4] = p[2] = Mul(5, a);
 		p[1] = Mul(7, a);
-		for (int row=1; row<8; ++row)
-			g_groestl_T_table[row][i] = _rotl64(g_groestl_T_table[0][i], row*8);
+		for (int row = 1; row < 8; ++row)
+			g_groestl_T_table[row][i] = _rotl64(g_groestl_T_table[0][i], row * 8);
 	}
 
 	size_t size = 2*15*16*sizeof(uint64_t);
 	g_groestl_RoundConstants_PQ = (PRoundConstants_PQ)AlignedMalloc(size, 16);
 	memset(g_groestl_RoundConstants_PQ, 0, size);
-	for (int i=0; i<14; ++i) {
+	for (int i = 0; i < 14; ++i) {
 		AddRoundConstantP(g_groestl_RoundConstants_PQ[0][i], i, 16);
 		AddRoundConstantQ(g_groestl_RoundConstants_PQ[1][i], i, 16);
 	}
@@ -218,16 +217,16 @@ void InitGroestlTables() {
 GroestlHash::GroestlHash(size_t hashSize) {
 	IsBlockCounted = true;
 	HashSize = hashSize;
-	BlockSize = (Is64Bit = HashSize>=32) ? 128 : 64;
+	BlockSize = (Is64Bit = HashSize >= 32) ? 128 : 64;
 	IsBigEndian = !UCFG_LITLE_ENDIAN;					// to prevent byte swapping
 	InitGroestlTables();
 }
 
 void GroestlHash::InitHash(void *dst) noexcept {
 	uint64_t *d = (uint64_t *)dst;
-	for (int i=BlockSize/8; i--;)
+	for (int i = BlockSize / 8; i--;)
 		d[i] = 0;
-	((uint16_t*)dst)[BlockSize/2 - 1] = htobe(uint16_t(HashSize*8));
+	((uint16_t *)dst)[BlockSize / 2 - 1] = htobe(uint16_t(HashSize * 8));
 }
 
 hashval Groestl512Hash::ComputeHash(RCSpan mb) {
@@ -419,7 +418,7 @@ void _cdecl Groestl512_x86x64Aes(__m128i dst[8], const __m128i s[8], const Groes
 
 	memcpy(x, s, 128);
 
-	for (int round = 0; round<14; ++round) {
+	for (int round = 0; round < 14; ++round) {
 		const __m128i *keys = params.AesRoundConstants[round];
 		#define GROESTL_ROW(n, k) _mm_shuffle_epi8(_mm_aesenclast_si128(_mm_xor_si128(x[n], keys[k]), s_zeroM128i), params.ShuffleMasksAfterAes[n]);
 
@@ -443,7 +442,7 @@ void _cdecl Groestl512_x86x64Aes(__m128i dst[8], const __m128i s[8], const Groes
 static void TransformBlock1024(uint64_t d[], const uint64_t s[], const GroestlPQParams<128>& params) {
 	const int cols = 16;
 	const uint8_t *shiftTable8 = params.ShiftTable + 8;
-	int maskCols = cols-1, maskCols8 = (maskCols << 3) | 7;
+	int maskCols = cols - 1, maskCols8 = (maskCols << 3) | 7;
 	uint64_t t[16], u[32], *pT = t, *pU = u;					// u has double size for ASM implementation
 #if UCFG_USE_MASM && UCFG_PLATFORM_X64
 	if (s_bHasSse2) {
@@ -453,15 +452,15 @@ static void TransformBlock1024(uint64_t d[], const uint64_t s[], const GroestlPQ
 #endif
 	{
 		memcpy(u, s, cols * 8);
-		for (int i=0; i<14; ++i) {
+		for (int i = 0; i < 14; ++i) {
 			uint8_t *pt = (uint8_t*)pT, *pu = (uint8_t*)pU, *endu = pu + cols * 8;
 
 			VectorXor(pU, params.RoundConstants[i], cols);							// AddRoundConstant
 #if UCFG_IMP_GROESTL=='T'
-			for (int c=0; c<cols; ++c) {
+			for (int c = 0; c < cols; ++c) {
 				uint64_t col = 0;
-				for (int row=0; row<8; ++row)
-					col ^= g_groestl_T_table[row][pu[(c*8+shiftTable8[row]) & maskCols8]];
+				for (int row = 0; row < 8; ++row)
+					col ^= g_groestl_T_table[row][pu[(c * 8 + shiftTable8[row]) & maskCols8]];
 				pT[c] = col;
 			}
 			std::swap(pT, pU);

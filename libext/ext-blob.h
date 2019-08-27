@@ -375,10 +375,15 @@ public:
 	uint8_t* data() noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
 	operator Span() const noexcept { return Span(IsInHeap(SZ) ? m_p : m_space, size()); }
 	size_t size() const noexcept { return IsInHeap(SZ) ? m_size : m_p ? m_p - m_space : 0; }
-	bool empty() const noexcept { return !m_p || m_p == m_space; }
+	bool empty() const noexcept { return !size(); }				// Check for (m_p == m_space) is not enough, because after resizing there may be empty blob in a heap.
 	void resize(size_t sz, bool bZeroContent = true) { DoResize(sz, bZeroContent, SZ); }
 	void AssignIfNull(RCSpan s) { DoAssignIfNull(s, SZ); }
 	void Read(const BinaryReader& rd) { base::DoRead(rd, SZ); }
+
+	uint8_t front() const { return data()[0]; }
+	uint8_t& front() { return data()[0]; }
+	uint8_t back() const { return data()[size() - 1]; }
+	uint8_t& back() { return data()[size() - 1]; }
 
 	void push_back(uint8_t v) {
 		size_t sz = size();

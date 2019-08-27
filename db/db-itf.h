@@ -13,11 +13,11 @@ public:
 };
 
 ENUM_CLASS(DbType) {
-	Null,
-	Int,
-	Float,
-	Blob,
-	String
+	Null
+	, Int
+	, Float
+	, Blob
+	, String
 } END_ENUM_CLASS(DbType);
 
 interface IDataRecord : public NonInterlockedObject {
@@ -31,7 +31,7 @@ interface IDataRecord : public NonInterlockedObject {
 	virtual String GetName(int idx) =0;
 
 	virtual int GetOrdinal(RCString name) {
-		for (int i=0, n=FieldCount(); i<n; ++i)
+		for (int i = 0, n = FieldCount(); i < n; ++i)
 			if (GetName(i) == name)
 				return i;
 		Throw(E_INVALIDARG);
@@ -76,13 +76,14 @@ public:
 };
 
 class TransactionScope : noncopyable {
+public:
+	ITransactionable& m_db;
+private:
 	CInException InException;
 	CBool m_bCommitted;
 public:
-	ITransactionable& m_db;
-
 	TransactionScope(ITransactionable& db)
-		:	m_db(db)
+		: m_db(db)
 	{
 		m_db.BeginTransaction();
 	}
@@ -101,6 +102,8 @@ public:
 
 interface IDbConn : public Object {
 	typedef IDbConn class_type;
+protected:
+	unordered_set<IDbCommand*> m_commands;
 public:
 	virtual void Create(const path& file) =0;
 	virtual void Open(const path& file, FileAccess fileAccess, FileShare share = FileShare::ReadWrite) =0;
@@ -125,8 +128,6 @@ public:
 		}
 	}
 protected:
-	unordered_set<IDbCommand*> m_commands;
-
 	void DisposeCommands() {
 		DisposeCommandsWithoutUnregiter();
 		m_commands.clear();
@@ -143,16 +144,16 @@ public:
 };
 
 ENUM_CLASS(KVEnvFlags) {
-	ReadOnly = 1,
-	NoSync = 2
+	ReadOnly = 1
+	, NoSync = 2
 } END_ENUM_CLASS(KVEnvFlags);
 
 ENUM_CLASS(CursorPos) {
-	First,
-	Next,
-	Prev,
-	Last,
-	FindKey
+	First
+	, Next
+	, Prev
+	, Last
+	, FindKey
 } END_ENUM_CLASS(CursorPos);
 
 ENUM_CLASS(KVStoreFlags) {
