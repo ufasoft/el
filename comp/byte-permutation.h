@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2017 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com      ####
+/*######   Copyright (c) 2017-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,6 +9,7 @@ namespace Ext {
 
 template <int N>
 class BytePermutation {
+	uint8_t m_perm[N];
 public:
 	BytePermutation()
 	{}
@@ -24,8 +25,7 @@ public:
 		return r;
 	}
 
-	bool operator==(const BytePermutation<N>& x) const
-	{
+	bool operator==(const BytePermutation<N>& x) const {
 		return !memcmp(m_perm, x.m_perm, N);
 	}
 
@@ -47,8 +47,6 @@ public:
 		for (int i = 0; i < N; ++i)
 			to[i] = from[m_perm[i]];
 	}
-private:
-	uint8_t m_perm[N];
 };
 
 
