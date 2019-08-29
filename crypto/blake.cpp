@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,8 +9,12 @@
 
 using namespace Ext;
 
-
 namespace Ext { namespace Crypto {
+
+	extern "C" {
+		extern const uint32_t g_sha256_hinit[8];
+		extern const uint64_t g_sha512_hinit[8];
+	}
 
 __forceinline uint32_t Rotr(uint32_t v, int n) { return _rotr(v, n); }		//!!! move to .h
 __forceinline uint64_t Rotr(uint64_t v, int n) { return _rotr64(v, n); }

@@ -8,7 +8,7 @@
 #include EXT_HEADER_DYNAMIC_BITSET
 
 #if UCFG_LIB_DECLS
-#	ifdef UCFG_HASH_API
+#	ifdef UCFG_HASH_LIB
 #		define EXT_HASH_API DECLSPEC_DLLEXPORT
 #	else
 #		define EXT_HASH_API DECLSPEC_DLLIMPORT
@@ -23,10 +23,6 @@ namespace Ext { namespace Crypto {
 using namespace std;
 
 extern "C" {
-	extern const uint32_t g_sha256_hinit[8];
-	extern const uint64_t g_sha512_hinit[8];
-	extern const uint32_t g_sha256_k[64];
-	extern uint32_t g_4sha256_k[64][4];			// __m128i
 
 	extern const uint8_t g_blake_sigma[10][16];
 	extern const uint32_t g_blake256_c[16];
@@ -34,6 +30,13 @@ extern "C" {
 
 } // "C"
 
+struct Sha256Constants {
+	const uint32_t* Sha256_hinit;
+	const uint32_t* Sha256_k;
+	const uint32_t(*FourSha256_k)[4];
+};
+
+const Sha256Constants& GetSha256Constants();
 
 __forceinline uint32_t Rotr32(uint32_t v, int n) {
 	return _rotr(v, n);
