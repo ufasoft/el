@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2015-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -99,6 +99,7 @@ ENUM_CLASS(ExtErr) {
 	, PasswordTooShort
 	, Checksum
 	, Padding								= 90
+	, InvalidOption
 
 	, DB_NoRecord = 2000
 	, DB_DupKey

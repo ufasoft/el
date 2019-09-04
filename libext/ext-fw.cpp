@@ -1073,7 +1073,7 @@ int Random::Next() {
 }
 
 int Random::Next(int maxValue) {
-	return uniform_int_distribution<int>(0, maxValue-1) (*Rngeng(_self));
+	return uniform_int_distribution<int>(0, maxValue - 1)(*Rngeng(_self));
 }
 
 double Random::NextDouble() {
