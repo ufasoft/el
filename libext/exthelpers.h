@@ -201,11 +201,11 @@ class CBoolKeeper : public Keeper<bool> {
 	typedef Keeper<bool> base;
 public:
 	CBoolKeeper(bool& b, bool n = true)
-		:	base(b, n)
+		: base(b, n)
 	{}
 
 	CBoolKeeper(volatile bool& b, bool n = true)
-		:	base(b, n)
+		: base(b, n)
 	{}
 };
 
