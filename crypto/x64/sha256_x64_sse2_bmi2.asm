@@ -53,7 +53,7 @@ COPY_XMM_AND_BSWAP MACRO	a, b, c
 	pshufb	a, c
 ENDM
 
-EXTRN g_sha256_k:PTR BYTE
+EXTRN g_sha256_k:BYTE
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -613,7 +613,7 @@ loop1:
 	xor	y1, a		; y1 = a ^ (a >> (22-13)
 	ror	y0, (11-6)	; y0 = (e >> (11-6)) ^ (e >> (25-6))
 	xor	y2, g		; y2 = f^g
-		vpsrld	XTMP2, XTMP1,18
+		vpsrld	XTMP2, XTMP1, 18
 	ror	y1, (13-2)	; y1 = (a >> (13-2)) ^ (a >> (22-2))
 	xor	y0, e		; y0 = e ^ (e >> (11-6)) ^ (e >> (25-6))
 	and	y2, e		; y2 = (f^g)&e

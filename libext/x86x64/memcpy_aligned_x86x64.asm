@@ -13,8 +13,8 @@ ELSE
 ENDIF
 
 
-EXTRN g_bHasSse2:PTR BYTE
-EXTRN g_bHasAvx:PTR BYTE
+EXTRN g_bHasSse2:BYTE
+EXTRN g_bHasAvx: BYTE
 
 IF X64
 IFDEF __JWASM__			; UNIX calling convention
