@@ -13,8 +13,7 @@ ELSE
 ENDIF
 
 
-EXTRN g_bHasSse2:BYTE
-EXTRN g_bHasAvx: BYTE
+EXTRN g_bHasSse2:BYTE, g_bHasAvx: BYTE
 
 IF X64
 IFDEF __JWASM__			; UNIX calling convention
@@ -48,13 +47,14 @@ $LoopAVX:
 	vmovdqa		ymm2, YMMWORD PTR [zsi+32*2]
 	vmovdqa		ymm3, YMMWORD PTR [zsi+32*3]
 	add	zsi, 128
-	vmovntdq	YMMWORD PTR [zdi],		ymm0		;!!! was movdqa
+	vmovntdq	YMMWORD PTR [zdi],	ymm0		;!!! was movdqa
 	vmovntdq	YMMWORD PTR [zdi+32],	ymm1
 	vmovntdq	YMMWORD PTR [zdi+32*2],	ymm2
 	vmovntdq	YMMWORD PTR [zdi+32*3],	ymm3
 	add	zdi, 128
 	loop	$LoopAVX
 	ret
+
 $CheckSSE:
 	cmp	g_bHasSse2, 0
 	je	$MovsImp

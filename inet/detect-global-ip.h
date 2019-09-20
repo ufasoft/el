@@ -10,8 +10,8 @@ public:
 	P2P::DetectGlobalIp& DetectGlobalIp;
 
 	DetectIpThread(P2P::DetectGlobalIp& dgi, thread_group *tr)
-		:	base(tr)
-		,	DetectGlobalIp(dgi)
+		: base(tr)
+		, DetectGlobalIp(dgi)
 	{
 	}
 
@@ -20,6 +20,7 @@ public:
 };
 
 class DetectGlobalIp {
+	mutex m_mtx;
 public:
     ptr<DetectIpThread> Thread;
 
@@ -32,10 +33,7 @@ public:
 protected:	
 	virtual void OnIpDetected(const IPAddress& ip) {}
 
-private:
-	mutex m_mtx;
-
-friend class DetectIpThread;
+	friend class DetectIpThread;
 };
 
 

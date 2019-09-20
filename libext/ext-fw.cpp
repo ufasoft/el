@@ -244,55 +244,29 @@ bool Environment::Is64BitOperatingSystem() {
 	return false;
 }
 
-/*!!!
-
-ULONGLONG AFXAPI StrToVersion(RCString s) {
-	LONGLONG r = 0;
-	istringstream is(s.c_str());
-	for (int i=4; i--;) {
-		WORD w;
-		if (is >> w)
-			((WORD*)&r)[i] = w;
-		else
-			break;
-		if (is.get() != '.')
-			break;
-	}
-	return r;
-}
-
-String AFXAPI VersionToStr(const LONGLONG& v, int n) {
-	WORD ar[4];
-	(LONGLONG&)ar[0] = v;
-	ostringstream os;
-	for (int i=3; i>0 && 3-i < n; i--) {
-		if (i != 3)
-			os << '.';
-		os << ar[i];
-	}
-	return os.str();
-}*/
-
 #if UCFG_USE_REGEX
 static StaticRegex s_reVersion("^(\\d+)\\.(\\d+)(\\.(\\d+)(\\.(\\d+))?)?$");
 
+static int ToVersionInt(const cmatch::value_type& sm) {
+	return sm.matched ? atoi(sm.str().c_str()) : -1;
+}
+
 Version::Version(RCString s) {
 	cmatch m;
-	if (regex_search(s.c_str(), m, *s_reVersion)) {
-		Major = atoi(String(m[1]));
-		Minor = atoi(String(m[2]));
-		Build = m[4].matched ? atoi(String(m[4])) : -1;
-		Revision = m[6].matched ? atoi(String(m[6])) : -1;
-	} else
+	if (!regex_search(s.c_str(), m, *s_reVersion))
 		Throw(errc::invalid_argument);
+	Major = ToVersionInt(m[1]);
+	Minor = ToVersionInt(m[2]);
+	Build = ToVersionInt(m[4]);
+	Revision = ToVersionInt(m[6]);
 }
-#endif
+#endif // UCFG_USE_REGEX
 
 #if UCFG_WIN32
 
 Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
-	int ar[4] = { uint16_t(ms>>16), uint16_t(ms), uint16_t(ls>>16), uint16_t(ls) };
-	for (int i=4; i-- > fieldCount;)
+	int ar[4] = {uint16_t(ms >> 16), uint16_t(ms), uint16_t(ls >> 16), uint16_t(ls)};
+	for (int i = 4; i-- > fieldCount;)
 		ar[i] = -1;
 	return Version(ar[0], ar[1], ar[2], ar[3]);
 }
@@ -300,22 +274,20 @@ Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
 #endif
 
 String Version::ToString(int fieldCount) const {
-	if (fieldCount<0 || fieldCount>4)
+	if (fieldCount < 0 || fieldCount > 4)
 		Throw(errc::invalid_argument);
 	int ar[4] = { Major, Minor, Build, Revision };
 	ostringstream os;
-	for (int i=0; i<fieldCount; ++i) {
+	for (int i = 0; i < fieldCount; ++i) {
 		if (ar[i] == -1)
 			Throw(errc::invalid_argument);
-		if (i)
-			os << ".";
-		os << ar[i];
+		os << (i ? "." : "") << ar[i];
 	}
 	return os.str();
 }
 
 String Version::ToString() const {
-	return ToString(Revision!=-1 ? 4 : Build!=-1 ? 3 : 2);
+	return ToString(Revision != -1 ? 4 : Build != -1 ? 3 : 2);
 }
 
 const OSPlatform
@@ -962,18 +934,18 @@ String Guid::ToString(RCString format) const {
 
 
 CResID::CResID(UINT nResId)
-:	m_resId(nResId)
+	: m_resId(nResId)
 {
 }
 
 CResID::CResID(const char *lpName)
-    :	m_resId(0)
+    : m_resId(0)
 {
 	_self = lpName;
 }
 
 CResID::CResID(const String::value_type *lpName)
-	:	m_resId(0)
+	: m_resId(0)
 {
 	_self = lpName;
 }
@@ -1350,7 +1322,8 @@ void CMessageProcessor::RegisterModule(DWORD lowerCode, DWORD upperCode, RCStrin
 }
 
 static String CombineErrorMessages(const char hex[], RCString msg, bool bWithErrorCode) {
-	return bWithErrorCode ? String(hex) + ":  " + msg
+	return bWithErrorCode 
+		? String(hex) + ":  " + msg
 		: msg;
 }
 
@@ -1464,9 +1437,9 @@ void PersistentCache::Set(RCString key, RCSpan mb) {
 #if UCFG_WIN32
 
 ResourceObj::ResourceObj(HMODULE hModule, HRSRC hRsrc)
-	:	m_hModule(hModule)
-	,	m_hRsrc(hRsrc)
-	,	m_p(0)
+	: m_hModule(hModule)
+	, m_hRsrc(hRsrc)
+	, m_p(0)
 {
 	Win32Check(bool(m_hglbResource = ::LoadResource(m_hModule, m_hRsrc)));
 }
@@ -1744,8 +1717,8 @@ Process AFXAPI Process::Start(const ProcessStartInfo& psi) {
 
 	Process r;
 	r.m_pimpl = new ProcessObj;
-	r.m_pimpl->StartInfo = psi;
-	r.m_pimpl->Start();
+	r->StartInfo = psi;
+	r->Start();
 	return r;
 }
 
@@ -1832,6 +1805,17 @@ vector<Process> AFXAPI Process::GetProcessesByName(RCString name) {
 		}
 	}
 	return r;
+}
+
+void POpen::Wait() {
+	switch (int rc = pclose(exchange(m_stream, nullptr))) {
+	case -1:
+		CCheck(-1);
+	case 0:
+		return;
+	default:
+		ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (uint8_t)rc));
+	}
 }
 
 HRESULT AFXAPI ToHResult(const system_error& ex) {

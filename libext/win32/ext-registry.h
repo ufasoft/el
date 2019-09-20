@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -60,7 +60,7 @@ class AFX_CLASS CRegistryValues {
 public:
 	typedef CRegistryValues class_type;
 	CRegistryValues(RegistryKey& key)
-		:	m_key(key)
+		: m_key(key)
 	{}
 	CRegistryValuesIterator begin();
 	CRegistryValuesIterator end();
@@ -72,17 +72,17 @@ public:
 };
 
 class AFX_CLASS CRegistryValuesIterator {
-	int m_i;
 	CRegistryValues& m_values;
+	int m_i;
 public:
 	CRegistryValuesIterator(CRegistryValues& values)
-		:	m_i(0)
-		,	m_values(values)
+		: m_values(values)
+		, m_i(0)
 	{}
 
 	CRegistryValuesIterator(const CRegistryValuesIterator& i)
-		:	m_i(i.m_i)
-		,	m_values(i.m_values)
+		: m_values(i.m_values)
+		, m_i(i.m_i)
 	{}
 
 	void operator++(int);
@@ -94,6 +94,7 @@ class AFX_CLASS RegistryKey : public SafeHandle {
 	typedef RegistryKey class_type;
 public:
 	struct CRegKeyInfo {
+		DateTime LastWriteTime;
 		DWORD SubKeys,
 			MaxSubKeyLen,
 			MaxClassLen,
@@ -101,7 +102,6 @@ public:
 			MaxValueNameLen,
 			MaxValueLen,
 			SecurityDescriptor;
-		DateTime LastWriteTime;
 
 		CRegKeyInfo() {
 			ZeroStruct(*this);
@@ -110,15 +110,18 @@ public:
 
 	String m_subKey;
 	ACCESS_MASK AccessRights;
-
+private:
+	HKEY m_parent;
+	bool m_create;
+public:
 	RegistryKey()
-		:	AccessRights(MAXIMUM_ALLOWED)
+		: AccessRights(MAXIMUM_ALLOWED)
 	{
 	}
 
 	RegistryKey(HKEY key)
-		:	SafeHandle((intptr_t)key)
-		,	AccessRights(MAXIMUM_ALLOWED)
+		: SafeHandle((intptr_t)key)
+		, AccessRights(MAXIMUM_ALLOWED)
 	{
 	}
 
@@ -161,14 +164,12 @@ protected:
 #if UCFG_WIN32
 	void ReleaseHandle(intptr_t h) const override;
 #endif
-private:
-	HKEY m_parent;
-	bool m_create;
 };
 
 class Registry {
 public:
-	EXT_DATA static RegistryKey ClassesRoot,
+	EXT_DATA static RegistryKey
+		ClassesRoot,
 		CurrentUser,
 		LocalMachine;
 };
@@ -179,7 +180,7 @@ public:
 	CBool m_bChanged, m_bPrev;
 
 	Wow64RegistryReflectionKeeper(RegistryKey& key)
-		:	m_key(key)
+		: m_key(key)
 	{
 	}
 

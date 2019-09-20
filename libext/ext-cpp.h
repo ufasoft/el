@@ -164,20 +164,17 @@ public:
 #		include <cstddef> // to define std::nullptr_t in GCC
 #	endif
 
-#	if UCFG_WDM
-extern "C" void __cdecl free(void *p);
-#	endif
+#if UCFG_WDM
+	extern "C" void __cdecl free(void *p);
+#endif
 
 namespace Ext {
-
-AFX_API bool AFXAPI AfxAssertFailedLine(const char *sexp, const char *fileName, int nLine);
+	AFX_API bool AFXAPI AfxAssertFailedLine(const char *sexp, const char *fileName, int nLine);
 }
 
-//!!!R#	if UCFG_EXTENDED
-#	if !defined(ASSERT) && !defined(NDEBUG)
-#		define ASSERT(f) ((void)(f || Ext::AfxAssertFailedLine(#		f, __FILE__, __LINE__)))
-#	endif
-//!!!R #	endif
+#if !defined(ASSERT) && !defined(NDEBUG)
+#	define ASSERT(f) ((void)(f || Ext::AfxAssertFailedLine(#f, __FILE__, __LINE__)))
+#endif
 
 #	ifndef ASSERT
 #		define ASSERT assert

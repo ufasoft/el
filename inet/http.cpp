@@ -556,7 +556,7 @@ void HttpWebRequest::ReleaseFromAPC() {
 		ha->Release();
 	if (m_response.m_pImpl) {
 		m_response.m_pImpl->m_conn.Close();
-//!!!		m_pResponse->m_pImpl->m_req.m_pimpl->m_sess.Close();
+//!!!		m_pResponse->m_pImpl->m_req->m_sess.Close();
 	}
 #endif
 }

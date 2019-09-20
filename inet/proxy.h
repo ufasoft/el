@@ -26,11 +26,11 @@ extern bool g_bNoSendBuffers;
 const int DEFAULT_RECEIVE_TIMEOUT = 4;
 
 ENUM_CLASS(QueryType) {
-	Connect,
-	Bind,
-	Udp,
-	Resolve,
-	RevResolve,
+	Connect
+	, Bind
+	, Udp
+	, Resolve
+	, RevResolve,
 } END_ENUM_CLASS(QueryType);
 
 struct CProxyQuery {
@@ -76,6 +76,10 @@ struct UDP_REPLY {
 
 class CProxySocket : public Socket {
 	typedef Socket base;
+private:
+	IPEndPoint m_remoteHostPort;
+protected:
+	IPEndPoint m_ep;
 public:
 	Socket m_sock;
 	bool m_bLingerZero;
@@ -85,8 +89,8 @@ public:
 	{}
 
 	CProxySocket(AddressFamily af, SocketType sockType, ProtocolType protoType)
-		:	base(af, sockType, protoType)
-		,	m_bLingerZero(false)
+		: base(af, sockType, protoType)
+		, m_bLingerZero(false)
 	{}
 
 	void AssociateUDP();
@@ -95,13 +99,9 @@ public:
 	static DWORD GetTimeout();
 	static DWORD GetType();
 	IPEndPoint GetRemoteHostPort();
-protected:
-	IPEndPoint m_ep;
 
 	static void ConnectToProxy(Stream& stm);
 	bool ConnectHelper(const EndPoint& ep) override;
-private:
-	IPEndPoint m_remoteHostPort;
 };
 
 
@@ -173,13 +173,6 @@ public:
 };
 
 class CSiteNotifierThreader : public Thread {
-protected:
-	void Stop() {
-		Thread::Stop();
-		m_sess.Close();
-	}
-
-	void Execute();
 public:
 	CSiteNotifier& m_siteNotifier;
 	CProxyInternetSession m_sess;
@@ -189,6 +182,13 @@ public:
 		, m_siteNotifier(siteNotifier)
 	{
 	}
+protected:
+	void Stop() {
+		Thread::Stop();
+		m_sess.Close();
+	}
+
+	void Execute();
 };
 
 bool ResolveLocally();

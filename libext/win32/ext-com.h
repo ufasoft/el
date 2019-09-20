@@ -40,7 +40,6 @@ public:
 
 //#include "extmfc.h"
 
-
 class CComPtrBase {
 protected:
 	IUnknown* m_unk;
@@ -64,8 +63,6 @@ public:
 protected:
 	IUnknown **operator&();
 	void Assign(IUnknown *lp, const IID *piid);
-
-	//!!!  operator CUnknownHelper() const;
 };
 
 template <class T, const IID* piid =
@@ -498,17 +495,6 @@ public:
 #endif
 };
 */
-
-/*!!!
-class CUnknownHelper
-{
-public:
-IUnknown *m_unk;
-
-CUnknownHelper(IUnknown *unk)
-:m_unk(unk)
-{}
-};*/
 
 #define DEFINE_COM_CONSTRUCTORS(C, I) \
 	C() {}                      \

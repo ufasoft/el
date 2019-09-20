@@ -33,11 +33,11 @@ void HttpServer::Execute() {
 }
 
 HttpConnection::HttpConnection(HttpServer& server, Socket&& sock)
-	:	Server(server)
-	,	m_stm(m_sock)
-	,	Reader(m_stm)
-	,	Writer(m_stm)
-	,	m_sock(move(sock))
+	: Server(server)
+	, m_stm(m_sock)
+	, Reader(m_stm)
+	, Writer(m_stm)
+	, m_sock(move(sock))
 {
 
 }

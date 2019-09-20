@@ -16,11 +16,9 @@ public:
 protected:
 	Socket m_sock;
 
-
 protected:
 	void BeforeStart() override;
 	void Execute() override;
-
 };
 
 
@@ -31,10 +29,10 @@ public:
 	NetworkStream m_stm;
    	BinaryReader Reader;
    	BinaryWriter Writer;
-   	CBool KeepAlive;
 	CHttpHeader Header;
 	HttpRequest Request;
 	HttpResponse Response;
+	CBool KeepAlive;
 
 	HttpConnection(HttpServer& server, Socket&& sock);
 //   	void Send(const Record& rec);

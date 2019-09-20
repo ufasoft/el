@@ -54,7 +54,7 @@ public:
 	CBool m_banned;
 
 	Peer()
-		:	m_services(0)
+		: m_services(0)
 	{}
 
 	void Write(BinaryWriter& wr) const override {
@@ -124,10 +124,11 @@ public:
 
 	mutex Mtx;
 	ptr<P2P::Peer> Peer;
-	CBool Incoming;
 
 	typedef unordered_set<ptr<P2P::Peer>> CSetPeersToSend;
 	CSetPeersToSend m_setPeersToSend;
+
+	CBool Incoming;
 
 	LinkBase(P2P::NetManager *netManager, thread_group *tr)
 		: base(tr)
@@ -150,10 +151,6 @@ public:
 
 	mutex MtxNets;
 	vector<Net*> m_nets;
-
-	int ListeningPort;
-	CBool SoftPortRestriction;
-
 protected:
 	mutex MtxLocalIPs;
 	set<IPAddress> LocalIPs;
@@ -161,6 +158,9 @@ protected:
 	mutex MtxBannedIPs;
 	unordered_set<IPAddress> BannedIPs;
 public:
+	int ListeningPort;
+	CBool SoftPortRestriction;
+
 	NetManager()
 		: ListeningPort(0)
 	{}
@@ -204,11 +204,11 @@ public:
 	vector<PeerBucket> m_vec;
 
 	PeerBuckets(PeerManager& manager, size_t size)
-		:	Manager(manager)
-		,	m_vec(size)
+		: Manager(manager)
+		, m_vec(size)
 	{
-		for (int i=0; i<m_vec.size(); ++i)
-			m_vec[i].Buckets.reset(this);
+		for (auto& bucket : m_vec)
+			bucket.Buckets.reset(this);
 	}
 
 	size_t size() const;
@@ -216,8 +216,16 @@ public:
 	ptr<Peer> Select();
 };
 
-
 class PeerManager {
+	typedef unordered_map<IPAddress, ptr<Peer>> CPeerMap;
+	CPeerMap IpToPeer;
+
+	PeerBuckets TriedBuckets, NewBuckets;
+	vector<Peer*> VecRandom;
+protected:
+	uint16_t DefaultPort;
+	observer_ptr<thread_group> m_owner;
+	atomic<int> m_aPeersDirty;
 public:
 	P2P::NetManager& NetManager;
 
@@ -254,21 +262,10 @@ public:
 		}
 	}
 protected:
-	uint16_t DefaultPort;
-	observer_ptr<thread_group> m_owner;
-	atomic<int> m_aPeersDirty;
-
 	virtual void OnPeriodic(const DateTime& now);
 private:
-	typedef unordered_map<IPAddress, ptr<Peer>> CPeerMap;
-	CPeerMap IpToPeer;
-
-	PeerBuckets TriedBuckets, NewBuckets;
-	vector<Peer*> VecRandom;
-
 	ptr<Peer> Find(const IPAddress& ip);
 	void Remove(Peer *peer);
-
 
 	friend class PeerBucket;
 };

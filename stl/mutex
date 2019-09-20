@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -28,23 +28,23 @@ class lock_guard : public Ext::noncopyable {
 	typedef lock_guard class_type;
 public:
 	typedef M mutex_type;
-
+private:
+	mutex_type& m_mtx;
+public:
 	explicit lock_guard(mutex_type& mtx)
-		:	m_mtx(mtx)
+		: m_mtx(mtx)
 	{
 		m_mtx.lock();
 	}
 
 	lock_guard(mutex_type& mtx, adopt_lock_t)
-		:	m_mtx(mtx)
+		: m_mtx(mtx)
 	{
 	}
 
 	~lock_guard() {
 		m_mtx.unlock();
 	}
-private:
-	mutex_type& m_mtx;
 };
 
 template <class M>
@@ -52,38 +52,41 @@ class unique_lock : public Ext::noncopyable {
 	typedef unique_lock class_type;
 public:
 	typedef M mutex_type;
-
+private:
+	mutex_type* m_pm;
+	bool m_owns;
+public:
 	unique_lock()
-		:	m_pm(0)
-		,	m_owns(false)
+		: m_pm(0)
+		, m_owns(false)
 	{}
 
 	unique_lock(EXT_RV_REF(unique_lock) rv)
-		:	m_pm(exchange(rv.m_pm, nullptr))
-		,	m_owns(exchange(rv.m_owns, false))
+		: m_pm(exchange(rv.m_pm, nullptr))
+		, m_owns(exchange(rv.m_owns, false))
 	{		
 	}
 
 	explicit unique_lock(mutex_type& m)
-		:	m_pm(&m)
-		,	m_owns(true)
+		: m_pm(&m)
+		, m_owns(true)
 	{
 		m_pm->lock();
 	}
 
 	unique_lock(mutex_type& m, adopt_lock_t)
-		:	m_pm(&m)
-		,	m_owns(true)
+		: m_pm(&m)
+		, m_owns(true)
 	{}
 
 	unique_lock(mutex_type& m, defer_lock_t)
-		:	m_pm(&m)
-		,	m_owns(false)
+		: m_pm(&m)
+		, m_owns(false)
 	{}
 
 	unique_lock(mutex_type& m, try_to_lock_t)
-		:	m_pm(&m)
-		,	m_owns(m.try_lock())
+		: m_pm(&m)
+		, m_owns(m.try_lock())
 	{}
 
 	~unique_lock() {
@@ -134,9 +137,6 @@ public:
 		m_owns = false;
 		m_pm->unlock();
 	}
-private:
-	mutex_type *m_pm;
-	bool m_owns;
 };
 
 template <class T>
@@ -204,7 +204,6 @@ void _Call_it(once_flag& _Flag, _Target _Tgt) {	// create call data object and m
 		}
 #	endif	// UCFG_MSC_VERSION >= 1700
 #undef _CALL_ONCE
-
 
 
 

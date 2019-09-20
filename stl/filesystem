@@ -60,7 +60,8 @@ public:
 		iterator(const path& p, string_type::const_iterator it)
 			: m_pPath(&p)
 			, m_from(it)
-			, m_to(it) {
+			, m_to(it)
+		{
 			Retrieve();
 		}
 

@@ -50,13 +50,14 @@ public:
 };
 #endif
 
-
 class AFX_CLASS CUsingSockets {
 public:
 #if UCFG_WIN32
 	WSAData m_data;
 #endif
-
+private:
+	CBool m_bInited;
+public:
 	CUsingSockets(bool bInit = true) {
 		if (bInit)
 			EnsureInit();
@@ -65,16 +66,17 @@ public:
 	~CUsingSockets();
 	void EnsureInit();
 	void Close();
-private:
-	CBool m_bInited;
 };
 
 ENUM_CLASS(AddressFamily) {
-	Unknown			= -1
-	, Unspecified	= AF_UNSPEC
-	, Unix			= AF_UNIX
-	, InterNetwork	= AF_INET
+	Unknown				= -1
+	, Unspecified		= AF_UNSPEC
+	, Unix				= AF_UNIX
+	, AppleTalk			= AF_APPLETALK
+	, Ipx				= AF_IPX
+	, InterNetwork		= AF_INET
 	, InterNetworkV6	= AF_INET6
+	, NetBios			= AF_NETBIOS
 } END_ENUM_CLASS(AddressFamily);
 
 ENUM_CLASS(SocketType) {
@@ -123,8 +125,7 @@ public:
 
 	IPAddress();
 
-	IPAddress(const IPAddress& ha)
-	{
+	IPAddress(const IPAddress& ha) {
 		operator=(ha);
 	}
 
@@ -344,12 +345,12 @@ public:
 };
 
 struct LingerOption {
-	bool Enabled;
 	int LingerTime;
+	bool Enabled;
 
 	LingerOption(bool enabled = false, int lingerTime = 0)
-		:	Enabled(enabled)
-		,	LingerTime(lingerTime)
+		: LingerTime(lingerTime)
+		, Enabled(enabled)
 	{}
 };
 
@@ -357,6 +358,8 @@ class Socket : public SafeHandle {
 	typedef SafeHandle base;
 	typedef Socket class_type;
 	EXT_MOVABLE_BUT_NOT_COPYABLE(Socket);
+
+	CBool m_bBlocking;
 public:
 	typedef SOCKET handle_type;
 
@@ -378,7 +381,7 @@ public:
 	EXT_DATA static COSSupportsIPver OSSupportsIPv4, OSSupportsIPv6;
 
 	Socket()
-		:	m_bBlocking(true)
+		: m_bBlocking(true)
 	{
 	}
 
@@ -530,8 +533,6 @@ public:
 protected:
 	virtual bool ConnectHelper(const EndPoint& ep);
 	void ReleaseHandle(intptr_t h) const;
-private:
-	CBool m_bBlocking;
 };
 
 template <class T>

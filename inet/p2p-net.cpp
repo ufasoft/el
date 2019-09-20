@@ -178,6 +178,7 @@ void Link::Execute() {
 		DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
 		DBG_LOCAL_IGNORE_CONDITION(errc::connection_reset);
 		DBG_LOCAL_IGNORE_CONDITION(errc::not_a_socket);
+		DBG_LOCAL_IGNORE_CONDITION(ExtErr::ObjectDisposed);
 
 		if (!OnStartConnection())
 			goto LAB_EOF;
@@ -264,16 +265,19 @@ LAB_FOUND:
 
 		timeval timevalTimeOut;
 		TimeSpan::FromSeconds(std::min(std::min((int)duration_cast<seconds>(PingTimeout).count(), INACTIVE_PEER_SECONDS), P2P::PERIODIC_SEND_SECONDS)).ToTimeval(timevalTimeOut);
+		fd_set readfds, writefds;
 		while (!m_bStop) {
 			bool bHasToSend = EXT_LOCKED(Mtx, DataToSend.size());
-			fd_set readfds, writefds;
+			SOCKET s = (SOCKET)hp;
 			FD_ZERO(&readfds);
-			FD_ZERO(&writefds);
-			FD_SET((SOCKET)hp, &readfds);
-			FD_SET((SOCKET)hp, &writefds);
+			FD_SET(s, &readfds);
+			if (bHasToSend) {
+				FD_ZERO(&writefds);
+				FD_SET(s, &writefds);
+			}
 
 			timeval timeout = timevalTimeOut;
-			SocketCheck(::select(int(1+(SOCKET)hp), &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
+			SocketCheck(::select(int(1 + s), &readfds, (bHasToSend ? &writefds : 0), 0, &timeout));
 
 			DateTime now = Clock::now();
 

@@ -1708,17 +1708,7 @@ public:
 			Wait();
 	}
 
-	void Wait() {
-		switch (int rc = pclose(exchange(m_stream, nullptr))) {
-		case -1:
-			CCheck(-1);
-		case 0:
-			return;
-		default:
-			ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (uint8_t)rc));
-		}
-	}
-
+	void Wait();
 	operator FILE*() { return m_stream; }
 };
 

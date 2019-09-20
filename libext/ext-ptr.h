@@ -297,10 +297,6 @@ public:
 		base::operator=(p);
 		return *this;
 	}
-/*!!!R
-	T *get_P() const { return (T*)*this; }
-	DEFPROP_GET(T*, P);
-	*/
 };
 
 template <class T>
@@ -350,15 +346,13 @@ public:
 
 	void Init(CRefCountedData *p) {
 		m_pData->Release();
-		m_pData = p;
-		m_pData->m_dwRef = 1;
+		(m_pData = p)->m_dwRef = 1;
 	}
 
 	CRefCounted<T>& operator=(const CRefCounted<T>& val) {
 		if (m_pData != val.m_pData) {
 			m_pData->Release();
-			m_pData = val.m_pData;
-			m_pData->AddRef();
+			(m_pData = val.m_pData)->AddRef();
 		}
 		return *this;
 	}

@@ -40,6 +40,11 @@ class EXTAPI ThreadBase :
 #else
 	typedef SafeHandle base;
 #endif
+protected:
+#if UCFG_USE_PTHREADS
+	mutable pthread_t m_ptid;
+	void ReleaseHandle(intptr_t h) const override;
+#endif
 public:
 	using base::m_aRef;
 	typedef InterlockedPolicy interlocked_policy;
@@ -136,6 +141,8 @@ public:
 #if UCFG_USE_PTHREADS
 	class CAttr {
 		typedef CAttr class_type;
+
+		pthread_attr_t m_attr;
 	public:
 		CAttr() {
 			PthreadCheck(::pthread_attr_init(&m_attr));
@@ -157,8 +164,6 @@ public:
 			PthreadCheck(::pthread_attr_setstacksize(&m_attr, v));
 		}
 		DEFPROP(size_t, StackSize);
-	private:
-		pthread_attr_t m_attr;
 	};
 #else
 	CONTEXT get_Context(DWORD contextFlags);
@@ -217,10 +222,6 @@ public:
 	thread_group& GetThreadRef();
 	void SleepImp(unsigned long ms);
 protected:
-#if UCFG_USE_PTHREADS
-	mutable pthread_t m_ptid;
-	void ReleaseHandle(intptr_t h) const override;
-#endif
 
 	virtual void BeforeStart() {}
 	virtual void Execute();
@@ -308,8 +309,8 @@ struct CSlotData {
 	DWORD dwFlags;      // slot flags (allocated/not allocated)
 
 	CSlotData()
-		:	hInst(0)
-		,	dwFlags(0)
+		: hInst(0)
+		, dwFlags(0)
 	{}
 };
 
@@ -319,8 +320,8 @@ public:
 	std::thread::id ThreadId;
 
 	CThreadData()
-		:	base(10)											//!!!?
-		,	ThreadId(std::this_thread::get_id())
+		: base(10)											//!!!?
+		, ThreadId(std::this_thread::get_id())
 	{}	
 };	
 

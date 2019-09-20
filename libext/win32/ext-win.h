@@ -168,7 +168,7 @@ public:
 	}
 
 	Rectangle(const RECT& rect)
-		:	RECT(rect)
+		: RECT(rect)
 	{}
 
 	Rectangle(const POINT& point, const SIZE& size) {
@@ -821,8 +821,8 @@ public:
 	observer_ptr<CWnd> m_pAlternateWndInit;
 	HWND m_hLockoutNotifyWindow;    // see CWnd::OnCommand
 	observer_ptr<CWnd> m_pLastHit;
+	void* m_pLastInfo;			//	TOOLINFO
 	int m_nLastHit;
-	void *m_pLastInfo;			//	TOOLINFO
 	int m_nLastStatus;      // last flyby status message
 	bool m_bInMsgFilter;
 	bool m_bDlgCreate;
@@ -833,17 +833,18 @@ public:
 
 
 struct AFX_CLASS AFX_MAINTAIN_STATE2 {
-	AFX_MAINTAIN_STATE2(AFX_MODULE_STATE* pModuleState);
-	~AFX_MAINTAIN_STATE2();
 protected:
 	AFX_MODULE_STATE* m_pPrevModuleState;
+public:
+	AFX_MAINTAIN_STATE2(AFX_MODULE_STATE* pModuleState);
+	~AFX_MAINTAIN_STATE2();
 };
 
 class AFX_CLASS AFX_MAINTAIN_STATE_COM : public AFX_MAINTAIN_STATE2 {
 	typedef AFX_MAINTAIN_STATE2 base;
 public:
-	HRESULT HResult;
 	String Description;
+	HRESULT HResult;
 
 	AFX_MAINTAIN_STATE_COM(CComObjectRootBase *pBase);
 	AFX_MAINTAIN_STATE_COM(CComClass *pComClass);

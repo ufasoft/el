@@ -212,32 +212,11 @@ public:
 } // Ext::
 
 #ifdef WIN32
-
-//#include <windows.h>
-#include <tchar.h>
-
-namespace Ext {
-/*!!!	inline const TCHAR *GetCommandLineArgs() {
-		const TCHAR *pCL = ::GetCommandLine();
-		if (*pCL == _T('\"')) {
-			pCL++;
-			while (*pCL && *pCL++ != _T('\"'))
-				;
-		} else
-			while (*pCL > _T(' '))
-				pCL++;
-		while (*pCL && *pCL <= _T(' '))
-			pCL++;
-		return pCL;
-	}*/
-}
-
-
-
+//#	include <windows.h>
+#	include <tchar.h>
 #endif
 
 namespace Ext {
-
 
 
 class LEuint16_t {	//!!!
@@ -369,9 +348,11 @@ template <class T> inline void ZeroStruct(T& s) {
 #endif // _MSC_VER
 
 template <class T> class CPointerKeeper {
+	std::observer_ptr<T>& m_p;
+	T* m_old;
 public:
 	CPointerKeeper(std::observer_ptr<T>& p, T *q)
-		:	m_p(p)
+		: m_p(p)
 	{
 		m_old = p.get();
 		p.reset(q);
@@ -380,9 +361,6 @@ public:
 	~CPointerKeeper() {
 		m_p.reset(m_old);
 	}
-private:
-	std::observer_ptr<T>& m_p;
-	T *m_old;
 };
 
 
@@ -465,8 +443,7 @@ struct AFX_CLASSINIT
 		CRuntimeClass* m_pNextClass;       // linked list of registered classes
 		const AFX_CLASSINIT* m_pClassInit;
 
-		Object *CreateObject()
-		{
+		Object *CreateObject() {
 			return m_pfnCreateObject();
 		}
 

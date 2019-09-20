@@ -528,13 +528,13 @@ static int s_initFastMemcpy = InitFastMemcpy();
 #endif
 
 #if UCFG_CPU_X86_X64
-uint8_t g_bHasSse2;
-uint8_t g_bHasAvx;
+uint8_t g_bHasSse2, g_bHasAvx, g_bHasAvx2;
 
 static int InitBignumFuns() {
 	const Ext::CpuInfo::FeatureInfo& f = Ext::CpuInfo().get_Features();
 	g_bHasSse2 = f.SSE2;
 	g_bHasAvx = f.AVX;
+	g_bHasAvx2 = f.AVX2;
 	return 1;
 }
 

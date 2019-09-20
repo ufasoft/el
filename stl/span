@@ -8,6 +8,8 @@ const ptrdiff_t dynamic_extent = -1;
 
 template <typename T>
 class span {
+	T* m_p;
+	size_t m_size;
 public:
     typedef T element_type;
     typedef T* pointer;
@@ -45,9 +47,6 @@ public:
     span subspan(size_t offset, ptrdiff_t count = dynamic_extent) const {
         return span(m_p + offset, count == dynamic_extent ? m_size - offset : count);
     }
-private:
-    T *m_p;
-    size_t m_size;
 };
 
 template <typename T>

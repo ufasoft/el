@@ -261,9 +261,8 @@
 #	endif
 #endif
 
-#define UCFG_USE_ATL 0	//!!!?
 #ifndef UCFG_USE_ATL
-#	define UCFG_USE_ATL UCFG_EXTENDED && !UCFG_MINISTL
+#	define UCFG_USE_ATL 0 //!!!? UCFG_EXTENDED && !UCFG_MINISTL
 #endif
 
 #ifndef UCFG_WIN_MSG

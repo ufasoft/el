@@ -23,19 +23,23 @@ ASSERT_CDECL
 namespace ExtSTL  {
 using namespace Ext;
 
-static class PCRECategory : public error_category {			// outside function to eliminate thread-safe static machinery
-	typedef error_category base;
-
+static class PCRECategory : public ErrorCategoryBase {			// outside function to eliminate thread-safe static machinery
+	typedef ErrorCategoryBase base;
+public:
+	PCRECategory()
+		:	base(
 #if UCFG_USE_PCRE==2
-	const char *name() const noexcept override { return "PCRE2"; }
+		"PCRE2"
 #else
-	const char *name() const noexcept override { return "PCRE"; }
+		"PCRE"
 #endif
+	, FACILITY_PCRE)
+	{}
 
 	string message(int eval) const override {
 #if UCFG_USE_PCRE==2
 		char buf[255];
-		if (pcre2_get_error_message(eval, (byte*)buf, sizeof buf) < 0)
+		if (pcre2_get_error_message(eval, (uint8_t *)buf, sizeof buf) < 0)
 			Throw(errc::no_buffer_space);
 		return buf;
 #else
@@ -58,11 +62,9 @@ public:
 		,	Offset(offset)
 	{
 	}
-
+protected:
 	String get_Message() const override {
-		if (m_message.empty())
-			m_message = EXT_STR(base::get_Message() << " at offset " << Offset);
-		return m_message;
+		return EXT_STR(base::get_Message() << " at offset " << Offset);
 	}
 };
 
@@ -125,8 +127,8 @@ public:
 const int MAX_MATCHES = 20; //!!!
 
 StdRegexObj::StdRegexObj(RCString pattern, int options, bool bBinary)
-	:	m_pattern(pattern)
-	,	m_reFull(0)
+	: m_pattern(pattern)
+	, m_reFull(0)
 {
 #if UCFG_USE_PCRE==2
 	m_pcreOpts = 0;
@@ -148,7 +150,7 @@ StdRegexObj::StdRegexObj(RCString pattern, int options, bool bBinary)
 	Blob utf8 = Encoding::UTF8.GetBytes(pattern);
 	unsigned char *table = 0;
 	int errcode;
-#if UCFG_USE_PCRE==2	
+#if UCFG_USE_PCRE==2
 	size_t error_offset;
 	if (!(m_re = pcre2_compile((PCRE2_SPTR8)(const char*)utf8.constData(), PCRE2_ZERO_TERMINATED, m_pcreOpts, &errcode, &error_offset, nullptr)))
 		PcreCheck(errcode, error_offset);
@@ -161,12 +163,12 @@ StdRegexObj::StdRegexObj(RCString pattern, int options, bool bBinary)
 }
 
 StdRegexObj::~StdRegexObj() {
-#if UCFG_USE_PCRE==2	
+#if UCFG_USE_PCRE==2
 	pcre2_code_free(m_reFull);
 	pcre2_code_free(m_re);
 #else
 	if (m_reFull)
-		pcre_free(m_reFull);		
+		pcre_free(m_reFull);
 	pcre_free(m_re);
 #endif
 }
@@ -177,7 +179,7 @@ pcre2_code *StdRegexObj::FullRe() {
 pcre *StdRegexObj::FullRe() {
 #endif
 	if (!m_reFull) {
-		Blob utf8 = Encoding::UTF8.GetBytes("(?:"+m_pattern+")\\z");
+		Blob utf8 = Encoding::UTF8.GetBytes("(?:" + m_pattern + ")\\z");
 		unsigned char *table = 0;
 		int errcode;
 #if UCFG_USE_PCRE==2
@@ -216,7 +218,7 @@ basic_regex<wchar_t>::basic_regex(RCString pattern, flag_type flags) {
 bool AFXAPI regex_searchImpl(const char *b, const char *e, match_results<const char*> *m, const basic_regexBase& re, bool bMatch, regex_constants::match_flag_type flags, const char *org) {
 	void *pre = bMatch ? re.FullRe() : re.Re();
 
-	int options = 0;	
+	int options = 0;
 
 #if UCFG_USE_PCRE==2
 	if (flags & regex_constants::match_not_bol)
@@ -255,7 +257,7 @@ bool AFXAPI regex_searchImpl(const char *b, const char *e, match_results<const c
 			sm.second = b + ovector[2*i+1];
 #if UCFG_USE_PCRE==2
 			sm.matched = ovector[2 * i] != PCRE2_UNSET;
-#else			
+#else
 			sm.matched = ovector[2*i] >= 0;
 #endif
 		}
@@ -273,7 +275,7 @@ bool AFXAPI regex_searchImpl(const char *b, const char *e, match_results<const c
 bool AFXAPI regex_searchImpl(const wchar_t *bs, const wchar_t *es, match_results<const wchar_t*> *m, const basic_regexBase& re, bool bMatch, regex_constants::match_flag_type flags, const wchar_t *org) {
 	Blob utf8 = Encoding::UTF8.GetBytes(String(wstring(bs, es-bs)));
 	const char *b = (const char *)utf8.constData(),
-	           *e = (const char *)utf8.constData()+utf8.Size;
+	           *e = (const char *)utf8.constData() + utf8.size();
 	bool r;
 	if (m) {
 		match_results<const char*> m8;
@@ -285,8 +287,8 @@ bool AFXAPI regex_searchImpl(const wchar_t *bs, const wchar_t *es, match_results
 				const sub_match<const char*>& sm = m8[i];
 				match_results<const wchar_t*>::value_type& dm = m->GetSubMatch(i);
 				if (dm.matched = sm.matched) {
-					dm.first = bs+Encoding::UTF8.GetCharCount(ConstBuf(b, sm.first-b));
-					dm.second = bs+Encoding::UTF8.GetCharCount(ConstBuf(b, sm.second-b));
+					dm.first = bs + Encoding::UTF8.GetCharCount(Span((const uint8_t*)b, (const uint8_t*)sm.first));
+					dm.second = bs + Encoding::UTF8.GetCharCount(Span((const uint8_t*)b, (const uint8_t*)sm.second));
 				}
 			}
 			m->m_prefix.first = bs;

@@ -786,9 +786,9 @@ UINT ThreadBase::ThreaderFunction(LPVOID pParam)
 
 void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 #ifdef WIN32
-						, LPSECURITY_ATTRIBUTES lpSecurityAttrs
+				, LPSECURITY_ATTRIBUTES lpSecurityAttrs
 #endif
-						)
+		)
 {
 	ASSERT(!Valid());
 
@@ -866,11 +866,11 @@ void AFXAPI interruption_point() {
 }
 
 disable_interruption::disable_interruption()
-	:	base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, false)
+	: base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, false)
 {}
 
 restore_interruption::restore_interruption(disable_interruption& di)
-	:	base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, di.m_prev)
+	: base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, di.m_prev)
 {}
 
 void AFXAPI sleep_for(const TimeSpan& span) {
@@ -882,8 +882,8 @@ void AFXAPI sleep_for(const TimeSpan& span) {
 
 
 CSeparateThreadThreader::CSeparateThreadThreader(CSeparateThread& st)
-	:	ThreadBase(&st)
-	,	m_st(st)
+	: ThreadBase(&st)
+	, m_st(st)
 {
 	m_bInterruptionEnabled = true;
 }
