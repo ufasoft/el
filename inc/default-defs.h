@@ -293,7 +293,7 @@
 #endif
 
 #ifndef UCFG_CPP20
-#	if UCFG_CPLUSPLUS >= 202000 || (UCFG_MSVC_LANG >= 201704)
+#	if UCFG_CPLUSPLUS >= 202000 || (UCFG_MSVC_LANG >= 202000)
 #		define UCFG_CPP20 1
 #	else
 #		define UCFG_CPP20 0
@@ -420,7 +420,7 @@
 #	endif
 
 #	ifndef UCFG_STD_CONCEPTS
-#		define UCFG_STD_CONCEPTS (UCFG_CPP20)
+#		define UCFG_STD_CONCEPTS (UCFG_CPP20 || UCFG_MSVC_LANG >= 201704)
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX
