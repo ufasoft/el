@@ -22,13 +22,13 @@
 
 namespace Ext {
 
+//!!!? Collides with <concepts>
 template <class T> struct totally_ordered {
 	friend bool operator!=(const T& x, const T& y) { return !(x == y); }
 	friend bool operator>(const T& x, const T& y) { return y < x; }
 	friend bool operator>=(const T& x, const T& y) { return !(x < y); }
 	friend bool operator<=(const T& x, const T& y) { return !(y < x); }
 };
-
 
 const std::error_category& AFXAPI ext_category();
 

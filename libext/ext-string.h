@@ -37,7 +37,7 @@ public:
 
 	static const size_t npos = size_t(-1);
 
-	class const_iterator : public std::iterator<std::random_access_iterator_tag, value_type>, totally_ordered<const_iterator>  {
+	class const_iterator : public std::iterator<std::random_access_iterator_tag, value_type>, Ext::totally_ordered<const_iterator>  {
 	public:
 		typedef String::value_type value_type;
 		typedef std::random_access_iterator_tag iterator_category;
