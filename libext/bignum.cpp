@@ -18,10 +18,10 @@ namespace Ext {
 
 BigInteger::BigInteger()
 #if UCFG_BIGNUM=='A'
-	:	m_blob(nullptr)
-	,	m_count(1)
+	: m_blob(nullptr)
+	, m_count(1)
 #else
-	:	m_zz(0)
+	: m_zz(0)
 #endif
 {
 #if UCFG_BIGNUM=='A'
@@ -31,7 +31,7 @@ BigInteger::BigInteger()
 
 BigInteger::BigInteger(uint32_t n)
 #if UCFG_BIGNUM=='A'
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 #endif
 {
 #if UCFG_BIGNUM=='A'
@@ -49,7 +49,7 @@ BigInteger::BigInteger(int64_t n)
 #if UCFG_BIGNUM=='N'
 	: m_zz(ZZFromSignedBytes((uint8_t*)&n, sizeof(n)))
 #elif UCFG_BIGNUM=='A'
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 #endif
 {
 #if UCFG_BIGNUM=='A' && INTPTR_MAX > 0x7fffffff
@@ -87,15 +87,15 @@ size_t BigInteger::GetBaseWords() const {
 #if UCFG_BIGNUM=='A'
 #	if INTPTR_MAX > 0x7fffffff
 BigInteger::BigInteger(int n)
-	:	m_blob(nullptr)
-	,	m_count(1)
+	: m_blob(nullptr)
+	, m_count(1)
 {
 	m_data[0] = n;
 }
 #	else
 BigInteger::BigInteger(S_BASEWORD n)
-	:	m_blob(nullptr)
-	,	m_count(1)
+	: m_blob(nullptr)
+	, m_count(1)
 {
 	m_data[0] = n;
 }
@@ -111,7 +111,7 @@ BigInteger::BigInteger(int n)
 
 #	if LONG_MAX==0x7fffffff
 BigInteger::BigInteger(long n)
-	:	m_zz(n)
+	: m_zz(n)
 {
 }
 #	endif
@@ -137,7 +137,7 @@ void BigInteger::Init(const uint8_t* p, size_t count) {
 using namespace NTL;
 
 BigInteger::BigInteger(int n)
-	:	m_zz(NTL::INIT_VAL, n)
+	: m_zz(NTL::INIT_VAL, n)
 {
 }
 
@@ -154,7 +154,7 @@ static ZZ ZZFromSignedBytes(const uint8_t* p, size_t n) {
 
 #	if LONG_MAX==0x7fffffff
 BigInteger::BigInteger(long n)
-	:	m_zz(ZZFromSignedBytes((uint8_t*)&n, sizeof(n)))
+	: m_zz(ZZFromSignedBytes((uint8_t*)&n, sizeof(n)))
 {
 }
 #	endif
@@ -162,7 +162,7 @@ BigInteger::BigInteger(long n)
 
 
 BigInteger::BigInteger(const NTL::ZZ& zz)
-	:	m_zz(zz)
+	: m_zz(zz)
 {
 }
 
@@ -170,7 +170,7 @@ BigInteger::BigInteger(const NTL::ZZ& zz)
 
 BigInteger::BigInteger(RCString s, int bas)
 #if UCFG_BIGNUM=='A'
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 #endif
 {
 #if UCFG_BIGNUM=='A'
@@ -209,9 +209,9 @@ BigInteger::BigInteger(RCString s, int bas)
 
 BigInteger::BigInteger(const uint8_t* p, size_t count)
 #if UCFG_BIGNUM=='N'
-	:	m_zz(ZZFromSignedBytes(p, count))
+	: m_zz(ZZFromSignedBytes(p, count))
 #elif UCFG_BIGNUM=='A'
-	:	m_blob(nullptr)
+	: m_blob(nullptr)
 #endif
 {
 #if UCFG_BIGNUM!='N'
@@ -532,7 +532,7 @@ Blob BigInteger::ToBytes() const {
 	ToBytes(r.data(), r.Size);
 #else
 	Blob r(0, DWORD((Length+8)/8));
-	memcpy(r.data(), Data, r.Size);
+	memcpy(r.data(), Data, r.size());
 #endif
 	return r;
 }

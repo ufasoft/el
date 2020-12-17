@@ -17,6 +17,9 @@ ENUM_CLASS (JsonMode) {
 } END_ENUM_CLASS(JsonMode);
 
 class JsonTextWriter {
+	std::ostream& m_os;
+	CBool m_bOpenedElement,
+		m_bEoled;
 public:
 	JsonMode Mode;
 	int Indentation;
@@ -50,7 +53,7 @@ public:
 	}
 
 	template <typename K, typename V>
-	void Write(const unordered_map<K, V>& m) {
+	void Write(const std::unordered_map<K, V>& m) {
 		typedef unordered_map<K, V> CMap;
 		JsonWriterObject jwo(*this);
 		EXT_FOR (const CMap::value_type& kv, m) {
@@ -66,10 +69,6 @@ public:
 		}
 	}
 private:
-	std::ostream& m_os;
-	CBool m_bOpenedElement,
-		  m_bEoled;
-
 	void CommonInit();
 
 	friend class JsonWriterObject;
@@ -87,13 +86,12 @@ private:
 };
 
 class JsonWriterArray {
+	JsonMode m_prevMode;
 public:
 	JsonTextWriter& Writer;
 
 	JsonWriterArray(JsonTextWriter& writer, RCString name = nullptr);
 	~JsonWriterArray();
-private:
-	JsonMode m_prevMode;
 };
 
 

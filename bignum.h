@@ -109,7 +109,7 @@ class BigInteger;
 			ImpShld(&Low, a, 2, off>>1);
 			ImpShld(a, r, 2, (off>>1) | (off&1));
 			return CUInt128(r[0], r[1]);
-		}		
+		}
 
 		CUInt128 operator|(const CUInt128 v) const {
 			return CUInt128(Low|v.Low, High|v.High);
@@ -269,7 +269,9 @@ public:
 		return *this;
 	}
 
-	const BASEWORD *get_Data() const { return m_count<=size(m_data) ? m_data : (const BASEWORD*)m_blob.constData(); }
+	const BASEWORD* get_Data() const {
+		return m_count <= size(m_data) ? m_data : (const BASEWORD*)m_blob.constData();
+	}
 	DEFPROP_GET(const BASEWORD *, Data);
 
 #endif
@@ -347,7 +349,7 @@ public:
 	BigInteger operator++(int) { return exchange(_self, Add(1)); }
 	BigInteger& operator--() { return _self -= 1; }
 	BigInteger operator--(int) { return exchange(_self, Sub(1)); }
-	
+
 	template <class E>
 	static inline BigInteger AFXAPI Random(const BigInteger& maxValue, E& rngeng) {
 		size_t nbytes = maxValue.Length / 8 + 1;
@@ -383,12 +385,12 @@ public:
 
 	size_t GetHashCode() const {
 #if UCFG_BIGNUM!='A'
-		size_t nbytes = size_t((Length+8)/8);
+		size_t nbytes = size_t((Length + 8) / 8);
 		uint8_t* p = (uint8_t*)alloca(nbytes);
 		ToBytes(p, nbytes);
-		return hash_value(ConstBuf(p, nbytes));
+		return hash_value(Span(p, nbytes));
 #else
-		return hash_value(ConstBuf(Data, m_count));
+		return hash_value(Span((const uint8_t*)Data, m_count * sizeof(BASEWORD)));
 #endif
 	}
 
@@ -453,7 +455,7 @@ inline size_t hash_value(const BigInteger& bi) {
 
 }*/
 
-EXT_DEF_HASH_NS(Ext, BigInteger) 
+EXT_DEF_HASH_NS(Ext, BigInteger)
 
 
 inline BigInteger operator+(const BigInteger& x, const BigInteger& y) { return x.Add(y); }

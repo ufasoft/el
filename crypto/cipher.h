@@ -1,9 +1,9 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#pragma once 
+#pragma once
 
 #include "util.h"
 
@@ -20,7 +20,9 @@ ENUM_CLASS(PaddingMode) {
 
 class BlockCipher {
 	typedef BlockCipher class_type;
-public:	
+protected:
+	Blob m_key;
+public:
 	Blob IV;
 	int BlockSize, KeySize; 	// bits
 	int Rounds;
@@ -28,51 +30,49 @@ public:
 	PaddingMode Padding;
 
 	BlockCipher()
-		:	BlockSize(128)
-		,	KeySize(256)
-		,	Rounds(128)
-		,	Mode(CipherMode::CBC)
-		,	Padding(PaddingMode::PKCS7)
+		: BlockSize(128)
+		, KeySize(256)
+		, Rounds(128)
+		, Mode(CipherMode::CBC)
+		, Padding(PaddingMode::PKCS7)
 	{}
 
-	ConstBuf get_Key() const { return m_key; }
-	void put_Key(const ConstBuf& key) {
-		if (key.Size != KeySize/8)
+	Span get_Key() const { return m_key; }
+	void put_Key(RCSpan key) {
+		if (key.size() != KeySize/8)
 			Throw(errc::invalid_argument);
 		m_key = key;
 	}
-	DEFPROP(ConstBuf, Key);
+	DEFPROP(Span, Key);
 
-	virtual Blob Encrypt(const ConstBuf& cbuf);
-	virtual Blob Decrypt(const ConstBuf& cbuf);
-protected:
-	Blob m_key;
+	virtual Blob Encrypt(RCSpan cbuf);
+	virtual Blob Decrypt(RCSpan cbuf);
 
-	void Pad(byte *tdata, size_t cbPad) const;
+	void Pad(uint8_t* tdata, size_t cbPad) const;
 	virtual void InitParams() {}
 	virtual Blob CalcExpandedKey() const { Throw(E_NOTIMPL); }
 	virtual Blob CalcInvExpandedKey() const { Throw(E_NOTIMPL); }
 
-	virtual void EncryptBlock(const ConstBuf& ekey, byte *data) { Throw(E_NOTIMPL); }
-	virtual void DecryptBlock(const ConstBuf& ekey, byte *data) { Throw(E_NOTIMPL); }
+	virtual void EncryptBlock(RCSpan ekey, uint8_t* data) { Throw(E_NOTIMPL); }
+	virtual void DecryptBlock(RCSpan ekey, uint8_t* data) { Throw(E_NOTIMPL); }
 };
 
 class ExpandedKey {
 public:
-	explicit ExpandedKey(const ConstBuf& key);
+	explicit ExpandedKey(RCSpan key);
 	virtual uint32_t Next();
 protected:
 	size_t m_i;
 	vector<uint32_t> m_key;
 private:
-	byte m_rcon;
+	uint8_t m_rcon;
 };
 
 class InvExpandedKey : public ExpandedKey {
 	typedef ExpandedKey base;
 public:
-	InvExpandedKey(const ConstBuf& key, int ekeylen, int nb);
-	
+	InvExpandedKey(RCSpan key, int ekeylen, int nb);
+
 	uint32_t Next() override { return m_invkey.at(m_invkey.size() - ++m_i); }
 private:
 	vector<uint32_t> m_invkey;
@@ -83,10 +83,10 @@ class Aes : public BlockCipher {
 public:
 	Aes();
 
-	static std::pair<Blob, Blob> GetKeyAndIVFromPassword(RCString password, const byte salt[8], int nRounds);		// don't set default value for nRound
+	static std::pair<Blob, Blob> GetKeyAndIVFromPassword(RCString password, const uint8_t salt[8], int nRounds); // don't set default value for nRound
 #if UCFG_USE_OPENSSL
-	Blob Encrypt(const ConstBuf& cbuf) override;
-	Blob Decrypt(const ConstBuf& cbuf) override;
+	Blob Encrypt(RCSpan cbuf) override;
+	Blob Decrypt(RCSpan cbuf) override;
 #endif
 protected:
 	void InitParams() override {
@@ -101,10 +101,10 @@ protected:
 	Blob CalcExpandedKey() const override;
 	Blob CalcInvExpandedKey() const override;
 #endif // !UCFG_USE_OPENSSL
-	void EncryptBlock(const ConstBuf& ekey, byte *data) override;
-	void DecryptBlock(const ConstBuf& ekey, byte *data) override;
+	void EncryptBlock(RCSpan ekey, uint8_t* data) override;
+	void DecryptBlock(RCSpan ekey, uint8_t* data) override;
 private:
-	void EncDec(const ConstBuf& ekey, uint32_t *data, const byte subTable[256], uint32_t(*pfnMixColumn)(uint32_t));
+	void EncDec(RCSpan ekey, uint32_t* data, const uint8_t subTable[256], uint32_t (*pfnMixColumn)(uint32_t));
 };
 
 

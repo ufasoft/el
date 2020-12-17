@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -105,12 +105,12 @@ String AFXAPI AfxLoadString(UINT nIDS) {
 
 #if UCFG_WIN32_FULL
 CStringVector AFXAPI COperatingSystem::QueryDosDevice(RCString dev) {
-	for(int size=_MAX_PATH;; size*=2) {
-		TCHAR *buf = (TCHAR*)alloca(sizeof(TCHAR)*size);
+	for (int size = _MAX_PATH;; size *= 2) {
+		TCHAR* buf = (TCHAR*)alloca(sizeof(TCHAR) * size);
 		DWORD dw = ::QueryDosDevice(dev, buf, size);
 		if (dw && dw < size)
 			return AsciizArrayToStringArray(buf);
-		Win32Check(GetLastError() != ERROR_INSUFFICIENT_BUFFER);
+		Win32Check(GetLastError() == ERROR_INSUFFICIENT_BUFFER);
 	}
 }
 #endif
@@ -130,6 +130,28 @@ COperatingSystem::COsVerInfo COperatingSystem::get_Version() {
 	return r;
 }
 #endif
+
+Architecture RuntimeInformation::OSArchitecture() {
+#if defined _M_X64
+	return Architecture::X64;
+#elif defined _M_IX86
+	return Architecture::X86;
+#elif defined _M_ARM
+	return Architecture::Arm;
+#elif defined _M_ARM64
+	return Architecture::Arm64;
+#elif defined _M_MIPS
+	return Architecture::Mips;
+#elif defined _M_MIPS64
+	return Architecture::Mips64;
+#elif defined _M_IA64
+	return Architecture::IA64;
+#elif defined _M_SHX
+	return Architecture::SHX;
+#else
+	return Architecture::Unknown;
+#endif	
+}
 
 String Environment::GetMachineType() {
 #if UCFG_USE_POSIX
@@ -186,11 +208,14 @@ String Environment::GetMachineVersion() {
 		break;
 #if UCFG_WIN32_FULL
 	case PROCESSOR_ARCHITECTURE_AMD64:
-		s = "AMD64";
+		s = EXT_STR("x64 " << si.wProcessorLevel << "." << si.wProcessorRevision);
 		break;
 #endif
 	case PROCESSOR_ARCHITECTURE_ARM:
 		s = "ARM";
+		break;
+	case PROCESSOR_ARCHITECTURE_ARM64:
+		s = "ARM64";
 		break;
 	default:
 		s = "Unknown CPU";
@@ -219,55 +244,29 @@ bool Environment::Is64BitOperatingSystem() {
 	return false;
 }
 
-/*!!!
-
-ULONGLONG AFXAPI StrToVersion(RCString s) {
-	LONGLONG r = 0;
-	istringstream is(s.c_str());
-	for (int i=4; i--;) {
-		WORD w;
-		if (is >> w)
-			((WORD*)&r)[i] = w;
-		else
-			break;
-		if (is.get() != '.')
-			break;
-	}
-	return r;
-}
-
-String AFXAPI VersionToStr(const LONGLONG& v, int n) {
-	WORD ar[4];
-	(LONGLONG&)ar[0] = v;
-	ostringstream os;
-	for (int i=3; i>0 && 3-i < n; i--) {
-		if (i != 3)
-			os << '.';
-		os << ar[i];
-	}
-	return os.str();
-}*/
-
 #if UCFG_USE_REGEX
 static StaticRegex s_reVersion("^(\\d+)\\.(\\d+)(\\.(\\d+)(\\.(\\d+))?)?$");
 
+static int ToVersionInt(const cmatch::value_type& sm) {
+	return sm.matched ? atoi(sm.str().c_str()) : -1;
+}
+
 Version::Version(RCString s) {
 	cmatch m;
-	if (regex_search(s.c_str(), m, *s_reVersion)) {
-		Major = atoi(String(m[1]));
-		Minor = atoi(String(m[2]));
-		Build = m[4].matched ? atoi(String(m[4])) : -1;
-		Revision = m[6].matched ? atoi(String(m[6])) : -1;
-	} else
+	if (!regex_search(s.c_str(), m, *s_reVersion))
 		Throw(errc::invalid_argument);
+	Major = ToVersionInt(m[1]);
+	Minor = ToVersionInt(m[2]);
+	Build = ToVersionInt(m[4]);
+	Revision = ToVersionInt(m[6]);
 }
-#endif
+#endif // UCFG_USE_REGEX
 
 #if UCFG_WIN32
 
 Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
-	int ar[4] = { uint16_t(ms>>16), uint16_t(ms), uint16_t(ls>>16), uint16_t(ls) };
-	for (int i=4; i-- > fieldCount;)
+	int ar[4] = {uint16_t(ms >> 16), uint16_t(ms), uint16_t(ls >> 16), uint16_t(ls)};
+	for (int i = 4; i-- > fieldCount;)
 		ar[i] = -1;
 	return Version(ar[0], ar[1], ar[2], ar[3]);
 }
@@ -275,22 +274,40 @@ Version Version::FromFileInfo(int ms, int ls, int fieldCount) {
 #endif
 
 String Version::ToString(int fieldCount) const {
-	if (fieldCount<0 || fieldCount>4)
+	if (fieldCount < 0 || fieldCount > 4)
 		Throw(errc::invalid_argument);
 	int ar[4] = { Major, Minor, Build, Revision };
 	ostringstream os;
-	for (int i=0; i<fieldCount; ++i) {
+	for (int i = 0; i < fieldCount; ++i) {
 		if (ar[i] == -1)
 			Throw(errc::invalid_argument);
-		if (i)
-			os << ".";
-		os << ar[i];
+		os << (i ? "." : "") << ar[i];
 	}
 	return os.str();
 }
 
 String Version::ToString() const {
-	return ToString(Revision!=-1 ? 4 : Build!=-1 ? 3 : 2);
+	return ToString(Revision != -1 ? 4 : Build != -1 ? 3 : 2);
+}
+
+const OSPlatform
+	OSPlatform::Windows("Windows")
+	, OSPlatform::Linux("Linux")
+	, OSPlatform::OSX("OSX")
+	, OSPlatform::Unix("Unix");
+
+bool RuntimeInformation::IsOSPlatform(const OSPlatform& platform) {
+#ifdef _WIN32
+	return platform == OSPlatform::Windows;
+#elif defined __APPLE__
+	return platform == OSPlatform::OSX;
+#elif defined __linux__
+	return platform == OSPlatform::Linux;
+#elif defined __unix__
+	return platform == OSPlatform::Unix;
+#else
+	return false;
+#endif
 }
 
 OperatingSystem::OperatingSystem() {
@@ -372,7 +389,7 @@ int32_t AFXAPI Environment::TickCount() {
 #if UCFG_WIN32_FULL
 
 Environment::CStringsKeeper::CStringsKeeper()
-	:	m_p(0)
+	: m_p(0)
 {
 	if (!(m_p = (LPTSTR)::GetEnvironmentStrings()))
 		Throw(ExtErr::UnknownWin32Error);
@@ -444,10 +461,10 @@ String Environment::GetEnvironmentVariable(RCString s) {
 #elif UCFG_WCE
 	return nullptr;
 #else
-	_TCHAR *p = (_TCHAR*)alloca(256*sizeof(_TCHAR));
+	_TCHAR* p = (_TCHAR*)alloca(256 * sizeof(_TCHAR));
 	DWORD dw = ::GetEnvironmentVariable(s, p, 256);
 	if (dw > 256) {
-		p = (_TCHAR*)alloca(dw*sizeof(_TCHAR));
+		p = (_TCHAR*)alloca(dw * sizeof(_TCHAR));
 		dw = ::GetEnvironmentVariable(s, p, dw);
 	}
 	if (dw)
@@ -639,7 +656,7 @@ String NameValueCollection::ToString() const {
 String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 	Blob blob = enc.GetBytes(s);
 	ostringstream os;
-	for (size_t i=0; i<blob.Size; ++i)	{
+	for (size_t i = 0; i < blob.size(); ++i) {
 		char ch = blob.constData()[i];
 		if (ch == ' ')
 			os << '+';
@@ -654,21 +671,19 @@ String HttpUtility::UrlEncode(RCString s, Encoding& enc) {
 String HttpUtility::UrlDecode(RCString s, Encoding& enc) {
 	Blob blob = enc.GetBytes(s);
 	ostringstream os;
-	for (size_t i=0; i<blob.Size; ++i)	 {
+	for (size_t i = 0; i < blob.size(); ++i) {
 		char ch = blob.constData()[i];
 		switch (ch) {
 		case '+':
 			os << ' ';
 			break;
-		case '%':
-			{
-				if (i+2 > blob.Size)
+		case '%': {
+			if (i + 2 > blob.size())
 					Throw(E_FAIL);
-				String c1((char)blob.constData()[++i]),
+			String c1((char)blob.constData()[++i]),
 					c2((char)blob.constData()[++i]);
-				os << (char)Convert::ToUInt32(c1+c2, 16);
-			}
-			break;
+			os << (char)Convert::ToUInt32(c1 + c2, 16);
+		} break;
 		default:
 			os << ch;
 		}
@@ -688,7 +703,7 @@ NameValueCollection HttpUtility::ParseQueryString(RCString query) {
 			Throw(E_FAIL);
 		String name = UrlDecode(m[1]),
 			value = UrlDecode(m[2]);
-		r[name.ToUpper()].push_back(value);
+		r.GetRef(name.ToUpper()).push_back(value);
 	}
 	return r;
 }
@@ -701,7 +716,7 @@ public:
 	static const char s_toBase64[];
 
 	CBase64Table()
-		:	vector<int>((size_t)256, EOF)
+		: vector<int>((size_t)256, EOF)
 	{
 		for (uint8_t i = (uint8_t)strlen(s_toBase64); i--;) // to eliminate trailing zero
 			_self[s_toBase64[i]] = i;
@@ -738,21 +753,21 @@ Blob Convert::FromBase64String(RCString s) {
 			break;
 		wr << uint8_t(ch2 << 6 | ch3);
 	}
-	return ms.Blob;
+	return ms.AsSpan();
 }
 
-String Convert::ToBase64String(const ConstBuf& mb) {
+String Convert::ToBase64String(RCSpan mb) {
 	//!!!R	CBase64Table::s_toBase64;
 	vector<String::value_type> v;
-	const uint8_t* p = mb.P;
-	for (size_t i=mb.Size/3; i--; p+=3) {
+	const uint8_t* p = mb.data();
+	for (size_t i = mb.size() / 3; i--; p += 3) {
 		uint32_t dw = (p[0]<<16) | (p[1]<<8) | p[2];
 		v.push_back(CBase64Table::s_toBase64[(dw>>18) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>12) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[(dw>>6) & 0x3F]);
 		v.push_back(CBase64Table::s_toBase64[dw & 0x3F]);
 	}
-	if (size_t rem = mb.Size % 3) {
+	if (size_t rem = mb.size() % 3) {
 		v.push_back(CBase64Table::s_toBase64[(p[0]>>2) & 0x3F]);
 		switch (rem) {
 		case 1:
@@ -772,16 +787,17 @@ class BitWriteStream {
 public:
 	Stream& Base;
 	int Offset;
+	uint8_t m_prevValue;
 
 	BitWriteStream(Stream& bas)
-	:	Base(bas)
-	,	Offset(0)
-	,	m_prevValue(0)
-	{}
+		: Base(bas)
+		, Offset(0)
+		, m_prevValue(0) {
+	}
 
 	void Write(int count, uint32_t value) {
 		ASSERT(count <= 8);
-		m_prevValue |= value << (8-count) >> Offset;
+		m_prevValue |= value << (8 - count) >> Offset;
 		if (Offset + count >= 8) {
 			Base.WriteBuffer(&m_prevValue, 1);
 			m_prevValue = uint8_t(value << (16 - Offset - count));
@@ -795,16 +811,14 @@ public:
 		Offset = 0;
 		m_prevValue = 0;
 	}
-public:
-	uint8_t m_prevValue;
 };
 
-static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable) {
+static Blob FromBaseX(int charsInGroup, int bits, RCString s, const uint8_t valTable[]) {
 	MemoryStream ms;
 	BitWriteStream bs(ms);
-	for (size_t i=0; i<s.size(); i+=charsInGroup) {
-		for (size_t j=0; j<charsInGroup; ++j) {
-			wchar_t ch = s[i+j];
+	for (size_t i = 0; i < s.size(); i += charsInGroup) {
+		for (size_t j = 0; j < charsInGroup && i + j < s.size() ; ++j) {
+			wchar_t ch = s[i + j];
 			if ('=' == ch) {
 				bs.Offset = 0;
 				bs.Flush();
@@ -812,37 +826,38 @@ static Blob FromBaseX(int charsInGroup, RCString s, const vector<int>& valTable)
 			}
 			if (uint16_t(ch) >= 256)
 				Throw(errc::invalid_argument);
-			bs.Write(5, valTable[ch]);
+			bs.Write(bits, valTable[ch]);
 		}
 	}
-	if (bs.Offset)
-		Throw(errc::invalid_argument);
-	return Blob(ConstBuf(ms));
+	if (charsInGroup > 1 && bs.Offset || charsInGroup == 1 && bs.Offset >= bits || bs.m_prevValue)
+		Throw(ExtErr::Padding);
+	return Blob(ms.AsSpan());
 }
 
-static String ToBaseX(int charsInGroup, int bytesInGroup, const ConstBuf& mb, const char *table) {
+static String ToBaseX(int charsInGroup, int bytesInGroup, RCSpan mb, const char *table) {
 	ostringstream os;
 	const int bitsInGroup = bytesInGroup * 8 / charsInGroup,
 		mask = (1<<bitsInGroup) - 1;
-	for (size_t i=0; i<mb.Size;) {
+	for (size_t i = 0; i < mb.size();) {
 		int nbits = 0;
 		uint64_t val = 0;
-		for (int j=bytesInGroup; j-- && i<mb.Size; nbits+=8)
-			val |= uint64_t(mb.P[i++]) << (j*8);
-		for (int j=charsInGroup; j--; nbits-=bitsInGroup)
-			os.put(nbits>0 ?table[(val >> (j*bitsInGroup)) & mask] : '=');
+		for (int j = bytesInGroup; j-- && i < mb.size(); nbits += 8)
+			val |= uint64_t(mb[i++]) << (j * 8);
+		for (int j = charsInGroup; j--; nbits -= bitsInGroup)
+			os.put(nbits > 0 ? table[(val >> (j * bitsInGroup)) & mask] : '=');
 	}
 	return os.str();
 }
 
-class CBase32Table : public vector<int> {
+class CBase32Table : public vector<uint8_t> {
 public:
 	static const char s_toBase32[];
 
 	CBase32Table()
-		: vector<int>((size_t)256, EOF) {
+		: vector<uint8_t>((size_t)256, 0)
+	{
 		for (uint8_t i = (uint8_t)strlen(s_toBase32); i--;) // to eliminate trailing zero
-			_self[s_toBase32[i]] = i;
+			_self[s_toBase32[i]] = _self[tolower(s_toBase32[i])] = i;
 	}
 };
 
@@ -850,12 +865,12 @@ static InterlockedSingleton<CBase32Table> s_pBase32Table;
 
 const char CBase32Table::s_toBase32[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
-Blob Convert::FromBase32String(RCString s) {
-	return FromBaseX(8, s.ToUpper(), *s_pBase32Table);
+Blob Convert::FromBase32String(RCString s, const uint8_t* table) {
+	return FromBaseX(1, 5, s, table ? table : &(*s_pBase32Table)[0]);
 }
 
-String Convert::ToBase32String(const ConstBuf& mb) {
-	return ToBaseX(8, 5, mb, CBase32Table::s_toBase32);
+String Convert::ToBase32String(RCSpan mb, const char *table) {
+	return ToBaseX(8, 5, mb, table ? table : CBase32Table::s_toBase32);
 }
 
 
@@ -919,18 +934,18 @@ String Guid::ToString(RCString format) const {
 
 
 CResID::CResID(UINT nResId)
-:	m_resId(nResId)
+	: m_resId(nResId)
 {
 }
 
 CResID::CResID(const char *lpName)
-    :	m_resId(0)
+    : m_resId(0)
 {
 	_self = lpName;
 }
 
 CResID::CResID(const String::value_type *lpName)
-	:	m_resId(0)
+	: m_resId(0)
 {
 	_self = lpName;
 }
@@ -998,7 +1013,7 @@ int AFXAPI Rand() {
 #if UCFG_USE_POSIX
 	return (unsigned int)time(0) % ((unsigned int)RAND_MAX+1);
 #else
-	return int (System.PerformanceCounter % (RAND_MAX+1));
+	return int(System.PerformanceCounter % (RAND_MAX + 1));
 #endif
 }
 
@@ -1017,15 +1032,12 @@ Random::~Random() {
 
 uint16_t Random::NextWord() {
 	return (uint16_t) uniform_int_distribution<int>(0, 65535) (*Rngeng(_self));
-
-
-	//!!!R return uint16_t((m_seed = m_seed * 214013L + 2531011L) >> 16);
 }
 
-void Random::NextBytes(const Buf& mb) {
+void Random::NextBytes(const span<uint8_t>& mb) {
 	uniform_int_distribution<int> dist(0, 255);
-	for (size_t i = 0; i < mb.Size; i++)
-		mb.P[i] = (uint8_t)dist(*Rngeng(_self));
+	for (size_t i = 0; i < mb.size(); i++)
+		mb.data()[i] = (uint8_t)dist(*Rngeng(_self));
 }
 
 int Random::Next() {
@@ -1033,7 +1045,7 @@ int Random::Next() {
 }
 
 int Random::Next(int maxValue) {
-	return uniform_int_distribution<int>(0, maxValue-1) (*Rngeng(_self));
+	return uniform_int_distribution<int>(0, maxValue - 1)(*Rngeng(_self));
 }
 
 double Random::NextDouble() {
@@ -1071,16 +1083,6 @@ BinaryReader& AFXAPI GetSystemURandomReader() {
 	return s_systemURandomReader;
 }
 
-/*!!!R
-	STATIC_ASSERT(DBL_MANT_DIG < 64);
-
-	uint64_t n;
-	NextBytes(Buf((uint8_t*)&n, sizeof n));
-
-	n = (n >> (64 - (DBL_MANT_DIG-1))) | (uint64_t(1) << (DBL_MANT_DIG-1));
-	return ldexp(double(n), -(DBL_MANT_DIG-1)) - 1.0;
-	*/
-
 void CAnnoyer::OnAnnoy() {
 	if (m_iAnnoy)
 		m_iAnnoy->OnAnnoy();
@@ -1095,91 +1097,113 @@ void CAnnoyer::Request() {
 	}
 }
 
+HashAlgorithm::HashAlgorithm()
+	: BlockSize(0)
+	, HashSize(0)
+	, IsHaifa(false)
+	, IsBigEndian(true)
+	, IsLenBigEndian(true)
+	, IsBlockCounted(false)
+	, Is64Bit(false)
+{}
+
 void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
 	if (IsBigEndian == UCFG_LITLE_ENDIAN) {
 		if (Is64Bit) {
-			uint64_t *p = (uint64_t*)dst;
-			for (int i=0; i<count; ++i)
-				p[i] = swap64(p[i]);
+			for (uint64_t *p = (uint64_t*)dst, *e = p + count; p != e; ++p)
+				*p = swap64(*p);
 		} else {
-			uint32_t *p = (uint32_t*)dst;
-			for (int i=0; i<count; ++i)
-				p[i] = swap32(p[i]);
+			for (uint32_t *p = (uint32_t*)dst, *e = p + count; p != e; ++p)
+				*p = swap32(*p);
 		}
 	}
 }
 
+void HashAlgorithm::PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {
+	PrepareEndianness(src, WordCount);
+	HashBlock(dst, src, counter);
+}
+
 template <typename W>
-hashval ComputeHashImp(HashAlgorithm& algo, Stream& stm) {
-#if UCFG_CPU_X86_X64
-	__m128i hash[8];
-#else
-	W hash[16];
-#endif
-	algo.InitHash(hash);
-	W buf[16];
-	uint64_t len = 0, counter;
+hashval ComputeHashImp(HashAlgorithm& algo, void *hash, Stream& stm, uint64_t processedLen) {
+	const size_t dataSize = HashAlgorithm::WordCount * sizeof(W);
+	DECLSPEC_ALIGN(32) W buf[64];									// input data & scratchbuffer
+	uint64_t counter;
 	bool bLast = false;
 	while (true) {
-		ZeroStruct(buf);
+		memset(buf, 0, dataSize);
 		if (bLast) {
 			counter = 0;
 			break;
 		}
-		size_t cb = stm.Read(buf, sizeof buf);
-		if (cb < sizeof buf) {
+		size_t cb = stm.Read(buf, dataSize);
+		if (cb < dataSize) {
 			((uint8_t*)buf)[cb] = 0x80;
 			bLast = true;
 		}
-		len += cb;
-		counter = len << 3;
-		if (bLast && (len & (sizeof buf - 1)) < sizeof buf - int(bool(algo.IsHaifa)) - 8) {
-			if (!(len & (sizeof buf - 1)))
+		processedLen += cb;
+		counter = processedLen << 3;
+		if (bLast && (processedLen & (dataSize - 1)) < dataSize - int(bool(algo.IsHaifa)) - 8) {
+			if (!(processedLen & (dataSize - 1)))
 				counter = 0;
 			break;
 		}
-		algo.PrepareEndianness(buf, 16);
-		algo.HashBlock(hash, (uint8_t*)buf, counter);
+		algo.PrepareEndiannessAndHashBlock(hash, (uint8_t*)buf, counter);
 	}
 	if (algo.IsHaifa)
-		((uint8_t*)buf)[sizeof buf - sizeof(W) * 2 - 1] = 1;
-	len = algo.IsBlockCounted ? (len + 8 + sizeof buf) / (sizeof buf)
-		: len << 3;
-	*(uint64_t*)((uint8_t*)buf + sizeof(buf) - 8) = algo.IsLenBigEndian ? htobe(len) : htole(len);
-	algo.PrepareEndianness(buf, 16);
-	algo.HashBlock(hash, (uint8_t*)buf, counter);
+		((uint8_t*)buf)[dataSize - sizeof(W) * 2 - 1] = 1;
+	processedLen = algo.IsBlockCounted ? (processedLen + 8 + dataSize) / dataSize
+		: processedLen << 3;
+	*(uint64_t*)((uint8_t*)buf + dataSize - 8) = algo.IsLenBigEndian ? htobe(processedLen) : htole(processedLen);
+	algo.PrepareEndiannessAndHashBlock(hash, (uint8_t*)buf, counter);
 	algo.OutTransform(hash);
 	algo.PrepareEndianness(hash, 8);
 	return hashval((const uint8_t*)hash, algo.HashSize);
 }
 
 hashval HashAlgorithm::ComputeHash(Stream& stm) {
-	return Is64Bit ? ComputeHashImp<uint64_t>(_self, stm) : ComputeHashImp<uint32_t>(_self, stm);
+#if UCFG_CPU_X86_X64
+	__m128i hash[8];
+#else
+	W hash[16];
+#endif
+	InitHash(hash);
+	return Is64Bit
+		? ComputeHashImp<uint64_t>(_self, hash, stm, 0)
+		: ComputeHashImp<uint32_t>(_self, hash, stm, 0);
 }
 
-hashval HashAlgorithm::ComputeHash(const ConstBuf& mb) {
+hashval HashAlgorithm::ComputeHash(RCSpan mb) {
 	CMemReadStream stm(mb);
 	return ComputeHash(stm);
 }
 
+hashval HashAlgorithm::Finalize(void *hash, Stream& stm, uint64_t processedLen)
+{
+	return Is64Bit
+		? ComputeHashImp<uint64_t>(_self, hash, stm, processedLen)
+		: ComputeHashImp<uint32_t>(_self, hash, stm, processedLen);
+}
+
+
 // RFC 2104
-hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text) {
-	ConstBuf k = key;
+hashval HMAC(HashAlgorithm& halgo, RCSpan key, RCSpan text) {
+	Span k = key;
 	hashval hk;
-	if (key.Size > halgo.BlockSize) {
+	if (key.size() > halgo.BlockSize) {
 		hk = halgo.ComputeHash(key);
-		k = hk;
+		k = Span(hk);
 	}
-	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.Size);
+	size_t size = halgo.BlockSize + max(halgo.BlockSize, text.size());
 	uint8_t* buf = (uint8_t*)alloca(size);
-	for (size_t i=0; i<halgo.BlockSize; ++i)
-		buf[i] = i<k.Size ? k.P[i] ^ 0x36 : 0x36;
-	memcpy(buf+halgo.BlockSize, text.P, text.Size);
-	hashval hv = halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+text.Size));
-	for (size_t i=0; i<halgo.BlockSize; ++i)
-		buf[i] = i<k.Size ? k.P[i] ^ 0x5C : 0x5C;
-	memcpy(buf+halgo.BlockSize, hv.constData(), hv.size());
-	return halgo.ComputeHash(ConstBuf(buf, halgo.BlockSize+hv.size()));
+	for (size_t i = 0; i < halgo.BlockSize; ++i)
+		buf[i] = i < k.size() ? k[i] ^ 0x36 : 0x36;
+	memcpy(buf + halgo.BlockSize, text.data(), text.size());
+	hashval hv = halgo.ComputeHash(Span(buf, halgo.BlockSize + text.size()));
+	for (size_t i = 0; i < halgo.BlockSize; ++i)
+		buf[i] = i < k.size() ? k[i] ^ 0x5C : 0x5C;
+	memcpy(buf + halgo.BlockSize, hv.constData(), hv.size());
+	return halgo.ComputeHash(Span(buf, halgo.BlockSize + hv.size()));
 }
 
 
@@ -1298,7 +1322,8 @@ void CMessageProcessor::RegisterModule(DWORD lowerCode, DWORD upperCode, RCStrin
 }
 
 static String CombineErrorMessages(const char hex[], RCString msg, bool bWithErrorCode) {
-	return bWithErrorCode ? String(hex) + ":  " + msg
+	return bWithErrorCode 
+		? String(hex) + ":  " + msg
 		: msg;
 }
 
@@ -1391,16 +1416,16 @@ bool PersistentCache::Lookup(RCString key, Blob& blob) {
 	if (!exists(fn))
 		return false;
 	FileStream fs(fn.c_str(), FileMode::Open, FileAccess::Read);
-	blob.Size = (size_t)fs.Length;
-	fs.ReadBuffer(blob.data(), blob.Size);
+	blob.resize((size_t)fs.Length);
+	fs.ReadBuffer(blob.data(), blob.size());
 	return true;
 }
 
-void PersistentCache::Set(RCString key, const ConstBuf& mb) {
+void PersistentCache::Set(RCString key, RCSpan mb) {
 	path fn = AfxGetCApp()->get_AppDataDir() / ".cache" / key.c_str();
 	create_directories(fn.parent_path());
 	FileStream fs(fn, FileMode::Create, FileAccess::Write);
-	fs.WriteBuffer(mb.P, mb.Size);
+	fs.WriteBuffer(mb.data(), mb.size());
 
 	/*!!!
 #if UCFG_WIN32
@@ -1412,9 +1437,9 @@ void PersistentCache::Set(RCString key, const ConstBuf& mb) {
 #if UCFG_WIN32
 
 ResourceObj::ResourceObj(HMODULE hModule, HRSRC hRsrc)
-	:	m_hModule(hModule)
-	,	m_hRsrc(hRsrc)
-	,	m_p(0)
+	: m_hModule(hModule)
+	, m_hRsrc(hRsrc)
+	, m_p(0)
 {
 	Win32Check(bool(m_hglbResource = ::LoadResource(m_hModule, m_hRsrc)));
 }
@@ -1438,17 +1463,17 @@ Resource::Resource(const CResID& resID, const CResID& resType, HMODULE hModule) 
 #endif
 }
 
-const void *Resource::get_Data() {
+const uint8_t *Resource::data() const {
 #if UCFG_WIN32
 	if (!m_pimpl->m_p)
 		m_pimpl->m_p = ::LockResource(m_pimpl->m_hglbResource);
-	return m_pimpl->m_p;
+	return (const uint8_t*)m_pimpl->m_p;
 #else
 	return m_blob.constData();
 #endif
 }
 
-size_t Resource::get_Size() {
+size_t Resource::size() const {
 #if UCFG_WIN32
 	return Win32Check(::SizeofResource(m_pimpl->m_hModule, m_pimpl->m_hRsrc));
 #else
@@ -1479,25 +1504,25 @@ void AFXAPI LogObjectCounters(bool fFull) {
 }
 
 ProcessStartInfo::ProcessStartInfo(const path& fileName, RCString arguments)
-	:	Flags(0)
-	,	FileName(fileName)
-	,	Arguments(arguments)
+	: Flags(0)
+	, FileName(fileName)
+	, Arguments(arguments)
 #if !UCFG_WCE
-	,	EnvironmentVariables(Environment::GetEnvironmentVariables())
+	, EnvironmentVariables(Environment::GetEnvironmentVariables())
 #endif
 {}
 
 ProcessObj::ProcessObj()
-	:	SafeHandle(0, false)
-	,	m_stat_loc(0)
+	: SafeHandle(0, false)
+	, m_stat_loc(0)
 {
 	CommonInit();
 }
 
 #if UCFG_WIN32
 ProcessObj::ProcessObj(HANDLE handle, bool bOwn)
-	:	SafeHandle(0, false)
-	,	m_stat_loc(0)
+	: SafeHandle(0, false)
+	, m_stat_loc(0)
 {
 	Attach(handle, bOwn);
 	CommonInit();
@@ -1683,7 +1708,7 @@ bool ProcessObj::Start() {
 #else // UCFG_WIN32
 	Throw(E_NOTIMPL);
 #endif
-	TRC(4, "PID: " << m_pid);
+	TRC(4, "PID: " << m_pid.Value());
 	return true;
 }
 
@@ -1692,8 +1717,8 @@ Process AFXAPI Process::Start(const ProcessStartInfo& psi) {
 
 	Process r;
 	r.m_pimpl = new ProcessObj;
-	r.m_pimpl->StartInfo = psi;
-	r.m_pimpl->Start();
+	r->StartInfo = psi;
+	r->Start();
 	return r;
 }
 
@@ -1782,6 +1807,17 @@ vector<Process> AFXAPI Process::GetProcessesByName(RCString name) {
 	return r;
 }
 
+void POpen::Wait() {
+	switch (int rc = pclose(exchange(m_stream, nullptr))) {
+	case -1:
+		CCheck(-1);
+	case 0:
+		return;
+	default:
+		ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (uint8_t)rc));
+	}
+}
+
 HRESULT AFXAPI ToHResult(const system_error& ex) {
 	const error_code& ec = ex.code();
 	const error_category& cat = ec.category();
@@ -1825,6 +1861,7 @@ HRESULT AFXAPI HResultInCatch(RCExc) {		// arg not used
 		return E_FAIL;
 	}
 }
+
 
 
 } // Ext::

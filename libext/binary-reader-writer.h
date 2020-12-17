@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include EXT_HEADER(set)
@@ -15,19 +20,22 @@ using std::is_arithmetic;
 class BinaryReader;
 class BinaryWriter;
 
-class AFX_CLASS CPersistent {
+template <class W, class R>
+class AFX_CLASS IPersistent {
 public:
-	virtual ~CPersistent() {
-	}
+    virtual ~IPersistent() {
+    }
 
-	virtual void Write(BinaryWriter& wr) const {
-		Throw(E_NOTIMPL);
-	}
+    virtual void Write(W& wr) const {
+        Throw(E_NOTIMPL);
+    }
 
-	virtual void Read(const BinaryReader& rd) {
-		Throw(E_NOTIMPL);
-	}
+    virtual void Read(const R& rd) {
+        Throw(E_NOTIMPL);
+    }
 };
+
+typedef IPersistent<BinaryWriter, BinaryReader> CPersistent;
 
 class BinaryReader : noncopyable {
 	typedef BinaryReader class_type;
@@ -36,12 +44,12 @@ public:
 	Ext::Encoding& Encoding;
 
 	explicit BinaryReader(const Stream& stm, Ext::Encoding& enc = Encoding::UTF8)
-		:	BaseStream(stm)
-		,	Encoding(enc)
+		: BaseStream(stm)
+		, Encoding(enc)
 	{}
 
 	const BinaryReader& EXT_FASTCALL Read(void *buf, size_t count) const { BaseStream.ReadBuffer(buf, count); return *this; }
-	
+
 	const BinaryReader& operator>>(char& v) const {
 		Read(&v, 1);
 		return *this;
@@ -58,9 +66,10 @@ public:
 	}
 
 	uint8_t ReadByte() const {
-		uint8_t r;
-		*this >> r;
-		return r;
+		int r = BaseStream.ReadByte();
+		if (r < 0)
+			Throw(ExtErr::EndOfStream);
+		return (uint8_t)r;
 	}
 
 	bool ReadBoolean() const {
@@ -76,7 +85,7 @@ public:
 		Read(&v, sizeof v);
 		v = letoh(v);
 		return *this;
-	} 
+	}
 
 	int16_t ReadInt16() const {
 		int16_t r;
@@ -96,19 +105,19 @@ public:
 		return r;
 	}
 
-	uint32_t ReadUInt32() const {
+	__forceinline uint32_t ReadUInt32() const {
 		uint32_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	int64_t ReadInt64() const {
+	__forceinline int64_t ReadInt64() const {
 		int64_t r;
 		ReadType(r, true_type());
 		return r;
 	}
 
-	uint64_t ReadUInt64() const {
+	__forceinline uint64_t ReadUInt64() const {
 		uint64_t r;
 		ReadType(r, true_type());
 		return r;
@@ -127,7 +136,7 @@ public:
 	}
 
 	uint64_t Read7BitEncoded() const;
-	
+
 	size_t ReadSize() const {
 		uint64_t v = Read7BitEncoded();
 		if (v > (std::numeric_limits<size_t>::max)())
@@ -195,8 +204,10 @@ public:
 
 	const BinaryReader& operator>>(Blob& blob) const;
 
+	//!!!TODO operator>>() for AutoBlob<>
+
 	Blob ReadBytes(size_t size) const {
-		Blob r(0, size);
+		Blob r(size, nullptr);
 		Read(r.data(), size);
 		return r;
 	}
@@ -205,7 +216,7 @@ public:
 
 #if UCFG_OLE
 	const BinaryReader& operator>>(CY& v) const;
-	const BinaryReader& operator>>(COleVariant& v) const; 
+	const BinaryReader& operator>>(COleVariant& v) const;
 #endif
 
 #if UCFG_COM
@@ -219,14 +230,14 @@ public:
 #ifdef GUID_DEFINED
 	void Read(GUID& v) const { Read(&v, sizeof v); }
 #endif
-
-	template <typename T> void Read(std::vector<T>& ar) const {
-		size_t count = ReadSize();
-		ar.resize(count);
-		for (size_t i=0; i<count; ++i)
-			*this >> ar[i];
-	}
 };
+
+template <class R, typename T> void Read(const R& rd, std::vector<T>& ar) {
+    size_t count = rd.ReadSize();
+    ar.resize(count);
+    for (size_t i = 0; i < count; ++i)
+        rd >> ar[i];
+}
 
 class BinaryWriter : noncopyable {
 	typedef BinaryWriter class_type;
@@ -235,15 +246,14 @@ public:
 	Ext::Encoding& Encoding;
 
 	explicit BinaryWriter(Stream& stm, Ext::Encoding& enc = Encoding::UTF8)
-		:	BaseStream(stm)
-		,	Encoding(enc)
+		: BaseStream(stm)
+		, Encoding(enc)
 	{}
 
 	BinaryWriter& Ref() { return *this; }
 
-
 	BinaryWriter& EXT_FASTCALL Write(const void *buf, size_t count) { BaseStream.WriteBuffer(buf, count); return *this; }
-	
+
 	template <typename T> void Write(const T& pers) {
 		pers.Write(*this);
 	}
@@ -258,13 +268,6 @@ public:
 
 	void Write(const COleVariant& v) { Write((const VARIANT&)v); }
 #endif
-
-	template <typename T> void Write(const std::vector<T>& ar) {
-		size_t count = ar.size();
-		WriteSize(count);
-		for (size_t i=0; i<count; ++i)
-			*this << ar[i];
-	}
 
 	template <typename K, typename T, typename P, typename A> void Write(const std::map<K, T, P, A>& m) {
 		WriteSize(m.size());
@@ -299,14 +302,12 @@ public:
 		return Write(&t, sizeof(T));
 	}
 
-	BinaryWriter& operator<<(const ConstBuf& mb);
+	BinaryWriter& Write(RCSpan mb);
 
-	BinaryWriter& operator<<(const Blob& blob) {
-		return *this << ConstBuf(blob);
-	}
+    BinaryWriter& operator<<(const Blob& blob) { return Write(Span(blob)); }
 
 	void WriteString(RCString v);
-	
+
 #if UCFG_COM
 	void WriteVariantOfType(const VARIANT& v, VARTYPE vt);
 #endif
@@ -316,14 +317,27 @@ public:
 #endif
 };
 
+template <unsigned SZ>
+BinaryWriter& operator<<(BinaryWriter& wr, const AutoBlob<SZ>& blob) { return wr.Write(Span(blob)); }
+
+template <class W, typename T>
+void Write(W& wr, const std::vector<T>& ar) {
+    size_t count = ar.size();
+    wr.WriteSize(count);
+    for (size_t i = 0; i < count; ++i)
+        wr << ar[i];
+}
 
 class BitReader {
 public:
 	const Stream& BaseStream;
-
+private:
+	int m_n;
+	uint8_t m_b;
+public:
 	BitReader(const Stream& stm)
-		:	BaseStream(stm)
-		,	m_n(0)
+		: BaseStream(stm)
+		, m_n(0)
 	{
 	}
 
@@ -333,9 +347,6 @@ public:
 		return (m_b >> --m_n) & 1;
 	}
 private:
-	uint8_t m_b;
-	int m_n;
-
 	void ReadByte() {
 		BaseStream.ReadBuffer(&m_b, 1);
 		m_n = 8;
@@ -368,7 +379,7 @@ template <typename T> BinaryWriter& operator<<(BinaryWriter& wr, const T& v) {
 	return wr.WriteType(v,  typename is_arithmetic<T>::type() );
 }
 
-template<> inline BinaryWriter& operator<< <bool>(BinaryWriter& wr, const bool& v) { return wr.Write(&v, 1); } 
+template<> inline BinaryWriter& operator<< <bool>(BinaryWriter& wr, const bool& v) { return wr.Write(&v, 1); }
 
 
 template <typename T, typename U>
@@ -383,9 +394,9 @@ const BinaryReader& operator>>(const BinaryReader& rd, std::pair<T, U>& pp) {
 
 template <typename T> const BinaryReader& operator>>(const BinaryReader& rd, T& v) {
 	return rd.ReadType(v,  typename is_arithmetic<T>::type() );
-} 
+}
 
-template<> inline const BinaryReader& operator>><bool>(const BinaryReader& rd, bool& v) { v = false; return rd.Read(&v, 1); } 
+template<> inline const BinaryReader& operator>><bool>(const BinaryReader& rd, bool& v) { v = false; return rd.Read(&v, 1); }
 
 
 inline BinaryWriter& operator<<(BinaryWriter& wr, RCString s) {

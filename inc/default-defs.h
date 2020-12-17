@@ -176,9 +176,15 @@
 
 #define _MSVCRT_WINDOWS
 
+//!!!? not defined in SDK
 //#define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!? defined in sdkddkver.h
-#define _WIN32_WINNT_WIN10_TH2 0x0A01 //!!!? not defined in SDK
-#define _WIN32_WINNT_WIN10_RS1 0x0A02 //!!!? not defined in SDK
+#define _WIN32_WINNT_WIN10_TH2 0x0A01
+#define _WIN32_WINNT_WIN10_RS1 0x0A02
+#define _WIN32_WINNT_WIN10_RS2 0x0A03
+#define _WIN32_WINNT_WIN10_RS3 0x0A04
+#define _WIN32_WINNT_WIN10_RS4 0x0A05
+#define _NT_TARGET_VERSION_WIN10_RS4 _WIN32_WINNT_WIN10_RS4
+#define _WIN32_WINNT_WIN10_RS5 0x0A06
 
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
 
@@ -189,6 +195,14 @@
 #define _APISET_MINWIN_VERSION 0x200
 
 #define PSAPI_VERSION 1 // to use psapi.dll instead of new kernel32 replacement
+
+#ifndef UCFG_WIN_CRYPT
+#	define UCFG_WIN_CRYPT 0			// To avoid warnings in windows.h
+#endif
+
+#if !UCFG_WIN_CRYPT
+#	define NOCRYPT
+#endif
 
 #ifndef __SPECSTRINGS_STRICT_LEVEL //!!!
 #	define __SPECSTRINGS_STRICT_LEVEL 0
@@ -278,11 +292,19 @@
 #	define UCFG_CPLUSPLUS 0
 #endif
 
+#ifndef UCFG_CPP20
+#	if UCFG_CPLUSPLUS >= 202000 || (UCFG_MSVC_LANG >= 202000)
+#		define UCFG_CPP20 1
+#	else
+#		define UCFG_CPP20 0
+#	endif
+#endif
+
 #ifndef UCFG_CPP17
 #	if UCFG_CPLUSPLUS >= 201700 || (UCFG_MSVC_LANG > 201402) || (UCFG_GNUC_VERSION && UCFG_CPLUSPLUS > 201402) || (UCFG_CLANG_VERSION >= 400) //!!!?
 #		define UCFG_CPP17 1
 #	else
-#		define UCFG_CPP17 0
+#		define UCFG_CPP17 UCFG_CPP20
 #	endif
 #endif
 
@@ -387,6 +409,18 @@
 
 #	ifndef UCFG_STD_SHARED_MUTEX
 #		define UCFG_STD_SHARED_MUTEX (UCFG_CPP17 || UCFG_CPP14 && (UCFG_LIBCPP_VERSION >= 1100 || UCFG_MSC_VERSION >= 2000 || UCFG_CLANG_VERSION >= 306))
+#	endif
+
+#	ifndef UCFG_STD_OPTIONAL
+#		define UCFG_STD_OPTIONAL UCFG_CPP17
+#	endif
+
+#	ifndef UCFG_STD_SPAN
+#		define UCFG_STD_SPAN (UCFG_CPP20)
+#	endif
+
+#	ifndef UCFG_STD_CONCEPTS
+#		define UCFG_STD_CONCEPTS (UCFG_CPP20 || UCFG_MSVC_LANG >= 201704)
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX

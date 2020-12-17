@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -83,10 +83,6 @@ static int s_bCeAlloc = SetCeAlloc();
 #	endif
 
 #endif
-
-/*!!!
-CAlloc::~CAlloc() {
-}*/
 
 void *CAlloc::Malloc(size_t size) {
 #ifdef WDM_DRIVER
@@ -297,7 +293,6 @@ int __cdecl _CrtDbgReportW(
 #endif // UCFG_WDM
 
 
-
 } // "C"
 
 
@@ -309,5 +304,4 @@ __declspec(noreturn) void __cdecl terminate(void) {
 
 
 #endif // !UCFG_STDSTL
-
 

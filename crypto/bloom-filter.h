@@ -12,7 +12,7 @@ using namespace std;
 
 class BloomFilter {
 public:
- 	dynamic_bitset<byte> Bitset;
+ 	dynamic_bitset<uint8_t> Bitset;
 	int HashNum;
 
 	BloomFilter()
@@ -21,10 +21,10 @@ public:
 
 	virtual ~BloomFilter() {}
 
-	bool Contains(const ConstBuf& key) const;
-	void Insert(const ConstBuf& key);
+	bool Contains(RCSpan key) const;
+	void Insert(RCSpan key);
 protected:
-	virtual size_t Hash(const ConstBuf& cbuf, int n) const =0;
+	virtual size_t Hash(RCSpan cbuf, int n) const =0;
 };
 
 

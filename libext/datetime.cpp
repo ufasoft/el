@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -61,14 +61,14 @@ const int64_t DateTime::TimevalOffset(621355968000000000LL);
 
 
 const int64_t Unix_FileTime_Offset = 116444736000000000LL,
-               Unix_DateTime_Offset = DateTime::FileTimeOffset+Unix_FileTime_Offset;
+               Unix_DateTime_Offset = DateTime::FileTimeOffset + Unix_FileTime_Offset;
 
 #if !UCFG_WDM
 
 const int64_t DateTime::OADateOffset = DateTime(1899, 12, 30).Ticks;
 
 TimeSpan::TimeSpan(const timeval& tv)
-	:	base(tv.tv_sec*10000000+tv.tv_usec*10)
+	: base(tv.tv_sec*10000000+tv.tv_usec*10)
 {
 }
 
@@ -88,7 +88,7 @@ DateTime::DateTime(int year, int month, int day, int hour, int minute, int secon
 	DateTime dt(st);
 	_self = dt;
 #else
-	tm t = { second, minute, hour, day, month-1, year-1900 };
+	tm t = {second, minute, hour, day, month - 1, year - 1900};
 	_self = t;
 	m_ticks += ms * 10000;
 #endif
@@ -115,7 +115,7 @@ DateTime::DateTime(const SYSTEMTIME& st) {
 #endif
 
 DateTime DateTime::from_time_t(int64_t epoch) {
-	return DateTime(epoch*10000000 + Unix_DateTime_Offset);
+	return DateTime(epoch * 10000000 + Unix_DateTime_Offset);
 }
 
 String TimeSpan::ToString(int w) const {
@@ -219,6 +219,12 @@ DateTime DateTime::FromAsctime(RCString s) {
 #endif
 }
 
+#if UCFG_WIN32_FULL
+typedef VOID (WINAPI *PFN_GetSystemTimePreciseAsFileTime)(LPFILETIME lpSystemTimeAsFileTime);
+static DlProcWrap<PFN_GetSystemTimePreciseAsFileTime> s_pfnGetSystemTimePreciseAsFileTime("KERNEL32.DLL", "GetSystemTimePreciseAsFileTime");
+static PFN_GetSystemTimePreciseAsFileTime s_pfnGetSystemTimeAsFileTime = s_pfnGetSystemTimePreciseAsFileTime ? s_pfnGetSystemTimePreciseAsFileTime : &::GetSystemTimeAsFileTime;
+#endif
+
 int64_t DateTime::SimpleUtc() {
 #if UCFG_USE_POSIX
 //!!! librt required	timespec ts;
@@ -244,26 +250,26 @@ int64_t DateTime::SimpleUtc() {
 	::GetSystemTime(&st);
 	Win32Check(::SystemTimeToFileTime(&st, &ft));
 #	else
-	::GetSystemTimeAsFileTime(&ft);
+	s_pfnGetSystemTimePreciseAsFileTime(&ft);
 #	endif
 
 	return (int64_t&)ft + s_span1600;
 #endif
 }
 
-CPreciseTimeBase *CPreciseTimeBase::s_pCurrent;
+CPreciseTimeBase* volatile CPreciseTimeBase::s_pCurrent;
 
 CPreciseTimeBase::CPreciseTimeBase()
-	:	MAX_PERIOD(128*10000000)	// 128 s,  200 s is upper limit
-	,	CORRECTION_PRECISION(500000)	// .05 s
-	,	MAX_FREQ_INSTABILITY(10)		// 10 %
+	: MAX_PERIOD(128 * 10000000)   // 128 s,  200 s is upper limit
+	, CORRECTION_PRECISION(500000)	// .05 s
+	, MAX_FREQ_INSTABILITY(10)		// 10 %
 {
 	m_afCalibrate.clear();
 	Reset();
 }
 
 void CPreciseTimeBase::AddToList() {
-	CPreciseTimeBase **pPlace = &s_pCurrent;
+	CPreciseTimeBase * volatile *pPlace = &s_pCurrent;
 	while (*pPlace)
 		pPlace = &(*pPlace)->m_pNext;
 	*pPlace = this;
@@ -296,7 +302,7 @@ bool CPreciseTimeBase::Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, in
 
 			TRC(6, "Fq=" << m_minFreq << " < " << freq << "(" << m_mul << ", " << m_shift << ") < " << m_maxFreq << " Hz Spread: " << (m_maxFreq-m_minFreq)*100/m_maxFreq << " %");
 
-			if ((m_maxFreq-m_minFreq)*(100/MAX_FREQ_INSTABILITY) > m_maxFreq) {
+			if ((m_maxFreq - m_minFreq) * (100 / MAX_FREQ_INSTABILITY) > m_maxFreq) {
 				TRC(5, "Switching PreciseTime");
 				if (s_pCurrent == this) {
 					s_pCurrent = m_pNext;
@@ -327,20 +333,12 @@ static atomic<int> s_cntDisablePreciseTime;
 
 class CDisablePreciseTimeKeeper {
 public:
-	CDisablePreciseTimeKeeper() {
-#if UCFG_USE_DECLSPEC_THREAD
+	__forceinline CDisablePreciseTimeKeeper() {
 		++s_cntDisablePreciseTime;
-#else
-		++s_cntDisablePreciseTime;
-#endif
 	}
 
-	~CDisablePreciseTimeKeeper() {
-#if UCFG_USE_DECLSPEC_THREAD
+	__forceinline ~CDisablePreciseTimeKeeper() {
 		--s_cntDisablePreciseTime;
-#else
-		--s_cntDisablePreciseTime;
-#endif
 	}
 };
 
@@ -359,7 +357,7 @@ int64_t CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
 	if (m_stBase) {
 		int64_t stPeriod = st-m_stBase,
 			tscPeriod = tsc-m_tscBase;
-		int64_t ct = m_stBase+(((tscPeriod & m_mask)*m_mul)>>m_shift);
+		int64_t ct = m_stBase + (((tscPeriod & m_mask) * m_mul) >> m_shift);
 		bool bResetBase = MyAbs(stPeriod) > m_period;
 		if (!bResetBase && MyAbs(st-ct) < CORRECTION_PRECISION)
 			r = ct;
@@ -446,14 +444,7 @@ public:
 
 #endif // _WIN32
 
-/*!!!R
-inline DateTime DateTime::PreciseCorrect(int64_t ticks) {
-	if (CPreciseTimeBase *preciser = CPreciseTimeBase::s_pCurrent)		// get pointer to avoid Race Condition
-		return preciser->GetTime(ticks);
-	return ticks;
-}*/
-
-LocalDateTime DateTime::ToLocalTime() {
+LocalDateTime DateTime::ToLocalTime() const {
 #if UCFG_USE_POSIX
 	timeval tv;
 	ToTimeval(tv);
@@ -593,22 +584,22 @@ DateTime::operator timespec() const {
 
 #	if UCFG_WIN32 || UCFG_USE_PTHREADS
 void DateTime::ToTimeval(timeval& tv) const {
-	int64_t t = Ticks-TimevalOffset;
-	tv.tv_sec = long(t/10000000);
-	tv.tv_usec = long((t % 10000000)/10);
+	int64_t t = Ticks - TimevalOffset;
+	tv.tv_sec = long(t / 10000000);
+	tv.tv_usec = long((t % 10000000) / 10);
 }
 #	endif
 
 #endif // defined(_WIN32) && defined(_M_IX86)
 
 
-DateTime::operator tm() const {
+void DateTime::ToTm(tm& r) const {
 #if UCFG_WDM
 	LARGE_INTEGER li;
-	li.QuadPart = Ticks-FileTimeOffset;
+	li.QuadPart = Ticks - FileTimeOffset;
     TIME_FIELDS tf;
     ::RtlTimeToTimeFields(&li, &tf);
-    tm r = { 0 };
+	memset(&r, 0, sizeof r);
     r.tm_sec = tf.Second;
     r.tm_min = tf.Minute;
     r.tm_hour = tf.Hour;
@@ -618,12 +609,22 @@ DateTime::operator tm() const {
     r.tm_wday = tf.Weekday;
  //!!!TODO    r.rm_yday = ;
     return r;
+#elif UCFG_MSC_VERSION
+	__time64_t t64 = ToUnixTimeSeconds();
+	if (errno_t e = _gmtime64_s(&r, &t64))
+		Throw(error_code(e, generic_category()));
 #else
-	timeval tv;
-	ToTimeval(tv);
-	time_t tim = tv.tv_sec;
-    tm r;
-	return *gmtime_r(&tim, &r);
+	gmtime_r(&tim, &r);
+#endif
+}
+
+void DateTime::ToLocalTm(tm& r) const {
+#if UCFG_MSC_VERSION
+	__time64_t t64 = ToUnixTimeSeconds();
+	if (errno_t e = _localtime64_s(&r, &t64))
+		Throw(error_code(e, generic_category()));
+#else
+	ToLocalTime().ToTm(r);
 #endif
 }
 

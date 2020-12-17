@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#pragma once 
+#pragma once
 
 #include <el/bignum.h>
 
@@ -79,7 +79,7 @@ public:
 	operator const BIGNUM *() const {
 		return m_bn;
 	}
-	BIGNUM *Ref() { return m_bn; }	
+	BIGNUM *Ref() { return m_bn; }
 
 private:
 	BIGNUM *m_bn;
@@ -89,8 +89,8 @@ private:
 	{}
 public:
 	BigInteger ToBigInteger() const;
-	static OpensslBn FromBinary(const ConstBuf& cbuf);
-	void ToBinary(byte *p, size_t n) const;
+	static OpensslBn FromBinary(RCSpan cbuf);
+	void ToBinary(uint8_t *p, size_t n) const;
 };
 
 BigInteger sqrt_mod(const BigInteger& x, const BigInteger& mod);

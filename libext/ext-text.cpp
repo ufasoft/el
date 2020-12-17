@@ -89,9 +89,9 @@ static StaticRegex s_reBr("<br\\s*/?>", regex_constants::icase),
 
 String AFXAPI HtmlToText(RCString html) {
 	Blob blob = Encoding::UTF8.GetBytes(html);
-	string s1 = regex_replace(string((const char*)blob.constData(), blob.Size), *s_reBr, string(" "));
+	string s1 = regex_replace(string((const char*)blob.constData(), blob.size()), *s_reBr, string(" "));
 	string s2 = regex_replace(s1, *s_reHtmlTags, string(""));
-	return Encoding::UTF8.GetChars(ConstBuf(s2.data(), s2.size()));
+	return Encoding::UTF8.GetChars(Span((const uint8_t*)s2.data(), s2.size()));
 }
 
 

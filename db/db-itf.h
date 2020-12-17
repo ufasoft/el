@@ -13,25 +13,25 @@ public:
 };
 
 ENUM_CLASS(DbType) {
-	Null,
-	Int,
-	Float,
-	Blob,
-	String
+	Null
+	, Int
+	, Float
+	, Blob
+	, String
 } END_ENUM_CLASS(DbType);
 
-interface IDataRecord : public Object {
+interface IDataRecord : public NonInterlockedObject {
 	virtual int32_t GetInt32(int i) =0;
 	virtual int64_t GetInt64(int i) =0;
 	virtual double GetDouble(int i) =0;
 	virtual String GetString(int i) =0;
-	virtual ConstBuf GetBytes(int i) =0;
+	virtual Span GetBytes(int i) =0;
 	virtual DbType GetFieldType(int i) =0;
 	virtual int FieldCount() =0;
 	virtual String GetName(int idx) =0;
 
 	virtual int GetOrdinal(RCString name) {
-		for (int i=0, n=FieldCount(); i<n; ++i)
+		for (int i = 0, n = FieldCount(); i < n; ++i)
 			if (GetName(i) == name)
 				return i;
 		Throw(E_INVALIDARG);
@@ -45,20 +45,22 @@ interface IDataReader : public IDataRecord {
 };
 
 interface IDbCommand : public Object {
+	typedef NonInterlockedPolicy interlocked_policy;
+
 	String CommandText;
 
 	virtual IDbCommand& Bind(int column, std::nullptr_t) =0;
 	virtual IDbCommand& Bind(int column, int32_t v) =0;
 	virtual IDbCommand& Bind(int column, int64_t v) =0;
 	virtual IDbCommand& Bind(int column, double v) =0;
-	virtual IDbCommand& Bind(int column, const ConstBuf& mb, bool bTransient = true) =0;
+	virtual IDbCommand& Bind(int column, RCSpan mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(int column, RCString s) =0;
 
 	virtual IDbCommand& Bind(RCString parname, std::nullptr_t) =0;
 	virtual IDbCommand& Bind(RCString parname, int32_t v) =0;
 	virtual IDbCommand& Bind(RCString parname, int64_t v) =0;
 	virtual IDbCommand& Bind(RCString parname, double v) =0;
-	virtual IDbCommand& Bind(RCString parname, const ConstBuf& mb, bool bTransient = true) =0;
+	virtual IDbCommand& Bind(RCString parname, RCSpan mb, bool bTransient = true) =0;
 	virtual IDbCommand& Bind(RCString parname, RCString s) =0;
 
 	virtual void Dispose() =0;
@@ -76,9 +78,12 @@ public:
 class TransactionScope : noncopyable {
 public:
 	ITransactionable& m_db;
-
+private:
+	CInException InException;
+	CBool m_bCommitted;
+public:
 	TransactionScope(ITransactionable& db)
-		:	m_db(db)
+		: m_db(db)
 	{
 		m_db.BeginTransaction();
 	}
@@ -93,13 +98,12 @@ public:
 		m_db.Commit();
 		m_bCommitted = true;
 	}
-private:
-	CInException InException;
-	CBool m_bCommitted;
 };
 
 interface IDbConn : public Object {
 	typedef IDbConn class_type;
+protected:
+	unordered_set<IDbCommand*> m_commands;
 public:
 	virtual void Create(const path& file) =0;
 	virtual void Open(const path& file, FileAccess fileAccess, FileShare share = FileShare::ReadWrite) =0;
@@ -111,7 +115,7 @@ public:
 		cmd->CommandText = sql;
 		cmd->ExecuteNonQuery();
 	}
-	
+
 	virtual int64_t get_LastInsertRowId() =0;
 	DEFPROP_VIRTUAL_GET(int64_t, LastInsertRowId);
 
@@ -124,8 +128,6 @@ public:
 		}
 	}
 protected:
-	unordered_set<IDbCommand*> m_commands;
-
 	void DisposeCommands() {
 		DisposeCommandsWithoutUnregiter();
 		m_commands.clear();
@@ -136,22 +138,22 @@ class DbException : public Exception {
 	typedef Exception base;
 public:
 	DbException(const error_code& ec, RCString s)
-		:	base(ec, s)
+		: base(ec, s)
 	{
 	}
 };
 
 ENUM_CLASS(KVEnvFlags) {
-	ReadOnly = 1,
-	NoSync = 2
+	ReadOnly = 1
+	, NoSync = 2
 } END_ENUM_CLASS(KVEnvFlags);
 
 ENUM_CLASS(CursorPos) {
-	First,
-	Next,
-	Prev,
-	Last,
-	FindKey
+	First
+	, Next
+	, Prev
+	, Last
+	, FindKey
 } END_ENUM_CLASS(CursorPos);
 
 ENUM_CLASS(KVStoreFlags) {

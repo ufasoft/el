@@ -1,0 +1,118 @@
+#pragma once
+#define _OPTIONAL_
+
+namespace ExtSTL {
+
+class bad_optional_access : public exception {
+public:
+    const char *what() const noexcept override { return "Bad optional access"; }
+};
+
+struct nullopt_t { // no-value state indicator
+    struct _Tag {};
+	explicit nullopt_t(_Tag) {}
+};
+
+static nullopt_t nullopt = nullopt_t(nullopt_t::_Tag());
+
+template <typename T>
+class optional {
+	union {
+		T m_v;
+		char m_dummy;
+	};
+	bool m_bHasValue;
+public:
+	typedef T value_type;
+
+	optional() noexcept
+		: m_bHasValue(false)
+	{}
+
+    optional(nullopt_t) noexcept
+		: m_bHasValue(false)
+	{
+	}
+
+	optional(const T& v)
+		:	m_v(v)
+		,	m_bHasValue(true)
+	{}
+
+	optional(const optional& op)
+	{
+		if (m_bHasValue = op.has_value())
+			new(addressof(m_v)) T(*op);
+	}
+
+	~optional() {
+		if (m_bHasValue)
+			m_v.~T();
+	}
+
+	bool has_value() const noexcept { return m_bHasValue; }
+
+	explicit operator bool() const { return has_value(); }
+
+	const T& operator*() const noexcept { return m_v; }
+	T& operator*() noexcept { return m_v; }
+
+	const T* operator->() const noexcept { return addressof(m_v); }
+	T* operator->() noexcept { return addressof(m_v); }
+
+	const T& value() const noexcept {
+		if (!has_value())
+			throw new bad_optional_access();
+		return m_v;
+	}
+
+	T& value() noexcept {
+		if (!has_value())
+			throw new bad_optional_access();
+		return m_v;
+	}
+
+	template <class U>
+	T value_or(const U& def) const {
+		return has_value() ? m_v : def;
+	}
+
+	void reset() {
+		if (m_bHasValue) {
+			m_v.~T();
+			m_bHasValue = false;
+		}
+	}
+
+	optional& operator=(const optional& op) {
+	    if (op)
+			Assign(*op);
+		else
+			reset();
+		return *this;
+	}
+
+	optional& operator=(const T& v) {
+		Assign(v);
+		return *this;
+	}
+private:
+	void Assign(const T& v) {
+		if (m_bHasValue)
+			m_v = v;
+		else {
+			new(addressof(m_v)) T(v);
+			m_bHasValue = true;
+		}
+	}
+};
+
+template <class T>
+struct hash<optional<T>> {
+	size_t operator()(const optional<T>& op) const { return op ? hash<T>()(*op) ? 0; }
+};
+
+
+} // ExtSTL::
+
+

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -14,7 +14,7 @@
 using namespace std;
 using namespace Ext;
 
-namespace Ext { 
+namespace Ext {
 
 int __cdecl PopCount(uint32_t v) {
 	return BitOps::PopCount(v);
@@ -24,9 +24,9 @@ int __cdecl PopCount(uint64_t v) {
 	return BitOps::PopCount(uint64_t(v));
 }
 
-const unsigned char *ConstBuf::Find(const ConstBuf& mb) const {
-	for (const unsigned char *p=P, *e=p+(Size-mb.Size), *q; (p <= e) && (q = (const unsigned char*)memchr(p, mb.P[0], e-p+1)); p = q+1)
-		if (mb.Size==1 || !memcmp(q+1, mb.P+1, mb.Size-1))
+const uint8_t *Find(RCSpan a, RCSpan b) {
+	for (const unsigned char *p = a.data(), *e = p + (a.size() - b.size()), *q; (p <= e) && (q = (const unsigned char *)memchr(p, b[0], e - p + 1)); p = q + 1)
+		if (b.size() == 1 || !memcmp(q + 1, b.data() + 1, b.size() - 1))
 			return q;
 	return 0;
 }
@@ -165,6 +165,25 @@ String Convert::ToString(double d) {
 }
 #endif
 
+String Convert::MulticharToString(int n) {
+	uint64_t ar[2] = { htole((unsigned)n), 0 };
+#if _MSC_VER
+	return _strrev((char*)ar);
+#else
+	return strrev((char*)ar);
+#endif
+}
+
+int Convert::ToMultiChar(const char* s) {
+	size_t len = strlen(s);
+	if (len > sizeof(int))
+		return -1;
+	int r = 0;
+	for (int i = 0; i < len; ++i)
+		r = (r << 8) | (unsigned char)s[i];
+	return r;
+}
+
 MacAddress::MacAddress(RCString s)
 	:	m_n64(0)
 {
@@ -176,24 +195,12 @@ MacAddress::MacAddress(RCString s)
 		*p++ = (uint8_t)Convert::ToUInt32(ar[i], 16);
 }
 
-String MacAddress::ToString() const {
-	ostringstream os;
-	os << _self;
-	return os.str();
+void MacAddress::Print(ostream& os) const {
+	Span s = AsSpan();
+	char buf[20];
+	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", s[0], s[1], s[2], s[3], s[4], s[5]);
+	os << buf;
 }
-
-ostream& AFXAPI operator<<(ostream& os, const MacAddress& mac) {
-	ios::fmtflags flags = os.flags();
-	Blob blob(mac);
-	for (size_t i=0; i<blob.Size; i++) {
-		if (i)
-			os << ':';
-		os << hex << (int)blob.constData()[i];
-	}
-	os.flags(flags);
-	return os;
-}
-
 
 int StreamReader::ReadChar() {
 	if (m_prevChar == -1)
@@ -236,8 +243,7 @@ LAB_OUT:
 }
 
 void StreamWriter::WriteLine(RCString line) {
-	Blob blob = Encoding.GetBytes(line+NewLine);
-	m_stm.WriteBuf(blob);
+	BaseStream.Write(Encoding.GetBytes(line + NewLine));
 }
 
 uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
@@ -245,17 +251,17 @@ uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
 
 	uint64_t r = 0;
 #if UCFG_STDSTL
-	for (size_t i=0, e=min(size_t(64), size_t(bs.size()-pos)); i<e; ++i)
-		r |= uint64_t(bs[pos+i]) << i;
+	for (size_t i = 0, e = min(size_t(64), size_t(bs.size() - pos)); i < e; ++i)
+		r |= uint64_t(bs[pos + i]) << i;
 #else
-	size_t idx = pos/bs.bits_per_block;
+	size_t idx = pos / bs.bits_per_block;
 	const uint8_t *pb = (const uint8_t *)&bs.m_data[idx];
 	ssize_t outRangeBits = max(ssize_t(pos + 64 - bs.size()), (ssize_t)0);
 	if (0 == outRangeBits)
-		return *(uint64_t*)pb;
-	size_t n = std::min(size_t(8), (bs.num_blocks()-idx)*bs.bits_per_block/8);
-	for (size_t i=0; i<n; ++i)
-		((uint8_t*)&r)[i] = pb[i];
+		return *(uint64_t *)pb;
+	size_t n = std::min(size_t(8), (bs.num_blocks() - idx) * bs.bits_per_block / 8);
+	for (size_t i = 0; i < n; ++i)
+		((uint8_t *)&r)[i] = pb[i];
 	r &= uint64_t(-1) >> outRangeBits;
 #endif
 	return r;

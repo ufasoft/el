@@ -1,23 +1,26 @@
-/*######     Copyright (c) 1997-2013 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com #######################################
-#                                                                                                                                                                          #
-# This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation;  #
-# either version 3, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the      #
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. You should have received a copy of the GNU #
-# General Public License along with this program; If not, see <http://www.gnu.org/licenses/>                                                                               #
-##########################################################################################################################################################################*/
-
 #pragma once
 
 #include <file_config.h>
 #include <prj_config.h>
 
+#ifndef VER_PRODUCTVERSION_BUILD
+#	define VER_PRODUCTVERSION_BUILD 0
+#endif
+
 #define EXT_Q(x) #x
 #define EXT_QUOTE_VER(mj, mn) EXT_Q(mj.mn)
+#define EXT_QUOTE_VER3(mj, mn, build) EXT_Q(mj.mn.build)
 
-#if !defined(VER_PRODUCTVERSION) && defined(VER_PRODUCTVERSION_MAJOR)
-#	define VER_PRODUCTVERSION	VER_PRODUCTVERSION_MAJOR,VER_PRODUCTVERSION_MINOR,0,0
-#endif
+#if defined(VER_PRODUCTVERSION_MAJOR)
+#	if !defined(VER_PRODUCTVERSION)
+#		define VER_PRODUCTVERSION VER_PRODUCTVERSION_MAJOR,VER_PRODUCTVERSION_MINOR,0,0
+#	endif
 
-#if !defined(VER_PRODUCTVERSION_STR) && defined(VER_PRODUCTVERSION_MAJOR)
-#	define VER_PRODUCTVERSION_STR EXT_QUOTE_VER(VER_PRODUCTVERSION_MAJOR, VER_PRODUCTVERSION_MINOR)
-#endif
+#	if !defined(VER_PRODUCTVERSION_STR)
+#		define VER_PRODUCTVERSION_STR EXT_QUOTE_VER(VER_PRODUCTVERSION_MAJOR, VER_PRODUCTVERSION_MINOR)
+#	endif
+
+#	if !defined(VER_PRODUCTVERSION_STR3)
+#		define VER_PRODUCTVERSION_STR3 EXT_QUOTE_VER3(VER_PRODUCTVERSION_MAJOR, VER_PRODUCTVERSION_MINOR, VER_PRODUCTVERSION_BUILD)
+#	endif
+#endif // VER_PRODUCTVERSION_MAJOR

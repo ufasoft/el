@@ -79,24 +79,22 @@ public:
 	typedef std::map<String, String> CDataMap;
 	CDataMap Data;
 
+#if !UCFG_WCE
+	CStackTrace StackTrace;
+#endif	
+
+#ifdef _WIN64
+	LONG dummy;
+#endif
+
 	explicit Exception(HRESULT hr = 0, RCString message = "");
 	explicit Exception(const error_code& ec, RCString message = "");
 	explicit Exception(ExtErr errval, RCString message = "");
 	~Exception() noexcept {}		//!!! necessary for GCC 4.6
 	String ToString() const override;
-	
-	const char *what() const noexcept override;
-
-#if !UCFG_WCE
-	CStackTrace StackTrace;
-#endif	
+	const char* what() const noexcept override;
 protected:
 	virtual String get_Message() const;
-private:
-
-#ifdef _WIN64
-	LONG dummy;
-#endif
 };
 
 class ExcLastStringArgKeeper {
@@ -158,6 +156,7 @@ EXT_DEFINE_EXC(NotImplementedExc, Exception, E_NOTIMPL)
 EXT_DEFINE_EXC(UnspecifiedException, Exception, E_FAIL)
 EXT_DEFINE_EXC(AccessDeniedException, Exception, E_ACCESSDENIED)
 
+
 /*!!!R
 class IOExc : public Exception {
 	typedef Exception base;
@@ -206,24 +205,23 @@ public:
 class thread_interrupted : public Exception {
 public:
 	thread_interrupted()
-		:	Exception(ExtErr::ThreadInterrupted)
+		: Exception(ExtErr::ThreadInterrupted)
 	{}
 };
 
 class SystemException : public Exception {
 public:
 	SystemException(const error_code& ec = error_code(), RCString message = "")
-		:	Exception(ec, message)
+		: Exception(ec, message)
 	{
 	}
 };
-
 
 class CryptoException : public Exception {
 	typedef Exception base;
 public:
 	explicit CryptoException(const error_code& ec, RCString message)
-		:	base(ec, message)
+		: base(ec, message)
 	{}
 };
 
@@ -231,7 +229,7 @@ class StackOverflowExc : public Exception {
 	typedef Exception base;
 public:
 	StackOverflowExc()
-		:	base(HRESULT_FROM_WIN32(ERROR_STACK_OVERFLOW))
+		: base(HRESULT_FROM_WIN32(ERROR_STACK_OVERFLOW))
 	{}
 
 	CInt<void *> StackAddress;
@@ -243,7 +241,7 @@ public:
 	String ProcName;
 
 	ProcNotFoundExc()
-		:	base(HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND))
+		: base(HRESULT_OF_WIN32(ERROR_PROC_NOT_FOUND))
 	{
 	}
 
@@ -286,10 +284,10 @@ public:
 	int LineNumber;
 
 	AssertFailedExc(RCString exp, RCString fileName, int line)
-		:	base(HRESULT_FROM_WIN32(ERROR_ASSERTION_FAILURE))
-		,	Exp(exp)
-		,	FileName(fileName)
-		,	LineNumber(line)
+		: base(HRESULT_FROM_WIN32(ERROR_ASSERTION_FAILURE))
+		, Exp(exp)
+		, FileName(fileName)
+		, LineNumber(line)
 	{
 	}
 
@@ -331,7 +329,7 @@ public:
 	handle_type m_h;		//!!! should be private
     
 	ResourceWrapper()
-		:	m_h(traits_type::ResourseNull())
+		: m_h(traits_type::ResourseNull())
 	{}
 
 	ResourceWrapper(const ResourceWrapper& res)

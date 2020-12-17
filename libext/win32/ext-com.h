@@ -1,6 +1,6 @@
 #pragma once
 
-#include <atldef.h>
+#include "../../gui/extdef.h"
 
 #include <el/libext/win32/ext-win.h>
 
@@ -16,17 +16,17 @@ class COleControlSite;
 class COleBlob : public Blob {
 public:
 	COleBlob()
-		:	Blob(new COleBlobBuf)
+		: Blob(new COleBlobBuf)
 	{}
 
 	COleBlob(const void *buf, int len) {
 		COleBlobBuf *p = new COleBlobBuf;
 		p->Init(len, buf);
-		m_pData = p;  
+		m_pData = p;
 	}
 
 	COleBlob(const VARIANT& v)
-		:	Blob(new COleBlobBuf)
+		: Blob(new COleBlobBuf)
 	{
 		SetVariant(v);
 	}
@@ -40,11 +40,12 @@ public:
 
 //#include "extmfc.h"
 
-
 class CComPtrBase {
+protected:
+	IUnknown* m_unk;
 public:
 	CComPtrBase()
-		:	m_unk(0)
+		: m_unk(0)
 	{}
 
 	CComPtrBase(const CComPtrBase& p);
@@ -60,15 +61,11 @@ public:
 	bool operator==(IUnknown *lp) const;
 	bool operator!() const { return m_unk == 0; }
 protected:
-	IUnknown *m_unk;
-
 	IUnknown **operator&();
 	void Assign(IUnknown *lp, const IID *piid);
-
-	//!!!  operator CUnknownHelper() const;
 };
 
-template <class T, const IID* piid = 
+template <class T, const IID* piid =
 #ifdef _MSC_VER
 &__uuidof(T)
 #else
@@ -83,16 +80,16 @@ public:
 	{}
 
 	CComPtr2(const CComPtr2& p)
-		:	CComPtrBase((T*)p)
+		: CComPtrBase((T*)p)
 	{
 	}
 
 	CComPtr2(T * lp)
-		:	CComPtrBase(lp)
+		: CComPtrBase(lp)
 	{}
 
 	CComPtr2(IUnknown *unk, const IID *piid)
-		:	base(unk, piid)
+		: base(unk, piid)
 	{}
 
 
@@ -128,17 +125,17 @@ public:
 	T *operator=(CUnkPtr up) {
 	Assign((IUnknown*)up, piid);
 	return (T*
-	
+
 	)m_unk;
 	}*/
 
 	void Assign(IUnknown *lp) {
 		base::Assign(lp, piid);
-	}	
+	}
 
 	void Assign(IUnknown *lp, const IID* p) {
 		base::Assign(lp, p);
-	}	
+	}
 
 	T *operator=(T *cp) {
 		base::Assign(cp, 0);
@@ -153,7 +150,7 @@ public:
 		return (T*)m_unk;
 	}
 
-#ifdef _MSC_VER  
+#ifdef _MSC_VER
 	template <class Q> void QueryInterface(Q** pp) const {
 		OleCheck(m_unk->QueryInterface(__uuidof(Q), (void**)pp));
 	}
@@ -172,7 +169,7 @@ public:
 	}
 };
 
-template <class T, const IID* piid = 
+template <class T, const IID* piid =
 #ifdef _MSC_VER
 &__uuidof(T)
 #else
@@ -184,14 +181,14 @@ public:
 	{}
 
 	CComPtr(T * lp)
-		:	CComPtr2(lp)
+		: CComPtr2(lp)
 	{}
 
 	CComPtr(IUnknown *unk)
-		:	CComPtr2(unk, piid)
+		: CComPtr2(unk, piid)
 	{}
 
-	
+
 	T *operator=(IUnknown *unk) {
 		Assign(unk);
 		return (T*)m_unk;
@@ -205,7 +202,7 @@ public:
 	{}
 
 	CComPtr(IUnknown *unk)
-		:	CComPtr2(unk, &__uuidof(IUnknown))
+		: CComPtr2(unk, &__uuidof(IUnknown))
 	{}
 };
 
@@ -224,7 +221,7 @@ public:
 	COleCurrency(CURRENCY cySrc);
 
 	CurrencyStatus GetStatus() const;
-	void SetStatus(CurrencyStatus status); 	
+	void SetStatus(CurrencyStatus status);
 	//!!!  __declspec(property(get=GetStatus, put=SetStatus)) CurrencyStatus Status;
 };
 
@@ -320,11 +317,11 @@ public:
 	typedef CSafeArray class_type;
 
 	CSafeArray(SAFEARRAY *&sa)
-		:	m_sa(sa)
+		: m_sa(sa)
 	{}
 
 	CSafeArray(const CSafeArray& sa)
-		:	m_sa(sa.m_sa)
+		: m_sa(sa.m_sa)
 	{}
 
 	virtual ~CSafeArray() {
@@ -363,7 +360,7 @@ public:
 	DEFPROP_GET(VARTYPE, Vartype);
 
 	COleVariant operator[](long idx) const;
- 
+
 	long GetLBound(unsigned dim = 1) const {
 		long result;
 		OleCheck(SafeArrayGetLBound(m_sa, dim, &result));
@@ -406,7 +403,7 @@ class AFX_CLASS CSafeArrayAccessData {
 	void *m_p;
 public:
 	CSafeArrayAccessData(const CSafeArray& sa)
-		:	m_sa(sa)
+		: m_sa(sa)
 	{
 		m_p = m_sa.AccessData();
 	}
@@ -436,7 +433,7 @@ public:
 	LPOLESTR m_str;
 
 	COleString()
-		:	m_str(0)
+		: m_str(0)
 	{}
 
 	~COleString() {
@@ -483,7 +480,7 @@ public:
 		return m_unk;
 	}
 
-#ifdef _MSC_VER  
+#ifdef _MSC_VER
 	template <class Q> void QueryInterface(Q** pp) const {
 		OleCheck(m_unk->QueryInterface(__uuidof(Q), (void**)pp));
 	}
@@ -498,17 +495,6 @@ public:
 #endif
 };
 */
-
-/*!!!
-class CUnknownHelper
-{
-public:
-IUnknown *m_unk;
-
-CUnknownHelper(IUnknown *unk)
-:m_unk(unk)
-{}
-};*/
 
 #define DEFINE_COM_CONSTRUCTORS(C, I) \
 	C() {}                      \
@@ -528,15 +514,15 @@ public:
 
 	T** operator&() {
 		if (m_p)
-			Throw(E_EXT_InterfaceAlreadyAssigned);
+			Throw(ExtErr::InterfaceAlreadyAssigned);
 		return &m_p;
 	}
 };
 
 class CVariantIterator {		//!!!
 	COleSafeArray m_ar;
-	int m_i;
 	CComPtr<IEnumVARIANT> m_en;
+	int m_i;
 public:
 	CVariantIterator(const VARIANT& ar);
 	bool Next(COleVariant& v);
@@ -561,7 +547,7 @@ public:
 	CComPtr<IStream> m_stream;
 
 	CIStream(IStream *stream = 0)
-		:	m_stream(stream)
+		: m_stream(stream)
 	{}
 
 	size_t Read(void *buf, size_t count) const override;
@@ -575,7 +561,7 @@ public:
 	Blob Read(int size);
 	void Write(const Blob& blob);
 	*/
-	
+
 	void SetSize(DWORDLONG libNewSize);
 
 	DateTime get_ModTime();
@@ -591,7 +577,7 @@ public:
 	CComPtr<IStorage> m_storage;
 
 	CIStorage(IStorage *storage = 0)
-		:	m_storage(storage)
+		: m_storage(storage)
 	{}
 
 	void CreateFile(RCString name, DWORD grfMode = STGM_READWRITE | STGM_SHARE_EXCLUSIVE);
@@ -612,11 +598,10 @@ public:
 	}
 };
 
-
 class CBstrReadStream : public CMemReadStream {
 public:
 	CBstrReadStream(BSTR bstr)
-		:	CMemReadStream(ConstBuf(bstr, SysStringByteLen(bstr)))
+		: CMemReadStream(Span((const uint8_t*)bstr, SysStringByteLen(bstr)))
 	{}
 };
 
@@ -637,7 +622,7 @@ public:
 	ITypeInfo *GetTypeInfo(const IID *piid);
 };
 
-class CComObjectRootBase : public Object {
+class CComObjectRootBase : public InterlockedObject {
 	typedef CComObjectRootBase class_type;
 	typedef Object base;
 public:
@@ -678,8 +663,7 @@ typedef CComObjectRootBase *(AFXAPI EXT_ATL_CREATORFUNC)();
 class CInternalUnknown : public IUnknown {
 public:
 	STDMETHOD(QueryInterface)(REFIID riid, void **ppvObjOut) { \
-		if (riid == IID_IUnknown)
-		{
+		if (riid == IID_IUnknown) {
 			m_pRoot->InternalAddRef();
 			*ppvObjOut = this;
 			return S_OK;
@@ -691,12 +675,12 @@ public:
 		} \
 		STDMETHOD_(ULONG, Release)(void) { \
 		return m_pRoot->InternalRelease(); \
-		} 
+		}
 
 		CComObjectRootBase *m_pRoot;
 
 		CInternalUnknown(CComObjectRootBase *pRoot)
-			:m_pRoot(pRoot)
+			: m_pRoot(pRoot)
 		{}
 };
 #endif // UCFG_COM_IMPLOBJ
@@ -723,7 +707,7 @@ _ATL_CHAINDATA _CComChainData<base, derived>::data =
 #define _EXT_BEGIN_COM_MAP(x) \
 typedef x _ComMapClass; \
 static const _ATL_INTMAP_ENTRY *_GetEntries() { \
-static const _ATL_INTMAP_ENTRY _entries[] = { 
+static const _ATL_INTMAP_ENTRY _entries[] = {
 
 #define _EXT_DECLARE_GET_CONTROLLING_UNKNOWN() public:\
 virtual IUnknown* GetControllingUnknown() {return GetUnknown();}
@@ -781,14 +765,14 @@ public:
 
 #if UCFG_COM_IMPLOBJ
 
-class CComGeneralClass : public Object {
+class CComGeneralClass : public InterlockedObject {
 public:
 	CLSID m_clsid;
 	String m_progID;
 	String m_indProgID;
+	EXT_ATL_CREATORFUNC *m_pfnCreateInstance;
 	int m_descID;
 	DWORD m_flags;
-	EXT_ATL_CREATORFUNC *m_pfnCreateInstance;
 
 	CComGeneralClass(const CLSID& clsid, EXT_ATL_CREATORFUNC *pfn, int descID, RCString progID = nullptr, RCString indProgID = nullptr,
 		DWORD flags = THREADFLAGS_APARTMENT);
@@ -933,8 +917,8 @@ public:
 	CBool m_bAutoDelete;
 
 	CIStreamWrap(Stream& stm, bool bAutoDelete = false)
-		:	m_stm(stm)
-		,	m_bAutoDelete(bAutoDelete)
+		: m_stm(stm)
+		, m_bAutoDelete(bAutoDelete)
 	{}
 
 	DECLARE_STANDARD_UNKNOWN()
@@ -1005,14 +989,14 @@ public:
 
 class ComExc : public Exception {
 	typedef Exception base;
-public:
-	ComExc(HRESULT hr, IErrorInfo* perrinfo = 0)
-		:	base(hr)
-		,	m_comError(hr, perrinfo)
-	{}
 protected:
 	_com_error m_comError;
-
+public:
+	ComExc(HRESULT hr, IErrorInfo* perrinfo = 0)
+		: base(hr)
+		, m_comError(hr, perrinfo)
+	{}
+protected:
 	String get_Message() const override { return (LPCWSTR)m_comError.Description(); }
 };
 

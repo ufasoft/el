@@ -25,14 +25,14 @@ struct BTreeMainPage {
 
 
 BdbReader::BdbReader(const path& p)
-	:	m_fs(p, FileMode::Open, FileAccess::Read)
+	: m_fs(p, FileMode::Open, FileAccess::Read)
 {
 	BTreeMainPage mainPage;
 	m_fs.ReadBuffer(&mainPage, sizeof mainPage);
 	if (mainPage.Magic != DB_BTREEMAGIC)
 		Throw(E_FAIL);
 	m_lastPage = mainPage.LastPage;
-	m_curPage.Size = mainPage.PageSize;
+	m_curPage.resize(mainPage.PageSize);
 
 	LoadNextPage(1);
 }
@@ -49,14 +49,14 @@ LAB_AGAIN:
 	}
 	int keyIdx = *((uint16_t*)(m_curPage.data()+26)+m_idx*2),
 		valIdx = *((uint16_t*)(m_curPage.data()+26)+m_idx*2+1);
-	if (keyIdx+3 > m_curPage.Size || valIdx+3 > m_curPage.Size) {
+	if (keyIdx+3 > m_curPage.size() || valIdx+3 > m_curPage.size()) {
 		m_idx = m_entries;
 		goto LAB_AGAIN;
 	}
 	++m_idx;
 	int keyLen = *(uint16_t*)(m_curPage.data()+keyIdx),
 		valLen = *(uint16_t*)(m_curPage.data()+valIdx);
-	if (keyIdx+keyLen > m_curPage.Size || valIdx+valLen > m_curPage.Size) {
+	if (keyIdx+keyLen > m_curPage.size() || valIdx+valLen > m_curPage.size()) {
 		m_idx = m_entries;
 		goto LAB_AGAIN;
 	}
@@ -74,8 +74,8 @@ bool BdbReader::LoadNextPage(int pgno) {
 			return false;
 		}
 		m_pgno = pgno;
-		m_fs.Position = m_pgno*m_curPage.Size;
-		m_fs.ReadBuffer(m_curPage.data(), m_curPage.Size);
+		m_fs.Position = m_pgno*m_curPage.size();
+		m_fs.ReadBuffer(m_curPage.data(), m_curPage.size());
 		if (m_curPage.data()[25] == P_LBTREE)
 			break;
 		++pgno;

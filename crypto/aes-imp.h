@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -7,10 +7,11 @@
 
 extern "C" {
 
-extern const byte g_aesSubByte[256];
-extern const byte *g_aesInvSubByte,
+extern const uint8_t g_aesSubByte[256];
+extern const uint8_t *g_aesInvSubByte,
 	*g_aesPowers;
 extern const uint16_t *g_aesLogs;
+extern const uint8_t *g_aesMul;
 
 
 } // "C"
@@ -19,8 +20,8 @@ namespace Ext { namespace Crypto {
 
 void InitAesTables();
 
-static inline byte Mul(byte a, byte b) {
-	return g_aesPowers[g_aesLogs[a] + g_aesLogs[b]];
+static inline uint8_t Mul(uint8_t a, uint8_t b) {
+	return g_aesMul[((int)a << 8) | b];
 }
 
 

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -107,22 +107,22 @@ using namespace std;
 size_t ThreadBase::DefaultStackSize;
 
 ThreadBase::ThreadBase(thread_group *ownRef)
-	:	StackSize(0)
-	,	StackOffset(0)
-	,	m_bAutoDelete(true)
-	,	m_owner(ownRef)
-	,	m_bStop(false)
-	,	m_bInterruptionEnabled(true)
-	,	m_bAPC(false)
+	: StackSize(0)
+	, StackOffset(0)
+	, m_bAutoDelete(true)
+	, m_owner(ownRef)
+	, m_bStop(false)
+	, m_bInterruptionEnabled(true)
+	, m_bAPC(false)
 #if UCFG_WIN32
-	,	m_nThreadID(0)
+	, m_nThreadID(0)
 #endif
 #if UCFG_USE_PTHREADS
-	,	m_tid()
-	,	m_ptid((pthread_t)0)
+	, m_tid()
+	, m_ptid((pthread_t)0)
 #elif UCFG_OLE
-	,	m_usingCOM(E_NoInit)
-	,	m_dwCoInit(COINIT_APARTMENTTHREADED)
+	, m_usingCOM(E_NoInit)
+	, m_dwCoInit(COINIT_APARTMENTTHREADED)
 #endif
 {
 	ASSERT(1000 < std::abs(int32_t((uint8_t*)&ownRef - (uint8_t*)this))); // Thread cannot be in stack
@@ -202,7 +202,7 @@ void ThreadBase::Sleep(DWORD dwMilliseconds) {
 #if UCFG_WIN32 || UCFG_USE_PTHREADS
 	CurrentThread->SleepImp(dwMilliseconds); //!!!
 #else
-	::usleep(dwMilliseconds*1000);
+	::usleep(dwMilliseconds * 1000);
 #endif
 }
 
@@ -275,14 +275,14 @@ thread_group& ThreadBase::GetThreadRef() {
 	return *m_threadRef;
 }
 
-void ThreadBase::SleepImp(DWORD dwMilliseconds) {
+void ThreadBase::SleepImp(unsigned long ms) {
 #if UCFG_WIN32_FULL
 	if (m_bAPC)
 		m_bAPC = false;
 	else if (!m_bStop)
-		SleepEx(dwMilliseconds, TRUE);
+		SleepEx(ms, TRUE);
 #else
-	usleep(dwMilliseconds*1000);
+	usleep(ms * 1000);
 #endif
 	interruption_point();
 }
@@ -327,9 +327,9 @@ void ThreadBase::InitCOM() {
 #endif
 
 thread_group::thread_group(bool bSync)
-	:	m_aRef(0)
-	,	m_bSync(bSync)
-	,	aRefCountActiveThreads(0)
+	: m_aRef(0)
+	, m_bSync(bSync)
+	, aRefCountActiveThreads(0)
 {
 }
 
@@ -359,7 +359,7 @@ void thread_group::remove_thread(ThreadBase *t) {
 
 void thread_group::interrupt_all() {
 	EXT_LOCK (m_cs) {
-		for (CThreadColl::iterator it=m_threads.begin(), e=m_threads.end(); it!=e; ++it) {
+		for (CThreadColl::iterator it = m_threads.begin(), e = m_threads.end(); it != e; ++it) {
 			ThreadBase *t = it->get();
 			t->m_bAutoDelete = false;
 			if (*t)
@@ -410,7 +410,7 @@ void ThreadBase::Delete() {
 void ThreadBase::Execute() {
 }
 
-DWORD ThreadBase::get_ExitCode() {
+uint32_t ThreadBase::get_ExitCode() {
 #if UCFG_USE_PTHREADS
 	return m_exitCode;
 #else
@@ -435,7 +435,7 @@ void ThreadBase::put_Name(RCString name) {
 	ASSERT(m_nThreadID);
 	THREADNAME_INFO info = { 0x1000, m_name, m_nThreadID };
 	__try {
-		RaiseException(0x406D1388, 0, sizeof(info)/sizeof(DWORD), (ULONG_PTR*)&info);
+		RaiseException(0x406D1388, 0, sizeof(info) / sizeof(DWORD), (ULONG_PTR*)&info);
 	} __except(EXCEPTION_CONTINUE_EXECUTION) {
 	}
 #endif
@@ -622,15 +622,15 @@ void CThreadSlotData::DeleteValues(CThreadData *pData, HINSTANCE hInst) {
 
 //!!!__declspec(nothrow)
 CThreadSlotData::CThreadSlotData()
-	:	m_nRover(1)
-	,	m_nMax(0)
+	: m_nRover(1)
+	, m_nMax(0)
 {
 }
 
 void CThreadSlotData::DeleteValues(HINSTANCE hInst, bool bAll) {
 	EXT_LOCK (m_criticalSection) {
 		if (bAll) {
-			for (CTDatas::iterator it=m_tdatas.begin(), e=m_tdatas.end(); it!=e; ++it)
+			for (CTDatas::iterator it = m_tdatas.begin(), e = m_tdatas.end(); it != e; ++it)
 				DeleteValues(&it->second, hInst);
 		} else if (CThreadData* pData = (CThreadData*)(void*)m_tls.Value)
 			DeleteValues(pData, hInst);
@@ -667,9 +667,9 @@ void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
 }
 
 void ThreadBase::OnEndThread(bool bDelete) {
-#if UCFG_WIN32
-	TRC(5, Name);
-#endif
+	if (!!Name) {
+		TRC(6, Name);
+	}
 
 	OnEnd();
 	if (bDelete)
@@ -706,7 +706,7 @@ uint32_t ThreadBase::CppThreadThunk() {
 				thread_group *m_tr;
 
 				ActiveThreadKeeper(thread_group *tr)
-					:	m_tr(tr)
+					: m_tr(tr)
 				{
 					if (m_tr)
 						++(m_tr->aRefCountActiveThreads);
@@ -767,7 +767,7 @@ UINT ThreadBase::ThreaderFunction(LPVOID pParam)
 	pT->m_pModuleState = pT->m_pModuleStateForThread ? pT->m_pModuleStateForThread : &_afxBaseModuleState;
 #endif
 
-	DWORD r = pT->CppThreadThunk();
+	uint32_t r = pT->CppThreadThunk();
 	t_pCurThread = nullptr;
 
 #if UCFG_USE_PTHREADS
@@ -786,9 +786,9 @@ UINT ThreadBase::ThreaderFunction(LPVOID pParam)
 
 void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 #ifdef WIN32
-						, LPSECURITY_ATTRIBUTES lpSecurityAttrs
+				, LPSECURITY_ATTRIBUTES lpSecurityAttrs
 #endif
-						)
+		)
 {
 	ASSERT(!Valid());
 
@@ -866,11 +866,11 @@ void AFXAPI interruption_point() {
 }
 
 disable_interruption::disable_interruption()
-	:	base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, false)
+	: base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, false)
 {}
 
 restore_interruption::restore_interruption(disable_interruption& di)
-	:	base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, di.m_prev)
+	: base(ThreadBase::get_CurrentThread()->m_bInterruptionEnabled, di.m_prev)
 {}
 
 void AFXAPI sleep_for(const TimeSpan& span) {
@@ -882,8 +882,8 @@ void AFXAPI sleep_for(const TimeSpan& span) {
 
 
 CSeparateThreadThreader::CSeparateThreadThreader(CSeparateThread& st)
-	:	ThreadBase(&st)
-	,	m_st(st)
+	: ThreadBase(&st)
+	, m_st(st)
 {
 	m_bInterruptionEnabled = true;
 }
@@ -923,7 +923,7 @@ void CSeparateThread::Create(DWORD flags) {
 
 #ifdef WIN32
 CWinThread::CWinThread(thread_group *ownRef)
-	:	ThreadBase(ownRef)
+	: ThreadBase(ownRef)
 {
 	m_pThreadParams = 0;
 	m_pfnThreadProc = 0;
@@ -1069,8 +1069,8 @@ void WorkItem::Cancel() {
 }
 
 PoolThread::PoolThread(ThreadPool& pool)
-	:	base(&pool.m_tr)
-	,	m_pool(pool)
+	: base(&pool.m_tr)
+	, m_pool(pool)
 {
 }
 
@@ -1124,7 +1124,7 @@ ThreadPool::ThreadPool()
 	ASSERT(I == nullptr);
 	I = this;
 
-	for (int i=0; i<UCFG_POOL_THREADS; ++i)
+	for (int i = 0; i < UCFG_POOL_THREADS; ++i)
 		(new PoolThread(_self))->Start();
 }
 
@@ -1132,7 +1132,6 @@ void ThreadPool::Ensure() {
 	if (!I)
 		AfxGetApp()->m_pThreadPool = new ThreadPool;
 }
-
 
 
 ptr<WorkItem> ThreadPool::QueueUserWorkItem(WorkItem *wi) {

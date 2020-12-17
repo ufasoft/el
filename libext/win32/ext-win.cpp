@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -32,6 +32,11 @@
 
 #if UCFG_CRASH_DUMP
 #	include <el/comp/crashdump.h>
+
+
+Ext::CCrashDumpBase *Ext::CCrashDumpBase::I;
+
+
 #endif
 
 namespace Ext {
@@ -67,21 +72,20 @@ void AFXAPI SetLastHResult(HRESULT hr) { t_lastHResult.Value = (void*)(uintptr_t
 int AFXAPI Win32Check(LRESULT i) {
 	if (i)
 		return (int)i;
-	DWORD dw = ::GetLastError();
-	if (dw & 0xFFFF0000)
-		Throw(dw);
 	error_code ec;
-	if (dw)
+	if (DWORD dw = ::GetLastError()) {
+		if (dw & 0xFFFF0000)
+			Throw(dw);
 		ec = error_code(dw, system_category());
-	else {
+	} else {
 		HRESULT hr = GetLastHResult();
 		ec = hr ? error_code(hr,  hresult_category()) : make_error_code(ExtErr::UnknownWin32Error);
 	}
-	Throw(ec);
+ 	Throw(ec);
 }
 
 bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
-	Win32Check(b || ::GetLastError()==allowableError);
+	Win32Check(b || ::GetLastError() == allowableError);
 	return b;
 }
 
@@ -91,8 +95,8 @@ void CSyncObject::AttachCreated(intptr_t h) {
 }
 
 ProcessModule::ProcessModule(class Process& process, HMODULE hModule)
-	:	Process(process)
-	,	HModule(hModule)
+	: Process(process)
+	, HModule(hModule)
 {
 	Win32Check(::GetModuleInformation((HANDLE)(intptr_t)Handle(*process.m_pimpl), hModule, &m_mi, sizeof m_mi));
 }
@@ -184,8 +188,8 @@ String ProcessObj::get_MainModuleFileName() {
 #endif // !UCFG_WCE
 
 ProcessObj::ProcessObj(pid_t pid, DWORD dwAccess, bool bInherit)
-	:	SafeHandle(0, false)
-	,	m_pid(pid)
+	: SafeHandle(0, false)
+	, m_pid(pid)
 {
 	CommonInit();
 	if (pid)
@@ -239,7 +243,7 @@ _AFX_THREAD_STATE * AFXAPI AfxGetThreadState() {
 }
 
 AFX_MODULE_THREAD_STATE::AFX_MODULE_THREAD_STATE()
-	:	m_pfnNewHandler(0)
+	: m_pfnNewHandler(0)
 {
 }
 
@@ -263,23 +267,23 @@ AFX_MODULE_THREAD_STATE* AFXAPI AfxGetModuleThreadState() {
 void AFX_MODULE_STATE::SetHInstance(HMODULE hModule) {
 	m_hCurrentInstanceHandle = m_hCurrentResourceHandle = hModule;
 #if UCFG_CRASH_DUMP
-	if (CCrashDump::I)
-		CCrashDump::I->Modules.insert(hModule);
+	if (CCrashDumpBase::I)
+		CCrashDumpBase::I->Modules.insert(hModule);
 #endif
 }
 
 #ifdef _AFXDLL
 
 AFX_MODULE_STATE::AFX_MODULE_STATE(bool bDLL, WNDPROC pfnAfxWndProc)
-	:	m_pfnAfxWndProc(pfnAfxWndProc)
-	,	m_dwVersion(_MFC_VER),
+	: m_pfnAfxWndProc(pfnAfxWndProc)
+	, m_dwVersion(_MFC_VER),
 #else
 AFX_MODULE_STATE::AFX_MODULE_STATE(bool bDLL)
 	:
 #endif
 	m_bDLL(bDLL)
-	,	m_fRegisteredClasses(0)
-	,	m_pfnFilterToolTipMessage(0)
+	, m_fRegisteredClasses(0)
+	, m_pfnFilterToolTipMessage(0)
 {
 }
 
@@ -293,12 +297,12 @@ path AFX_MODULE_STATE::get_FileName() {
 }
 
 _AFX_THREAD_STATE::_AFX_THREAD_STATE()
-	:	m_bDlgCreate(false)
-	,	m_hLockoutNotifyWindow(0)
-	,	m_nLastHit(0)
-	,	m_nLastStatus(0)
-	,	m_bInMsgFilter(false)
-	,	m_pLastInfo(0)
+	: m_bDlgCreate(false)
+	, m_hLockoutNotifyWindow(0)
+	, m_nLastHit(0)
+	, m_nLastStatus(0)
+	, m_bInMsgFilter(false)
+	, m_pLastInfo(0)
 {
 }
 
@@ -318,8 +322,8 @@ CWinApp * AFXAPI AfxGetApp() {
 }
 
 CWinApp::CWinApp(RCString lpszAppName)
-	:	m_nWaitCursorCount(0)
-	,	m_hcurWaitCursorRestore(0)
+	: m_nWaitCursorCount(0)
+	, m_hcurWaitCursorRestore(0)
 {
 	m_appName = lpszAppName;
 	_AFX_CMDTARGET_GETSTATE()->m_pCurrentWinApp = this;
@@ -391,7 +395,7 @@ Wow64FsRedirectionKeeper::~Wow64FsRedirectionKeeper() {
 }
 
 CVirtualMemory::CVirtualMemory(void *lpAddress, DWORD dwSize, DWORD flAllocationType, DWORD flProtect)
-	:	m_address(0)
+	: m_address(0)
 {
 	Allocate(lpAddress, dwSize, flAllocationType, flProtect);
 }
@@ -678,7 +682,7 @@ void AFXAPI AfxRestoreModuleState() {
 }
 
 AFX_MAINTAIN_STATE2::AFX_MAINTAIN_STATE2(AFX_MODULE_STATE* pNewState)
-	:	m_pPrevModuleState(t_pModuleState)
+	: m_pPrevModuleState(t_pModuleState)
 {
 	t_pModuleState = pNewState;
 }
@@ -762,7 +766,7 @@ static class Win32Category : public ErrorCategoryBase {			// outside function to
 	typedef ErrorCategoryBase base;
 public:
 	Win32Category()
-		:	base("Win32", FACILITY_WIN32)
+		: base("Win32", FACILITY_WIN32)
 	{}
 
 	string message(int eval) const override {
@@ -811,9 +815,9 @@ public:
 	}
 
 	bool equivalent(const error_code& ec, int errval) const noexcept override {
-		if (ec.category()==system_category())
+		if (ec.category() == system_category())
 			return errval == ec.value();
-		if (ec.category()==hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
+		if (ec.category() == hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
 			return errval == (ec.value() & 0xFFFF);
 		else
 			return base::equivalent(ec, errval);
@@ -867,7 +871,7 @@ DEFINE_GUID(CLSID_XMLHTTPRequest, 0xED8C108E, 0x4349, 0x11D2, 0x91, 0xA4, 0x00, 
 namespace Ext {
 
 CWindowsHook::CWindowsHook()
-	:	m_handle(0)
+	: m_handle(0)
 {}
 
 CWindowsHook::~CWindowsHook() {

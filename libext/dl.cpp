@@ -39,12 +39,12 @@ CDynamicLibrary::~CDynamicLibrary() {
 	Free();
 }
 
-void CDynamicLibrary::Load(RCString path) const {
+void CDynamicLibrary::Load(const path& path) const {
 #if UCFG_USE_POSIX
-	m_hModule = ::dlopen(path, 0);
+	m_hModule = ::dlopen(String(path), 0);
 	DlCheck(m_hModule == 0);
 #else
-	Win32Check((m_hModule = LoadLibrary(path)) != 0);
+	Win32Check((m_hModule = ::LoadLibrary(String(path.native()))) != 0);
 #endif
 }
 

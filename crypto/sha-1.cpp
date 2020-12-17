@@ -22,10 +22,9 @@ void SHA1::InitHash(void *dst) noexcept {
 	memcpy(dst, g_sha1_hinit, sizeof(g_sha1_hinit));
 }
 
-void SHA1::HashBlock(void *dst, const byte *src, uint64_t counter) noexcept {
+void SHA1::HashBlock(void *dst, uint8_t src[256], uint64_t counter) noexcept {
 	uint32_t *p = (uint32_t*)dst;
-	uint32_t w[16];
-	memcpy(w, src, sizeof(w));
+	uint32_t *w = (uint32_t*)src;
 	uint32_t a = p[0], b = p[1], c = p[2], d = p[3], e = p[4];
 
 	for (int i=0; i<80; ++i) {

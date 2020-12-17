@@ -23,7 +23,7 @@ class CControlBarBase;
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "version.lib")
 #pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "mswsock.lib") 
+#pragma comment(lib, "mswsock.lib")
 //!!!#pragma comment(lib, "winmm.lib")
 //!!!#pragma comment(lib, "msacm32.lib")
 #pragma comment(lib, "gdi32.lib")
@@ -138,7 +138,7 @@ AFX_API path AFXAPI ToShortPath(const path& p);
 //!!!AFX_EXT_API HRESULT ProcessOleException(CException *e);
 //!!!AFX_EXT_API istream& operator >>(istream& is, String& s);
 //AFX_EXT_API ostream& operator <<(ostream& os, const String& s);
-AFX_API void AFXAPI SelfRegisterDll(RCString path);
+AFX_API void AFXAPI SelfRegisterDll(const path& p);
 AFX_API void AFXAPI WinExecAndWait(RCString name);
 AFX_API HCURSOR AFXAPI GetHandCursor();
 
@@ -285,7 +285,7 @@ public:
 #define MSGF_DIALOGBOX      0
 #define WM_NCMOUSEMOVE                  0x00A0
 #define BUFSIZ  512
-const std::streamoff _BADOFF = -1;	
+const std::streamoff _BADOFF = -1;
 #define _IOFBF          0x0000
 #define IDI_APPLICATION     MAKEINTRESOURCE(32512)
 
@@ -399,7 +399,7 @@ struct DLGITEMTEMPLATEEX
 namespace Ext {
 
 	/*!!!R
-inline std::ostream& AFXAPI operator<<(std::ostream& os, const ConstBuf& mb) {
+inline std::ostream& AFXAPI operator<<(std::ostream& os, RCSpan mb) {
 	os << "{ ";
 	for (size_t i=0; i<mb.Size; ++i)
 		os << std::hex << std::setw(2) << std::setfill('0') << int(mb.P[i]) << " ";

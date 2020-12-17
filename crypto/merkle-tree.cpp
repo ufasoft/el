@@ -15,7 +15,7 @@ int PartialMerkleTreeBase::CalcTreeHeight() const {
 			return r;
 }
 
-void PartialMerkleTreeBase::TraverseAndBuild(int height, size_t pos, const void *ar, const dynamic_bitset<byte>& vMatch) {
+void PartialMerkleTreeBase::TraverseAndBuild(int height, size_t pos, const void *ar, const dynamic_bitset<uint8_t>& vMatch) {
     // determine whether this node is the parent of at least one matched txid
     bool fParentOfMatch = false;
     for (size_t p=pos<<height; p < (pos+1)<<height && p<NItems; p++)

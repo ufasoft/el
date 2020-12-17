@@ -116,7 +116,9 @@ Encoding *Encoding::GetEncoding(RCString name) {
 
 	CScopedLock<mutex> lck = ScopedLock(m_csEncodingMap);
 
-	if (!Lookup(s_encodingMap, upper, r)) {
+	if (optional<ptr<Encoding>> o = Lookup(s_encodingMap, upper))
+		r = o.value();
+	else {
 		if (upper == "UTF-8")
 			r = new UTF8Encoding;
 		else if (upper == "ASCII")
@@ -149,25 +151,25 @@ Encoding *Encoding::GetEncoding(int codepage) {
 	typedef char *ICONV_SECOND_TYPE;
 #endif
 
-size_t Encoding::GetCharCount(const ConstBuf& mb) {
-	if (0 == mb.Size)
+size_t Encoding::GetCharCount(RCSpan mb) {
+	if (0 == mb.size())
 		return 0;
 #if UCFG_USE_POSIX
 	const char *sp = (char*)mb.P;
 	int r = 0;
-	for (size_t len=mb.Size; len;) {
-		char buf[40] = { 0 };
+	for (size_t len = mb.size(); len;) {
+		char buf[40] = {0};
 		char *dp = buf;
 		size_t slen = std::min(len, (size_t)6);
 		size_t dlen = sizeof(buf);
-		CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE*)&sp, &slen, &dp, &dlen), E2BIG);
-		len = mb.Size-(sp-(const char*)mb.P);
-		r += (sizeof(buf)-dlen)/sizeof(String::value_type);
+		CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE *)&sp, &slen, &dp, &dlen), E2BIG);
+		len = mb.Size - (sp - (const char *)mb.data());
+		r += (sizeof(buf) - dlen) / sizeof(String::value_type);
 	}
 	return r;
 #elif !UCFG_WDM
 	::SetLastError(0);
-	int r = ::MultiByteToWideChar(CodePage, 0, (LPCSTR)mb.P, mb.Size, 0, 0);
+	int r = ::MultiByteToWideChar(CodePage, 0, (LPCSTR)mb.data(), mb.size(), 0, 0);
 	Win32Check(r, 0);
 	return r;
 #else
@@ -175,17 +177,17 @@ size_t Encoding::GetCharCount(const ConstBuf& mb) {
 #endif
 }
 
-size_t Encoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
+size_t Encoding::GetChars(RCSpan mb, String::value_type *chars, size_t charCount) {
 #if UCFG_USE_POSIX
-	const char *sp = (char*)mb.P;
-	size_t len = mb.Size;
+	const char *sp = (char*)mb.data();
+	size_t len = mb.size();
 	char *dp = (char*)chars;
 	size_t dlen = charCount*sizeof(String::value_type);
 	CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE*)&sp, &len, &dp, &dlen));
 	return (charCount*sizeof(String::value_type)-dlen)/sizeof(String::value_type);
 #elif defined(WIN32)
 	::SetLastError(0);
-	int r = ::MultiByteToWideChar(CodePage, 0, (LPCSTR)mb.P, mb.Size, chars, charCount);
+	int r = ::MultiByteToWideChar(CodePage, 0, (LPCSTR)mb.data(), mb.size(), chars, charCount);
 	Win32Check(r, 0);
 	return r;
 #else
@@ -193,7 +195,7 @@ size_t Encoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t 
 #endif
 }
 
-vector<String::value_type> Encoding::GetChars(const ConstBuf& mb) {
+vector<String::value_type> Encoding::GetChars(RCSpan mb) {
 	vector<String::value_type> vec(GetCharCount(mb));
 	if (vec.size()) {
 		size_t n = GetChars(mb, &vec[0], vec.size());
@@ -246,14 +248,14 @@ size_t Encoding::GetBytes(const String::value_type *chars, size_t charCount, uin
 
 Blob Encoding::GetBytes(RCString s) {
 	Blob blob(0, GetByteCount(s));
-	size_t n = GetBytes(s, s.length(), blob.data(), blob.Size);
-	ASSERT(n == blob.Size);
+	size_t n = GetBytes(s, s.length(), blob.data(), blob.size());
+	ASSERT(n == blob.size());
 	return blob;
 }
 
-void UTF8Encoding::Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bool>& visitor) {
-	size_t len = mb.Size;
-	for (const uint8_t *p = mb.P; len--;) {
+void UTF8Encoding::Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor) {
+	size_t len = mb.size();
+	for (const uint8_t *p = mb.data(); len--;) {
 		uint8_t b = *p++;
 		int n = 0;
 		if (b >= 0xFE) {
@@ -352,7 +354,7 @@ Blob UTF8Encoding::GetBytes(RCString s) {
 		}
 	} v;
 	PassToBytes(s, s.length(), v);
-	return v.ms.Blob;
+	return v.ms.AsSpan();
 }
 
 size_t UTF8Encoding::GetBytes(const String::value_type *chars, size_t charCount, uint8_t *bytes, size_t byteCount) {
@@ -374,14 +376,14 @@ size_t UTF8Encoding::GetBytes(const String::value_type *chars, size_t charCount,
 	return v.m_p-bytes;
 }
 
-size_t UTF8Encoding::GetCharCount(const ConstBuf& mb) {
-	ASSERT(mb.Size <= INT_MAX);
+size_t UTF8Encoding::GetCharCount(RCSpan mb) {
+	ASSERT(mb.size() <= INT_MAX);
 
 	Cvt::state_type s = Cvt::state_type();
-	return (size_t)m_cvt.length(s, (const char*)mb.P, (const char*)mb.P+mb.Size, INT_MAX);
+	return (size_t)m_cvt.length(s, (const char *)mb.data(), (const char *)mb.data() + mb.size(), INT_MAX);
 }
 
-std::vector<String::value_type> UTF8Encoding::GetChars(const ConstBuf& mb) {
+std::vector<String::value_type> UTF8Encoding::GetChars(RCSpan mb) {
 	struct Visitor : UnaryFunction<String::value_type, bool> {
 		vector<String::value_type> ar;
 
@@ -394,7 +396,7 @@ std::vector<String::value_type> UTF8Encoding::GetChars(const ConstBuf& mb) {
 	return v.ar;
 }
 
-size_t UTF8Encoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
+size_t UTF8Encoding::GetChars(RCSpan mb, String::value_type *chars, size_t charCount) {
 	struct Visitor : UnaryFunction<String::value_type, bool> {
 		size_t m_count;
 		String::value_type *m_p;
@@ -428,21 +430,21 @@ size_t ASCIIEncoding::GetBytes(const String::value_type *chars, size_t charCount
 	return r;
 }
 
-size_t ASCIIEncoding::GetCharCount(const ConstBuf& mb) {
-	return mb.Size;
+size_t ASCIIEncoding::GetCharCount(RCSpan mb) {
+	return mb.size();
 }
 
-std::vector<String::value_type> ASCIIEncoding::GetChars(const ConstBuf& mb) {
-	vector<String::value_type> r(mb.Size);
-	for (size_t i=0; i<mb.Size; ++i)
-		r[i] = mb.P[i];
+std::vector<String::value_type> ASCIIEncoding::GetChars(RCSpan mb) {
+	vector<String::value_type> r(mb.size());
+	for (size_t i = 0; i < mb.size(); ++i)
+		r[i] = mb[i];
 	return r;
 }
 
-size_t ASCIIEncoding::GetChars(const ConstBuf& mb, String::value_type *chars, size_t charCount) {
-	size_t r = std::min(charCount, mb.Size);
-	for (size_t i=0; i<r; ++i)
-		chars[i] = mb.P[i];
+size_t ASCIIEncoding::GetChars(RCSpan mb, String::value_type *chars, size_t charCount) {
+	size_t r = std::min(charCount, mb.size());
+	for (size_t i = 0; i < r; ++i)
+		chars[i] = mb[i];
 	return r;
 }
 

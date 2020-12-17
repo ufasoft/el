@@ -7,7 +7,7 @@
 
 #include "async-text-client.h"
 
-namespace Ext { namespace Inet { 
+namespace Ext { namespace Inet {
 
 void AsyncTextClient::Execute() {
 	DBG_LOCAL_IGNORE_CONDITION(errc::connection_refused);
@@ -28,7 +28,7 @@ void AsyncTextClient::Execute() {
 void AsyncTextClient::SendPendingData() {
 	EXT_LOCK (MtxSend) {
 		if (!DataToSend.empty())
-			Tcp.Stream.WriteBuf(W.Encoding.GetBytes(exchange(DataToSend, String())));
+			Tcp.Stream.Write(W.Encoding.GetBytes(exchange(DataToSend, String())));
 	}
 }
 

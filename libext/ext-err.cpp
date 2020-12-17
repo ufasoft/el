@@ -98,6 +98,9 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::LogonFailure									, "Unknown user name or bad password"		 	}
 	, { ExtErr::PasswordTooShort								, "The password provided is too short"		 	}
 	, { ExtErr::Checksum										, "Checksum error"					 			}
+	, { ExtErr::Padding											, "Invalid padding"					 			}
+	, { ExtErr::InvalidOption									, "Invalid Option"					 			}
+
 	, { ExtErr::DB_NoRecord										, "No record found for scalar DB query"		 	}
 	, { ExtErr::DB_DupKey										, "Cannot insert Duplicate Key into Database"	}
 	, { ExtErr::DB_Corrupt										, "Database corruption"		 					}
@@ -140,7 +143,7 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 		}
 	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 			}
 };
-	
+
 
 
 static class ExtCategory : public ErrorCategoryBase {
@@ -183,4 +186,3 @@ const error_category *ErrorCategoryBase::Find(int fac) {
 
 
 } // Ext::
-

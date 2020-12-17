@@ -22,6 +22,7 @@
 
 #if UCFG_WIN32_FULL
 #	pragma comment(lib, "version")
+#	pragma comment(lib, "kernel32")
 #endif
 
 namespace Ext {
@@ -65,7 +66,7 @@ FileVersionInfo::FileVersionInfo(RCString fileName) {
 	if (!size && !fileName)
 		return; //!!!
 	Win32Check(size);
-	m_blob.Size = size;
+	m_blob.resize(size);
 	Win32Check(GetFileVersionInfo((TCHAR*)(const TCHAR*)s, 0, size, m_blob.data()));
 }
 
@@ -102,7 +103,7 @@ String AFXAPI TryGetVersionString(const FileVersionInfo& vi, RCString name, RCSt
 bool AFXAPI IsConsole() {
 	BYTE *base = (BYTE*)GetModuleHandle(0);
 	IMAGE_DOS_HEADER *dh = (IMAGE_DOS_HEADER*)base;
-	IMAGE_OPTIONAL_HEADER32 *oh = (IMAGE_OPTIONAL_HEADER32*)(base+dh->e_lfanew+IMAGE_SIZEOF_FILE_HEADER+4);
+	IMAGE_OPTIONAL_HEADER32 *oh = (IMAGE_OPTIONAL_HEADER32 *)(base + dh->e_lfanew + IMAGE_SIZEOF_FILE_HEADER + 4);
 	return oh->Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
 }
 
@@ -127,9 +128,9 @@ e->Delete();
 return hr;
 }*/
 
-void AFXAPI SelfRegisterDll(RCString path) {
+void AFXAPI SelfRegisterDll(const path& p) {
 	CDynamicLibrary lib;
-	lib.Load(path);
+	lib.Load(p);
 	typedef HRESULT (STDAPICALLTYPE *CTLREGPROC)();
 	CTLREGPROC proc = (CTLREGPROC)lib.GetProcAddress("DllRegisterServer");
 	OleCheck(proc());

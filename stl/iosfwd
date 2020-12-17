@@ -10,7 +10,7 @@ namespace ExtSTL {
 typedef __int64 streamoff;
 typedef __int64 streamsize;
 
-
+using ::size_t;
 
 #if !UCFG_WCE
 #	define _Fpz	0

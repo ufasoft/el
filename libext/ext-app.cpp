@@ -93,7 +93,7 @@ CAppBase::CAppBase()
 #if UCFG_USE_RESOURCES
 	{
 		FileVersionInfo vi;
-		if (vi.m_blob.Size != 0) {
+		if (vi.m_blob.size()) {
 			FileDescription = vi.FileDescription;
 			SVersion = vi.GetProductVersionN().ToString(2);
 			LegalCopyright = vi.LegalCopyright;
@@ -184,10 +184,30 @@ String CAppBase::GetInternalName() {
 #endif
 }
 
+path AFXAPI CAppBase::GetBaseDataFolder() {
+	path r;
+#	if !UCFG_WCE
+	try {
+		r = path(Environment::GetEnvironmentVariable("APPDATA").c_str());
+		if (r.empty())
+			r = Environment::GetFolderPath(SpecialFolder::ApplicationData);
+	} catch (RCExc) {
+		r = System.WindowsDirectory / "Application Data";
+	}
+#	endif
+#if UCFG_COMPLEX_WINAPP
+	r /= path(GetCompanyName().c_str());
+#else
+	r /= UCFG_MANUFACTURER;
+#endif
+	create_directory(r);
+	return r;
+}
+
 path CAppBase::get_AppDataDir() {
 	if (m_appDataDir.empty()) {
 #if UCFG_WIN32
-		path dir = GetAppDataManufacturerFolder() / path(GetInternalName().c_str());
+		path dir = GetBaseDataFolder() / path(GetInternalName().c_str());
 #elif UCFG_USE_POSIX
 		path dir = Environment::GetFolderPath(SpecialFolder::ApplicationData) / ("."+GetInternalName());
 #endif
@@ -387,7 +407,6 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 #else
 	setlocale(LC_CTYPE, "");
 #endif
-
 	if (const char *slevel = getenv("UCFG_TRC")) {
 		if (!CTrace::GetOStream())
 			CTrace::SetOStream(new CIosStream(clog));
@@ -429,13 +448,13 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 					Environment::ExitCode = 3;  // Compilation error
 					break;
 				default:
-					wcerr << ex.what() << endl;
+					wcerr << "\n" << ex.what() << endl;
 					Environment::ExitCode = 2;
 				}
 			}
 		}
 	} catch (const exception& ex) {
-		cerr << ex.what() << endl;
+		cerr << "\n" << ex.what() << endl;
 		Environment::ExitCode = 2;
 	}
 #if UCFG_COMPLEX_WINAPP || !UCFG_EXTENDED

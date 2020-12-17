@@ -140,36 +140,27 @@ template <typename T> T exchangeZero(T& v) { return std::exchange(v, (T)0); }
 //#define SwapRetZero exchangeZero					//!!!O
 
 class CBool {
+	bool m_b;
 public:
 	CBool(bool b = false)
-		:	m_b(b)
+		: m_b(b)
 	{}
 
 	CBool(const CBool& v)
-		:	m_b(v.m_b)
+		: m_b(v.m_b)
 	{}
 
 	operator bool() const volatile { return m_b; }
 
-/*!!!R	EXPLICIT_OPERATOR_BOOL() const volatile {
-		return m_b ? EXT_CONVERTIBLE_TO_TRUE : 0;
-	}*/
-
-	/*!!!R
-	struct _Boolean { int i; }; operator int _Boolean::*() const volatile {
-		return m_b ? &_Boolean::i : 0;
-	}*/
-
 	bool& Ref() { return m_b; }
-private:
-	bool m_b;
 };
 
 template <typename T>
 class CInt {
+	T m_v;
 public:
 	CInt(T v = 0)
-		:	m_v(v)
+		: m_v(v)
 	{}
 
 	operator T() const { return m_v; }
@@ -178,27 +169,25 @@ public:
 	T Value() const { return m_v; }
 
 	CInt& operator++() { ++m_v; return (*this); }
-	T operator++(int) { return m_v++; }	
-private:
-	T m_v;
+	T operator++(int) { return m_v++; }
 };
 
 template <typename T>
 class Keeper : noncopyable {
 public:
-	volatile T& m_t; 
+	volatile T& m_t;
 	T m_prev;
 
 	Keeper(T& t, const T& v)
-		:	m_t(t)
-		,	m_prev(m_t)
+		: m_t(t)
+		, m_prev(m_t)
 	{
 		t = v;
 	}
 
 	Keeper(volatile T& t, const T& v)
-		:	m_t(t)
-		,	m_prev(m_t)
+		: m_t(t)
+		, m_prev(m_t)
 	{
 		t = v;
 	}
@@ -212,49 +201,28 @@ class CBoolKeeper : public Keeper<bool> {
 	typedef Keeper<bool> base;
 public:
 	CBoolKeeper(bool& b, bool n = true)
-		:	base(b, n)
+		: base(b, n)
 	{}
 
 	CBoolKeeper(volatile bool& b, bool n = true)
-		:	base(b, n)
+		: base(b, n)
 	{}
 };
 
 } // Ext::
 
 #ifdef WIN32
-
-//#include <windows.h>
-#include <tchar.h>
-
-namespace Ext {
-/*!!!	inline const TCHAR *GetCommandLineArgs() {
-		const TCHAR *pCL = ::GetCommandLine();
-		if (*pCL == _T('\"')) {
-			pCL++;
-			while (*pCL && *pCL++ != _T('\"'))
-				;
-		} else
-			while (*pCL > _T(' '))
-				pCL++;
-		while (*pCL && *pCL <= _T(' '))
-			pCL++;
-		return pCL;
-	}*/
-}
-
-
-
-#endif	
+//#	include <windows.h>
+#	include <tchar.h>
+#endif
 
 namespace Ext {
-
 
 
 class LEuint16_t {	//!!!
 	unsigned short m_val;
 public:
-	operator unsigned short() const { return m_val; } 
+	operator unsigned short() const { return m_val; }
 };
 
 template <class T> inline void ZeroStruct(T& s) {
@@ -278,22 +246,18 @@ template <class T> inline void ZeroStruct(T& s) {
 	} NAME;
 
 
-#define STATIC_PROPERTY_DEF(OWNERNAME, TYPE, NAME) \
-	STATIC_PROPERTY(OWNERNAME, TYPE, NAME, get_##NAME, put_##NAME)
+#define STATIC_PROPERTY_DEF(OWNERNAME, TYPE, NAME)		STATIC_PROPERTY(OWNERNAME, TYPE, NAME, get_##NAME, put_##NAME)
 
-#define STATIC_PROPERTY_DEF_GET(OWNERNAME, TYPE, NAME) \
-	STATIC_PROPERTY_GET(OWNERNAME, TYPE, NAME, get_##NAME)
+#define STATIC_PROPERTY_DEF_GET(OWNERNAME, TYPE, NAME)	STATIC_PROPERTY_GET(OWNERNAME, TYPE, NAME, get_##NAME)
 
 #ifdef _MSC_VER
 
-#	define DEFPROP(TYPE, NAME) \
-		__declspec(property(get=get_##NAME, put=put_##NAME)) TYPE NAME;
+#	define DEFPROP(TYPE, NAME)				__declspec(property(get=get_##NAME, put=put_##NAME)) TYPE NAME;
 #	define DEFPROP_CONST(TYPE, NAME)		DEFPROP(TYPE, NAME)
 #	define DEFPROP_CONST_CONST(TYPE, NAME)	DEFPROP(TYPE, NAME)
 
-#	define DEFPROP_GET(TYPE, NAME) \
-		__declspec(property(get=get_##NAME)) TYPE NAME;
-#	define DEFPROP_GET_CONST(TYPE, NAME) DEFPROP_GET(TYPE, NAME)
+#	define DEFPROP_GET(TYPE, NAME)			__declspec(property(get=get_##NAME)) TYPE NAME;
+#	define DEFPROP_GET_CONST(TYPE, NAME)	DEFPROP_GET(TYPE, NAME)
 
 // because VC calls base class's property method if called as Property from derived pointer
 // BUG-Report: https://connect.microsoft.com/VisualStudio/feedback/details/621165
@@ -326,7 +290,7 @@ template <class T> inline void ZeroStruct(T& s) {
 #			define CONTAINING_RECORD(address, type, field) ((type *)( \
 				(char*)(address) - (int)(&((type *)0)->field)))
 #		endif
-#	endif																										
+#	endif
 
 
 #	define PROPERTY(OWNERNAME, TYPE, NAME, FNGET, FNPUT) 					\
@@ -369,35 +333,26 @@ template <class T> inline void ZeroStruct(T& s) {
 	} NAME;
 
 
-#	define DEFPROP(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
-#	define DEFPROP_CONST(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
-#	define DEFPROP_CONST_CONST(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
-#	define DEFPROP_VIRTUAL(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
-#	define DEFPROP_VIRTUAL_CONST(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
-#	define DEFPROP_VIRTUAL_CONST_CONST(TYPE, NAME) \
-	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP(TYPE, NAME)				PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP_CONST(TYPE, NAME)		PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP_CONST_CONST(TYPE, NAME)	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP_VIRTUAL(TYPE, NAME)		PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP_VIRTUAL_CONST(TYPE, NAME)	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
+#	define DEFPROP_VIRTUAL_CONST_CONST(TYPE, NAME)	PROPERTY(class_type, TYPE, NAME, get_##NAME, put_##NAME)
 
-
-#	define DEFPROP_GET(TYPE, NAME) \
-		PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
-#	define DEFPROP_GET_CONST(TYPE, NAME) \
-		PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
-#	define DEFPROP_VIRTUAL_GET(TYPE, NAME) \
-		PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
-#	define DEFPROP_VIRTUAL_GET_CONST(TYPE, NAME) \
-		PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
+#	define DEFPROP_GET(TYPE, NAME)			PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
+#	define DEFPROP_GET_CONST(TYPE, NAME)	PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
+#	define DEFPROP_VIRTUAL_GET(TYPE, NAME)	PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
+#	define DEFPROP_VIRTUAL_GET_CONST(TYPE, NAME)	PROPERTY_GET(class_type, TYPE, NAME, get_##NAME)
 
 #endif // _MSC_VER
 
 template <class T> class CPointerKeeper {
+	std::observer_ptr<T>& m_p;
+	T* m_old;
 public:
 	CPointerKeeper(std::observer_ptr<T>& p, T *q)
-		:	m_p(p)
+		: m_p(p)
 	{
 		m_old = p.get();
 		p.reset(q);
@@ -406,20 +361,6 @@ public:
 	~CPointerKeeper() {
 		m_p.reset(m_old);
 	}
-private:
-	std::observer_ptr<T>& m_p;
-	T *m_old;
-};
-
-
-struct Buf {
-	unsigned char *P;
-	size_t Size;
-
-	Buf(void *p = 0, size_t siz = 0)
-		:	P((unsigned char*)p)
-		,	Size(siz)
-	{}
 };
 
 
@@ -435,13 +376,13 @@ class CRuntimeClass;
 
 class Object {
 public:
-	typedef NonInterlockedPolicy interlocked_policy;
+//	typedef NonInterlockedPolicy interlocked_policy;	// Must be explicit for safity
 
 	static const AFX_DATA CRuntimeClass classObject;
 	mutable atomic<int> m_aRef;
 
 	Object()
-		:	m_aRef(0)
+		: m_aRef(0)
 	{
 	}
 
@@ -451,12 +392,14 @@ public:
 	}
 
 	Object& operator=(const Object& ob) {
-		m_aRef = 0;
+		m_aRef.store(0);
 		return *this;
 	}
 
 	virtual ~Object() {
 	}
+
+	int RefCount() const noexcept { return m_aRef.load(); }
 
 	bool IsHeaped() const { return m_aRef < (10000); }			//!!! should be replaced to some num limits
 	void InitInStack() { m_aRef = 20000; }
@@ -470,9 +413,19 @@ public:
 
 };
 
-	// generate static object constructor for class registration
-	void AFXAPI AfxClassInit(CRuntimeClass* pNewClass);
-	struct AFX_CLASSINIT
+class InterlockedObject : public Object {
+public:
+	typedef InterlockedPolicy interlocked_policy;
+};
+
+class NonInterlockedObject : public Object {
+public:
+	typedef NonInterlockedPolicy interlocked_policy;
+};
+
+// generate static object constructor for class registration
+void AFXAPI AfxClassInit(CRuntimeClass* pNewClass);
+struct AFX_CLASSINIT
 	{ AFX_CLASSINIT(CRuntimeClass* pNewClass) { AfxClassInit(pNewClass); } };
 
 	class /*!!!AFX_CLASS*/ CRuntimeClass {
@@ -490,8 +443,7 @@ public:
 		CRuntimeClass* m_pNextClass;       // linked list of registered classes
 		const AFX_CLASSINIT* m_pClassInit;
 
-		Object *CreateObject()
-		{
+		Object *CreateObject() {
 			return m_pfnCreateObject();
 		}
 
@@ -684,58 +636,34 @@ public: \
 namespace Ext {
 
 
-template <typename T>
-class optional {
-public:
-	optional()
-		:	m_bInitialized(false)
-	{}
-
-	optional(const T& v)
-		:	m_v(v)
-		,	m_bInitialized(true)
-	{}
-
-	bool operator!() const { return !m_bInitialized; }
-
-	const T& get() const {
-		if (!m_bInitialized)
-			Throw(E_FAIL);
-		return m_v;
-	}
-	
-	T& get() {
-		if (!m_bInitialized)
-			Throw(E_FAIL);
-		return m_v;
-	}
-
-	void reset() {
-		m_bInitialized = false;
-		m_v = T();
-	}
-
-	optional& operator=(const optional& op) {
-		m_bInitialized = op.m_bInitialized;
-		m_v = op.m_v;
-		return *this;
-	}
-
-	optional& operator=(const T& v) {
-		m_v = v;
-		m_bInitialized = true;
-		return *this;
-	}
-private:
-	T m_v;
-	volatile bool m_bInitialized;
-};
-
 
 
 //!!!#if UCFG_FRAMEWORK && !defined(_CRTBLD)
 
+class CLocalTracePrefix {
+	CLocalTracePrefix *m_prev;
+	const char *m_prefix;
+	size_t m_len;
+public:
+	CLocalTracePrefix(const char *prefix);
+	~CLocalTracePrefix();
+
+	friend class CTraceWriter;
+};
+
+class CGlobalTracePrefix {
+	CGlobalTracePrefix *m_prev;
+	const char *m_prefix;
+	size_t m_len;
+public:
+	CGlobalTracePrefix(const char *prefix);
+	~CGlobalTracePrefix();
+
+	friend class CTraceWriter;
+};
+
 class AFX_CLASS CTrace {
+	static Stream *s_pOstream, *s_pSecondStream;
 public:
 	typedef unsigned long (_cdecl* PFN_DbgPrint)(const char *format, ...);
 	EXT_DATA static PFN_DbgPrint s_pTrcPrint;
@@ -749,8 +677,6 @@ public:
 	static void AFXAPI SetOStream(Stream *os);
 	static void AFXAPI SetSecondOStream(Stream *os);
 private:
-	static Stream *s_pOstream, *s_pSecondStream;
-
 	friend class CTraceWriter;
 };
 
@@ -759,7 +685,7 @@ private:
 
 /*!!!  different implementtions in different modules
 template <typename T>
-class Singleton {				
+class Singleton {
 public:
 	T& operator()() const {
 		static T s_t;
@@ -768,16 +694,15 @@ public:
 };
 */
 
-template <typename R>
-int FindSignature(const unsigned char *sig, size_t len, R reader) {
-	for (int i=0, m=0, r=0, ch=-1;;) {
+template <typename R> int FindSignature(const unsigned char* sig, size_t len, R reader) {
+	for (int i = 0, m = 0, r = 0, ch = -1;;) {
 		if (m) {
-			if (m==i || !memcmp(sig, sig+m, i-m)) {
+			if (m == i || !memcmp(sig, sig + m, i - m)) {
 				i -= std::exchange(m, 0);
 				continue;
 			}
 		} else {
-			if (ch==-1 && (ch=reader()) == -1)
+			if (ch == -1 && (ch = reader()) == -1)
 				return -1;
 			if (sig[i] == ch) {
 				if (++i == len)
@@ -799,12 +724,14 @@ int FindSignature(const unsigned char *sig, size_t len, R reader) {
 #endif
 
 class EXT_API CFunTrace {
+	const char* m_funName;
+	int m_trclevel;
 public:
 
 #if UCFG_WDM
 	CFunTrace(const char *funName, int trclevel = 0)
-		:	m_trclevel(trclevel)
-		,	m_funName(funName)
+		: m_funName(funName)
+		, m_trclevel(trclevel)
 	{
 		KdPrint((">%s\n", m_funName));
 	}
@@ -813,15 +740,11 @@ public:
 		KdPrint(("<%s\n", m_funName));
 	}
 #else
-	static CTls s_level;
+	//!!!R static CTls s_level;
 
 	CFunTrace(const char *funName, int trclevel = 0);
 	~CFunTrace();
 #endif
-
-private:
-	int m_trclevel;
-	const char *m_funName;
 };
 
 #ifdef _MSC_VER
@@ -832,12 +755,13 @@ inline HRESULT HResult(unsigned long err) { return (HRESULT)err; }
 
 #define EXT_CONCAT1(a, b) a##b
 #define EXT_CONCAT(a, b) EXT_CONCAT1(a, b)
+#define EXT_UNIQUE_SUFFIX(a) EXT_CONCAT(a, __COUNTER__)
 
 #if UCFG_EH_SUPPORT_IGNORE
-#	define DBG_LOCAL_IGNORE(hr)					CLocalIgnore<std::error_code> EXT_CONCAT(_localIgnore, __COUNTER__)(error_code(Ext::HResult(hr), Ext::hresult_category()));
-#	define DBG_LOCAL_IGNORE_CONDITION(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(make_error_condition(econd));
-#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)	CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(econd);
-#	define DBG_LOCAL_IGNORE_WIN32(name)			CLocalIgnore<std::error_condition> EXT_CONCAT(_localIgnore, __COUNTER__)(error_condition(name, Ext::win32_category()));
+#	define DBG_LOCAL_IGNORE(hr)						CLocalIgnore<std::error_code>		EXT_UNIQUE_SUFFIX(_localIgnore)(error_code(Ext::HResult(hr), Ext::hresult_category()));
+#	define DBG_LOCAL_IGNORE_CONDITION(econd)		CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(make_error_condition(econd));
+#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)	CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(econd);
+#	define DBG_LOCAL_IGNORE_WIN32(name)				CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(error_condition(name, Ext::win32_category()));
 //!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)	CLocalIgnore<std::error_code> _localIgnore##name(error_code(Ext::HResult(hr), Ext::hresult_category()));
 #else
 #	define DBG_LOCAL_IGNORE(hr)
@@ -861,13 +785,15 @@ String TruncPrettyFunction(const char *fn);
 
 #if UCFG_TRC
 #	define DBG_PARAM(param) param
-#	define TRC(level, s) { if ((1<<level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1<<level, EXT_TRC_FUNCNAME).Stream() << s; }
+#	define TRC_CUT_PREFIX(prefix) Ext::CLocalTracePrefix _localTracePrefix(prefix);
+#	define TRC_GLOBAL_CUT_PREFIX(prefix) static Ext::CGlobalTracePrefix EXT_UNIQUE_SUFFIX(_globalTracePrefix)(prefix);
+#	define TRC(level, s) { if ((1 << level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1 << level, EXT_TRC_FUNCNAME).Stream() << s; }
 
 #	define TRCP(level, s) { if (level & Ext::CTrace::s_nLevel) {				\
 		char obj[sizeof(Ext::CTraceWriter)];									\
 		Ext::CTraceWriter& w = Ext::CTraceWriter::CreatePreObject(obj, level, EXT_TRC_FUNCNAME);				\
 		w.Printf s;																\
-		w.~CTraceWriter(); }}												
+		w.~CTraceWriter(); }}
 
 
 #	define TRC_SHORT(level, s) //!!!? ( (1<<level) & Ext::CTrace::s_nLevel ? OUTPUT_DEBUG(' ' << s) : 0)
@@ -887,6 +813,8 @@ String TruncPrettyFunction(const char *fn);
 
 #else
 #	define DBG_PARAM(param)
+#	define TRC_CUT_PREFIX(prefix)
+#	define TRC_GLOBAL_CUT_PREFIX(prefix)
 #	define TRC(level, s)
 #	define TRCP(level, s)
 #	define TRC_SHORT(level, s)

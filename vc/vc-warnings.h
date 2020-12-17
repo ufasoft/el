@@ -8,10 +8,10 @@
 	// return type for 'identifier::operator ->' is not a UDT or reference to a UDT
 #endif
 
-#pragma warning(disable: 4061) // enumerator ' identifier ' in switch of enum ' enumeration ' is not explicitly handled by a case label  
-#pragma warning(disable: 4062) // identifier ' in switch of enum ' enumeration ' is not handled 
+#pragma warning(disable: 4061) // enumerator ' identifier ' in switch of enum ' enumeration ' is not explicitly handled by a case label
+#pragma warning(disable: 4062) // identifier ' in switch of enum ' enumeration ' is not handled
 #pragma warning(disable: 4091) // ignored on left of '' when no variable is declared
-#pragma warning(disable: 4100) // unreferenced formal parameter 
+#pragma warning(disable: 4100) // unreferenced formal parameter
 #pragma warning(disable: 4103) // alignment changed after including header, may be due to missing #pragma pack(pop)
 #pragma warning(disable: 4115) // named type definition in parentheses
 #pragma warning(disable: 4127) // conditional expression is constant
@@ -19,31 +19,31 @@
 #pragma warning(disable: 4189) // local variable is initialized but not referenced
 #pragma warning(disable: 4191) // unsafe conversion from 'type of expression' to 'type required'
 #pragma warning(disable: 4200) // nonstandard extension used : zero-sized array in struct/union
-#pragma warning(disable: 4201) // nonstandard extension used : nameless struct/union 
+#pragma warning(disable: 4201) // nonstandard extension used : nameless struct/union
 #pragma warning(disable: 4204) // nonstandard extension used: non-constant aggregate initializer
 #pragma warning(disable: 4214) // nonstandard extension used : bit field types other than int
-#pragma warning(disable: 4238) // nonstandard extension used : class rvalue used as lvalue 
+#pragma warning(disable: 4238) // nonstandard extension used : class rvalue used as lvalue
 #pragma warning(disable: 4239) // nonstandard extension used : 'token' : conversion from 'type' to 'type'
 #pragma warning(disable: 4251) // class needs to have dll-interface to be used by clients of class
-#pragma warning(disable: 4255) // no function prototype given: converting '()' to '(void)' 
+#pragma warning(disable: 4255) // no function prototype given: converting '()' to '(void)'
 #pragma warning(disable: 4265) // class has virtual functions, but destructor is not virtual
 #pragma warning(disable: 4267) // 'initializing' : conversion from 'size_t' to 'int', possible loss of data
 #pragma warning(disable: 4275) // non dll-interface class used as base for dll-interface class
-#pragma warning(disable: 4296) // expression is always false 
+#pragma warning(disable: 4296) // expression is always false
 #pragma warning(disable: 4297) // function assumed not to throw an exception but does
 #pragma warning(disable: 4315) // pointer for member may not be aligned 8 as expected by the constructor
 #pragma warning(disable: 4324) // structure was padded due to __declspec(align())
 #pragma warning(disable: 4342) // 'function' called, but a member operator was called in previous versions
-#pragma warning(disable: 4350) // behavior change: 'member1' called instead of 'member2' 
+#pragma warning(disable: 4350) // behavior change: 'member1' called instead of 'member2'
 #pragma warning(disable: 4365) // conversion from X to Y, signed/unsigned mismatch
 #pragma warning(disable: 4371) // layout of class may have changed from a previous version of the compiler due to better packing of member
 #pragma warning(disable: 4389) // signed/unsigned mismatch
 #pragma warning(disable: 4481) // nonstandard extension used: override specifier 'keyword'
 #pragma warning(disable: 4482) // nonstandard extension used: enum 'enum' used in qualified name
-#pragma warning(disable: 4512) // assignment operator could not be generated 
+#pragma warning(disable: 4512) // assignment operator could not be generated
 #pragma warning(disable: 4514) // unreferenced inline function has been removed
 #pragma warning(disable: 4548) // expression before comma has no effect; expected expression with side-effect
-#pragma warning(disable: 4555) // expression has no effect; expected expression with side-effect 
+#pragma warning(disable: 4555) // expression has no effect; expected expression with side-effect
 
 #if _MSC_VER<1700
 #	pragma warning(disable: 4567) // behavior change due to parameter : calling convention incompatible with previous compiler versions
@@ -61,38 +61,44 @@
 
 //!!! #pragma warning(disable: 4609) // warning number N unavailable; /analyze must be specified for this warning
 #pragma warning(disable: 4619) // warning number N unavailable; /analyze must be specified for this warning //!!!
-#pragma warning(disable: 4625) // copy constructor could not be generated because a base class copy constructor is inaccessible 
-#pragma warning(disable: 4626) // assignment operator could not be generated because a base class assignment operator is inaccessible 
+#pragma warning(disable: 4625) // copy constructor could not be generated because a base class copy constructor is inaccessible
+#pragma warning(disable: 4626) // assignment operator could not be generated because a base class assignment operator is inaccessible
 #pragma warning(disable: 4640) // construction of local static object is not thread-safe
+#pragma warning(disable: 4647) // behavior change: __is_pod
 //!!!R #pragma warning(disable: 4668) // SYMBOL is not defined as a preprocessor macro, replacing with '0' for '#if/#elif'
 #pragma warning(disable: 4702)  // unreachable code caused by optimizations
-#pragma warning(disable: 4706) // assignment within conditional expression 
+#pragma warning(disable: 4706) // assignment within conditional expression
 #pragma warning(disable: 4710) // function not inlined
 #pragma warning(disable: 4711) // function selected for inline expansion
 #pragma warning(disable: 4714) // function <id> marked as __forceinline not inlined
 #pragma warning(disable: 4738) // storing 32-bit float result in memory, possible loss of performance
 #pragma warning(disable: 4793) // causes native code generation for function
 #pragma warning(disable: 4800) // forcing value to bool 'true' or 'false' of class (performance warning)
-#pragma warning(disable: 4815) // ' var ' : zero-sized array in stack object will have no elements (unless the object is an aggregate that has been aggregate initialized) 
+#pragma warning(disable: 4815) // ' var ' : zero-sized array in stack object will have no elements (unless the object is an aggregate that has been aggregate initialized)
 #pragma warning(disable: 4820) // bytes padding added after data member
 #pragma warning(disable: 4826) // Conversion is sign-extended. This may cause unexpected runtime behavior.
 #pragma warning(disable: 4836) // local types or unnamed types cannot be used as template arguments
 #pragma warning(disable: 4917) // a GUID can only be associated with a class, interface or namespace
-#pragma warning(disable: 4928) // illegal copy-initialization; more than one user-defined conversion has been implicitly applied 
+#pragma warning(disable: 4928) // illegal copy-initialization; more than one user-defined conversion has been implicitly applied
 #pragma warning(disable: 4986) // exception specification does not match previous declaration
 #pragma warning(disable: 4987) // nonstandard extension used: 'throw (...)'
-#pragma warning(disable: 4996) // was declared deprecated 
+#pragma warning(disable: 4996) // was declared deprecated
 
 #pragma warning(disable: 4018) // signed/unsigned mismatch
-#pragma warning(disable: 4733) // Inline asm assigning to 'FS:0' 
+#pragma warning(disable: 4733) // Inline asm assigning to 'FS:0'
 #pragma warning(disable: 4946) // reinterpret_cast used between related classes: 'class1' and 'class2'
+#pragma warning(disable: 4577) // 'noexcept' used with no exception handling mode specified; termination on exception is not guaranteed. Specify /EHsc
 
 #if _MSC_VER >= 1900
 #	pragma warning(disable: 4456) // declaration of <id> hides previous local declaration
+#	pragma warning(disable: 4464) // relative include path contains '..'
+#	pragma warning(disable: 4592) // symbol will be dynamically initialized (implementation limitation)
 #	pragma warning(disable: 5024) // move constructor was implicitly defined as deleted
 #	pragma warning(disable: 5025) // move assignment operator was implicitly defined as deleted
 #	pragma warning(disable: 5026) // move constructor was implicitly defined as deleted because a base class move constructor is inaccessible or deleted
 #	pragma warning(disable: 5027) // move assignment operator was implicitly defined as deleted because a base class move assignment operator is inaccessible or deleted
+#	pragma warning(disable: 5039) // 'function' : pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior may occur if this function throws an exception
+#	pragma warning(disable: 5045) // Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
 #endif
 
 //#pragma warning(disable: 4786)  // name truncated
@@ -107,7 +113,7 @@
 #pragma warning(default: 4254) // 'operator' : conversion from 'type1' to 'type2', possible loss of data
 #pragma warning(default: 4263) // member function does not override any base class virtual member function
 #pragma warning(default: 4264) // no override available for virtual member function from base 'class'; function is hidden
-#pragma warning(default: 4266) // no override available for virtual member function from base 'type'; function is hidden
+#pragma warning(disable: 4266) // no override available for virtual member function from base 'type'; function is hidden
 #pragma warning(default: 4287) // 'operator' : unsigned/negative constant mismatch
 #pragma warning(default: 4289) // nonstandard extension used : 'var' : loop control variable declared in the for-loop is used outside the for-loop scope
 #pragma warning(default: 4302) // 'conversion' : truncation from 'type 1' to 'type 2'
@@ -128,7 +134,7 @@
 #pragma warning(default: 4547) // 'operator' : operator before comma has no effect; expected operator with side-effect
 #pragma warning(default: 4549) // 'operator' : operator before comma has no effect; did you intend 'operator'?
 #pragma warning(default: 4557) // '__assume' contains effect 'effect'
-#pragma warning(default: 4623) // 'derived class' : default constructor could not be generated because a base class default constructor is inaccessible 
+//!!!? #pragma warning(default: 4623) // C4623: '__std_type_info_data': default constructor was implicitly defined as deleted because a base class default constructor is inaccessible or deleted
 #pragma warning(default: 4628) // digraphs not supported with -Ze. Character sequence 'digraph' not interpreted as alternate token for 'char'
 #pragma warning(default: 4641) // XML document comment has an ambiguous cross reference
 
@@ -144,6 +150,3 @@
 #pragma warning(default: 4906) // string literal cast to 'LPWSTR'
 #pragma warning(default: 4931) // we are assuming the type library was built for number-bit pointers
 #pragma warning(default: 4962) // 'function' : Profile-guided optimizations disabled because optimizations caused profile data to become inconsistent"
-
-
-

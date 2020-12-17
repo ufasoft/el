@@ -32,7 +32,7 @@ static int s_initJanssonMalloc = (::json_set_alloc_funcs(&MallocWrap, &FreeWrap)
 class JsonHandle : noncopyable {
 public:
 	JsonHandle(json_t *h = 0)
-		:	m_h(h)
+		: m_h(h)
 	{}
 
 	~JsonHandle() {
@@ -58,7 +58,7 @@ private:
 class JsonVarValueObj : public VarValueObj {
 public:
 	JsonVarValueObj(json_t *json)
-		:	m_json(json)
+		: m_json(json)
 	{}
 
 	bool HasKey(RCString key) const override {
@@ -99,7 +99,7 @@ public:
 
 	String ToString() const override {
 		if (const char *s = ::json_string_value(m_json))
-			return Encoding::UTF8.GetChars(ConstBuf(s, strlen(s)));
+			return Encoding::UTF8.GetChars(Span((const uint8_t*)s, strlen(s)));
 		Throw(ExtErr::InvalidCast);
 	}
 
@@ -150,7 +150,7 @@ public:
 			os << s;
 			FreeWrap(s);
 		} else
-			os << "null";		
+			os << "null";
 	}
 private:
 	JsonHandle m_json;
@@ -214,11 +214,11 @@ protected:
 		CallbackData& cbd = *(CallbackData*)data;
 		size_t r;
 		if (cbd.LastChunkPos < 0) {
-			int off = int(ssize_t(cbd.LastChunk.Size) + cbd.LastChunkPos);
-			memcpy(buffer, cbd.LastChunk.constData()+off, r = std::min(buflen, size_t(cbd.LastChunk.Size) - off));
+			int off = int(ssize_t(cbd.LastChunk.size()) + cbd.LastChunkPos);
+			memcpy(buffer, cbd.LastChunk.constData() + off, r = std::min(buflen, size_t(cbd.LastChunk.size()) - off));
 			cbd.LastChunkPos += int(r);
 		} else {
-			cbd.LastChunkPos += cbd.LastChunk.Size;
+			cbd.LastChunkPos += cbd.LastChunk.size();
 			r = cbd.m_pStm->Read(buffer, buflen);
 			cbd.Eof |= true;
 			cbd.LastChunk = Blob(buffer, r);
@@ -226,17 +226,17 @@ protected:
 		return r;
 	}
 
-	pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf) override {
+	pair<VarValue, Blob> ParseStream(Stream& stm, RCSpan preBuf) override {
 #if JANSSON_VERSION_HEX >= 0x020400
 		CallbackData cbd;
 		cbd.LastChunk = preBuf;
 		cbd.m_pStm = &stm;
-		cbd.LastChunkPos = int(-(ssize_t)preBuf.Size);
-		
+		cbd.LastChunkPos = int(-(ssize_t)preBuf.size());
+
 		json_error_t err;
 		if (json_t *json = json_load_callback(&LoadCallback, &cbd, JSON_DISABLE_EOF_CHECK, &err)) {
 			int off = err.position - std::max(cbd.LastChunkPos, 0);
-			return make_pair(JsonVarValueObj::FromJsonT(json), Blob(cbd.LastChunk.constData() + off, cbd.LastChunk.Size - off));
+			return make_pair(JsonVarValueObj::FromJsonT(json), Blob(cbd.LastChunk.constData() + off, cbd.LastChunk.size() - off));
 		} else {
 			if (!cbd.Eof)
 				JanssonCheck(json, err);
@@ -370,10 +370,10 @@ class JsonParser : public MarkupParser {
 	}
 };
 
-VarValue AFXAPI ParseJson(RCString s) {	
+VarValue AFXAPI ParseJson(RCString s) {
 	string ss(s.c_str());
 	istringstream is(ss);
-	return MarkupParser::CreateJsonParser()->Parse(is);		
+	return MarkupParser::CreateJsonParser()->Parse(is);
 }
 
 #endif // UCFG_JSON == UCFG_JSON_JSONCPP

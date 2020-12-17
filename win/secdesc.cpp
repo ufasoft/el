@@ -105,7 +105,7 @@ void Acl::AddAccessAllowedAce(DWORD dwAceRevision, DWORD AccessMask, const Sid& 
 	if (::AddAccessAllowedAce(_self, dwAceRevision, AccessMask, sid))
 		return;
 	Win32Check(::GetLastError()==ERROR_ALLOTTED_SPACE_EXCEEDED);
-	size_t cbAcl = m_blob.Size+sizeof(ACCESS_ALLOWED_ACE)+sid.Size;
+	size_t cbAcl = m_blob.size() + sizeof(ACCESS_ALLOWED_ACE) + sid.Size;
 	Acl nacl(cbAcl);
 	CopyTo(nacl);
 	m_blob = nacl.m_blob;
@@ -143,11 +143,11 @@ AbsoluteSecurityDescriptor::AbsoluteSecurityDescriptor(const SecurityDescriptor&
 	if (::MakeAbsoluteSD(sd, NULL, &dwSD, NULL, &dwDacl, NULL, &dwSacl, NULL, &dwOwner, NULL, &dwGroup))
 		Throw(E_FAIL);
 	Win32Check(::GetLastError() == ERROR_INSUFFICIENT_BUFFER);
-	m_blob.Size = dwSD;
-	m_owner.Size = dwOwner;
-	m_group.Size = dwGroup;
-	m_dacl.Size = dwDacl;
-	m_sacl.Size = dwSacl;
+	m_blob.resize(dwSD);
+	m_owner.resize(dwOwner);
+	m_group.resize(dwGroup);
+	m_dacl.resize(dwDacl);
+	m_sacl.resize(dwSacl);
 	Win32Check(::MakeAbsoluteSD(sd, m_blob.data(), &dwSD, (PACL)m_dacl.data(), &dwDacl, (PACL)m_sacl.data(), &dwSacl, m_owner.data(), &dwOwner, m_group.data(), &dwGroup));
 }
 

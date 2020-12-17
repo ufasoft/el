@@ -1,10 +1,9 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
-
 
 
 #define CREATE_NEW          1 //!!!  windows
@@ -30,9 +29,7 @@ using std::istringstream;
 class Stream;
 class DirectoryInfo;
 
-
 typedef uint32_t (*AFX_THREADPROC)(void *);
-
 
 
 bool AFXAPI GetSilentUI();
@@ -95,12 +92,12 @@ class EXTAPI CDynamicLibrary {
 	typedef CDynamicLibrary class_type;
 public:
 	mutable CInt<HMODULE> m_hModule;
-	String Path;
+	path Path;
 
 	CDynamicLibrary() {
 	}
 
-	CDynamicLibrary(const String& path, bool bDelay = false) {
+	CDynamicLibrary(const path& path, bool bDelay = false) {
 		Path = path;
 		if (!bDelay)
 			Load(path);
@@ -114,7 +111,7 @@ public:
 		return m_hModule;
 	}
 
-	void Load(const String& path) const;
+	void Load(const path& path) const;
 	void Free();
 	FARPROC GetProcAddress(const CResID& resID);
 private:
@@ -129,13 +126,13 @@ enum _NoInit {
 #if UCFG_WIN32
 
 class DlProcWrapBase {
+protected:
+	void* m_p;
 public:
 	void Init(HMODULE hModule, RCString funname);
 protected:
-	void *m_p;
-
 	DlProcWrapBase()
-		:	m_p(0)
+		: m_p(0)
 	{}
 
 	DlProcWrapBase(RCString dll, RCString funname);
@@ -153,7 +150,7 @@ public:
 	}
 
 	DlProcWrap(RCString dll, RCString funname)
-		:	base(dll, funname)
+		: base(dll, funname)
 	{
 	}
 
@@ -168,15 +165,15 @@ template <typename F> bool GetProcAddress(F& pfn, RCString dll, RCString funname
 	return GetProcAddress(pfn, ::GetModuleHandle(dll), funname);
 }
 
-class ResourceObj : public Object {
+class ResourceObj : public InterlockedObject {
+	HMODULE m_hModule;
+	HRSRC m_hRsrc;
+	HGLOBAL m_hglbResource;
+	void* m_p;
 public:
 	ResourceObj(HMODULE hModule, HRSRC hRsrc);
 	~ResourceObj();
 private:
-	HMODULE m_hModule;
-	HRSRC m_hRsrc;
-	HGLOBAL m_hglbResource;
-	void *m_p;
 
 	friend class Resource;
 };
@@ -184,25 +181,18 @@ private:
 
 class Resource {
 	typedef Resource class_type;
-public:
-	Resource(const CResID& resID, const CResID& resType, HMODULE hModule = 0);
 
-	const void *get_Data();
-	DEFPROP_GET(const void *, Data);
-
-	size_t get_Size();
-	DEFPROP_GET(size_t, Size);
-
-	operator ConstBuf() {
-		return ConstBuf(Data, Size);
-	}
-
-private:
 #if UCFG_WIN32
 	ptr<ResourceObj> m_pimpl;
 #else
 	Blob m_blob;
 #endif
+public:
+	Resource(const CResID& resID, const CResID& resType, HMODULE hModule = 0);
+
+	const uint8_t *data() const;
+	size_t size() const;
+private:
 };
 
 
@@ -212,8 +202,8 @@ private:
 const int COINIT_APARTMENTTHREADED  = 0x2;
 
 class AFX_CLASS CUsingCOM {
-	bool m_bInitialized;
 	CDynamicLibrary m_dllOle;
+	bool m_bInitialized;
 public:
 	CUsingCOM(DWORD dwCoInit = COINIT_APARTMENTTHREADED);
 	CUsingCOM(_NoInit);
@@ -223,7 +213,6 @@ public:
 };
 
 #endif
-
 
 
 
@@ -243,48 +232,48 @@ struct CTimesInfo {
 
 //!!!O
 struct CFileStatus {
+	path AbsolutePath; // absolute path name
 	DateTime m_ctime;          // creation date/time of file
 	DateTime m_mtime;          // last modification date/time of file
 	DateTime m_atime;          // last access date/time of file
 	int64_t m_size;            // logical size of file in bytes
 	uint8_t m_attribute;	   // logical OR of File::Attribute enum values
 	uint8_t _m_padding;		   // pad the structure to a WORD
-	path AbsolutePath; // absolute path name
 };
 #endif
 
 ENUM_CLASS(FileMode) {
-	CreateNew,
-	Create,
-	Open,
-	OpenOrCreate,
-	Truncate,
-	Append
+	CreateNew
+	, Create
+	, Open
+	, OpenOrCreate
+	, Truncate
+	, Append
 } END_ENUM_CLASS(FileMode);
 
 ENUM_CLASS(FileAccess) {
-	Read = 1,
-	Write = 2,
-	ReadWrite = 3,
+	Read		= 1
+	, Write		= 2
+	, ReadWrite = 3,
 } END_ENUM_CLASS(FileAccess);
 
 ENUM_CLASS(FileShare) {
-	None = 0,
-	Read = 1,
-	Write = 2,
-	ReadWrite = 3,
-	Delete = 4,
-	Inheritable = 8
+	None		= 0
+	, Read		= 1
+	, Write		= 2
+	, ReadWrite = 3
+	, Delete	= 4
+	, Inheritable	= 8
 } END_ENUM_CLASS(FileShare);
 
 ENUM_CLASS(FileOptions) {
-	None = 0,
-	Asynchronous = 1,
-	DeleteOnClose = 2,
-	Encrypted = 4,
-	RandomAccess = 8,
-	SequentialScan = 16,
-	WriteThrough = 32
+	None = 0
+	, Asynchronous	= 1
+	, DeleteOnClose = 2
+	, Encrypted		= 4
+	, RandomAccess	= 8
+	, SequentialScan = 16
+	, WriteThrough	= 32
 } END_ENUM_CLASS(FileOptions);
 
 class AFX_CLASS File : public SafeHandle {
@@ -318,7 +307,7 @@ public:
 	~File();
 
 	static Blob AFXAPI ReadAllBytes(const path& p);
-	static void AFXAPI WriteAllBytes(const path& p, const ConstBuf& mb);
+	static void AFXAPI WriteAllBytes(const path& p, RCSpan mb);
 
 	static String AFXAPI ReadAllText(const path& p, Encoding *enc = &Encoding::UTF8);
 	static void AFXAPI WriteAllText(const path& p, RCString contents, Encoding *enc = &Encoding::UTF8);
@@ -332,12 +321,12 @@ public:
 		bool BufferingEnabled;
 
 		OpenInfo(const path& p = path())
-			:	Path(p)
-			,	Mode(FileMode::Open)
-			,	Access(FileAccess::ReadWrite)
-			,	Share(FileShare::None)
-			,	Options(FileOptions::None)
-			,	BufferingEnabled(true)
+			: Path(p)
+			, Mode(FileMode::Open)
+			, Access(FileAccess::ReadWrite)
+			, Share(FileShare::None)
+			, Options(FileOptions::None)
+			, BufferingEnabled(true)
 		{}
 	};
 
@@ -392,33 +381,35 @@ public:
 };
 
 ENUM_CLASS(MemoryMappedFileAccess) {
-	None 					= 0,
-	CopyOnWrite 			= 1,
-	Write 					= 2,
-	Read 					= 4,
-	ReadWrite 				= Read|Write,
-	Execute 				= 8,
-	ReadExecute 			= Read | Execute,
-	ReadWriteExecute 		= Read | Write | Execute
+	None 					= 0
+	, CopyOnWrite 			= 1
+	, Write 				= 2
+	, Read 					= 4
+	, ReadWrite 			= Read|Write
+	, Execute 				= 8
+	, ReadExecute 			= Read | Execute
+	, ReadWriteExecute 		= Read | Write | Execute
 } END_ENUM_CLASS(MemoryMappedFileAccess);
 
 ENUM_CLASS(MemoryMappedFileRights) {
-	CopyOnWrite 			= 1,
-	Write 					= 2,
-	Read 					= 4,
-	ReadWrite 				= Read|Write,
-	Execute 				= 8,
-	ReadExecute 			= Read | Execute,
-	ReadWriteExecute 		= Read | Write | Execute,
-	Delete 					= 0x10000,
-	ReadPermissions 		= 0x20000,
-	ChangePermissions 		= 0x40000,
-	TakeOwnership 			= 0x80000,
-	FullControl 			= CopyOnWrite | ReadWriteExecute | Delete | ReadPermissions | ChangePermissions | TakeOwnership,
-	AccessSystemSecurity 	= 0x1000000
+	CopyOnWrite 			= 1
+	, Write 				= 2
+	, Read 					= 4
+	, ReadWrite 			= Read|Write
+	, Execute 				= 8
+	, ReadExecute 			= Read | Execute
+	, ReadWriteExecute 		= Read | Write | Execute
+	, Delete 				= 0x10000
+	, ReadPermissions 		= 0x20000
+	, ChangePermissions 	= 0x40000
+	, TakeOwnership 		= 0x80000
+	, FullControl 			= CopyOnWrite | ReadWriteExecute | Delete | ReadPermissions | ChangePermissions | TakeOwnership
+	, AccessSystemSecurity 	= 0x1000000
 } END_ENUM_CLASS(MemoryMappedFileRights);
 
 class VirtualMem : noncopyable {
+	void* m_address;
+	size_t m_size;
 public:
 	VirtualMem(size_t size = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePage = false)
 		: m_address(0)
@@ -444,9 +435,6 @@ public:
 		m_address = a;
 		m_size = size;
 	}
-private:
-	void *m_address;
-	size_t m_size;
 };
 
 class MemoryMappedFile ;
@@ -457,14 +445,15 @@ public:
 	void *Address;
 	size_t Size;
 	MemoryMappedFileAccess Access;
-	bool AddressFixed;
+	bool AddressFixed, LargePages;
 
 	MemoryMappedView()
-		:	Offset(0)
-		,	Address(0)
-		,	Size(0)
-		,	Access(MemoryMappedFileAccess::ReadWrite)
-		,	AddressFixed(false)
+		: Offset(0)
+		, Address(0)
+		, Size(0)
+		, Access(MemoryMappedFileAccess::ReadWrite)
+		, AddressFixed(false)
+		, LargePages(false)
 	{
 	}
 
@@ -473,11 +462,11 @@ public:
 	}
 
 	MemoryMappedView(const MemoryMappedView& v)
-		:	Offset(0)
-		,	Address(0)
-		,	Size(0)
-		,	Access(MemoryMappedFileAccess::ReadWrite)
-		,	AddressFixed(false)
+		: Offset(0)
+		, Address(0)
+		, Size(0)
+		, Access(MemoryMappedFileAccess::ReadWrite)
+		, AddressFixed(false)
 	{
 		if (v.Address)
 			Throw(E_FAIL);
@@ -503,16 +492,15 @@ class MemoryMappedFile {
 public:
 	SafeHandle m_hMapFile;
 	MemoryMappedFileAccess Access;
-//!!!R	size_t Size;
 
 	MemoryMappedFile()
-		:	Access(MemoryMappedFileAccess::None)
+		: Access(MemoryMappedFileAccess::None)
 	{
 	}
 
 	MemoryMappedFile(EXT_RV_REF(MemoryMappedFile) rv)
-		:	m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
-		,	Access(rv.Access)
+		: m_hMapFile(static_cast<EXT_RV_REF(SafeHandle)>(rv.m_hMapFile))
+		, Access(rv.Access)
 	{}
 
 	void Close() {
@@ -534,11 +522,11 @@ public:
 	intptr_t GetHandle() { return m_hMapFile.DangerousGetHandle(); }
 #endif
 
-	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
+	static MemoryMappedFile AFXAPI CreateFromFile(Ext::File& file, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite, bool bLargePages = false);
 	static MemoryMappedFile AFXAPI CreateFromFile(const path& p, FileMode mode = FileMode::Open, RCString mapName = nullptr, uint64_t capacity = 0, MemoryMappedFileAccess access = MemoryMappedFileAccess::ReadWrite);
 	static MemoryMappedFile AFXAPI OpenExisting(RCString mapName, MemoryMappedFileRights rights = MemoryMappedFileRights::ReadWrite, HandleInheritability inheritability = HandleInheritability::None);
 
-	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access);
+	MemoryMappedView CreateView(uint64_t offset, size_t size, MemoryMappedFileAccess access, bool bLargePages = false);
 	MemoryMappedView CreateView(uint64_t offset, size_t size = 0) { return CreateView(offset, size, Access); }
 };
 
@@ -548,14 +536,14 @@ public:
 //!!!	mutable File m_ownFile;
 	observer_ptr<File> m_pFile;
 	mutable FILE *m_fstm;
-	CBool TextMode;
 
 #if UCFG_WIN32_FULL
 	observer_ptr<OVERLAPPED> m_ovl;
 #endif
+	CBool TextMode;
 
 	FileStream()
-		:	m_fstm(0)
+		: m_fstm(0)
 	{
 	}
 
@@ -564,16 +552,16 @@ public:
 , OVERLAPPED *ovl = nullptr
 #endif
 )
-		:	m_pFile(&file)
-		,	m_fstm(0)
+		: m_pFile(&file)
+		, m_fstm(0)
 #if UCFG_WIN32_FULL
-		,	m_ovl(ovl)
+		, m_ovl(ovl)
 #endif
 	{
 	}
 
 	FileStream(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::Read, size_t bufferSize = 4096, FileOptions options = FileOptions::None)
-		:	m_fstm(0)
+		: m_fstm(0)
 	{
 		Open(p, mode, access, share, bufferSize, options);
 	}
@@ -640,13 +628,11 @@ public:
 
 class PositionOwningFileStream : public FileStream {
 	typedef FileStream base;
+protected:
+	mutable uint64_t m_pos;
+	uint64_t m_maxPos;
 public:
-	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0)
-		:	base(file)
-		,	m_pos(pos)
- 	{
-	}
-
+	PositionOwningFileStream(Ext::File& file, uint64_t pos = 0, uint64_t maxLen = _UI64_MAX);
 	uint64_t get_Position() const override { return m_pos; }
 	void put_Position(uint64_t pos) const override { m_pos = pos; }
 	bool Eof() const override {	return m_pos == m_pFile->Length; }
@@ -663,20 +649,22 @@ public:
 	size_t Read(void *buf, size_t count) const override;
 	void ReadBuffer(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
-protected:
-	mutable uint64_t m_pos;
 };
 
 class TraceStream : public FileStream {
 	typedef FileStream base;
-public:
-	TraceStream(const path& p, bool bAppend = false);
 protected:
 	File m_file;
+public:
+	TraceStream(const path& p, bool bAppend = false);
 };
 
 class CycledTraceStream : public TraceStream {
 	typedef TraceStream base;
+
+	path m_path;
+	std::shared_mutex m_mtx;
+	size_t m_maxSize, m_threshold;
 public:
 	CycledTraceStream(const path& p, bool bAppend = false, size_t maxSize = 10000000)
 		: base(p, bAppend)
@@ -686,10 +674,6 @@ public:
 	{}
 
 	void WriteBuffer(const void *buf, size_t count) override;
-private:
-	path m_path;
-	std::shared_mutex m_mtx;
-	size_t m_maxSize, m_threshold;
 };
 
 class Guid : public GUID {
@@ -747,10 +731,10 @@ public:
 	int Major, Minor, Build, Revision;
 
 	explicit Version(int major = 0, int minor = 0, int build = -1, int revision = -1)
-		:	Major(major)
-		,	Minor(minor)
-		,	Build(build)
-		,	Revision(revision)
+		: Major(major)
+		, Minor(minor)
+		, Build(build)
+		, Revision(revision)
 	{}
 
 	explicit Version(RCString s);
@@ -759,20 +743,45 @@ public:
 	static Version AFXAPI FromFileInfo(int ms, int ls, int fieldCount = 4);
 #endif
 
-	bool operator==(const Version& ver) const {
-		return Major==ver.Major && Minor==ver.Minor && Build==ver.Build && Revision==ver.Revision;
+	bool operator==(const Version& x) const {
+		return Major == x.Major && Minor == x.Minor && Build == x.Build && Revision == x.Revision;
 	}
 
-	bool operator<(const Version& ver) const {
-		return Major<ver.Major ||
-			Major==ver.Major && (Minor<ver.Minor ||
-			                     Minor==ver.Minor && (Build<ver.Build ||
-								                      Build==ver.Build  && Revision<ver.Revision));
+	bool operator<(const Version& x) const {
+		return Major < x.Major
+			|| Major == x.Major
+				&& (Minor < x.Minor || Minor == x.Minor && (Build < x.Build || Build == x.Build && Revision < x.Revision));
 	}
 
 	String ToString(int fieldCount) const;
 	String ToString() const override;
 };
+
+
+class VersionException : public Exception {
+	typedef Exception base;
+public:
+	Ext::Version Version;
+
+	VersionException(const Ext::Version& ver = Ext::Version()) : base(ExtErr::DB_Version), Version(ver) {}
+
+	~VersionException() noexcept {} //!!! GCC 4.6
+protected:
+	String get_Message() const override { return base::get_Message() + " " + Version.ToString(2); }
+};
+
+class UnsupportedOldVersionException : public VersionException {
+	typedef VersionException base;
+public:
+	UnsupportedOldVersionException(const Ext::Version& ver = Ext::Version()) : base(ver) {}
+};
+
+class UnsupportedNewVersionException : public VersionException {
+	typedef VersionException base;
+public:
+	UnsupportedNewVersionException(const Ext::Version& ver = Ext::Version()) : base(ver) {}
+};
+
 
 
 } // Ext::
@@ -796,7 +805,7 @@ public:
 	Random(int seed = Rand());
 	~Random();
 
-	virtual void NextBytes(const Buf& mb);
+	virtual void NextBytes(const span<uint8_t>& mb);
 	int Next();
 	int Next(int maxValue);
 	double NextDouble();
@@ -813,21 +822,19 @@ struct IAnnoy {
 };
 
 class EXTAPI CAnnoyer {
+	observer_ptr<IAnnoy> m_iAnnoy;
+	DateTime m_prev;
+	TimeSpan m_period;
 public:
 	CAnnoyer(IAnnoy *iAnnoy = 0)
-		:	m_iAnnoy(iAnnoy)
-		,	m_period(TimeSpan::FromSeconds(1))
+		: m_iAnnoy(iAnnoy)
+		, m_period(TimeSpan::FromSeconds(1))
 	{
 	}
 
 	void Request();
 protected:
 	virtual void OnAnnoy();
-private:
-	observer_ptr<IAnnoy> m_iAnnoy;
-
-	DateTime m_prev;
-	TimeSpan m_period;
 };
 
 #if !UCFG_WCE
@@ -850,9 +857,10 @@ public:
 #if !UCFG_WCE
 
 class CDirectoryKeeper {													//!!! Non Thread-safe
+	path m_prevCurPath;
 public:
 	CDirectoryKeeper(const path& p)
-		:	m_prevCurPath(current_path())
+		: m_prevCurPath(current_path())
 	{
 		current_path(p);
 	}
@@ -860,8 +868,6 @@ public:
 	~CDirectoryKeeper() {
 		current_path(m_prevCurPath);
 	}
-private:
-	path m_prevCurPath;
 };
 
 #endif // !UCFG_WCE
@@ -909,8 +915,8 @@ public:
 	bool m_bDir;
 
 	FileSystemInfo(const path& name, bool bDir)
-		:	FullPath(name)
-		,	m_bDir(bDir)
+		: FullPath(name)
+		, m_bDir(bDir)
 	{}
 
 	DWORD get_Attributes() const;
@@ -942,13 +948,44 @@ public:
 
 #endif // UCFG_WIN32_FULL
 
-ENUM_CLASS(PlatformID) {
-	Win32S,
-	Win32Windows,
-	Win32NT,
-	WinCE,
-	Unix,
-	XBox
+ENUM_CLASS(Architecture) {
+	X86
+	, X64
+	, Arm
+	, Arm64
+	, MIPS
+	, MIPS64
+	, IA64
+	, SHX
+	, Unknown = 255
+} END_ENUM_CLASS(Architecture);
+
+class OSPlatform {
+public:
+	static const OSPlatform Windows, Linux, OSX, Unix;
+
+	String Name;
+
+	OSPlatform(RCString name)
+		: Name(name)
+	{}
+
+	bool operator==(const OSPlatform& o) const { return Name == o.Name; }
+};
+
+class RuntimeInformation {
+public:
+	static bool IsOSPlatform(const OSPlatform& platform);
+	static Architecture OSArchitecture();
+};
+
+ENUM_CLASS(PlatformID) {	//!!!Obsolete
+	Win32S
+	, Win32Windows
+	, Win32NT
+	, WinCE
+	, Unix
+	, XBox
 } END_ENUM_CLASS(PlatformID);
 
 class OperatingSystem : public CPrintable {
@@ -1094,6 +1131,7 @@ public:
 	EXT_API static path AFXAPI GetFolderPath(SpecialFolder folder);
 	static String AFXAPI GetMachineType();
 	static String AFXAPI GetMachineVersion();
+	static bool AFXAPI Is64BitProcess() { return sizeof(void*) == 8; }
 	static bool AFXAPI Is64BitOperatingSystem();
 
 	int get_ProcessorCount();
@@ -1131,17 +1169,23 @@ public:
 	CStringVector GetValues(RCString key) const {
 		CStringVector r;
 		base::const_iterator i = find(key);
-		return i!=end() ? i->second : CStringVector();
+		return i != end() ? i->second : CStringVector();
+	}
+
+	CStringVector& GetRef(RCString key) {
+		return base::operator[](key);
 	}
 
 	String Get(RCString key) const {
-		return find(key)!=end() ? String::Join(",", GetValues(key)) : nullptr;
+		return find(key) != end() ? String::Join(",", GetValues(key)) : nullptr;
 	}
+
+	String operator[](RCString key) const { return Get(key); }
 
 	void Set(RCString name, RCString v) {
 		CStringVector ar;
 		ar.push_back(v);
-		(*this)[name] = ar;
+		base::operator[](name) = ar;
 	}
 
 	String ToString() const;
@@ -1166,34 +1210,29 @@ typedef vararray<uint8_t, 64> hashval;
 
 class HashAlgorithm {
 public:
+	static const unsigned WordCount = 16;
+
 	size_t BlockSize,
 		HashSize;
 	bool IsHaifa, IsBigEndian, IsLenBigEndian, IsBlockCounted;
-
-	HashAlgorithm()
-		:	BlockSize(0)
-		,	HashSize(0)
-		,	IsHaifa(false)
-		,	IsBigEndian(true)
-		,	IsLenBigEndian(true)
-		,	IsBlockCounted(false)
-		,	Is64Bit(false)
-	{}
-
+protected:
+	bool Is64Bit;
+public:
+	HashAlgorithm();
 	virtual ~HashAlgorithm() {}
 	virtual hashval ComputeHash(Stream& stm);				//!!!TODO should be const
-	virtual hashval ComputeHash(const ConstBuf& mb);
+	virtual hashval ComputeHash(RCSpan mb);
 
 	virtual void InitHash(void *dst) noexcept {}
 	void PrepareEndianness(void *dst, int count) noexcept;
-	virtual void HashBlock(void* dst, const uint8_t* src, uint64_t counter) noexcept {}
+	virtual void HashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept {}
+	virtual void PrepareEndiannessAndHashBlock(void* dst, uint8_t src[256], uint64_t counter) noexcept;
 	virtual void OutTransform(void *dst) noexcept {}
 protected:
-	bool Is64Bit;
+	hashval Finalize(void *hash, Stream& stm, uint64_t processedLen);
 };
 
-hashval HMAC(HashAlgorithm& halgo, const ConstBuf& key, const ConstBuf& text);
-
+hashval HMAC(HashAlgorithm& halgo, RCSpan key, RCSpan text);
 
 class Crc32 : public HashAlgorithm {
 	typedef HashAlgorithm base;
@@ -1207,9 +1246,10 @@ extern EXT_DATA std::mutex g_mfcCS;
 #if UCFG_USE_POSIX
 
 class MessageCatalog {
+	nl_catd m_catd;
 public:
 	MessageCatalog()
-		:	m_catd(nl_catd(-1))
+		: m_catd(nl_catd(-1))
 	{
 	}
 
@@ -1229,8 +1269,6 @@ public:
 	String GetMessage(int set_id, int msg_id, const char *s = 0) {
 		return ::catgets(m_catd, set_id, msg_id, s);
 	}
-private:
-	nl_catd m_catd;
 };
 
 
@@ -1283,18 +1321,18 @@ AFX_API HRESULT AFXAPI AfxProcessError(HRESULT hr, EXCEPINFO *pexcepinfo);
 #endif
 
 ENUM_CLASS(VarType) {
-	Null,
-	Int,
-	Float,
-	Bool,
-	String,
-	Array,
-	Map
+	Null
+	, Int
+	, Float
+	, Bool
+	, String
+	, Array
+	, Map
 } END_ENUM_CLASS(VarType);
 
 class VarValue;
 
-class VarValueObj : public Object {
+class VarValueObj : public InterlockedObject {
 public:
 	virtual bool HasKey(RCString key) const =0;
 	virtual VarType type() const =0;
@@ -1375,13 +1413,13 @@ EXT_DEF_HASH(Ext::VarValue)
 namespace Ext {
 
 
-class MarkupParser : public Object {
+class MarkupParser : public InterlockedObject {
 public:
 	int Indent;
 	CBool Compact;
 
 	MarkupParser()
-		:	Indent(0)
+		: Indent(0)
 	{}
 
 	virtual ~MarkupParser() {
@@ -1390,7 +1428,7 @@ public:
 	virtual VarValue Parse(std::istream& is, Encoding *enc = &Encoding::UTF8) =0;
 	virtual void Print(std::ostream& os, const VarValue& v) =0;
 
-	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, const ConstBuf& preBuf = ConstBuf()) { Throw(E_NOTIMPL); }
+	virtual std::pair<VarValue, Blob> ParseStream(Stream& stm, RCSpan preBuf = Span()) { Throw(E_NOTIMPL); }
 
 	VarValue Parse(RCString s) {
 		istringstream iss(s.c_str());
@@ -1439,20 +1477,21 @@ public:
 		MemoryStream ms;
 		BinaryWriter wr(ms);
 		PersistentTraits<T>::Write(wr, val);
-		Set(key, ConstBuf(ms.get_Blob()));
+		Set(key, Span(ms.get_Blob()));
 #endif
 	}
 private:
 	static bool AFXAPI Lookup(RCString key, Blob& blob);
-	static void AFXAPI Set(RCString key, const ConstBuf& mb);
+	static void AFXAPI Set(RCString key, RCSpan mb);
 };
 
 class Temperature : public CPrintable {
+	float m_kelvin;				// float to be atomic
 public:
 	EXT_DATA static const Temperature Zero;
 
 	Temperature()
-		:	m_kelvin(0)
+		: m_kelvin(0)
 	{}
 
 	static Temperature FromKelvin(float v) { return Temperature(v); };
@@ -1468,10 +1507,8 @@ public:
 
 	String ToString() const;
 private:
-	float m_kelvin;				// float to be atomic
-
 	explicit Temperature(float kelvin)
-		:	m_kelvin(kelvin)
+		: m_kelvin(kelvin)
 	{}
 };
 
@@ -1515,16 +1552,16 @@ public:
 
 
 struct ProcessStartInfo {
-	std::map<String, String> EnvironmentVariables;
+	map<String, String> EnvironmentVariables;
 	path FileName,
 		WorkingDirectory;
 	String Arguments;
+	uint32_t Flags;
 	CBool CreateNewWindow,
 		CreateNoWindow,
 		RedirectStandardInput,
 		RedirectStandardOutput,
 		RedirectStandardError;
-	uint32_t Flags;
 
 	ProcessStartInfo(const path& fileName = path(), RCString arguments = String());
 };
@@ -1544,6 +1581,9 @@ public:
 		StandardOutput,
 		StandardError;
 #endif
+protected:
+	int m_stat_loc;
+	mutable CInt<pid_t> m_pid;
 public:
 	ProcessObj();
 #if UCFG_WIN32
@@ -1596,9 +1636,6 @@ protected:
 	}
 
 	void CommonInit();
-
-	int m_stat_loc;
-	mutable CInt<pid_t> m_pid;
 };
 
 
@@ -1658,9 +1695,10 @@ public:
 };
 
 class POpen : noncopyable {
+	FILE* m_stream;
 public:
 	POpen(RCString command, RCString mode)
-		:	m_stream(::popen(command, mode))
+		: m_stream(::popen(command, mode))
 	{
 		CCheck(m_stream ? 1 : -1);
 	}
@@ -1670,23 +1708,9 @@ public:
 			Wait();
 	}
 
-	void Wait() {
-		switch (int rc = pclose(exchange(m_stream, nullptr))) {
-		case -1:
-			CCheck(-1);
-		case 0:
-			return;
-		default:
-			ThrowImp(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_PSTATUS, (uint8_t)rc));
-		}
-	}
-
+	void Wait();
 	operator FILE*() { return m_stream; }
-private:
-	FILE *m_stream;
 };
-
-
 
 
 } // Ext::

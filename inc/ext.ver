@@ -2,8 +2,8 @@
 	#include <el/inc/inc_configs.h>
 	
 	#ifndef VER_FILEVERSION
-	#	define VER_FILEVERSION 8,0,15060,0
-	#	define VER_FILEVERSION_STR "8.0.15060.0"
+	#	define VER_FILEVERSION 19,8,19080,0
+	#	define VER_FILEVERSION_STR "19.8.19080.0"
 	#endif
 
 	#ifndef VER_PRODUCTVERSION_STR

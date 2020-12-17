@@ -146,7 +146,7 @@ Blob Device::GetInfo(cl_device_info pname) const {
 	size_t size;
 	ClCheck(::clGetDeviceInfo(Handle(), pname, 0, 0, &size));
 	Blob r(0, size);
-	ClCheck(::clGetDeviceInfo(Handle(), pname, r.Size, r.data(), 0));
+	ClCheck(::clGetDeviceInfo(Handle(), pname, r.size(), r.data(), 0));
 	return r;
 }
 
@@ -312,12 +312,13 @@ Program::Program(const Context& ctx, RCString s, bool bBuild) {
 		build();
 }
 
-Program Program::FromBinary(Context& ctx, const Device& dev, const ConstBuf& mb) {
+Program Program::FromBinary(Context& ctx, const Device& dev, RCSpan mb) {
 	cl_int st, rc;
 	Program r;
-	const byte *p = mb.P;
+	const uint8_t *p = mb.data();
 	cl_device_id id = dev();
-	r.OutRef() = ::clCreateProgramWithBinary(ctx(), 1, &id, &mb.Size, &p, &st, &rc);
+	size_t size = mb.size();
+	r.OutRef() = ::clCreateProgramWithBinary(ctx(), 1, &id, &size, &p, &st, &rc);
 	ClCheck(rc);
 	return r;
 }
@@ -346,7 +347,7 @@ vector<ProgramBinary> Program::get_Binaries() {
 		vector<void*> vp(n);
 		for (int i=0; i<n; ++i) {
 			r[i].Device = devs[i];
-			r[i].Binary.Size = vSize[i];
+			r[i].Binary.resize(vSize[i]);
 			vp[i] = r[i].Binary.data();
 		}
 		ClCheck(::clGetProgramInfo(Handle(), CL_PROGRAM_BINARIES,	sizeof(void*)*n, &vp[0], 0));

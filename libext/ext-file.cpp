@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -65,7 +65,7 @@ Path::CSplitPath Path::SplitPath(const path& p) {
 		fname, sizeof fname,
 		ext, sizeof ext);
 #	else
-	_tsplitpath(p.native(), drive, dir, fname, ext);
+	_tsplitpath(String(p.native()), drive, dir, fname, ext);
 #	endif
 	sp.m_drive = drive;
 	sp.m_dir = dir;
@@ -102,17 +102,17 @@ pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUni
 }
 
 path Path::GetPhysicalPath(const path& p) {
-	String path = path;
+	String ps = p.native();
 #if UCFG_WIN32_FULL
 	while (true) {
-		Path::CSplitPath sp = SplitPath(path);
+		Path::CSplitPath sp = SplitPath(ps.c_str());
 		vector<String> vec = System.QueryDosDevice(sp.m_drive);				// expand SUBST-ed drives
 		if (vec.empty() || !vec[0].StartsWith("\\??\\"))
 			break;
-		path = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
+		ps = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
 	}
 #endif
-	return path.c_str();
+	return ps.c_str();
 }
 
 #if UCFG_WIN32_FULL && UCFG_USE_REGEX
@@ -285,12 +285,12 @@ Blob File::ReadAllBytes(const path& p) {
 	if (len > numeric_limits<size_t>::max())
 		Throw(E_OUTOFMEMORY);
 	Blob blob(0, (size_t)len);
-	stm.ReadBuffer(blob.data(), blob.Size);
+	stm.ReadBuffer(blob.data(), blob.size());
 	return blob;
 }
 
-void File::WriteAllBytes(const path& p, const ConstBuf& mb) {
-	FileStream(p, FileMode::Create, FileAccess::Write).WriteBuf(mb);
+void File::WriteAllBytes(const path& p, RCSpan mb) {
+	FileStream(p, FileMode::Create, FileAccess::Write).Write(mb);
 }
 
 String File::ReadAllText(const path& p, Encoding *enc) {
@@ -398,10 +398,10 @@ OVERLAPPED *File::SetOffsetForFileOp(OVERLAPPED& ov, int64_t offset) {
 
 void File::Write(const void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	if (offset >= 0)
-		CCheck(::pwrite((int)(intptr_t)HandleAccess(_self), buf, size, offset));
-	else
-		CCheck(::write((int)(intptr_t)HandleAccess(_self), buf, size));
+	CCheck(offset >= 0
+		? ::pwrite((int)(intptr_t)HandleAccess(_self), buf, size, offset)
+		: ::write((int)(intptr_t)HandleAccess(_self), buf, size)
+	);
 #else
 	OVERLAPPED ov, *pov = SetOffsetForFileOp(ov, offset);
 	DWORD nWritten;
@@ -419,8 +419,10 @@ void File::Write(const void *buf, size_t size, int64_t offset) {
 
 uint32_t File::Read(void *buf, size_t size, int64_t offset) {
 #if UCFG_USE_POSIX
-	ssize_t r = offset>=0 ? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset) : ::read((int)(intptr_t)HandleAccess(_self), buf, size);
-	CCheck(r>=0 ? 0 : -1);
+	ssize_t r = offset >= 0
+		? ::pread((int)(intptr_t)HandleAccess(_self), buf, size, offset)
+		: ::read((int)(intptr_t)HandleAccess(_self), buf, size);
+	CCheck(r >= 0 ? 0 : -1);
 	return r;
 #elif UCFG_NTAPI
 	IO_STATUS_BLOCK iost;
@@ -762,16 +764,21 @@ void FileStream::Flush() {
 		Throw(E_FAIL);
 }
 
+PositionOwningFileStream::PositionOwningFileStream(Ext::File& file, uint64_t pos, uint64_t maxLen)
+	: base(file)
+	, m_pos(pos)
+	, m_maxPos(maxLen == _UI64_MAX ? maxLen : (min)(pos + maxLen, m_pFile->Length))
+{
+}
+
 size_t PositionOwningFileStream::Read(void *buf, size_t count) const {
-	uint32_t cb = m_pFile->Read(buf, count, m_pos);
+	uint32_t cb = m_pFile->Read(buf, (min)(count, m_maxPos - m_pos), m_pos);
 	m_pos += cb;
 	return cb;
 }
 
 void PositionOwningFileStream::ReadBuffer(void *buf, size_t count) const {
-	uint32_t cb = m_pFile->Read(buf, count, m_pos);
-	m_pos += cb;
-	if (cb != count)
+	if (Read(buf, count) != count)
 		Throw(ExtErr::EndOfStream);
 }
 

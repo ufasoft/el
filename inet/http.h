@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -17,11 +17,82 @@
 #endif
 
 
-namespace Ext {
+namespace Ext { namespace Inet {
 
 class CInternetConnection;
 class CHttpInternetConnection;
 class HttpWebResponse;
+
+// URI spec as of RFC3986
+class Uri {
+	typedef Uri class_type;
+
+	String m_uriString;
+	String m_scheme, m_host, m_path, m_extra, m_username, m_password;
+	int m_port;
+	CBool m_bAnalyzed;
+public:
+	Uri(RCString uriString = String())
+		: m_uriString(uriString)
+	{
+	}
+
+	~Uri();
+
+	static String AFXAPI UnescapeDataString(RCString s);
+
+	String get_Host() {
+		EnsureAnalyzed();
+		return m_host;
+	}
+	DEFPROP_GET(String, Host);
+
+	String get_OriginalString() { return m_uriString; }
+	DEFPROP_GET(String, OriginalString);
+
+	String get_PathAndQuery() {
+		EnsureAnalyzed();
+		return m_path + m_extra;
+	}
+	DEFPROP_GET(String, PathAndQuery);
+
+	int get_Port() {
+		EnsureAnalyzed();
+		return m_port;
+	}
+	DEFPROP_GET(int, Port);
+
+	String get_Query() {
+		EnsureAnalyzed();
+		return m_extra;
+	}
+	DEFPROP_GET(String, Query);
+
+	String get_Scheme() {
+		EnsureAnalyzed();
+		return m_scheme;
+	}
+	DEFPROP_GET(String, Scheme);
+
+	String get_UserName() {
+		EnsureAnalyzed();
+		return m_username;
+	}
+	DEFPROP_GET(String, UserName);
+
+	String get_Password() {
+		EnsureAnalyzed();
+		return m_password;
+	}
+	DEFPROP_GET(String, Password);
+
+	String ToString() const {
+		return m_uriString;
+	}
+private:
+	void EnsureAnalyzed();
+};
+
 
 #if !UCFG_USE_LIBCURL
 
@@ -36,7 +107,7 @@ protected:
 	HINTERNET m_hInternet;
 };
 
-AFX_API int AFXAPI InetCheck(int i);
+int AFXAPI InetCheck(int i);
 
 class CInternetSession : public SafeHandle {
 public:
@@ -148,7 +219,7 @@ public:
 
 class CHttpInternetConnection : public CInternetConnection {
 	typedef CInternetConnection base;
-public:	
+public:
 };
 
 ENUM_CLASS(ProxyType) {
@@ -162,7 +233,7 @@ class WebProxy : public Object {
 public:
 	typedef InterlockedPolicy interlocked_policy;
 	Uri Address;
-	Ext::ProxyType Type;
+	Ext::Inet::ProxyType Type;
 
 	WebProxy()
 		:	Type(ProxyType::Http)
@@ -195,6 +266,22 @@ public:
 };
 
 class WebRequest {
+protected:
+	class Impl : public NonInterlockedObject {
+	public:
+#if !UCFG_USE_LIBCURL
+		CInternetSession m_sess;
+		CInternetConnection m_conn;
+
+		Impl()
+			: m_sess(true)
+		{}
+#endif
+	};
+
+	DWORD m_serviceType;
+private:
+	ptr<Impl> m_pimpl;
 public:
 	String Method;
 	Uri RequestUri;
@@ -213,19 +300,6 @@ public:
 	void Connect();
 #endif
 protected:
-	class Impl : public Object {
-	public:
-#if !UCFG_USE_LIBCURL
-		CInternetSession m_sess;
-		CInternetConnection m_conn;
-
-		Impl()
-			:	m_sess(true)
-		{}
-#endif
-	};
-
-	DWORD m_serviceType;
 
 #if !UCFG_USE_LIBCURL
 	CInternetSession& Session();
@@ -238,8 +312,6 @@ protected:
 #if UCFG_USE_LIBCURL
 	int m_timeout;
 #endif
-private:
-	ptr<Impl> m_pimpl;
 };
 
 template <int WSIZE = 4096>
@@ -315,19 +387,40 @@ class HttpWebRequest;
 
 class HttpWebResponse : public Object {
 	typedef HttpWebResponse class_type;
+
+	class Impl : public NonInterlockedObject {
+	public:
+		HttpWebRequest& m_req;
+		CHttpInternetConnection m_conn;
+		InetStream m_stm;
+
+		Impl(HttpWebRequest& req)
+			: m_req(req)
+		{
+			m_stm.m_pResponseImpl = this;
+		}
+
+#if UCFG_USE_LIBCURL
+		String m_statusDesc;
+		WebHeaderCollection m_headers;
+#endif
+	};
+
+	ptr<Impl> m_pImpl;
+
 public:
 	HttpWebResponse()
 	{}
 
 	HttpWebResponse(HttpWebRequest& req)
-		:	m_pImpl(new Impl(req))
+		: m_pImpl(new Impl(req))
 	{
 	}
 
 	~HttpWebResponse();
 
 	Stream& GetResponseStream() { return m_pImpl->m_stm; }
- 
+
 #if UCFG_USE_LIBCURL
 	void Attach(ptr<CurlSession> curl) {
 		m_pImpl->m_conn.Session = curl;
@@ -365,33 +458,14 @@ public:
 
 	int64_t get_ContentLength() {
 		return Convert::ToInt64(GetString(HTTP_QUERY_CONTENT_LENGTH));
-	}	
+	}
 #endif
 	DEFPROP_GET(int64_t, ContentLength);
 
-#pragma pop_macro("DEF_STRING_PROP") 
+#pragma pop_macro("DEF_STRING_PROP")
 
-	
+
 private:
-	class Impl : public Object {
-	public:
-		HttpWebRequest& m_req;
-		CHttpInternetConnection m_conn;
-		InetStream m_stm;
-
-		Impl(HttpWebRequest& req)
-			:	m_req(req)
-		{
-			m_stm.m_pResponseImpl = this;
-		}
-
-#if UCFG_USE_LIBCURL
-		String m_statusDesc;
-		WebHeaderCollection m_headers;
-#endif
-	};
-
-	ptr<Impl> m_pImpl;
 
 	String GetString(DWORD dwInfoLevel);
 
@@ -401,22 +475,30 @@ friend class WebClient;
 friend class InetStream;
 };
 
-ENUM_CLASS(http_error) {
-	continue_request = 100,
-	switching_protocols = 101,
-	ok = 200,
-	unauthorized = 401,	
-	gateway_timeout = 504,
-	version_not_supported = 505
-} END_ENUM_CLASS(http_error);
+ENUM_CLASS(HttpStatusCode) {
+	Continue 					= 100
+	, SwitchingProtocols 		= 101
+	, OK 						= 200
+	, Created					= 201
+	, Accepted					= 202
+	, NonAuthoritativeInformation = 203
+	, NoContent					= 204
+	, Redirect					= 302
+	, Unauthorized 				= 401
+	, Forbidden					= 403
+	, NotFound					= 404
+	, GatewayTimeout 			= 504
+	, HttpVersionNotSupported	= 505
+} END_ENUM_CLASS(HttpStatusCode);
 
+typedef HttpStatusCode http_error;
 
 const error_category& http_category();
 
-inline error_code make_error_code(http_error e) { return error_code(int(e), http_category()); }
-} namespace std {
-	template <> struct is_error_code_enum<http_error> : true_type {};
-} namespace Ext {
+inline error_code make_error_code(HttpStatusCode e) { return error_code(int(e), http_category()); }
+}} namespace std {
+	template <> struct is_error_code_enum<Ext::Inet::HttpStatusCode> : true_type {};
+} namespace Ext { namespace Inet {
 
 class WebException : public Exception {
 	typedef Exception base;
@@ -449,7 +531,7 @@ public:
 	RequestCacheLevel CacheLevel;
 
 	HttpWebRequest(RCString url = nullptr);
-	
+
 	~HttpWebRequest();
 
 	HttpWebResponse GetResponse(const uint8_t *p = 0, size_t size = 0);
@@ -520,7 +602,7 @@ public:
 	Stream& OpenRead(const Uri& uri);
 
 	Blob DownloadData(RCString address);
-	Blob UploadData(RCString address, const ConstBuf& data);
+	Blob UploadData(RCString address, RCSpan data);
 	Blob UploadFile(RCString address, const path& fileName);
 	String DownloadString(RCString address);
 	String UploadString(RCString address, RCString Data);
@@ -530,9 +612,70 @@ protected:
 
 	virtual void OnHttpWebRequest(HttpWebRequest& req) {}
 private:
-	InetStream& DoRequest(HttpWebRequest& req, const ConstBuf data);
+	InetStream& DoRequest(HttpWebRequest& req, RCSpan data);
 	Blob DoRequest(HttpWebRequest& req, RCString data = nullptr);
 };
 
-} // Ext::
+class CHttpHeader {
+	typedef CHttpHeader class_type;
+public:
+	NameValueCollection Headers;
+	Blob Data;
+	CBool m_bDataSkipped;
 
+	virtual ~CHttpHeader() {}
+	virtual void PrintFirstLine(std::ostream& os) const {} //!!!
+	String ParseHeader(const std::vector<String>& ar, bool bIncludeFirstLine = false, bool bEmailHeader = false);
+	virtual void Parse(const std::vector<String>& ar) {}
+
+	Encoding *GetEncoding();
+
+	String get_Content();
+	DEFPROP_GET(String, Content);
+};
+
+std::ostream& AFXAPI operator<<(std::ostream& os, const CHttpHeader& header);
+
+class HttpRequest : public CHttpHeader {
+	typedef HttpRequest class_type;
+public:
+	String Method;
+	String RequestUri;
+	String Path;
+protected:
+	NameValueCollection m_params;
+	CBool m_bParams;
+public:
+	String get_ContentType() { return Headers["Content-Type"]; }
+	DEFPROP_GET(String, ContentType);
+
+	NameValueCollection& get_Params();
+	DEFPROP_GET(NameValueCollection&, Params);
+
+	void PrintFirstLine(std::ostream& os) const {
+		os << Method << " " << RequestUri << " HTTP/1.1\r\n";
+	}
+	void Parse(const std::vector<String>& ar);
+	void ParseParams(RCString s);
+};
+
+class HttpResponse : public CHttpHeader {
+public:
+	String ContentType;
+	Stream *Body;
+	int StatusCode;
+
+	HttpResponse()
+		: Body(nullptr)
+	{}
+
+	void PrintFirstLine(std::ostream& os) const {
+		os << StatusCode << " HTTP/1.1\r\n";
+	}
+	void Parse(const std::vector<String>& ar);
+};
+
+EXT_API std::vector<String> AFXAPI ReadHttpHeader(const Stream& stm, Stream *pDupStream = 0);
+
+
+}} // Ext::Inet::

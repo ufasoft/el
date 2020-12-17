@@ -1,11 +1,11 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #include <el/ext.h>
 
-#if !UCFG_STD_FILESYSTEM
+#if !UCFG_STD_FILESYSTEM || !UCFG_STDSTL
 
 #include "filesystem"
 
@@ -19,7 +19,7 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
-namespace ExtSTL { namespace sys {
+namespace ExtSTL { namespace filesystem {
 	using namespace Ext;
 	using namespace chrono;
 
@@ -253,7 +253,7 @@ file_time_type last_write_time(const path& p) {
 file_status directory_entry::symlink_status(error_code& ec) const noexcept {
 	ec.clear();
 	return status_known(m_symlink_status) ? m_symlink_status
-		: (m_symlink_status = std::sys::symlink_status(m_path, ec));
+		: (m_symlink_status = std::filesystem::symlink_status(m_path, ec));
 }
 
 file_status directory_entry::symlink_status() const {
@@ -267,7 +267,7 @@ file_status directory_entry::symlink_status() const {
 file_status directory_entry::status(error_code& ec) const noexcept {
 	ec.clear();
 	return status_known(m_status) ? m_status
-		: (m_status = status_known(m_symlink_status) && !is_symlink(m_symlink_status) ? m_symlink_status : std::sys::status(m_path, ec));
+		: (m_status = status_known(m_symlink_status) && !is_symlink(m_symlink_status) ? m_symlink_status : std::filesystem::status(m_path, ec));
 }
 
 file_status directory_entry::status() const {
@@ -418,23 +418,31 @@ vector<String> Directory::GetItems(RCString path, RCString searchPattern, bool b
 }
 */
 
-static bool StatEx(const path& p, long& dev, uint64_t& ino, error_code& ec) {
+struct CFileStat {
+	long Dev;
+	uint64_t Ino;
+	uint64_t Size;
+};
+
+static bool StatEx(const path& p, CFileStat& st, error_code& ec) {
 #if UCFG_USE_POSIX
 	struct stat s;
 	if (::stat(p.native(), &s)<0) {
 		ec = error_code(errno, generic_category());
 		return false;
 	}
-	dev = s.st_dev;
-	ino = s.st_ino;
+	st.Dev = s.st_dev;
+	st.Ino = s.st_ino;
+	st.Size = st_size;
 	return true;
 #else
 	HANDLE h = ::CreateFile(p.native(), FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, 0, OPEN_EXISTING, 0, 0);
 	BY_HANDLE_FILE_INFORMATION info = { 0 };
-	bool r = h!=INVALID_HANDLE_VALUE && ::GetFileInformationByHandle(h, &info);
+	bool r = h != INVALID_HANDLE_VALUE && ::GetFileInformationByHandle(h, &info);
 	if (r) {
-		dev = info.dwVolumeSerialNumber;
-		ino = (uint64_t(info.nFileIndexHigh) << 32) | info.nFileIndexLow;
+		st.Dev = info.dwVolumeSerialNumber;
+		st.Ino = (uint64_t(info.nFileIndexHigh) << 32) | info.nFileIndexLow;
+		st.Size = uint64_t(info.nFileSizeHigh) << 32 | info.nFileSizeLow;
 	} else
 		ec = Win32_error_code();
 	::CloseHandle(h);
@@ -444,9 +452,10 @@ static bool StatEx(const path& p, long& dev, uint64_t& ino, error_code& ec) {
 
 bool AFXAPI equivalent(const path& p1, const path& p2, error_code& ec) noexcept {
 	ec.clear();
-	long dev1, dev2;
-	uint64_t ino1, ino2;
-	return StatEx(p1, dev1, ino1, ec) && StatEx(p2, dev2, ino2, ec) && dev1==dev2 && ino1==ino2;
+	CFileStat st1, st2;
+	return StatEx(p1, st1, ec) && StatEx(p2, st2, ec)
+		&& st1.Dev == st2.Dev
+		&& st1.Ino == st2.Ino;
 }
 
 bool AFXAPI equivalent(const path& p1, const path& p2) {
@@ -500,12 +509,12 @@ uintmax_t AFXAPI file_size(const path& p, error_code& ec) noexcept {
 	struct stat st;
 	if (::stat(p.c_str(), &st) >= 0)
 		return st.st_size;
-#else
-	WIN32_FILE_ATTRIBUTE_DATA fad;
-	if (::GetFileAttributesEx(p.native(), GetFileExInfoStandard, &fad))
-		return uint64_t(fad.nFileSizeHigh) << 32 | fad.nFileSizeLow;
-#endif
 	ec = Last_error_code();
+#	else
+	CFileStat st;
+	if (StatEx(p, st, ec))
+		return st.Size;
+#endif
 	return static_cast<uintmax_t>(-1);
 }
 
@@ -629,8 +638,8 @@ uintmax_t AFXAPI remove_all(const path& p) {
 }
 
 void AFXAPI rename(const path& old_p, const path& new_p, error_code& ec) noexcept {
-	ec.clear();
 	if (!exists(new_p, ec) || remove(new_p, ec)) {
+		ec.clear();
 #if UCFG_USE_POSIX
 		if (::rename(old_p.native(), new_p.native()) < 0)
 #else
@@ -780,9 +789,7 @@ path AFXAPI canonical(const path& p, error_code& ec) {
 
 
 
+}}  // ExtSTL::filesystem::
 
-
-}}  // ExtSTL::sys::
-
-#endif // !UCFG_STD_FILESYSTEM
+#endif // !UCFG_STD_FILESYSTEM || !UCFG_STDSTL
 

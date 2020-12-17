@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -11,20 +11,20 @@ using std::vector;
 
 template <typename T>
 class explicit_cast {
+	T m_t;
 public:
 	explicit_cast(T t)
-		:	m_t(t)
+		: m_t(t)
 	{}
 
 	operator T() const { return m_t; }
-private:
-	T m_t;
 };
 
 
 class Encoding;
 
 class EXTCLASS String {
+	Blob m_blob;
 public:
 	typedef String class_type;
 
@@ -37,7 +37,7 @@ public:
 
 	static const size_t npos = size_t(-1);
 
-	class const_iterator : public std::iterator<std::random_access_iterator_tag, value_type>, totally_ordered<const_iterator>  {
+	class const_iterator : public std::iterator<std::random_access_iterator_tag, value_type>, Ext::totally_ordered<const_iterator>  {
 	public:
 		typedef String::value_type value_type;
 		typedef std::random_access_iterator_tag iterator_category;
@@ -46,7 +46,7 @@ public:
 		typedef const value_type& reference;
 
 		const_iterator()
-			:	m_p(0)
+			: m_p(0)
 		{}
 
 		reference operator*() const { return *m_p; }
@@ -72,7 +72,7 @@ public:
 		const value_type *m_p;
 
 		explicit const_iterator(const value_type* p)
-			:	m_p(p)
+			: m_p(p)
 		{}
 
 		friend class String;
@@ -82,7 +82,7 @@ public:
 	String() {}
 
 	String(RCString s)
-		:	m_blob(s.m_blob)
+		: m_blob(s.m_blob)
 	{
 	}
 
@@ -95,19 +95,19 @@ public:
 #endif
 
 	String(const char *lpch, int start, ssize_t nLength, Encoding *enc)
-		:	m_blob(nullptr)
+		: m_blob(nullptr)
 	{
 		Init(enc, lpch+start, nLength);
 	}
 
 	String(const value_type *lpch, ssize_t nLength)
-		:	m_blob(nullptr)
+		: m_blob(nullptr)
 	{
 		Init(lpch, nLength);
 	}
 
 	String(const_iterator b, const_iterator e)
-		:	m_blob(nullptr)
+		: m_blob(nullptr)
 	{
 		Init(b.m_p, e-b);
 	}
@@ -125,10 +125,9 @@ public:
 	EXT_API String(const std::vector<value_type>& vec);
 
 	String (std::nullptr_t p)
-		:	m_blob(p)
+		: m_blob(p)
 	{
 	}
-
 
 #if UCFG_COM
 	String(const _bstr_t& bstr);
@@ -142,7 +141,7 @@ public:
 #if UCFG_USE_REGEX
 	template <typename I>
 	String(const std::sub_match<I>& sb)
-		:	m_blob(nullptr)
+		: m_blob(nullptr)
 	{
 		operator=(sb.str());
 	}
@@ -267,7 +266,7 @@ public:
 	void Replace(int offset, int size, const String& s);
 	int Replace(RCString sOld, RCString sNew);
 
-	size_t length() const noexcept { return m_blob.Size / sizeof(value_type); }
+	size_t length() const noexcept { return m_blob.size() / sizeof(value_type); }
 
 	size_t size() const noexcept { return length(); }
 
@@ -297,8 +296,6 @@ public:
 #endif
 
 private:
-	Blob m_blob;
-
 	void Init(Encoding *enc, const char *lpch, ssize_t nLength);
 	void Init(const value_type *lpch, ssize_t nLength);
 	void MakeDirty() noexcept;
@@ -383,12 +380,11 @@ template <class A, class B, class C> String Concat(const A& a, const B& b, const
 }
 
 
-
 AFX_API String AFXAPI AfxLoadString(uint32_t nIDS);
 
 struct CStringResEntry {
+	const char* Ptr;
 	uint32_t ID;
-	const char *Ptr;
 };
 
 inline String ToLower(RCString s) { return s.ToLower(); }
@@ -401,6 +397,8 @@ inline std::string ToLower(const std::string& s) {
 	std::transform(r.begin(), r.end(), r.begin(), ToLowerChar);
 	return r;
 }
+
+
 
 
 } // Ext::
@@ -426,9 +424,11 @@ namespace std {
 		return stoll(Ext::explicit_cast<string>(s), idx, base);
 	}
 
+	inline unsigned long long AFXAPI stoull(Ext::RCString s, size_t *idx = 0, int base = 10) {
+		return stoull(Ext::explicit_cast<string>(s), idx, base);
+	}
+
 	inline double AFXAPI stod(Ext::RCString s, size_t *idx = 0) {
 		return stod(Ext::explicit_cast<string>(s), idx);
 	}
 } // std::
-
-

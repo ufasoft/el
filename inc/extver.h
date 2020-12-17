@@ -4,10 +4,10 @@
 #	else
 #		define RC_INVOKED
 #			include <winver.h>
-#		undef RC_INVOKED	
-#	endif	
+#		undef RC_INVOKED
+#	endif
 #	undef VER_H
-#endif	
+#endif
 
 
 
@@ -30,7 +30,7 @@
 #	define UCFG_MANUFACTURER_DOMAIN 		"ufasoft.com"
 #endif
 
-#define UCFG_MANUFACTURER_HTTP_URL 		"http://" UCFG_MANUFACTURER_DOMAIN
+#define UCFG_MANUFACTURER_HTTP_URL 		"https://" UCFG_MANUFACTURER_DOMAIN
 
 #ifndef UCFG_MANUFACTURER_NEWS_URL
 #	define UCFG_MANUFACTURER_NEWS_URL 		UCFG_MANUFACTURER_HTTP_URL "/forum/"
@@ -74,10 +74,10 @@
 
 #ifndef VER_COMPANYNAME_STR
 	#define VER_COMPANYNAME_STR UCFG_MANUFACTURER
-#endif	
+#endif
 
 #ifndef VER_LEGALCOPYRIGHT_YEARS
-#	define VER_LEGALCOPYRIGHT_YEARS "1997-2015"
+#	define VER_LEGALCOPYRIGHT_YEARS "1997-2019"
 #endif
 
 #ifndef VER_LEGALCOPYRIGHT_STR
@@ -86,10 +86,5 @@
 
 
 #ifndef VER_PRODUCTNAME_STR
-	#define VER_PRODUCTNAME_STR "ExtLIBs"
+	#define VER_PRODUCTNAME_STR "libext"
 #endif
-
-
-
-
-

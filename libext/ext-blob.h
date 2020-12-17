@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -21,9 +21,16 @@ typedef unsigned short VARTYPE;
 #include "ext-basic-cpp.h"
 //!!!#include "libext.h"
 
+#include EXT_HEADER_SPAN
+
 namespace Ext {
 
 using std::atomic;
+using std::span;
+
+class CStringBlobBuf;
+class COleVariant;
+class BinaryReader;
 
 #if !UCFG_MINISTL
 using std::exchange;
@@ -33,6 +40,7 @@ using std::exchange;
 template <class T, size_t MAXSIZE> class vararray : public std::array<T, MAXSIZE> {
 	typedef std::array<T, MAXSIZE> base;
 
+	size_t m_size;
 public:
 	using base::begin;
 	using base::data;
@@ -41,18 +49,21 @@ public:
 		: m_size(size) {}
 
 	vararray(const T* b, const T* e)
-		: m_size(e - b) {
+		: m_size(e - b)
+	{
 		std::copy_n(b, m_size, begin());
 	}
 
 	vararray(const T* b, size_t size)
-		: m_size(size) {
+		: m_size(size)
+	{
 		std::copy_n(b, m_size, begin());
 	}
 
 	size_t max_size() const { return MAXSIZE; }
 
 	size_t size() const { return m_size; }
+	bool empty() const { return size() == 0; }
 	void resize(size_t n) { m_size = n; }
 
 	void push_back(const T& v) { (*this)[m_size++] = v; }
@@ -61,65 +72,25 @@ public:
 
 	typename base::const_iterator end() const { return begin() + size(); }
 	typename base::iterator end() { return begin() + size(); }
-
-private:
-	size_t m_size;
 };
 #endif // UCFG_FULL && !UCFG_MINISTL
 
-struct ConstBuf {
-	typedef const unsigned char* const_iterator;
-
-	const unsigned char* P;
-	size_t Size;
-
-	ConstBuf(const Buf& mb)
-		: P(mb.P)
-		, Size(mb.Size) {}
-
-	ConstBuf()
-		: P(0)
-		, Size(0) {}
-
-	ConstBuf(const void* p, size_t len)
-		: P((const unsigned char*)p)
-		, Size(len) {}
-
-#if UCFG_STL && !defined(_CRTBLD)
-	ConstBuf(const std::vector<uint8_t>& v)
-		: P(&v[0])
-		, Size(v.size()) {}
-
-#	if UCFG_FULL
-	template <size_t N>
-	ConstBuf(const std::array<uint8_t, N>& ar)
-		: P(ar.data())
-		, Size(ar.size()) {}
-
-	template <size_t N>
-	ConstBuf(const vararray<uint8_t, N>& ar)
-		: P(ar.data())
-		, Size(ar.size()) {}
-#	endif
-#endif
-
-	const unsigned char* begin() const { return P; }
-	const unsigned char* end() const { return P + Size; }
-
-	const unsigned char* Find(const ConstBuf& mb) const;
+class ConstBuf : public span<const uint8_t> {
+    typedef span<const uint8_t> base;
+public:
+	ConstBuf() {}
+	ConstBuf(const void *p, size_t size) : base((const uint8_t*)p, size) {}
 };
 
-EXTAPI bool AFXAPI operator==(const ConstBuf& x, const ConstBuf& y);
-inline bool AFXAPI operator!=(const ConstBuf& x, const ConstBuf& y) {
-	return !(x == y);
-}
+typedef span<const uint8_t> Span;
+typedef const Span& RCSpan;
 
-class CStringBlobBuf;
+const uint8_t *Find(RCSpan a, RCSpan b);
 
-class COleVariant;
+EXTAPI bool AFXAPI Equal(RCSpan x, RCSpan y);
 
 class CBlobBufBase {
-  public:
+public:
 	atomic<int> m_aRef;
 
 #if UCFG_STRING_CHAR == 16
@@ -148,7 +119,7 @@ class CBlobBufBase {
 };
 
 class EXTAPI CStringBlobBuf : public CBlobBufBase {
-  public:
+public:
 #ifdef WDM_DRIVER
 	UNICODE_STRING m_us;
 #endif
@@ -159,7 +130,7 @@ class EXTAPI CStringBlobBuf : public CBlobBufBase {
 	uint32_t m_size;
 
 	CStringBlobBuf(size_t len = 0);
-	CStringBlobBuf(const void* p, size_t len);
+	CStringBlobBuf(const void* p, size_t len, bool bZeroContent = true);
 	CStringBlobBuf(size_t len, const void* buf, size_t copyLen);
 
 	~CStringBlobBuf() noexcept {
@@ -193,7 +164,8 @@ class EXTAPI CStringBlobBuf : public CBlobBufBase {
 
 #if UCFG_WIN32 && UCFG_BLOB_POLYMORPHIC && UCFG_COM
 class COleBlobBuf : public CBlobBufBase {
-  public:
+	BSTR m_bstr;
+public:
 	COleBlobBuf();
 	~COleBlobBuf();
 	void Init(size_t len, const void* buf = 0);
@@ -208,17 +180,14 @@ class COleBlobBuf : public CBlobBufBase {
 
 	CBlobBufBase* Clone();
 	CBlobBufBase* SetSize(size_t size);
-
-  private:
-	BSTR m_bstr;
 };
 #endif
 
 class EXTAPI Blob {
 	typedef Blob class_type;
 
-  public:
-	typedef const uint8_t *const_iterator;
+public:
+	typedef const uint8_t* const_iterator;
 
 #if UCFG_BLOB_POLYMORPHIC
 	typedef CBlobBufBase impl_class;
@@ -239,8 +208,9 @@ class EXTAPI Blob {
 	Blob(std::nullptr_t) : m_pData(0) {}
 
 	Blob(const void* buf, size_t len);
-	Blob(const ConstBuf& mb);
-	Blob(const Buf& mb);
+	Blob(size_t len, nullptr_t);	// Non-initializing ctor
+	Blob(RCSpan mb);
+	Blob(const span<uint8_t>& mb);
 #if UCFG_COM
 	Blob(BSTR bstr);
 #endif
@@ -262,34 +232,28 @@ class EXTAPI Blob {
 
 	void swap(Blob& x) noexcept { std::swap(m_pData, x.m_pData); }
 
-	operator ConstBuf() const noexcept {
-		return m_pData ? ConstBuf(constData(), Size) : ConstBuf(0, 0);
-	}
-
+	operator Span() const noexcept;
 	void AssignIfNull(const Blob& val);
 	Blob& operator=(const Blob& val);
-	Blob& operator=(const ConstBuf& mb) { return operator=(Blob(mb)); }
+	Blob& operator=(RCSpan mb) { return operator=(Blob(mb)); }
 
-	bool operator==(const ConstBuf& cbuf) const {
-		return Ext::operator==(operator ConstBuf(), cbuf);
-	}
+	bool operator==(RCSpan cbuf) const { return Equal(operator Span(), cbuf); } //!!!O
 
 	bool operator==(const Blob& blob) const noexcept;
 	bool operator<(const Blob& blob) const noexcept;
 
 	bool operator!=(const Blob& blob) const { return !operator==(blob); }
 
-	Blob& operator+=(const ConstBuf& mb);
+	Blob& operator+=(RCSpan mb);
 
 	bool operator!() const { return !m_pData; }
 
 	static Blob AFXAPI FromHexString(RCString s);
 
-	size_t get_Size() const EXT_FAST_NOEXCEPT { return m_pData->GetSize(); }
-	void put_Size(size_t size);
-	DEFPROP_CONST(size_t, Size);
-
+	bool empty() const EXT_FAST_NOEXCEPT { return !m_pData || !m_pData->GetSize(); }
+	size_t size() const EXT_FAST_NOEXCEPT { return m_pData->GetSize(); }
 	size_t max_size() const noexcept { return SIZE_MAX - 2; }
+	void resize(size_t sz);
 
 	// we don't use property feature to explicit call constData() for efficiency
 	uint8_t* data();
@@ -297,69 +261,153 @@ class EXTAPI Blob {
 	__forceinline const uint8_t* constData() const noexcept { return (const uint8_t*)m_pData->GetBSTR(); }
 
 	const uint8_t* begin() const { return constData(); }
-	const uint8_t* end() const { return constData() + Size; }
+	const uint8_t* end() const { return constData() + size(); }
 
 	uint8_t operator[](size_t idx) const {
-		if (idx >= Size)
+		if (idx >= size())
 			Throw(ExtErr::IndexOutOfRange);
 		return constData()[idx];
 	}
 
 	uint8_t& operator[](size_t idx) {
-		if (idx >= Size)
+		if (idx >= size())
 			Throw(ExtErr::IndexOutOfRange);
 		return data()[idx];
 	}
 
-	void Replace(size_t offset, size_t size, const ConstBuf& mb);
-
-  protected:
+	void Replace(size_t offset, size_t size, RCSpan mb);
+protected:
 	void Cow();
 #if UCFG_COM
 	void SetVariant(const VARIANT& v);
 #endif
-
-  private:
-	//	EXPLICIT_OPERATOR_BOOL() const;												// don't public it. Ambiguous type
-	//conversions
 	friend class String;
 };
+
+typedef const Blob& RCBlob;
 
 inline void swap(Blob& x, Blob& y) noexcept {
 	x.swap(y);
 }
 
-inline Blob operator+(const ConstBuf& mb1, const ConstBuf& mb2) {
-	Blob r(0, mb1.Size + mb2.Size);
-	memcpy(r.data(), mb1.P, mb1.Size);
-	memcpy(r.data() + mb1.Size, mb2.P, mb2.Size);
+inline Blob operator+(RCSpan mb1, RCSpan mb2) {
+	Blob r(0, mb1.size() + mb2.size());
+	memcpy(r.data(), mb1.data(), mb1.size());
+	memcpy(r.data() + mb1.size(), mb2.data(), mb2.size());
 	return r;
 }
 
-EXT_API std::ostream& __stdcall operator<<(std::ostream& os, const ConstBuf& cbuf);
+class AutoBlobBase {
+protected:
+	uint8_t* volatile m_p;
 
-inline std::ostream& __stdcall operator<<(std::ostream& os, const Blob& blob) {
-	return os << ConstBuf(blob);
-}
+	union {
+		uint8_t m_space[1];
+		size_t m_size;
+	};
 
-typedef const Blob& RCBlob;
+	AutoBlobBase(uint8_t *p = nullptr) noexcept
+		: m_p(p)
+	{}
+
+	AutoBlobBase(const AutoBlobBase& x, size_t szSpace);
+	AutoBlobBase(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept;
+	AutoBlobBase(RCSpan s, size_t szSpace);
+	void DoAssign(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept;
+	void DoAssign(RCSpan s, size_t szSpace);
+	void DoAssignIfNull(RCSpan s, size_t szSpace);
+	bool IsInHeap(size_t szSpace) const noexcept { return size_t(m_p - m_space) > szSpace && m_p; }
+	size_t Size(size_t szSpace) const noexcept { return IsInHeap(szSpace) ? m_size : m_p ? m_p - m_space : 0; }
+	uint8_t* Data(size_t szSpace) noexcept { return IsInHeap(szSpace) ? m_p : m_p ? m_space : nullptr; }
+	void DoResize(size_t sz, bool bZeroContent, size_t szSpace);
+	void DoRead(const BinaryReader& rd, size_t szSpace);
+};
+
+// Blob with reserved space in auto memory
+// Non Thread-safe
+template <unsigned SZ>
+class AutoBlob : public AutoBlobBase {
+	typedef AutoBlobBase base;
+
+	uint8_t m_additionalSpace[SZ - sizeof(m_size)];
+public:
+	AutoBlob() : base(m_space) {}
+	AutoBlob(const AutoBlob& x) : base(x, SZ) {}
+	AutoBlob(EXT_RV_REF(AutoBlob) rv) noexcept : base(static_cast<EXT_RV_REF(AutoBlobBase)>(rv), SZ) {}
+	explicit AutoBlob(RCSpan s) : base(s, SZ) {}
+	explicit AutoBlob(nullptr_t) noexcept : base(nullptr) {}
+
+	explicit AutoBlob(size_t sz, bool bZeroContent = true) {
+		m_p = sz <= SZ 	? m_space + sz : (uint8_t*)Malloc(m_size = sz);
+		if (bZeroContent)
+			memset(m_p, 0, sz);
+	}
+
+	~AutoBlob() {
+		if (IsInHeap(SZ))
+			free(m_p);
+	}
+
+	AutoBlob& operator=(EXT_RV_REF(AutoBlob) rv) noexcept {
+		DoAssign(static_cast<EXT_RV_REF(AutoBlobBase)>(rv), SZ);
+		return *this;
+	}
+
+	AutoBlob& operator=(RCSpan s) {
+		DoAssign(s, SZ);
+		return *this;
+	}
+
+	AutoBlob& operator=(const AutoBlob& x) { return operator=(Span(x)); }
+
+	AutoBlob& operator=(nullptr_t) {
+		if (IsInHeap(SZ))
+			free(m_p);
+		m_p = nullptr;
+		return *this;
+	}
+
+	uint8_t operator[](size_t idx) const noexcept { return data()[idx]; }
+	bool operator==(const AutoBlob& x) const { return Equal(Span(*this), Span(x)); }
+	bool operator!=(const AutoBlob& x) const { return !operator==(x); }
+	bool operator!() const noexcept { return !m_p; }
+	const uint8_t* data() const noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
+	uint8_t* data() noexcept { return IsInHeap(SZ) ? m_p : m_p ? m_space : nullptr; }
+	operator Span() const noexcept { return Span(IsInHeap(SZ) ? m_p : m_space, size()); }
+	size_t size() const noexcept { return IsInHeap(SZ) ? m_size : m_p ? m_p - m_space : 0; }
+	bool empty() const noexcept { return !size(); }				// Check for (m_p == m_space) is not enough, because after resizing there may be empty blob in a heap.
+	void resize(size_t sz, bool bZeroContent = true) { DoResize(sz, bZeroContent, SZ); }
+	void AssignIfNull(RCSpan s) { DoAssignIfNull(s, SZ); }
+	void Read(const BinaryReader& rd) { base::DoRead(rd, SZ); }
+
+	uint8_t front() const { return data()[0]; }
+	uint8_t& front() { return data()[0]; }
+	uint8_t back() const { return data()[size() - 1]; }
+	uint8_t& back() { return data()[size() - 1]; }
+
+	void push_back(uint8_t v) {
+		size_t sz = size();
+		resize(sz + 1, false);
+		data()[sz] = v;
+	}
+};
 
 template <class T> class StaticList : noncopyable {
-  public:
+public:
 	static T* Root;
 
 	T* Next;
 
 	StaticList() : Next(0) {}
 
-  protected:
+protected:
 	explicit StaticList(bool) : Next(Root) { Root = static_cast<T*>(this); }
 };
 
 class ErrorCategoryBase : public std::error_category, public StaticList<ErrorCategoryBase> {
 	typedef StaticList<ErrorCategoryBase> base;
 
-  public:
+public:
 	const char* Name;
 	int Facility;
 
@@ -373,16 +421,26 @@ class ErrorCategoryBase : public std::error_category, public StaticList<ErrorCat
 
 } // namespace Ext
 
+namespace std {
+    inline size_t size(const Ext::Blob& blob) { return blob.size(); }
+
+	EXT_API ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf);
+	EXT_API wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf);
+
+	inline ostream& __stdcall operator<<(ostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
+	inline wostream& __stdcall operator<<(wostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
+}
+
 namespace EXT_HASH_VALUE_NS {
 inline size_t hash_value(const Ext::Blob& blob) {
-	return Ext::hash_value(blob.constData(), blob.Size);
+	return Ext::hash_value(blob.constData(), blob.size());
 }
 } // namespace EXT_HASH_VALUE_NS
 
 EXT_DEF_HASH(Ext::Blob)
 
 namespace EXT_HASH_VALUE_NS {
-inline size_t hash_value(const Ext::ConstBuf& mb) {
-	return Ext::hash_value(mb.P, mb.Size);
+inline size_t hash_value(Ext::RCSpan mb) {
+	return Ext::hash_value(mb.data(), mb.size());
 }
 } // namespace EXT_HASH_VALUE_NS

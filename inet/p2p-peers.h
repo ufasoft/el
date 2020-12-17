@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -10,7 +10,7 @@
 
 namespace Ext { namespace Inet { namespace P2P {
 
-const int MAX_OUTBOUND_CONNECTIONS = 4;
+const int MAX_OUTBOUND_CONNECTIONS = 8;
 
 const int MAX_LINKS = MAX_OUTBOUND_CONNECTIONS * 2;
 const int MAX_PEER_MISBEHAVINGS = 100;
@@ -38,15 +38,23 @@ class PeerManager;
 
 class Peer : public Object, public CPersistent {
 	typedef Peer class_type;
+protected:
+	IPEndPoint m_endPoint;
+
+	uint64_t m_services;
+	DateTime m_lastLive,
+		m_lastPersistent,
+		m_lastTry;			// non-persistent
 public:
 	typedef InterlockedPolicy interlocked_policy;
 
 	CInt<int> Misbehavings;
 	CInt<int> Attempts;
 	CBool IsDirty;
+	CBool m_banned;
 
 	Peer()
-		:	m_services(0)
+		: m_services(0)
 	{}
 
 	void Write(BinaryWriter& wr) const override {
@@ -105,39 +113,31 @@ public:
 		IsDirty = true;
 	}
 	DEFPROP(bool, Banned);
-protected:
-	IPEndPoint m_endPoint;
-
-	uint64_t m_services;	
-	DateTime m_lastLive, 
-			m_lastPersistent,
-			m_lastTry;			// non-persistent
-	
-	CBool m_banned;
 };
 
 class LinkBase : public Thread {
 	typedef Thread base;
 public:
 	typedef InterlockedPolicy interlocked_policy;
-	
+
 	observer_ptr<P2P::NetManager> NetManager;
 
 	mutex Mtx;
 	ptr<P2P::Peer> Peer;
-	CBool Incoming;
 
 	typedef unordered_set<ptr<P2P::Peer>> CSetPeersToSend;
 	CSetPeersToSend m_setPeersToSend;
 
+	CBool Incoming;
+
 	LinkBase(P2P::NetManager *netManager, thread_group *tr)
-		:	NetManager(netManager)
-		,	base(tr)
+		: base(tr)
+		, NetManager(netManager)
 	{
 //		StackSize = UCFG_THREAD_STACK_SIZE;
 	}
 
-	void Push(P2P::Peer *peer) {
+	void PushPeer(P2P::Peer *peer) {
 		EXT_LOCK (Mtx) {
 			m_setPeersToSend.insert(peer);
 		}
@@ -151,12 +151,18 @@ public:
 
 	mutex MtxNets;
 	vector<Net*> m_nets;
+protected:
+	mutex MtxLocalIPs;
+	set<IPAddress> LocalIPs;
 
+	mutex MtxBannedIPs;
+	unordered_set<IPAddress> BannedIPs;
+public:
 	int ListeningPort;
 	CBool SoftPortRestriction;
 
 	NetManager()
-		:	ListeningPort(0)
+		: ListeningPort(0)
 	{}
 
 	virtual Link *CreateLink(thread_group& tr);
@@ -179,13 +185,6 @@ public:
 	void AddLocal(const IPAddress& ip) {
 		EXT_LOCKED(MtxLocalIPs, LocalIPs.insert(ip));
 	}
-
-protected:
-	mutex MtxLocalIPs;
-	set<IPAddress> LocalIPs;
-
-	mutex MtxBannedIPs;
-	unordered_set<IPAddress> BannedIPs;
 };
 
 
@@ -205,11 +204,11 @@ public:
 	vector<PeerBucket> m_vec;
 
 	PeerBuckets(PeerManager& manager, size_t size)
-		:	Manager(manager)
-		,	m_vec(size)
+		: Manager(manager)
+		, m_vec(size)
 	{
-		for (int i=0; i<m_vec.size(); ++i)
-			m_vec[i].Buckets.reset(this);
+		for (auto& bucket : m_vec)
+			bucket.Buckets.reset(this);
 	}
 
 	size_t size() const;
@@ -217,27 +216,28 @@ public:
 	ptr<Peer> Select();
 };
 
-
 class PeerManager {
+	typedef unordered_map<IPAddress, ptr<Peer>> CPeerMap;
+	CPeerMap IpToPeer;
+
+	PeerBuckets TriedBuckets, NewBuckets;
+	vector<Peer*> VecRandom;
+protected:
+	uint16_t DefaultPort;
+	observer_ptr<thread_group> m_owner;
+	atomic<int> m_aPeersDirty;
 public:
 	P2P::NetManager& NetManager;
 
 	mutex MtxPeers;
 	typedef vector<ptr<LinkBase>> CLinks;
 	CLinks Links;
+	//----
 
 	int MaxLinks;
 	int MaxOutboundConnections;
-	
-	PeerManager(P2P::NetManager& netManager)
-		:	NetManager(netManager)
-		,	MaxLinks(MAX_LINKS)
-		,	MaxOutboundConnections(MAX_OUTBOUND_CONNECTIONS)
-		,	m_aPeersDirty(0)
-		,	DefaultPort(0)
-		,	TriedBuckets(_self, ADDRMAN_TRIED_BUCKET_COUNT)
-		,	NewBuckets(_self, ADDRMAN_NEW_BUCKET_COUNT)
-	{}
+
+	PeerManager(P2P::NetManager& netManager);
 
 	virtual void SavePeers() {}
 //	void AddPeer(Peer& peer);
@@ -254,7 +254,7 @@ public:
 	void Attempt(Peer *peer);
 	void Good(Peer *peer);
 	bool IsRoutable(const IPAddress& ip);
-	ptr<Peer> Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty = TimeSpan(0));
+	ptr<Peer> Add(const IPEndPoint& ep, uint64_t services, DateTime dt, TimeSpan penalty = TimeSpan(0), bool bRequireRoutable = true);
 
 	vector<ptr<Peer>> GetAllPeers() {
 		EXT_LOCK (MtxPeers) {
@@ -262,25 +262,13 @@ public:
 		}
 	}
 protected:
-	uint16_t DefaultPort;
-	observer_ptr<thread_group> m_owner;
-	atomic<int> m_aPeersDirty;	
-
-	virtual void OnPeriodic();
+	virtual void OnPeriodic(const DateTime& now);
 private:
-	typedef unordered_map<IPAddress, ptr<Peer>> CPeerMap;
-	CPeerMap IpToPeer;
-
-	PeerBuckets TriedBuckets, NewBuckets;
-	vector<Peer*> VecRandom;
-
 	ptr<Peer> Find(const IPAddress& ip);
 	void Remove(Peer *peer);
-
 
 	friend class PeerBucket;
 };
 
 
 }}} // Ext::Inet::P2P::
-

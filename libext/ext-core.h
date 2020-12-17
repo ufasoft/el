@@ -86,6 +86,7 @@ inline uint64_t htobe(uint64_t v) { return htobe64(v); }
 inline uint64_t betoh(uint64_t v) { return be64toh(v); }
 
 template <typename T> class BeInt {
+	T m_val;
 public:
 	BeInt(T v = 0)
 		: m_val(htobe(v)) {}
@@ -96,9 +97,6 @@ public:
 		m_val = htobe(v);
 		return *this;
 	}
-
-private:
-	T m_val;
 };
 
 typedef BeInt<uint16_t> BeUInt16;
@@ -111,19 +109,10 @@ inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
 }
 
 inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
-	if (s == nullptr)
-		return os << "<#nullptr>";
-	else
-		return os << (std::wstring)explicit_cast<std::wstring>(s);
+	return s == nullptr
+		? os << "<#nullptr>"
+		: os << (std::wstring)explicit_cast<std::wstring>(s);
 }
-
-/*!!!
-inline std::istream& AFXAPI operator>>(std::istream& is, String& s) {
-	std::string bs;
-	is >> bs;
-	s = bs;
-	return is;
-}*/
 
 inline std::istream& AFXAPI getline(std::istream& is, String& s, char delim = '\n') {
 	std::string bs;
@@ -148,6 +137,7 @@ inline void AFXAPI PutLeUInt64(void* p, uint64_t v) { *(uint64_t UNALIGNED*)p = 
 __END_DECLS
 
 namespace Ext {
+using namespace std;
 
 uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p);
 void AFXAPI Write7BitEncoded(uint8_t*& p, uint64_t v);
@@ -155,9 +145,9 @@ void AFXAPI Write7BitEncoded(uint8_t*& p, uint64_t v);
 class Convert {
 public:
 	static AFX_API Blob AFXAPI FromBase64String(RCString s);
-	static AFX_API String AFXAPI ToBase64String(const ConstBuf& mb);
-	static AFX_API Blob AFXAPI FromBase32String(RCString s);
-	static AFX_API String AFXAPI ToBase32String(const ConstBuf& mb);
+	static AFX_API String AFXAPI ToBase64String(RCSpan mb);
+	static AFX_API Blob AFXAPI FromBase32String(RCString s, const uint8_t *table = 0);
+	static AFX_API String AFXAPI ToBase32String(RCSpan mb, const char* table = 0);
 	static AFX_API uint32_t AFXAPI ToUInt32(RCString s, int fromBase = 10);
 	static AFX_API uint64_t AFXAPI ToUInt64(RCString s, int fromBase = 10);
 	static AFX_API int64_t AFXAPI ToInt64(RCString s, int fromBase = 10);
@@ -181,6 +171,9 @@ public:
 	static String AFXAPI ToString(int16_t v, int base = 10) { return ToString(int32_t(v), base); }
 	static String AFXAPI ToString(uint16_t v, int base = 10) { return ToString(uint32_t(v), base); }
 	static String AFXAPI ToString(double d);
+
+	static String AFXAPI MulticharToString(int n);
+	static int AFXAPI ToMultiChar(const char *s);
 #ifdef WIN32
 	static AFX_API Blob AFXAPI ToAnsiBytes(wchar_t ch);
 #endif
@@ -195,45 +188,29 @@ public:
 };
 
 class MemStreamWithPosition : public Stream {
+protected:
+	mutable size_t m_pos;
 public:
 	MemStreamWithPosition()
 		: m_pos(0) {}
 
 	uint64_t get_Position() const override { return m_pos; }
-
 	void put_Position(uint64_t pos) const override { m_pos = (size_t)pos; }
-
-	int64_t Seek(int64_t offset, SeekOrigin origin) const override {
-		switch (origin) {
-		case SeekOrigin::Begin:
-			put_Position(offset);
-			break;
-		case SeekOrigin::Current:
-			put_Position(m_pos + offset);
-			break;
-		case SeekOrigin::End:
-			put_Position(Length + offset);
-			break;
-		}
-		return m_pos;
-	}
-
-protected:
-	mutable size_t m_pos;
+	int64_t Seek(int64_t offset, SeekOrigin origin) const override;
 };
 
 class CMemReadStream : public MemStreamWithPosition {
 public:
-	ConstBuf m_mb;
+	Span m_mb;
 
-	CMemReadStream(const ConstBuf& mb)
+	CMemReadStream(RCSpan mb)
 		: m_mb(mb) {}
 
-	uint64_t get_Length() const override { return m_mb.Size; }
-	bool Eof() const override { return m_pos == m_mb.Size; }
+	uint64_t get_Length() const override { return m_mb.size(); }
+	bool Eof() const override { return m_pos == m_mb.size(); }
 
 	void put_Position(uint64_t pos) const override {
-		if (pos > m_mb.Size)
+		if (pos > m_mb.size())
 			Throw(E_FAIL);
 		m_pos = (size_t)pos;
 	}
@@ -247,75 +224,55 @@ public:
 class CBlobReadStream : public CMemReadStream {
 	typedef CMemReadStream base;
 
+	const Blob m_blob;
 public:
 	CBlobReadStream(const Blob& blob)
 		: base(blob)
 		, m_blob(blob) // m_mb now points to the same buffer as m_blob
 	{}
-
-private:
-	const Blob m_blob;
 };
 
 class CMemWriteStream : public MemStreamWithPosition {
 public:
-	Buf m_mb;
+	span<uint8_t> m_mb;
 
-	CMemWriteStream(const Buf& mb)
+	CMemWriteStream(const span<uint8_t>& mb)
 		: m_mb(mb) {}
 
-	uint64_t get_Length() const override { return m_mb.Size; }
-	bool Eof() const override { return m_pos == m_mb.Size; }
+	uint64_t get_Length() const override { return m_mb.size(); }
+	bool Eof() const override { return m_pos == m_mb.size(); }
+	void WriteBuffer(const void* buf, size_t count) override;
 
 	void put_Position(uint64_t pos) const override {
-		if (pos > m_mb.Size)
+		if (pos > m_mb.size())
 			Throw(E_FAIL);
 		m_pos = (size_t)pos;
-	}
-
-	void WriteBuffer(const void* buf, size_t count) override {
-		if (count > m_mb.Size - m_pos)
-			Throw(ExtErr::EndOfStream);
-		memcpy(m_mb.P + m_pos, buf, count);
-		m_pos += count;
 	}
 };
 
 class EXTAPI MemoryStream : public MemStreamWithPosition {
+	typedef MemStreamWithPosition base;
 public:
 	typedef MemoryStream class_type;
 
 	static const size_t DEFAULT_CAPACITY = 256;
-
-	MemoryStream(size_t capacity = DEFAULT_CAPACITY)
-		: m_data((uint8_t*)Ext::Malloc(capacity))
-		, m_size(0)
-		, m_capacity(capacity)
-	{
-	}
-
-	~MemoryStream() {
-		free(m_data);
-	}
-
+private:
+	typedef AutoBlob<DEFAULT_CAPACITY> CBlob;
+	CBlob m_blob;
+	size_t m_size;
+public:
+	MemoryStream(size_t capacity = DEFAULT_CAPACITY);
 	uint64_t get_Length() const override { return m_size; }
+    size_t size() const { return m_size; }
+    const uint8_t *data() const { return m_blob.data(); }
 	void WriteBuffer(const void* buf, size_t count) override;
 	bool Eof() const override;
 	void Reset(size_t capacity = DEFAULT_CAPACITY);
 
-	operator ConstBuf() const { return ConstBuf(m_data, m_size); }
+	Span AsSpan() const { return Span(m_blob.data(), m_size); }    //!!!O obsolete
 
-	class Blob get_Blob() const {
-		return Ext::Blob(operator ConstBuf());
-	}
-	DEFPROP_GET(class Blob, Blob);
-
-	size_t get_Capacity() const { return m_capacity; }
+	size_t get_Capacity() const { return m_blob.size(); }
 	DEFPROP_GET(size_t, Capacity);
-
-private:
-	uint8_t* m_data;
-	size_t m_size, m_capacity;
 };
 
 AFX_API String AFXAPI operator+(const String& s, const char* lpsz); // friend declaration in the "class String" is not enough
@@ -334,7 +291,9 @@ inline String AFXAPI operator+(const String::value_type* p, const String& s) { r
 
 class CIosStream : public Stream {
 	typedef CIosStream class_type;
-
+protected:
+	std::istream* m_pis;
+	std::ostream* m_pos;	
 public:
 	CIosStream(std::istream& ifs)
 		: m_pis(&ifs)
@@ -386,25 +345,21 @@ public:
 	}
 
 protected:
-	std::istream* m_pis;
-	std::ostream* m_pos;
-
 	CIosStream()
 		: m_pis(0)
 		, m_pos(0) {}
 };
 
 class StringInputStream : public CIosStream {
+	String m_s;
+	std::istringstream m_is;
 public:
 	StringInputStream(RCString s)
 		: m_s(s)
-		, m_is(m_s.c_str()) {
+		, m_is(m_s.c_str())
+	{
 		m_pis = &m_is;
 	}
-
-private:
-	String m_s;
-	std::istringstream m_is;
 };
 
 template <typename EL, typename TR> inline std::basic_ostream<EL, TR>& operator<<(std::basic_ostream<EL, TR>& os, const CPrintable& ob) { return os << ob.ToString(); }
@@ -414,7 +369,7 @@ inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) {
 	return os;
 }
 
-class MacAddress : totally_ordered<MacAddress> {
+class MacAddress : totally_ordered<MacAddress>, public CPrintable {
 public:
 	uint64_t m_n64;
 
@@ -424,19 +379,19 @@ public:
 	explicit MacAddress(int64_t n64 = 0)
 		: m_n64(n64) {}
 
-	explicit MacAddress(const ConstBuf& mb) {
-		if (mb.Size != 6)
+	explicit MacAddress(RCSpan mb) {
+		if (mb.size() != 6)
 			Throw(E_FAIL);
-		m_n64 = *(DWORD*)mb.P | (uint64_t(*((uint16_t*)mb.P + 2)) << 32);
+		m_n64 = 0;
+		memcpy(&m_n64, mb.data(), 6);
 	}
 
 	explicit MacAddress(RCString s);
 
-	operator Blob() const { return Blob(&m_n64, 6); }
+	Span AsSpan() const { return Span((uint8_t*)&m_n64, 6); }
 
 	void CopyTo(void* p) const {
-		*(DWORD*)p = (DWORD)m_n64;
-		*((uint16_t*)p + 2) = uint16_t(m_n64 >> 32);
+		memcpy(p, &m_n64, 6);
 	}
 
 	bool operator<(MacAddress mac) const { return m_n64 < mac.m_n64; }
@@ -445,10 +400,8 @@ public:
 	static MacAddress __stdcall Null() { return MacAddress(); }
 	static MacAddress __stdcall Broadcast() { return MacAddress(0xFFFFFFFFFFFFLL); }
 
-	String ToString() const;
+	void Print(ostream& os) const override;
 };
-
-EXT_API std::ostream& __stdcall operator<<(std::ostream& os, const MacAddress& mac);
 
 #if !UCFG_WCE
 } // Ext::
@@ -464,48 +417,7 @@ namespace Ext {
 
 class UTF8Encoding;
 
-class Encoding : public Object {
-public:
-	EXT_DATA static Encoding* s_Default;
-	EXT_DATA static UTF8Encoding UTF8;
-
-	static Encoding& AFXAPI Default();
-
-	int CodePage;
-	String Name;
-
-	Encoding(int codePage = 0);
-
-	virtual ~Encoding() {
-#if UCFG_USE_POSIX
-		if ((intptr_t)m_iconvTo != -1)
-			CCheck(::iconv_close(m_iconvTo));
-		if ((intptr_t)m_iconvFrom != -1)
-			CCheck(::iconv_close(m_iconvFrom));
-#endif
-	}
-	static bool AFXAPI SetThreadIgnoreIncorrectChars(bool v);
-	static Encoding* AFXAPI GetEncoding(RCString name);
-	static Encoding* AFXAPI GetEncoding(int codepage);
-	virtual size_t GetCharCount(const ConstBuf& mb);
-	virtual size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
-	EXT_API virtual std::vector<String::value_type> GetChars(const ConstBuf& mb);
-	virtual size_t GetByteCount(const String::value_type* chars, size_t charCount);
-	virtual size_t GetByteCount(RCString s) { return GetByteCount(s, s.length()); }
-	virtual size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	virtual Blob GetBytes(RCString s);
-
-	class CIgnoreIncorrectChars {
-	public:
-		CIgnoreIncorrectChars(bool v = true)
-			: m_prev(SetThreadIgnoreIncorrectChars(v)) {}
-
-		~CIgnoreIncorrectChars() { SetThreadIgnoreIncorrectChars(m_prev); }
-
-	private:
-		bool m_prev;
-	};
-
+class Encoding : public InterlockedObject {
 protected:
 #if UCFG_WDM
 	static bool t_IgnoreIncorrectChars;
@@ -520,37 +432,73 @@ protected:
 	iconv_t m_iconvTo;
 	iconv_t m_iconvFrom;
 #endif
+public:
+	EXT_DATA static Encoding* s_Default;
+	EXT_DATA static UTF8Encoding UTF8;
+
+	String Name;
+	int CodePage;
+
+	Encoding(int codePage = 0);
+
+	static Encoding& AFXAPI Default();
+
+	virtual ~Encoding() {
+#if UCFG_USE_POSIX
+		if ((intptr_t)m_iconvTo != -1)
+			CCheck(::iconv_close(m_iconvTo));
+		if ((intptr_t)m_iconvFrom != -1)
+			CCheck(::iconv_close(m_iconvFrom));
+#endif
+	}
+	static bool AFXAPI SetThreadIgnoreIncorrectChars(bool v);
+	static Encoding* AFXAPI GetEncoding(RCString name);
+	static Encoding* AFXAPI GetEncoding(int codepage);
+	virtual size_t GetCharCount(RCSpan mb);
+	virtual size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
+	EXT_API virtual std::vector<String::value_type> GetChars(RCSpan mb);
+	virtual size_t GetByteCount(const String::value_type* chars, size_t charCount);
+	virtual size_t GetByteCount(RCString s) { return GetByteCount(s, s.length()); }
+	virtual size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
+	virtual Blob GetBytes(RCString s);
+
+	class CIgnoreIncorrectChars {
+		bool m_prev;
+	public:
+		CIgnoreIncorrectChars(bool v = true)
+			: m_prev(SetThreadIgnoreIncorrectChars(v)) {}
+
+		~CIgnoreIncorrectChars() { SetThreadIgnoreIncorrectChars(m_prev); }
+	};
 };
 
 class UTF8Encoding : public Encoding {
 	typedef Encoding base;
 
+	typedef std::codecvt_utf8_utf16<wchar_t> Cvt;
+	Cvt m_cvt;
 public:
 	UTF8Encoding()
 		: base(CP_UTF8) {}
 
 	Blob GetBytes(RCString s);
 	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(const ConstBuf& mb);
-	EXT_API std::vector<String::value_type> GetChars(const ConstBuf& mb);
-	size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
+	size_t GetCharCount(RCSpan mb);
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
 
 protected:
-	void Pass(const ConstBuf& mb, UnaryFunction<String::value_type, bool>& visitor);
+	void Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor);
 	void PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<uint8_t, bool>& visitor);
-
-private:
-	typedef std::codecvt_utf8_utf16<wchar_t> Cvt;
-	Cvt m_cvt;
 };
 
 class ASCIIEncoding : public Encoding {
 public:
 	Blob GetBytes(RCString s);
 	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(const ConstBuf& mb);
-	EXT_API std::vector<String::value_type> GetChars(const ConstBuf& mb);
-	size_t GetChars(const ConstBuf& mb, String::value_type* chars, size_t charCount);
+	size_t GetCharCount(RCSpan mb);
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
 };
 
 class CodePageEncoding : public Encoding {
@@ -695,6 +643,7 @@ public:
 typedef void(_cdecl* PFNAtExit)();
 
 class AtExitRegistration {
+	PFNAtExit m_pfn;
 public:
 	AtExitRegistration(PFNAtExit pfn)
 		: m_pfn(pfn) {
@@ -702,16 +651,15 @@ public:
 	}
 
 	~AtExitRegistration() { UnregisterAtExit(m_pfn); }
-
-private:
-	PFNAtExit m_pfn;
 };
 
 class StreamReader {
 public:
 	Stream& BaseStream;
 	Ext::Encoding& Encoding;
-
+private:
+	int m_prevChar;
+public:
 	StreamReader(Stream& stm, Ext::Encoding& enc = Ext::Encoding::Default())
 		: BaseStream(stm)
 		, Encoding(enc)
@@ -721,10 +669,7 @@ public:
 	EXT_API std::pair<String, bool> ReadLineEx();
 
 	String ReadLine() { return ReadLineEx().first; }
-
 private:
-	int m_prevChar;
-
 	int ReadChar();
 };
 
@@ -732,19 +677,17 @@ class StreamWriter {
 public:
 	Ext::Encoding& Encoding;
 	String NewLine;
+	Stream& BaseStream;
 
 	StreamWriter(Stream& stm, Ext::Encoding& enc = Ext::Encoding::Default())
 		: Encoding(enc)
 		, NewLine("\r\n")
-		, m_stm(stm) {}
+		, BaseStream(stm) {}
 
 	void WriteLine(RCString line);
-
-private:
-	Stream& m_stm;
 };
 
-unsigned int MurmurHashAligned2(const ConstBuf& cbuf, uint32_t seed);
-uint32_t MurmurHash3_32(const ConstBuf& cbuf, uint32_t seed);
+unsigned int MurmurHashAligned2(RCSpan cbuf, uint32_t seed);
+uint32_t MurmurHash3_32(RCSpan cbuf, uint32_t seed);
 
 } // namespace Ext

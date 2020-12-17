@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -16,43 +16,40 @@
 namespace Ext {
 
 class Exception;
-//!!!R typedef const Exception& RCExc;
-//typedef const std::exception& RCExc;
 
-
-class CHandleBaseBase {
+class SafeHandleBase {
 public:
-	mutable atomic<int> m_aInUse;
+	enum StateBits {
+		SH_State_Closed		= 1
+		, SH_State_Disposed = 2
+		, SH_State_RefCount = 0xFFFFFFFC
+		, SH_RefCountOne	= 4, // Amount to increment state field to yield a ref count increment of 1
+	};
 
-	CHandleBaseBase()
-		:	m_aInUse(0)
-		,	m_abClosed(true)
-	{
-	}
+	mutable atomic<int> m_aState;
 
-	virtual bool Release() const =0;
-	bool Close(bool bFromDtor = false);
-
-	void swap(CHandleBaseBase& r);
-protected:
-	atomic<bool> m_abClosed;					// int32_t because we need Interlocked operations, but sizeof(bool)==1
 #if UCFG_USE_IN_EXCEPTION
 	CInException InException;
 #endif
+
+	SafeHandleBase()
+		: m_aState(SH_State_Closed)
+	{
+	}
+
+    bool AddRef() const noexcept;
+	virtual bool Release(bool fDispose) const;
+	bool Dispose(bool bFromDtor = false);
+	bool Close(bool bFromDtor = false) { return Dispose(bFromDtor); }   //!!!C For compatibility
+
+	void swap(SafeHandleBase& r);
+protected:
+	virtual void InternalReleaseHandle() const = 0;
 };
 
 template <class T>
-class CHandleBase : public CHandleBaseBase {
+class CHandleBase : public SafeHandleBase {    //!!!?
 public:
-	bool Release() const override {
-		--m_aInUse;
-		for (int prev=0; !m_aInUse.compare_exchange_weak(prev, 0x80000000L);) {
-			if (prev)
-				return false;
-		}
-		static_cast<const T*>(this)->InternalReleaseHandle();
-		return true;
-	}
 
 template <class U> friend class CHandleKeeper;
 };
@@ -60,6 +57,11 @@ template <class U> friend class CHandleKeeper;
 #ifndef WDM_DRIVER
 
 class EXTAPI CTls : noncopyable {
+#if UCFG_USE_PTHREADS
+	pthread_key_t m_key;
+#else
+	unsigned long m_key; //!!! was ULONG
+#endif
 public:
 	typedef CTls class_type;
 
@@ -76,12 +78,6 @@ public:
 
 	void put_Value(const void *p);
 	DEFPROP(void*, Value);
-private:
-#if UCFG_USE_PTHREADS
-	pthread_key_t m_key;
-#else
-	unsigned long m_key; //!!! was ULONG
-#endif
 };
 
 template <class T>
@@ -157,15 +153,18 @@ public:
 #endif // !WDM_DRIVER
 
 template <class H> class CHandleKeeper {
+protected:
+	mutable const H* m_hp;
+	mutable CBool m_bIncremented;
 public:
 	CHandleKeeper(const H& hp)
-		:	m_hp(&hp)
+		: m_hp(&hp)
 	{
 		AddRef();
 	}
 
 	CHandleKeeper()
-		:	m_hp(0)
+		: m_hp(0)
 	{
 	}
 
@@ -196,42 +195,39 @@ public:
 	}
 
 	void AddRef() {
-		if (!m_hp->m_abClosed) {
-			++(m_hp->m_aInUse);
-			if (m_hp->m_abClosed)
-				m_hp->Release();
-			else
-				m_bIncremented = true;
-		}
+		m_bIncremented = m_hp->AddRef();
 	}
 
 	void Release() {
 		if (m_bIncremented) {
 			m_bIncremented = false;
-			m_hp->Release();
+			m_hp->Release(false);
 		}
 	}
-protected:
-	mutable const H *m_hp;
-	mutable CBool m_bIncremented;
 };
 
 
 class EXTAPI SafeHandle : public Object, public CHandleBase<SafeHandle> {
-	typedef CHandleBase<SafeHandle> base;
-	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
 public:
-	typedef intptr_t handle_type;
-
 #ifndef WDM_DRIVER
 	//!!!R static CTls t_pCurrentHandle;
 	static EXT_THREAD_PTR(void) t_pCurrentHandle;
 #endif
+protected:
+	const intptr_t m_invalidHandleValue;
+private:
+	typedef CHandleBase<SafeHandle> base;
+	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
+
+	mutable atomic<intptr_t> m_aHandle;
+	CBool m_bOwn;
+public:
+	typedef intptr_t handle_type;
 
 	SafeHandle()
 		: m_invalidHandleValue(-1)
-		,	m_aHandle(-1)
-		,	m_bOwn(true)
+		, m_aHandle(-1)
+		, m_bOwn(true)
 	{}
 
 	SafeHandle(intptr_t invalidHandle, bool)
@@ -239,7 +235,7 @@ public:
 		, m_aHandle(invalidHandle)
 		, m_bOwn(true)
 #if UCFG_WDM
-		,	m_pObject(nullptr)
+		, m_pObject(nullptr)
 #endif
 	{}
 
@@ -289,11 +285,11 @@ public:
 		{}
 
 		HandleAccess(const HandleAccess& ha)
-			:	base(ha)
+			: base(ha)
 		{}
 
 		HandleAccess(const SafeHandle& h)
-			:	base(h)
+			: base(h)
 		{}
 
 		~HandleAccess();
@@ -310,24 +306,18 @@ public:
 	};
 
 	class BlockingHandleAccess : public HandleAccess {
+		HandleAccess* m_pPrev;
 	public:
 		BlockingHandleAccess(const SafeHandle& h);
 		~BlockingHandleAccess();
-	private:
-		HandleAccess *m_pPrev;
 	};
 
-	void InternalReleaseHandle() const;
+	void InternalReleaseHandle() const override;
 	intptr_t DangerousGetHandleEx() const { return m_aHandle.load(); }
 protected:
-	const intptr_t m_invalidHandleValue;
-
 	void ReplaceHandle(intptr_t h) { m_aHandle = h; }
 	virtual void ReleaseHandle(intptr_t h) const;
 private:
-	mutable atomic<intptr_t> m_aHandle;
-	CBool m_bOwn;
-
 	void AfterAttach(bool bOwn);
 
 	template <class T> friend class CHandleKeeper;
@@ -344,8 +334,8 @@ typename T::handle_type BlockingHandle(T& x) {
 }
 
 ENUM_CLASS(HandleInheritability) {
-	None,
-	Inheritable
+	None
+	, Inheritable
 } END_ENUM_CLASS(HandleInheritability);
 
 } // Ext::

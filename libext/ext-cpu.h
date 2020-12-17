@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2018-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 namespace Ext {
@@ -31,7 +36,7 @@ public:
 
 			struct {
 				int : 32;
-			
+
 				int : 32;
 
 				bool SSE3 : 1,
@@ -161,29 +166,10 @@ public:
 	}
 	DEFPROP_GET(CpuVendor, Vendor);
 
-	struct SFamilyModelStepping get_FamilyModelStepping() {
-	    int v = Cpuid(1).EAX;
-		SFamilyModelStepping r = { (v>>8) & 0xF, (v>>4) & 0xF, v & 0xF };
-		if (r.Family == 0xF)
-			r.Family += (v>>20) & 0xFF;
-		if (r.Family >= 6)
-			r.Model += (v>>12) & 0xF0;
-		return r;
-	}
+	struct SFamilyModelStepping get_FamilyModelStepping();
 	DEFPROP_GET(SFamilyModelStepping, FamilyModelStepping);
 
-	bool get_ConstantTsc() {
-		if (uint32_t(Cpuid(0x80000000).EAX) >= 0x80000007UL &&
-            (Cpuid(0x80000007).EDX & 0x100))
-			return true;
-		if (!strcmp(get_Vendor().Name, "GenuineIntel")) {
-			SFamilyModelStepping fms = get_FamilyModelStepping();
-			return 0xF==fms.Family && fms.Model==3 ||							// P4, Xeon have constant TSC
-					6==fms.Family && fms.Model>=0xE && fms.Model<0x1A;			// Core [2][Duo] - constant TSC
-																				// Atoms - variable TSC
-		}
-		return false;
-	}
+	bool get_ConstantTsc();
 	DEFPROP_GET(bool, ConstantTsc);
 
 #	if UCFG_FRAMEWORK && !defined(_CRTBLD)
@@ -205,4 +191,3 @@ public:
 
 
 } // Ext::
-

@@ -7,14 +7,16 @@
 
 #include EXT_HEADER(list)
 
+#include EXT_HEADER_OPTIONAL
 
 namespace Ext {
-
+using std::unordered_map,
+	std::optional, std::nullopt;
 
 template <class T> class Array {
 public:
 	Array(size_t size)
-		:	m_p(new T[size])
+		: m_p(new T[size])
 	{
 	}
 
@@ -31,7 +33,7 @@ private:
 template<> class Array<char> {
 public:
 	Array(size_t size)
-		:	m_p((char*)Malloc(size))
+		: m_p((char*)Malloc(size))
 	{
 	}
 
@@ -185,15 +187,11 @@ bool ContainsInLinear(const C& c, const T& key) {
 	return find(c.begin(), c.end(), key) != c.end();
 }
 
-template <class M, class K, class T>
-bool Lookup(const M& m, const K& key, T& val) {
-	typename M::const_iterator i = m.find(key);
-	if (i == m.end())
-		return false;
-	val = i->second;
-	return true;
+template <class K, class T>
+optional<T> Lookup(const unordered_map<K, T>& m, const K& key) {
+	typename unordered_map<K, T>::const_iterator i = m.find(key);
+	return i == m.end() ? optional<T>(nullopt) : i->second;
 }
-
 
 template <typename S1, typename S2>
 typename S1::const_iterator Search(const S1& s1, const S2& s2) {
@@ -581,15 +579,6 @@ public:
 	}
 };
 
-template <typename T, class L>
-bool between(const T& v, const T& lo, const T& hi, L pred) {
-	return !pred(v, lo) && !pred(hi, v);
-}
-
-template <typename T>
-bool between(const T& v, const T& lo, const T& hi) {
-	return between<T, std::less<T>>(v, lo, hi, std::less<T>());
-}
 
 template <typename T>
 T RoundUpToMultiple(const T& x, const T& mul) {

@@ -5,6 +5,8 @@
 
 #include <el/ext.h>
 
+#if UCFG_USE_OPENSSL
+
 #define OPENSSL_NO_SCTP
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -25,7 +27,7 @@ static class OpensslCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
 	OpensslCategory()
-		:	base("OpenSSL", FACILITY_OPENSSL)
+		: base("OpenSSL", FACILITY_OPENSSL)
 	{}
 
 	string message(int errval) const override {
@@ -51,15 +53,15 @@ void SslCheck(bool b) {
 	}
 }
 
-static void *OpenSslMallocFun(size_t size) {
+static void *OpenSslMallocFun(size_t size, const char *file, int line) {
 	return Malloc(size);
 }
 
-static void OpenSslFree(void *p) {
+static void OpenSslFree(void *p, const char *file, int line) {
 	free(p);
 }
 
-static void *OpenSslRealloc(void *p, size_t size) {
+static void *OpenSslRealloc(void *p, size_t size, const char *file, int line) {
 	return Realloc(p, size);
 }
 
@@ -67,8 +69,8 @@ OpenSslMalloc::OpenSslMalloc() {
 	SslCheck(::CRYPTO_set_mem_functions(&OpenSslMallocFun, &OpenSslRealloc, &OpenSslFree));
 }
 
-static mutex *s_pOpenSslMutexes;
-
+/*!!!R
+//!!!Rstatic mutex *s_pOpenSslMutexes;
 
 static void OpenSslLockingCallback(int mode, int i, const char* file, int line) {
 	mutex& m = s_pOpenSslMutexes[i];
@@ -89,7 +91,7 @@ static void OpenSslThreadId(CRYPTO_THREADID *ti) {
 struct CInitOpenSsl {
 	CInitOpenSsl() {
 		s_pOpenSslMutexes = new mutex[CRYPTO_num_locks()];
-        CRYPTO_set_locking_callback(&OpenSslLockingCallback);
+		CRYPTO_set_locking_callback(&OpenSslLockingCallback);
 		CRYPTO_THREADID_set_callback(&OpenSslThreadId);
 	}
 
@@ -99,24 +101,12 @@ struct CInitOpenSsl {
 		delete[] exchange(s_pOpenSslMutexes, nullptr);
 	}
 } g_initOpenSsl;
-
-
+*/
 
 static OpenSslMalloc s_openSslMalloc;		// should be first global OpenSsl object
 
-static struct RANDCleanup {
-	bool Inited;
-
-	~RANDCleanup() {
-		if (Inited)
-			::RAND_cleanup();
-	}
-} s_randCleanup;
-
 Random::Random() {
-	s_randCleanup.Inited = true;
-
-	int64_t ticks = DateTime::UtcNow().Ticks;
+	int64_t ticks = Clock::now().Ticks;
 	::RAND_add(&ticks, sizeof ticks, 2);
 
 #if UCFG_CPU_X86_X64
@@ -130,18 +120,18 @@ Random::Random() {
 #endif
 
 #ifdef WIN32
-	typedef BOOLEAN (APIENTRY *PFN_PRNG)(void*, ULONG);	
+	typedef BOOLEAN (APIENTRY *PFN_PRNG)(void*, ULONG);
 	DlProcWrap<PFN_PRNG> pfnPrng("advapi32.dll", "SystemFunction036");		//!!! Undocumented
 	if (pfnPrng) {
-		byte buf[32];
+		uint8_t buf[32];
 		if (pfnPrng(buf, sizeof buf))
 			::RAND_add(&buf, sizeof buf, sizeof buf/2);
 	}
 #endif
 }
 
-void Random::NextBytes(const Buf& mb) {
-	SslCheck(::RAND_bytes(mb.P, mb.Size) > 0);
+void Random::NextBytes(const span<uint8_t>& mb) {
+	SslCheck(::RAND_bytes(mb.data(), mb.size()) > 0);
 }
 
 
@@ -154,7 +144,7 @@ Random& RandomRef() {
 
 OpensslBn::OpensslBn(const BigInteger& bn) {
 	int n = (bn.Length+8)/8;
-	byte *p = (byte*)alloca(n);
+	uint8_t *p = (uint8_t*)alloca(n);
 	bn.ToBytes(p, n);
 	std::reverse(p, p+n);
 	SslCheck(m_bn = ::BN_bin2bn(p, n, 0));
@@ -162,7 +152,7 @@ OpensslBn::OpensslBn(const BigInteger& bn) {
 
 BigInteger OpensslBn::ToBigInteger() const {
 	int n = BN_num_bytes(m_bn);
-	byte *p = (byte*)alloca(n+1);
+	uint8_t *p = (uint8_t*)alloca(n+1);
 	if (::BN_bn2bin(m_bn, p) != n)
 		Throw(E_FAIL);
 	std::reverse(p, p+n);
@@ -170,16 +160,16 @@ BigInteger OpensslBn::ToBigInteger() const {
 	return BigInteger(p, n+1);
 }
 
-OpensslBn OpensslBn::FromBinary(const ConstBuf& cbuf) {
-	BIGNUM *a = ::BN_bin2bn(cbuf.P, cbuf.Size, 0);
+OpensslBn OpensslBn::FromBinary(RCSpan cbuf) {
+	BIGNUM *a = ::BN_bin2bn(cbuf.data(), cbuf.size(), 0);
 	SslCheck(a);
 	return OpensslBn(a);
 }
 
-void OpensslBn::ToBinary(byte *p, size_t n) const {
+void OpensslBn::ToBinary(uint8_t *p, size_t n) const {
 	int a = BN_num_bytes(m_bn);
 	if (a > n)
-		Throw(E_INVALIDARG);
+		Throw(errc::invalid_argument);
 	memset(p, 0, n-a);
 	SslCheck(::BN_bn2bin(m_bn, p+(n-a)));
 }
@@ -196,3 +186,5 @@ BigInteger sqrt_mod(const BigInteger& x, const BigInteger& mod) {
 
 
 }} // Ext::Crypto
+
+#endif // UCFG_USE_OPENSSL

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -24,37 +24,37 @@ CBlobBufBase::Char *CBlobBufBase::Detach() {
 #endif
 
 CStringBlobBuf::CStringBlobBuf(size_t len)
-	:	m_apChar(0)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
-CStringBlobBuf::CStringBlobBuf(const void *p, size_t len)
-	:	m_apChar(0)
+CStringBlobBuf::CStringBlobBuf(const void *p, size_t len, bool bZeroContent)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
 	if (p)
-		memcpy(this+1, p, len);
-	else
-		memset(this+1, 0, len);
+		memcpy(this + 1, p, len);
+	else if (bZeroContent)
+		memset(this + 1, 0, len);
 	*(UNALIGNED String::value_type *)((uint8_t *)(this + 1) + len) = 0;
 }
 
 CStringBlobBuf::CStringBlobBuf(size_t len, const void *buf, size_t copyLen)
-	:	m_apChar(0)
+	: m_apChar(0)
 #ifdef _WIN64
-	,	m_pad(0)
+	, m_pad(0)
 #endif
-	,	m_size(len)
+	, m_size(len)
 {
-	memcpy(this+1, buf, copyLen);
+	memcpy(this + 1, buf, copyLen);
 	memset((uint8_t *)(this + 1) + copyLen, 0, len - copyLen + sizeof(String::value_type));
 }
 
@@ -69,7 +69,7 @@ void * AFXAPI CStringBlobBuf::operator new(size_t sz, size_t len, bool) {
 }
 
 CStringBlobBuf *CStringBlobBuf::Clone() {
-	return new(m_size, false) CStringBlobBuf(this+1, m_size);
+	return new (m_size, false) CStringBlobBuf(this + 1, m_size);
 }
 
 CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
@@ -85,7 +85,7 @@ CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
 		memcpy((d = (CStringBlobBuf*)Malloc(cbNew)), this, std::min((size_t)m_size+sizeof(CStringBlobBuf)+sizeof(String::value_type), cbNew));
 		free(this);
 #endif
-		d->m_size = size;	
+		d->m_size = size;
 		memset((uint8_t *)(d + 1) + copyLen, 0, size - copyLen + sizeof(String::value_type));
 		return d;
 	} else {
@@ -104,13 +104,13 @@ static CStringBlobBuf *CreateStringBlobBuf() {
 CStringBlobBuf *CStringBlobBuf::RefEmptyBlobBuf() {
 	CStringBlobBuf *r = s_emptyStringBlobBuf;
 	if (!r)
-		r = CreateStringBlobBuf();		
+		r = CreateStringBlobBuf();
 	r->AddRef();
 	return r;
 }
 
 Blob::Blob(const Blob& blob) noexcept
-	:	m_pData(blob.m_pData)
+	: m_pData(blob.m_pData)
 {
 	if (m_pData)
 		m_pData->AddRef();
@@ -120,16 +120,26 @@ Blob::Blob(const void *buf, size_t len) {
 	m_pData = new(len, false) CStringBlobBuf(buf, len);
 }
 
-Blob::Blob(const ConstBuf& mb) {
-	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
+Blob::Blob(size_t len, nullptr_t) {
+	m_pData = new(len, false) CStringBlobBuf(0, len, false);
 }
 
-Blob::Blob(const Buf& mb) {
-	m_pData = new(mb.Size, false) CStringBlobBuf(mb.P, mb.Size);
+Blob::Blob(RCSpan mb) {
+	m_pData = new(mb.size(), false) CStringBlobBuf(mb.data(), mb.size());
+}
+
+Blob::Blob(const span<uint8_t>& mb) {
+	m_pData = new(mb.size(), false) CStringBlobBuf(mb.data(), mb.size());
 }
 
 Blob::~Blob() {
 	Release(m_pData);
+}
+
+Blob::operator Span() const noexcept {
+	if (impl_class *p = m_pData)
+		return Span((const uint8_t*)p->GetBSTR(), p->GetSize());
+	return Span();
 }
 
 void Blob::AssignIfNull(const Blob& val) {
@@ -147,14 +157,14 @@ Blob& Blob::operator=(const Blob& val) {
 	return _self;
 }
 
-Blob& Blob::operator+=(const ConstBuf& mb) {
-	size_t prevSize = Size;
-	if (mb.P == constData()) {
-		Size = prevSize+mb.Size;
-		memcpy(data()+prevSize, data(), mb.Size);
+Blob& Blob::operator+=(RCSpan mb) {
+	size_t prevSize = size();
+	if (mb.data() == constData()) {
+		resize(prevSize + mb.size());
+		memcpy(data() + prevSize, data(), mb.size());
 	} else {
-		Size = prevSize+mb.Size;
-		memcpy(data()+prevSize, mb.P, mb.Size);
+		resize(prevSize + mb.size());
+		memcpy(data() + prevSize, mb.data(), mb.size());
 	}
 	return *this;
 }
@@ -168,7 +178,7 @@ inline bool mem2equal(const void *x, const void *y, size_t siz) {
 		mov edi, y
 		mov ecx, siz
 		xor  eax, eax
-		rep cmpsw 
+		rep cmpsw
 		setz al
 	}
 }
@@ -180,13 +190,13 @@ bool Blob::operator==(const Blob& blob) const noexcept {
 	if (m_pData == blob.m_pData)
 		return true;
 	if (m_pData) {
-		size_t size = Size;
-		if (!blob.m_pData || size!=blob.Size)
+		size_t sz = size();
+		if (!blob.m_pData || sz != blob.size())
 			return false;
 #if defined(_MSC_VER) && defined(_M_IX86)
-		return mem2equal((const wchar_t*)constData(), (const wchar_t*)blob.constData(), (size+1)/2);		// because trailing 2 zeros allow compare by 2-bytes
+		return mem2equal((const wchar_t *)constData(), (const wchar_t *)blob.constData(), (sz + 1) / 2); // because trailing 2 zeros allow compare by 2-bytes
 #else
-		return !memcmp(constData(), blob.constData(), size);
+		return !memcmp(constData(), blob.constData(), sz);
 #endif
 	}
 	return false;
@@ -200,8 +210,8 @@ bool Blob::operator<(const Blob& blob) const noexcept {
 		return blob.m_pData;
 	if (!blob.m_pData)
 		return false;
-	int n = memcmp(constData(), blob.constData(), min(Size, blob.Size));
-	return n ? n<0 : Size<blob.Size;
+	int n = memcmp(constData(), blob.constData(), min(size(), blob.size()));
+	return n ? n < 0 : size() < blob.size();
 }
 
 void Blob::Cow() {
@@ -216,50 +226,171 @@ uint8_t *Blob::data() {
 
 Blob Blob::FromHexString(RCString s) {
 	size_t len = s.length() / 2;
-	Blob blob(0, len);
+	Blob blob(len, nullptr);
 	uint8_t *p = blob.data();
-	for (size_t i=0; i<len; ++i)
+	for (size_t i = 0; i < len; ++i)
 		p[i] = (uint8_t)stoi(s.substr(i * 2, 2), 0, 16);
 	return blob;
 }
 
-void Blob::put_Size(size_t size) {
+void Blob::resize(size_t size) {
 	m_pData = m_pData ? m_pData->SetSize(size) : new(size, false) CStringBlobBuf(size);
 }
 
-void Blob::Replace(size_t offset, size_t size, const ConstBuf& mb) {
+void Blob::Replace(size_t offset, size_t sz, RCSpan mb) {
 	Cow();
 	uint8_t *data;
-	uint8_t newSize = get_Size() + mb.Size - size;
-	if (mb.Size >= size) {		
-		put_Size(newSize);
+	uint8_t newSize = size() + mb.size() - sz;
+	if (mb.size() >= sz) {
+		resize(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.Size, data + offset + size, newSize - offset - mb.Size);
+		memmove(data + offset + mb.size(), data + offset + sz, newSize - offset - mb.size());
 	} else {
 		data = (uint8_t*)m_pData->GetBSTR();
-		memmove(data + offset + mb.Size, data + offset + size, Size - offset - size);
-		put_Size(newSize);
+		memmove(data + offset + mb.size(), data + offset + sz, size() - offset - sz);
+		resize(newSize);
 		data = (uint8_t*)m_pData->GetBSTR();
 	}
-	memcpy(data + offset, mb.P, mb.Size);
+	memcpy(data + offset, mb.data(), mb.size());
 }
 
+AutoBlobBase::AutoBlobBase(const AutoBlobBase& x, size_t szSpace) {
+	if (x.IsInHeap(szSpace))
+		memcpy(m_p = (uint8_t*)Malloc(m_size = x.m_size), x.m_p, x.m_size);
+	else {
+		size_t sz = x.m_p - x.m_space;
+		memcpy(m_space, x.m_space, sz);
+		m_p = m_space + sz;
+	}
+}
 
-ostream& __stdcall operator<<(ostream& os, const ConstBuf& cbuf) {
-	static const char s_upperHexDigits[] = "0123456789ABCDEF",
- 					  s_lowerHexDigits[] = "0123456789abcdef";
-	if (!cbuf.P)
+AutoBlobBase::AutoBlobBase(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept {
+	m_p = 0;
+	if (rv.IsInHeap(szSpace)) {
+		m_p = exchange(rv.m_p, nullptr);
+		m_size = rv.m_size;
+	} else if (rv.m_p) {
+		size_t sz = rv.Size(szSpace);
+		memcpy(m_space, rv.m_space, sz);
+		m_p = m_space + sz;
+	}
+}
+
+AutoBlobBase::AutoBlobBase(RCSpan s, size_t szSpace) {
+	size_t sz = s.size();
+	uint8_t* p;
+	m_p = sz <= szSpace
+		? (p = m_space) + sz
+		: p = (uint8_t*)Malloc(m_size = sz);
+	memcpy(p, s.data(), sz);
+}
+
+void AutoBlobBase::DoAssign(EXT_RV_REF(AutoBlobBase) rv, size_t szSpace) noexcept {
+	bool isInHeap = IsInHeap(szSpace);
+	if (rv.IsInHeap(szSpace)) {
+		if (isInHeap) {
+			std::swap(m_p, rv.m_p);
+			std::swap(m_size, rv.m_size);
+		} else {
+			m_p = exchange(rv.m_p, nullptr);
+			m_size = rv.m_size;
+		}
+	} else {
+		size_t sz = rv.Size(szSpace);
+		size_t mySize = Size(szSpace);
+		memcpy(m_space, rv.m_space, sz);
+		if (isInHeap) {
+			rv.m_size = mySize;
+			rv.m_p = m_p;
+		}
+		m_p = m_space + sz;
+	}
+}
+
+void AutoBlobBase::DoAssign(RCSpan s, size_t szSpace) {
+	const uint8_t* data = s.data();
+	if (m_p != data) {
+		if (IsInHeap(szSpace))
+			free(exchange(m_p, (uint8_t*)0));
+		size_t sz = s.size();
+		uint8_t* p;
+		m_p = sz <= szSpace
+			? (p = m_space) + sz
+			: p = (uint8_t*)Malloc(m_size = sz);
+		memcpy(p, data, sz);
+	}
+}
+
+void AutoBlobBase::DoAssignIfNull(RCSpan s, size_t szSpace) {
+	if (m_p)
+		return;
+	size_t sz = s.size();
+	if (sz <= szSpace) {
+		memcpy(m_space, s.data(), sz);
+		m_p = m_space + sz;
+	} else {
+		uint8_t* p = (uint8_t*)memcpy(Malloc(sz), s.data(), m_size = sz);
+		if (Interlocked::CompareExchange(m_p, p, (uint8_t*)0))
+			free(p);
+	}
+}
+
+void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
+	size_t szCur = Size(szSpace);
+	bool isInHeap = IsInHeap(szSpace);
+	if (sz <= szCur) {
+		if (isInHeap)
+			m_size = sz;
+		else
+			m_p = m_space + sz;
+	} else if (sz <= szSpace) {
+		if (isInHeap) {
+			memcpy(m_space, m_p, szCur);
+			free(m_p);
+		}
+		if (bZeroContent)
+			memset(m_space + szCur, 0, sz - szCur);
+		m_p = m_space + sz;
+	} else {
+		uint8_t* p = (uint8_t*)memcpy(Malloc(sz), Data(szSpace), szCur);
+		if (isInHeap)
+			free(m_p);
+		m_p = p;
+		m_size = sz;
+		if (bZeroContent)
+			memset(p + szCur, 0, sz - szCur);
+	}
+}
+
+} // Ext::
+
+namespace std {
+
+static const char
+	s_upperHexDigits[] = "0123456789ABCDEF",
+	s_lowerHexDigits[] = "0123456789abcdef";
+
+ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf) {
+	if (!cbuf.data())
 		return os << "<#nullptr>";
 	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
-	for (size_t i=0, size=cbuf.Size; i<size; ++i) {
-		uint8_t n = cbuf.P[i];
+	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
+		uint8_t n = cbuf[i];
+		os.put(digits[n >> 4]).put(digits[n & 15]);
+	}
+	return os;
+}
+
+wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf) {
+	if (!cbuf.data())
+		return os << "<#nullptr>";
+	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
+	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
+		uint8_t n = cbuf[i];
 		os.put(digits[n >> 4]).put(digits[n & 15]);
 	}
 	return os;
 }
 
 
-
-} // Ext::
-
-
+} // std::

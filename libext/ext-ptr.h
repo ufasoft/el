@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -22,18 +22,18 @@ template <typename T> class SelfCountPtr {
 	}
 public:
 	SelfCountPtr()
-		:	m_p(0)
-		,	m_pRef(0)
+		: m_p(0)
+		, m_pRef(0)
 	{}
 
 	SelfCountPtr(T *p)
-		:	m_p(p)
-		,	m_pRef(new atomic<int>(1))
+		: m_p(p)
+		, m_pRef(new atomic<int>(1))
 	{}
 
 	SelfCountPtr(const SelfCountPtr& p)
-		:	m_p(p.m_p)
-		,	m_pRef(p.m_pRef)
+		: m_p(p.m_p)
+		, m_pRef(p.m_pRef)
 	{
 		m_pRef++;
 	}
@@ -89,23 +89,25 @@ void ThrowNonEmptyPointer();	// Helpers
 template <typename T, typename L>
 class RefPtr : public PtrBase<T> {
 	typedef PtrBase<T> base;
+protected:
+	using base::m_p;
 public:
 	using base::get;
 
 	RefPtr(T *p = 0)
-		:	base(p)
+		: base(p)
 	{
 		AddRef();
 	}
 
 	RefPtr(const RefPtr& p)
-		:	base(p)
+		: base(p)
 	{
 		AddRef();
 	}
 
 	RefPtr(EXT_RV_REF(RefPtr) rv)
-		:	base(rv.m_p)
+		: base(rv.m_p)
 	{
 		rv.m_p = nullptr;
 	}
@@ -151,8 +153,6 @@ public:
 			L::Release(exchange(m_p, (T*)0));
 	}
 protected:
-	using base::m_p;
-
 	void Destroy() {
 		if (m_p)
 			L::Release(m_p);
@@ -167,29 +167,31 @@ protected:
 
 template <typename T, typename I = typename ptr_traits<T>::interlocked_policy>
 class ptr : public RefPtr<T, CCounterIncDec<T, I> > {
+	typedef RefPtr<T, CCounterIncDec<T, I>> base;
+protected:
+	using base::m_p;
 public:
 	typedef ptr class_type;
-	typedef RefPtr<T, CCounterIncDec<T, I> > base;
 
 	ptr(T *p = 0)
-		:	base(p)
+		: base(p)
 	{}
 
 	ptr(const std::nullptr_t&)
-		:	base(0)
+		: base(0)
 	{}
 
 	ptr(const ptr& p)
-		:	base(p)
+		: base(p)
 	{}
 
 	ptr(EXT_RV_REF(ptr) rv)
-		:	base(static_cast<EXT_RV_REF(base)>(rv))
+		: base(static_cast<EXT_RV_REF(base)>(rv))
 	{}
 
 	template <class U>
 	ptr(const ptr<U>& pu)
-		:	base(pu.get())
+		: base(pu.get())
 	{}
 
 	ptr& operator=(const ptr& p) {
@@ -222,8 +224,6 @@ public:
 	ptr *This() { return this; }
 
 	int use_count() const { return m_p ? m_p->m_aRef : 0; }
-protected:
-	using base::m_p;
 };
 
 template <typename U, typename T, typename L> U *StaticCast(const ptr<T, L>& p) 	{
@@ -238,16 +238,19 @@ public:
 	Pimpl() {}
 
 	Pimpl(const Pimpl& x)
-		:	m_pimpl(x.m_pimpl)
+		: m_pimpl(x.m_pimpl)
 	{}
 
 	Pimpl(EXT_RV_REF(Pimpl) rv)
-		:	m_pimpl(static_cast<EXT_RV_REF(ptr<T>)>(rv.m_pimpl))
+		: m_pimpl(static_cast<EXT_RV_REF(ptr<T>)>(rv.m_pimpl))
 	{}
 
 	EXPLICIT_OPERATOR_BOOL() const {
 		return m_pimpl ? EXT_CONVERTIBLE_TO_TRUE : 0;
 	}
+
+	const T* operator->() const { return m_pimpl.get(); }
+	T* operator->() { return m_pimpl.get(); }
 
 	Pimpl& operator=(const Pimpl& v) {
 		m_pimpl = v.m_pimpl;
@@ -271,6 +274,9 @@ public:
 		return !operator==(tn);
 	}
 protected:
+	Pimpl(T *p)
+		: m_pimpl(p)
+	{}
 };
 
 template <typename T>
@@ -280,21 +286,17 @@ public:
 	typedef RefPtr<T, CAddRefIncDec<T> > base;
 
 	addref_ptr(T *p = 0)
-		:	base(p)
+		: base(p)
 	{}
 
 	addref_ptr(const base& p) //!!! was ptr
-		:	base(p)
+		: base(p)
 	{}
 
 	addref_ptr& operator=(const addref_ptr& p) {
 		base::operator=(p);
 		return *this;
 	}
-/*!!!R
-	T *get_P() const { return (T*)*this; }
-	DEFPROP_GET(T*, P);
-	*/
 };
 
 template <class T>
@@ -305,7 +307,7 @@ public:
 		atomic<int> m_aRef;
 
 		CRefCountedData()
-			:	m_aRef(0)
+			: m_aRef(0)
 		{}
 
 		void AddRef() noexcept {
@@ -321,19 +323,19 @@ public:
 	CRefCountedData *m_pData;
 
 	CRefCounted()
-		:	m_pData(new CRefCountedData)
+		: m_pData(new CRefCountedData)
 	{
 		m_pData->m_aRef = 1;
 	}
 
 	CRefCounted(const CRefCounted& rc)
-		:	m_pData(rc.m_pData)
+		: m_pData(rc.m_pData)
 	{
 		m_pData->AddRef();
 	}
 
 	CRefCounted(CRefCountedData *p)
-		:	m_pData(p)
+		: m_pData(p)
 	{
 		m_pData->m_aRef = 1;
 	}
@@ -344,15 +346,13 @@ public:
 
 	void Init(CRefCountedData *p) {
 		m_pData->Release();
-		m_pData = p;
-		m_pData->m_dwRef = 1;
+		(m_pData = p)->m_dwRef = 1;
 	}
 
 	CRefCounted<T>& operator=(const CRefCounted<T>& val) {
 		if (m_pData != val.m_pData) {
 			m_pData->Release();
-			m_pData = val.m_pData;
-			m_pData->AddRef();
+			(m_pData = val.m_pData)->AddRef();
 		}
 		return *this;
 	}

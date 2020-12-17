@@ -26,7 +26,7 @@ public:
 	{}
 
 	~ProxyClient();
-	void Connect(const IPEndPoint& ep) override;
+	void Connect(const EndPoint& ep) override;
 private:
 	ProxyClientObj *m_obj;
 };

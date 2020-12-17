@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -25,7 +25,7 @@ CLSID AFXAPI ProgIDToCLSID(RCString s) {
 CUnkPtr AFXAPI CreateComObject(const CLSID& clsid, DWORD ctx) {
 	CUnkPtr r;
 	OleCheck(CoCreateInstance(clsid, 0, ctx, IID_IUnknown, (void**)&r));
-	return r; 
+	return r;
 }
 
 CUnkPtr AFXAPI CreateComObject(RCString s, DWORD ctx) {
@@ -57,7 +57,7 @@ CLSID AFXAPI StringToCLSID(RCString s) {
 }
 
 CComPtrBase::CComPtrBase(const CComPtrBase& p)
-	:	m_unk(p.m_unk)
+	: m_unk(p.m_unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -94,7 +94,7 @@ void CComPtrBase::Assign(IUnknown *lp, const IID *piid) {
 
 /*!!!R
 CUnkPtr::CUnkPtr(IUnknown *unk)
-:	m_unk(unk)
+	: m_unk(unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -106,12 +106,12 @@ CUnkPtr::~CUnkPtr() {
 }
 
 CUnkPtr::CUnkPtr()
-:	m_unk(0)
+	: m_unk(0)
 {
 }
 
 CUnkPtr::CUnkPtr(const CUnkPtr& p)
-:	m_unk(p.m_unk)
+	: m_unk(p.m_unk)
 {
 	if (m_unk)
 		m_unk->AddRef();
@@ -281,7 +281,7 @@ Blob::Blob(BSTR bstr) {
 Blob::operator COleVariant() const {
 	COleVariant v;
 	if (m_pData) {
-		if (!(v.bstrVal = SysAllocStringByteLen((char*)constData(), (UINT)Size)))
+		if (!(v.bstrVal = SysAllocStringByteLen((char*)constData(), (UINT)size())))
 			Throw(E_OUTOFMEMORY);
 		v.vt = VT_BSTR;
 	} else
@@ -296,14 +296,14 @@ void Blob::SetVariant(const VARIANT& v) {
 			SAFEARRAY *psa = v.parray;
 			CSafeArray sa(psa);
 			int len = sa.GetUBound()+1;
-			Size = len;
+			resize(len);
 			memcpy(data(), CSafeArrayAccessData(sa).GetData(), len);
 		}
 		break;
 	case VT_BSTR:
 		{
 			int len = SysStringByteLen(v.bstrVal);
-			Size = len;
+			resize(len);
 			memcpy(data(), v.bstrVal, len);
 		}
 		break;
@@ -407,7 +407,7 @@ WORD AFXAPI AsWord(const VARIANT& v) {
 	COleVariant r;
 	r.ChangeType(VT_I2, &(VARIANT&)v);
 	return r.iVal;
-}           
+}
 
 double AFXAPI AsDouble(const VARIANT& v) {
 	COleVariant r;
@@ -425,7 +425,7 @@ CUnkPtr AFXAPI AsUnknown(const VARIANT& v) {
 		return v.pdispVal;
 	default:
 		Throw(ExtErr::IncorrectVariant);
-		return 0;    
+		return 0;
 	}
 }
 
@@ -480,8 +480,7 @@ COleVariant AFXAPI AsImmediate(const VARIANT& v) {
 }
 
 CUniType AFXAPI UniType(const COleVariant& v) {
-	switch (v.vt)
-	{
+	switch (v.vt) {
 	case VT_UI1:
 	case VT_I2:
 	case VT_I4:
@@ -501,13 +500,13 @@ CUniType AFXAPI UniType(const COleVariant& v) {
 
 
 CUsingCOM::CUsingCOM(DWORD dwCoInit)
-	:	m_bInitialized(false)
+	: m_bInitialized(false)
 {
 	Initialize(dwCoInit);
 }
 
 CUsingCOM::CUsingCOM(_NoInit)
-	:	m_bInitialized(false)
+	: m_bInitialized(false)
 {
 }
 
@@ -624,7 +623,7 @@ void COleVariant::ChangeType(VARTYPE vartype, LPVARIANT pSrc) {
 int32_t Convert::ToInt32(const VARIANT& v) {
 	COleVariant var;
 	var.ChangeType(VT_I4, &(VARIANT&)v);
-	return var.lVal; 
+	return var.lVal;
 }
 
 int64_t Convert::ToInt64(const VARIANT& v) {
@@ -633,7 +632,7 @@ int64_t Convert::ToInt64(const VARIANT& v) {
 #if UCFG_WCE
 	return *(uint64_t*)&v.lVal;		//!!!verify
 #else
-	return var.llVal; 
+	return var.llVal;
 #endif
 }
 
@@ -660,7 +659,7 @@ bool Convert::ToBoolean(const VARIANT& v) {
 
 
 CComBSTR::CComBSTR()
-:	m_str(0)
+	: m_str(0)
 {
 }
 
@@ -701,7 +700,7 @@ COleVariant::COleVariant(const VARIANT& varSrc) {
 
 COleVariant::COleVariant(LPCSTR lpszSrc, VARTYPE vtSrc) {
 	vt = VT_BSTR;
-	bstrVal = 0;	
+	bstrVal = 0;
 	switch (vtSrc)
 	{
 #ifndef _UNICODE
@@ -802,7 +801,7 @@ const COleVariant& COleVariant::operator=(const VARIANT& v) {
 	return _self;
 }
 
-const COleVariant& COleVariant::operator=(LPCTSTR lpszSrc) {  
+const COleVariant& COleVariant::operator=(LPCTSTR lpszSrc) {
 	return operator=(String(lpszSrc));
 }
 
@@ -995,13 +994,13 @@ VARIANT COleVariant::Detach() {
 }
 
 COleSafeArray::COleSafeArray()
-	:	m_dwDims(0)
-	,	m_dwElementSize(0)
+	: m_dwDims(0)
+	, m_dwElementSize(0)
 {
 }
 
 COleSafeArray::COleSafeArray(const COleSafeArray& varSrc)
-	:	COleVariant(varSrc)
+	: COleVariant(varSrc)
 {
 	m_dwDims = GetDim();
 	m_dwElementSize = GetElemSize();
@@ -1127,8 +1126,7 @@ VARTYPE CSafeArray::get_Vartype() const {
 }
 
 COleVariant CSafeArray::operator[](long idx) const {
-	switch (Vartype)
-	{
+	switch (Vartype) {
 	case VT_BSTR:
 		{
 			CComBSTR bstr;
@@ -1147,7 +1145,7 @@ COleVariant CSafeArray::operator[](long idx) const {
 }
 
 COleSafeArrayAccessData::COleSafeArrayAccessData(COleSafeArray& sa)
-:	m_sa(sa)
+	: m_sa(sa)
 {
 	m_sa.AccessData(&m_p);
 }
@@ -1349,8 +1347,8 @@ void COleCurrency::SetStatus(CurrencyStatus status) {
 }
 
 COleDispatchDriver::COleDispatchDriver(LPDISPATCH lpDispatch, bool bAutoRelease)
-	:	m_lpDispatch(lpDispatch)
-	,	m_bAutoRelease(bAutoRelease)
+	: m_lpDispatch(lpDispatch)
+	, m_bAutoRelease(bAutoRelease)
 {
 }
 
@@ -1412,7 +1410,7 @@ void COleDispatchDriver::InvokeHelperV(DISPID dwDispID, WORD wFlags, VARTYPE vtR
 			}
 			switch (pArg->vt) {
 			case VT_UI1:
-				pArg->bVal = va_arg(argList, byte);
+				pArg->bVal = va_arg(argList, uint8_t);
 				break;
 			case VT_I2:
 				pArg->iVal = va_arg(argList, short);
@@ -1681,7 +1679,7 @@ CDispatchDriver::CDispatchDriver() {
 }
 
 CDispatchDriver::CDispatchDriver(IDispatch *pdisp)
-	:	COleDispatchDriver(pdisp)
+	: COleDispatchDriver(pdisp)
 {
 	pdisp->AddRef();
 }
@@ -1736,7 +1734,7 @@ COleVariant CDispatchDriver::CallMethod(RCString name, const char* pbParamInfo, 
 }
 
 CVariantIterator::CVariantIterator(const VARIANT& ar)
-	:	m_i(0)
+	: m_i(0)
 {
 	COleVariant v = AsImmediate(ar);
 	if (v.vt & VT_ARRAY)
@@ -1785,5 +1783,3 @@ extern "C" void * __cdecl _CRT_RTC_INITW(void *_Res0, void **_Res1, int _Res2, i
 
 
 } // Ext::
-
-

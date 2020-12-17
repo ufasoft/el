@@ -32,6 +32,18 @@
 #	define EXT_HEADER_SHARED_MUTEX <el/stl/shared_mutex>
 #endif
 
+#if UCFG_STD_OPTIONAL
+#	define EXT_HEADER_OPTIONAL EXT_HEADER(optional)
+#else
+#	define EXT_HEADER_OPTIONAL <el/stl/optional>
+#endif
+
+#if UCFG_STD_SPAN
+#	define EXT_HEADER_SPAN EXT_HEADER(span)
+#else
+#	define EXT_HEADER_SPAN <el/stl/span>
+#endif
+
 #if UCFG_STD_DYNAMIC_BITSET
 #	define EXT_HEADER_DYNAMIC_BITSET EXT_HEADER(dynamic_bitset)
 #else
@@ -109,6 +121,8 @@ extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 namespace Ext {
 
 template <typename T> class PtrBase {
+protected:
+	T* m_p;
 public:
 	typedef T element_type;
 	typedef T *pointer;
@@ -124,8 +138,6 @@ public:
 		pointer r = m_p;
 		m_p = nullptr;
 		return r;
-
-		//!!!R		return exchange(m_p, nullptr);
 	}
 
 	void swap(PtrBase &p) noexcept {
@@ -134,9 +146,6 @@ public:
 		m_p = p;
 		p.m_p = t;
 	}
-
-protected:
-	T *m_p;
 };
 
 } // namespace Ext
@@ -155,20 +164,17 @@ protected:
 #		include <cstddef> // to define std::nullptr_t in GCC
 #	endif
 
-#	if UCFG_WDM
-extern "C" void __cdecl free(void *p);
-#	endif
+#if UCFG_WDM
+	extern "C" void __cdecl free(void *p);
+#endif
 
 namespace Ext {
-
-AFX_API bool AFXAPI AfxAssertFailedLine(const char *sexp, const char *fileName, int nLine);
+	AFX_API bool AFXAPI AfxAssertFailedLine(const char *sexp, const char *fileName, int nLine);
 }
 
-//!!!R#	if UCFG_EXTENDED
-#	if !defined(ASSERT) && !defined(NDEBUG)
-#		define ASSERT(f) ((void)(f || Ext::AfxAssertFailedLine(#		f, __FILE__, __LINE__)))
-#	endif
-//!!!R #	endif
+#if !defined(ASSERT) && !defined(NDEBUG)
+#	define ASSERT(f) ((void)(f || Ext::AfxAssertFailedLine(#f, __FILE__, __LINE__)))
+#endif
 
 #	ifndef ASSERT
 #		define ASSERT assert
@@ -277,12 +283,10 @@ using std::pair;
 
 namespace Ext {
 class noncopyable {
+	noncopyable(const noncopyable&);
+	noncopyable& operator=(const noncopyable&);
 protected:
 	noncopyable() {}
-
-private:
-	noncopyable(const noncopyable &);
-	noncopyable &operator=(const noncopyable &);
 };
 } // namespace Ext
 
@@ -368,14 +372,16 @@ template <class T> typename enable_if<Ext::is_movable<T>::value, Ext::rv<T> &>::
 
 namespace Ext {
 class CInException : noncopyable {
+	int m_nUncaught;
 public:
 	CInException() noexcept
-		: m_nUncauight(std::uncaught_exceptions()) {}
+		: m_nUncaught(std::uncaught_exceptions()) {}
 
-	EXPLICIT_OPERATOR_BOOL() const noexcept { return std::uncaught_exceptions() > m_nUncauight ? EXT_CONVERTIBLE_TO_TRUE : 0; }
+	void swap(CInException& r) {
+		r.m_nUncaught = std::exchange(m_nUncaught, r.m_nUncaught);
+	}
 
-private:
-	int m_nUncauight;
+	EXPLICIT_OPERATOR_BOOL() const noexcept { return std::uncaught_exceptions() > m_nUncaught ? EXT_CONVERTIBLE_TO_TRUE : 0; }
 };
 } // namespace Ext
 #endif // UCFG_USE_IN_EXCEPTION
@@ -410,8 +416,7 @@ public:
 #	if UCFG_ALLOCATOR == 'T' && UCFG_HEAP_CHECK
 		;
 #	else
-	{
-	}
+	{}
 #	endif
 };
 
@@ -477,6 +482,7 @@ inline void __fastcall AlignedFree(void *p) {
 */
 
 class AlignedMem {
+	void* m_p;
 public:
 	AlignedMem(size_t size = 0, size_t align = 0)
 		: m_p(0) {
@@ -498,9 +504,6 @@ public:
 	}
 
 	void *get() { return m_p; }
-
-private:
-	void *m_p;
 };
 
 } // namespace Ext
@@ -886,6 +889,9 @@ class Stream;
 
 #			if !UCFG_MINISTL && !defined(_CRTBLD)
 class EXT_CLASS CTraceWriter {
+	std::ostringstream m_os;
+	Ext::Stream* m_pos;
+	bool m_bPrintDate;
 public:
 	CTraceWriter(int level, const char *funname = 0) noexcept;
 	CTraceWriter(Ext::Stream *pos) noexcept;
@@ -895,12 +901,7 @@ public:
 	void Printf(const char *fmt, ...);
 	static CTraceWriter &AFXAPI CreatePreObject(char *obj, int level, const char *funname);
 	static void AFXAPI StaticPrintf(int level, const char *funname, const char *fmt, ...);
-
 private:
-	std::ostringstream m_os;
-	Ext::Stream *m_pos;
-	bool m_bPrintDate;
-
 	void Init(const char *funname);
 };
 #			endif // !UCFG_MINISTL
@@ -1030,14 +1031,14 @@ namespace Ext {
 
 class StreamToBlob : MemoryStream, public BinaryWriter {
 public:
-	using MemoryStream::get_Blob;
-	using MemoryStream::operator ConstBuf;
-
 	StreamToBlob(size_t capacity = 0)
 		: MemoryStream(capacity)
 		, BinaryWriter(static_cast<MemoryStream &>(*this)) {}
 
 	StreamToBlob &Ref() { return *this; }
+
+    const uint8_t *data() const { return MemoryStream::data(); }
+    size_t size() const { return MemoryStream::size(); }
 };
 
 class CTraceCategory {
@@ -1053,18 +1054,18 @@ public:
 struct TraceThreadContext;
 
 class DbgFun {
+	TraceThreadContext* m_ctx;
+	const char* m_funName;
 public:
 	DbgFun(const char *funName)
-		: m_funName(funName) {
+		: m_funName(funName)
+	{
 		OutFormat("%d%% %ds>%%s\n", true);
 	}
 
 	~DbgFun() { OutFormat("%d%% %ds<%%s\n", false); }
 
 private:
-	TraceThreadContext *m_ctx;
-	const char *m_funName;
-
 	void OutFormat(const char *fs, bool bEnter);
 };
 #			endif
@@ -1095,7 +1096,7 @@ template <class T> T max3(T a, T b, T c) { return std::max(std::max(a, b), c); }
 } // namespace Ext
 
 #			define EXT_STR(expr) (static_cast<std::ostringstream &>(const_cast<std::ostringstream &>(static_cast<const std::ostringstream &>(std::ostringstream())) << expr)).str()
-#			define EXT_BIN(expr, ...) ConstBuf(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
+#			define EXT_BIN(expr, ...) Span(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
 
 #			if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !defined(WDM_DRIVER)
   //#		include "win32/ext-atl.h"
