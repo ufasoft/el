@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2020 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -155,7 +155,7 @@ size_t Encoding::GetCharCount(RCSpan mb) {
 	if (0 == mb.size())
 		return 0;
 #if UCFG_USE_POSIX
-	const char *sp = (char*)mb.P;
+	const char *sp = (char*)mb.data();
 	int r = 0;
 	for (size_t len = mb.size(); len;) {
 		char buf[40] = {0};
