@@ -900,7 +900,7 @@ Guid Guid::NewGuid() {
 	OleCheck(::CoCreateGuid(&guid));
 #else
 	Random rng;
-	rng.NextBytes(Span((uint8_t*)&guid, sizeof(GUID)));
+	rng.NextBytes(span<uint8_t>((uint8_t*)&guid, sizeof(GUID)));
 #endif
 	return guid;
 }
