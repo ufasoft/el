@@ -4,7 +4,8 @@
 #####################################################################################################################################*/
 
 #pragma once
-
+#ifndef _LIBEXT_EXT_FW_H_
+#define _LIBEXT_EXT_FW_H_
 
 #define CREATE_NEW          1 //!!!  windows
 typedef struct tagEXCEPINFO EXCEPINFO;
@@ -1719,3 +1720,5 @@ public:
 #if UCFG_USE_REGEX
 #	include "ext-regex.h"
 #endif
+
+#endif // _LIBEXT_EXT_FW_H_
