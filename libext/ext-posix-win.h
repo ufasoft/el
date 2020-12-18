@@ -226,3 +226,5 @@ typedef __success(return >= 0) uint32_t HRESULT;
 #define CSIDL_FLAG_PER_USER_INIT        0x0800        // combine with CSIDL_ value to indicate per-user init (eg. upgrade)
 #endif  // NTDDI_WINXP
 #define CSIDL_FLAG_MASK                 0xFF00        // mask for all possible flag values
+
+#define AF_NETBIOS AF_NETBEUI
