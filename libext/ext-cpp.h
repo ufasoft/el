@@ -970,7 +970,7 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 
 #				if !UCFG_WDM
 
-#					include "ext-fw.h"
+#					include <el/libext/ext-fw.h>
 //#		include "ext-net.h"
 
 #					if UCFG_EXTENDED || UCFG_USE_LIBCURL

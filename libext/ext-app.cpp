@@ -1,6 +1,6 @@
 #include <el/ext.h>
 
-#include "ext-fw.h"
+#include <el/libext/ext-fw.h>
 
 #if UCFG_WIN32
 #	include <el/libext/win32/ext-win.h>
@@ -465,5 +465,3 @@ int CConApp::Main(int argc, argv_char_t *argv[]) {
 
 
 } // Ext::
-
-
