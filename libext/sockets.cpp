@@ -83,53 +83,18 @@ bool Socket::ConnectHelper(const EndPoint& ep) {
 		: dynamic_cast<const IPEndPoint&>(ep);
 	if (Valid()) {
 		//!!!TODO enum IPs
-		/*!!!R
-		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
-			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
-			EXT_FOR(const IPAddress& ip, addrs) {
-				IPEndPoint nep(ip, ep.Port);
-				if (::connect(BlockingHandleAccess(_self), nep.c_sockaddr(), nep.sockaddr_len()) != SOCKET_ERROR)
-					return true;
-				int r = WSAGetLastError();
-				if (WSAGetLastError() == WSA(EWOULDBLOCK))
-					return false;
-			}
-			Throw(errc::timed_out);
-		} else */
 		if (::connect(BlockingHandleAccess(_self), ipEp.c_sockaddr(), ipEp.sockaddr_len()) != SOCKET_ERROR)
 			return true;
-		else if (WSAGetLastError() != WSA(EWOULDBLOCK))
-			ThrowWSALastError();
-		else
-			return false;
 	} else {
-		/*!!!R
-		if ((int)ep.get_AddressFamily() == IPAddress::AF_DOMAIN_NAME) {														//!!!? deprecated. It is better dont call Create() before connect(), because unknown AddressFamily
-			vector<IPAddress> addrs = Dns::GetHostAddresses(ep.Address.m_domainname);
-			EXT_FOR(const IPAddress& ip, addrs) {
-				Socket s(ip.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
-				IPEndPoint nep(ip, ep.Port);
-				if (::connect(BlockingHandleAccess(s), nep.c_sockaddr(), nep.sockaddr_len()) != SOCKET_ERROR) {
-					_self = move(s);
-					return true;
-				}
-				int r = WSAGetLastError();
-				if (WSAGetLastError() == WSA(EWOULDBLOCK))
-					return false;
-			}
-			Throw(errc::timed_out);
-		} else
-		*/
-		{
-			Socket s(ep.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
-			if (::connect(BlockingHandleAccess(s), ipEp.c_sockaddr(), ipEp.sockaddr_len()) != SOCKET_ERROR) {
-				_self = move(s);
-				return true;
-			} else if (WSAGetLastError() != WSA(EWOULDBLOCK))
-				ThrowWSALastError();
-			return false;
+		Socket s(ipEp.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+		if (::connect(BlockingHandleAccess(s), ipEp.c_sockaddr(), ipEp.sockaddr_len()) != SOCKET_ERROR) {
+			_self = move(s);
+			return true;
 		}
 	}
+	if (WSAGetLastError() != WSA(EWOULDBLOCK))
+		ThrowWSALastError();
+	return false;
 }
 
 bool Socket::Connect(RCString hostAddress, uint16_t hostPort) {
