@@ -529,16 +529,16 @@ size_t BigInteger::ToBytes(uint8_t* p, size_t size) const {
 Blob BigInteger::ToBytes() const {
 #if UCFG_BIGNUM!='A'
 	Blob r(0, ToBytes(0, 0));
-	ToBytes(r.data(), r.Size);
+	ToBytes(r.data(), r.size());
 #else
-	Blob r(0, DWORD((Length+8)/8));
+	Blob r(0, DWORD((Length + 8) / 8));
 	memcpy(r.data(), Data, r.size());
 #endif
 	return r;
 }
 
 BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const BigInteger& n) {
-	DWORD nbytes = DWORD((n.Length+8)/8);
+	DWORD nbytes = DWORD((n.Length + 8) / 8);
 #if UCFG_BIGNUM!='A'
 	uint8_t* p = (uint8_t*)alloca(nbytes);
 	n.ToBytes(p, nbytes);
