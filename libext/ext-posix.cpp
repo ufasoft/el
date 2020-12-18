@@ -77,7 +77,7 @@ void __cdecl delay(int us) {
 * If *stringp is NULL, strsep returns NULL.
 */
 char *
-	AFXAPI strsep(char **stringp, const char *delim)
+	__cdecl strsep(char **stringp, const char *delim)
 {
 	char *s;
 	const char *spanp;
@@ -152,6 +152,16 @@ size_t __cdecl strlcat(char *dst, const char *src, size_t siz) {
     return dlen + (s - src);  // count does not include NUL
 }
 
+#ifndef _MSC_VER
+char *__cdecl strrev(char *s) {
+	char *p = s, *q = s;
+	while (*q++)
+		;
+	q -= 2;
+	while (p < q)
+		std::swap(*p++, *q--);
+	return s;
+}
+#endif
 
 } // extern "C"
-

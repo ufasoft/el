@@ -167,11 +167,7 @@ String Convert::ToString(double d) {
 
 String Convert::MulticharToString(int n) {
 	uint64_t ar[2] = { htole((unsigned)n), 0 };
-#if _MSC_VER
-	return _strrev((char*)ar);
-#else
 	return strrev((char*)ar);
-#endif
 }
 
 int Convert::ToMultiChar(const char* s) {
@@ -319,5 +315,3 @@ void __cdecl bus_space_write_4(int bus, void *addr, int off, unsigned int val) {
 
 
 } // extern "C"
-
-

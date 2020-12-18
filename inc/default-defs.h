@@ -189,7 +189,7 @@
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
 
 #ifndef NTDDI_VERSION
-#	define NTDDI_VERSION 0x06020000 //  NTDDI_WIN8
+#	define NTDDI_VERSION	0x0A000006 // to avoid pragma warning push/pop inconsistency		0x06020000 //  NTDDI_WIN8
 #endif
 
 #define _APISET_MINWIN_VERSION 0x200
@@ -659,3 +659,7 @@
 #		define PASCAL
 #	endif
 #endif // UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
+
+#ifndef __GLIBC_USE
+#	define __GLIBC_USE(x) 0
+#endif

@@ -32,15 +32,15 @@ typedef unsigned __int32 u_int32_t;
 typedef unsigned __int64 u_int64_t;
 
 typedef unsigned short ushort;
-typedef unsigned __int16 n_short;		// short as received from the net 
+typedef unsigned __int16 n_short;		// short as received from the net
 
 typedef unsigned int uint;
 typedef unsigned long ulong;
-typedef unsigned __int32 n_long;		// long as received from the net 
-typedef	unsigned __int32 n_time;		// ms since 00:00 GMT, byte rev 
+typedef unsigned __int32 n_long;		// long as received from the net
+typedef	unsigned __int32 n_time;		// ms since 00:00 GMT, byte rev
 typedef unsigned long	paddr_t;
 
-typedef	u_int64_t	u_quad_t;	// quads 
+typedef	u_int64_t	u_quad_t;	// quads
 typedef	int64_t		quad_t;
 
 typedef int pid_t;
@@ -165,7 +165,7 @@ __inline int isatty(int fd) {
 }
 #endif
 
-char * AFXAPI strsep(char **stringp, const char *delim);
+char * __cdecl strsep(char **stringp, const char *delim);
 
 #	endif  // WIN32
 #endif  // _WIN32
@@ -205,6 +205,11 @@ struct option
 
 size_t AFXAPI strlcpy(char *dst, const char *src, size_t siz);
 size_t __cdecl strlcat(char *dst, const char *src, size_t siz);
+#ifdef _MSC_VER
+#	define strrev _strrev
+#else
+char * __cdecl strrev(char *s);
+#endif
 int AFXAPI getopt(int nargc, char * const *nargv, const char *ostr);
 int AFXAPI getopt_long (int argc, char *const *argv, const char *options, const struct option *long_options, int *opt_index);
 int __cdecl ftruncate(int fd, off_t length);
@@ -335,3 +340,9 @@ typedef int mode_t;
 
 #define HAVE_VSWPRINTF 1
 #define HAVE_STRLCAT 1
+
+#if UCFG_WIN32_FULL
+#	define HAVE_GETCWD 1
+#endif
+
+
