@@ -772,7 +772,7 @@ PositionOwningFileStream::PositionOwningFileStream(Ext::File& file, uint64_t pos
 }
 
 size_t PositionOwningFileStream::Read(void *buf, size_t count) const {
-	uint32_t cb = m_pFile->Read(buf, (min)(count, m_maxPos - m_pos), m_pos);
+	uint32_t cb = m_pFile->Read(buf, (size_t)(min)((uint64_t)count, m_maxPos - m_pos), m_pos);
 	m_pos += cb;
 	return cb;
 }

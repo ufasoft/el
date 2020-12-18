@@ -608,7 +608,6 @@ void DateTime::ToTm(tm& r) const {
     r.tm_year = tf.Year-1900;
     r.tm_wday = tf.Weekday;
  //!!!TODO    r.rm_yday = ;
-    return r;
 #elif UCFG_MSC_VERSION
 	__time64_t t64 = ToUnixTimeSeconds();
 	if (errno_t e = _gmtime64_s(&r, &t64))

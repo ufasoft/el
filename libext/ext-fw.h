@@ -1477,7 +1477,7 @@ public:
 		MemoryStream ms;
 		BinaryWriter wr(ms);
 		PersistentTraits<T>::Write(wr, val);
-		Set(key, Span(ms.get_Blob()));
+		Set(key, ms.AsSpan());
 #endif
 	}
 private:

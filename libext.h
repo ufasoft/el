@@ -381,7 +381,11 @@ typedef unsigned short char16_t;
 #endif
 
 #if !defined(WIN32) && !defined(_MINWINDEF_)
-typedef uint32_t DWORD; // required for MC-generated .h files
+#	ifdef _MSC_VER
+		typedef unsigned long DWORD;
+#	else
+		typedef uint32_t DWORD; // required for MC-generated .h files
+#	endif
 #	define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)-1)
 #endif
 
@@ -950,6 +954,10 @@ typedef unsigned int size_t;
 #include <float.h>
 #include <limits.h>
 
+#ifndef _UI64_MAX
+#	define _UI64_MAX     0xffffffffffffffffui64
+#endif
+
 __BEGIN_DECLS
 void *__cdecl API_memmove(void *dst, const void *src, size_t size);
 
@@ -957,6 +965,10 @@ long __cdecl API_lround(double d);
 int __cdecl API_fdclass(float d);
 int __cdecl API_dclass(double d);
 int __cdecl API_ldclass(long double d);
+
+int __cdecl vasprintf(char **strp, const char *format, va_list args);
+int __cdecl asprintf(char **strp, const char *format, ...);
+
 __END_DECLS
 
 #if !UCFG_STDSTL
@@ -1081,7 +1093,10 @@ __END_DECLS
 #ifdef _WIN32
 #	define strtoll _strtoi64
 #	define HAVE_STRTOLL
-#endif
+
+#	define strtoull _strtoui64
+#	define HAVE_STRTOULL
+#endif // _WIN32
 
 #if UCFG_CRT == 'U'
 #	define HAVE_STRUCT_TIMESPEC 1
@@ -1379,6 +1394,7 @@ void *__cdecl MemcpyAligned32(void *d, const void *s, size_t size);
 #if UCFG_WDM
 long __cdecl strtol(const char *str, char **endptr, int base);
 long long __cdecl _strtoi64(const char *str, char **endptr, int base);
+unsigned long long __cdecl _strtoui64(const char *str, char **endptr, int base);
 #endif
 
 #ifdef _MSC_VER

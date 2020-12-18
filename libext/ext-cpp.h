@@ -881,7 +881,7 @@ namespace std {
 
 #		if !defined(_CRTBLD) || (UCFG_CRT == 'U')
 
-//!!!R #include "ext_messages.h"
+//!!!? #include "ext_messages.h"
 
 namespace Ext {
 

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -7,17 +7,15 @@
 
 #include EXT_HEADER_SYSTEM_ERROR
 
-#ifdef WDM_DRIVER
-#	define EXT_DEF_HASH(T)
-#else
-#	define EXT_DEF_HASH(T) BEGIN_STD_TR1																\
-		template<> class hash<T>{ public: size_t operator()(const T& v) const { return EXT_HASH_VALUE_NS::hash_value(v); } };						\
-		template<> class hash<const T&>{ public: size_t operator()(const T& v) const { return EXT_HASH_VALUE_NS::hash_value(v); } };		\
-		END_STD_TR1
-#endif
+#define EXT_DEF_HASH(T)																													\
+	BEGIN_STD_TR1																														\
+		template<> class hash<T>{ public: size_t operator()(const T& v) const { return EXT_HASH_VALUE_NS::hash_value(v); } };			\
+		template<> class hash<const T&>{ public: size_t operator()(const T& v) const { return EXT_HASH_VALUE_NS::hash_value(v); } };	\
+	END_STD_TR1
 
-#define EXT_DEF_HASH_NS(NS, T) } BEGIN_STD_TR1																\
-	template<> class hash<NS::T>{ public: size_t operator()(const NS::T& v) const { return v.GetHashCode(); } };						\
+#define EXT_DEF_HASH_NS(NS, T)																						\
+	} BEGIN_STD_TR1																									\
+	template<> class hash<NS::T>{ public: size_t operator()(const NS::T& v) const { return v.GetHashCode(); } };	\
 	END_STD_TR1 namespace NS {
 
 namespace Ext {

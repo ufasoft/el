@@ -140,7 +140,7 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 			pDupStream->WriteBuffer(&ch, 1);
 		switch (ch) {
 		case '\n':
-			beg += String(vec, p-vec);
+			beg += String(vec, p - vec);
 			return;
 		default:
 			*p++ = ch;
@@ -149,6 +149,36 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 		}
 	}
 	Throw(ExtErr::PROXY_VeryLongLine);
+}
+
+vector<String> AFXAPI ReadHttpHeader(const Stream& stm, Stream *pDupStream) {
+	for (vector<String> vec; ;) {
+		String line;
+		ReadOneLineFromStream(stm, line, pDupStream);
+		if (line.empty())
+			return vec;
+		vec.push_back(line);
+	}
+	/*!!!
+
+	int i = beg.Length;
+	char buf[256];
+	if (i >= sizeof buf)
+	Throw(E_PROXY_VeryLongLine);
+	strcpy(buf, beg);
+	bool b = false;
+	for (; i<sizeof buf; i++)
+	{
+	stm.ReadBuffer(buf+i, 1);
+	if (buf[i] == '\n')
+	if (b)
+	break;
+	else
+	b = true;
+	if (buf[i] != '\n' && buf[i] != '\r')
+	b = false;
+	}
+	beg = String(buf, i+1);*/
 }
 
 
