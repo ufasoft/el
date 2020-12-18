@@ -767,7 +767,7 @@ void FileStream::Flush() {
 PositionOwningFileStream::PositionOwningFileStream(Ext::File& file, uint64_t pos, uint64_t maxLen)
 	: base(file)
 	, m_pos(pos)
-	, m_maxPos(maxLen == _UI64_MAX ? maxLen : (min)(pos + maxLen, m_pFile->Length))
+	, m_maxPos(maxLen == _UI64_MAX ? maxLen : (min)(pos + maxLen, m_pFile->get_Length()))
 {
 }
 
