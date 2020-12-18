@@ -192,7 +192,11 @@ path AFXAPI CAppBase::GetBaseDataFolder() {
 		if (r.empty())
 			r = Environment::GetFolderPath(SpecialFolder::ApplicationData);
 	} catch (RCExc) {
-		r = System.WindowsDirectory / "Application Data";
+# 		if UCFG_WIN32
+			r = System.WindowsDirectory / "Application Data";
+#		else
+			r = Environment::GetEnvironmentVariable("HOME");
+#		endif
 	}
 #	endif
 #if UCFG_COMPLEX_WINAPP
