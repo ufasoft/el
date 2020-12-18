@@ -134,6 +134,12 @@ inline void AFXAPI PutLeUInt16(void* p, uint16_t v) { *(uint16_t UNALIGNED*)p = 
 inline void AFXAPI PutLeUInt32(void* p, uint32_t v) { *(uint32_t UNALIGNED*)p = htole32(v); }
 inline void AFXAPI PutLeUInt64(void* p, uint64_t v) { *(uint64_t UNALIGNED*)p = htole64(v); }
 
+#ifdef _MSC_VER
+#	define strrev _strrev
+#else
+char * __cdecl strrev(char *s);
+#endif
+
 __END_DECLS
 
 namespace Ext {
@@ -293,7 +299,7 @@ class CIosStream : public Stream {
 	typedef CIosStream class_type;
 protected:
 	std::istream* m_pis;
-	std::ostream* m_pos;	
+	std::ostream* m_pos;
 public:
 	CIosStream(std::istream& ifs)
 		: m_pis(&ifs)

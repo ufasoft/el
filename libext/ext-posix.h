@@ -205,11 +205,6 @@ struct option
 
 size_t AFXAPI strlcpy(char *dst, const char *src, size_t siz);
 size_t __cdecl strlcat(char *dst, const char *src, size_t siz);
-#ifdef _MSC_VER
-#	define strrev _strrev
-#else
-char * __cdecl strrev(char *s);
-#endif
 int AFXAPI getopt(int nargc, char * const *nargv, const char *ostr);
 int AFXAPI getopt_long (int argc, char *const *argv, const char *options, const struct option *long_options, int *opt_index);
 int __cdecl ftruncate(int fd, off_t length);
@@ -344,5 +339,3 @@ typedef int mode_t;
 #if UCFG_WIN32_FULL
 #	define HAVE_GETCWD 1
 #endif
-
-

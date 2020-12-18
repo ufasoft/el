@@ -16,6 +16,18 @@ using namespace Ext;
 
 namespace Ext {
 
+#ifndef _MSC_VER
+char *__cdecl strrev(char *s) {
+	char *p = s, *q = s;
+	while (*q++)
+		;
+	q -= 2;
+	while (p < q)
+		std::swap(*p++, *q--);
+	return s;
+}
+#endif
+
 int __cdecl PopCount(uint32_t v) {
 	return BitOps::PopCount(v);
 }
