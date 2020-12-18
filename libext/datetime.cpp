@@ -123,7 +123,7 @@ String TimeSpan::ToString(int w) const {
 	Days days = duration_cast<Days>(*this);
 	if (days.count())
 		os << days.count() << ".";
-	os << setw(2) << setfill('0') << Hours << ":" << setw(2) << setfill('0') << Minutes << ":" << setw(2) << setfill('0') << Seconds;
+	os << setw(2) << setfill('0') << get_Hours() << ":" << setw(2) << setfill('0') << get_Minutes() << ":" << setw(2) << setfill('0') << get_Seconds();
 	int fraction = int(count() % 10000000L);
 	if (w || fraction) {
 		int full = 10000000;
@@ -613,6 +613,7 @@ void DateTime::ToTm(tm& r) const {
 	if (errno_t e = _gmtime64_s(&r, &t64))
 		Throw(error_code(e, generic_category()));
 #else
+	time_t tim = to_time_t(*this);
 	gmtime_r(&tim, &r);
 #endif
 }
