@@ -567,7 +567,6 @@ template <class B>
 class SocketThreadWrap : public B {
 	typedef B base;
 
-	using base::QueueAPC;
 public:
 	typedef CSocketKeeper<SocketThreadWrap> SocketKeeper;
 
