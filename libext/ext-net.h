@@ -271,6 +271,7 @@ public:
 
 class DnsEndPoint : public InternetEndPoint {
 	typedef InternetEndPoint base;
+	typedef DnsEndPoint class_type;
 public:
 	String Host;
 
