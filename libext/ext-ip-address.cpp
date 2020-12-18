@@ -434,7 +434,7 @@ size_t IPEndPoint::sockaddr_len() const {
 
 void IPEndPoint::Print(ostream& os) const {
 	(AddressFamily == Ext::AddressFamily::InterNetworkV6 ? (os << "[" << Address << "]") : (os << Address))
-		<< ":" << Port;
+		<< ":" << get_Port();
 }
 
 IPEndPoint IPEndPoint::Parse(RCString s) {
