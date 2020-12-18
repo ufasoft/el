@@ -955,7 +955,7 @@ typedef unsigned int size_t;
 #include <limits.h>
 
 #ifndef _UI64_MAX
-#	define _UI64_MAX     0xffffffffffffffffui64
+#	define _UI64_MAX     0xffffffffffffffffULL
 #endif
 
 __BEGIN_DECLS
