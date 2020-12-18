@@ -966,7 +966,7 @@ int __cdecl API_fdclass(float d);
 int __cdecl API_dclass(double d);
 int __cdecl API_ldclass(long double d);
 
-#if !defined(_MSC_VER) && __GLIBC_USE (LIB_EXT2)
+#if defined(_MSC_VER) || !__GLIBC_USE(LIB_EXT2)
 int __cdecl vasprintf(char **strp, const char *format, va_list args);
 int __cdecl asprintf(char **strp, const char *format, ...);
 #endif
