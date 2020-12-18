@@ -195,7 +195,7 @@ path AFXAPI CAppBase::GetBaseDataFolder() {
 # 		if UCFG_WIN32
 			r = System.WindowsDirectory / "Application Data";
 #		else
-			r = path(Environment::GetEnvironmentVariable("HOME"));
+			r = path(Environment::GetEnvironmentVariable("HOME").c_str());
 #		endif
 	}
 #	endif
