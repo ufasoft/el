@@ -163,7 +163,7 @@ size_t Encoding::GetCharCount(RCSpan mb) {
 		size_t slen = std::min(len, (size_t)6);
 		size_t dlen = sizeof(buf);
 		CCheck(::iconv(m_iconvFrom, (ICONV_SECOND_TYPE *)&sp, &slen, &dp, &dlen), E2BIG);
-		len = mb.Size - (sp - (const char *)mb.data());
+		len = mb.size() - (sp - (const char *)mb.data());
 		r += (sizeof(buf) - dlen) / sizeof(String::value_type);
 	}
 	return r;
@@ -210,7 +210,7 @@ size_t Encoding::GetByteCount(const String::value_type *chars, size_t charCount)
 #if UCFG_USE_POSIX
 	const char *sp = (char*)chars;
 	int r = 0;
-	for (size_t len=charCount*sizeof(String::value_type); len;) {
+	for (size_t len = charCount * sizeof(String::value_type); len;) {
 		char buf[40];
 		char *dp = buf;
 		size_t dlen = sizeof(buf);
@@ -231,7 +231,7 @@ size_t Encoding::GetByteCount(const String::value_type *chars, size_t charCount)
 size_t Encoding::GetBytes(const String::value_type *chars, size_t charCount, uint8_t *bytes, size_t byteCount) {
 #if UCFG_USE_POSIX
 	const char *sp = (char*)chars;
-	size_t len = charCount*sizeof(String::value_type);
+	size_t len = charCount * sizeof(String::value_type);
 	char *dp = (char*)bytes;
 	size_t dlen = byteCount;
 	CCheck(::iconv(m_iconvTo, (ICONV_SECOND_TYPE*)&sp, &len, &dp, &dlen));
@@ -345,7 +345,7 @@ Blob UTF8Encoding::GetBytes(RCString s) {
 		BinaryWriter wr;
 
 		Visitor()
-			:	wr(ms)
+			: wr(ms)
 		{}
 
 		bool operator()(uint8_t b) {
