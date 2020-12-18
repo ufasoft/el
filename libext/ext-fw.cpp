@@ -900,7 +900,7 @@ Guid Guid::NewGuid() {
 	OleCheck(::CoCreateGuid(&guid));
 #else
 	Random rng;
-	rng.NextBytes(Buf((uint8_t*)&guid, sizeof(GUID)));
+	rng.NextBytes(Span((uint8_t*)&guid, sizeof(GUID)));
 #endif
 	return guid;
 }
@@ -1477,7 +1477,7 @@ size_t Resource::size() const {
 #if UCFG_WIN32
 	return Win32Check(::SizeofResource(m_pimpl->m_hModule, m_pimpl->m_hRsrc));
 #else
-	return m_blob.Size;
+	return m_blob.size();
 #endif
 }
 
