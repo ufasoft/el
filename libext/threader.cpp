@@ -667,8 +667,8 @@ void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
 }
 
 void ThreadBase::OnEndThread(bool bDelete) {
-	if (!!Name) {
-		TRC(6, Name);
+	if (!!get_Name()) {
+		TRC(6, get_Name());
 	}
 
 	OnEnd();
