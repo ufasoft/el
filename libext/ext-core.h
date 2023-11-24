@@ -36,7 +36,7 @@ PTW32_DLLPORT int PTW32_CDECL pthread_create(pthread_t* tid, const pthread_attr_
 
 namespace Ext {
 
-ENUM_CLASS(Endian){Big, Little} END_ENUM_CLASS(Endian);
+//!!!R ENUM_CLASS(Endian){Big, Little} END_ENUM_CLASS(Endian);
 
 __forceinline uint16_t htole(uint16_t v) { return htole16(v); }
 __forceinline int16_t htole(int16_t v) { return int16_t(htole16(uint16_t(v))); }
@@ -85,6 +85,51 @@ inline uint16_t betoh(uint16_t v) { return be16toh(v); }
 inline uint64_t htobe(uint64_t v) { return htobe64(v); }
 inline uint64_t betoh(uint64_t v) { return be64toh(v); }
 
+inline uint16_t load_little_u16(const uint8_t* p) noexcept {
+#if UCFG_CPU_X86_X64
+	return *(const uint16_t*)p;
+#else
+	return p[0] | ((uint16_t)p[1] << 8);
+#endif
+}
+
+inline void store_little_u16(uint8_t* p, uint16_t v) noexcept {
+#if UCFG_CPU_X86_X64
+	*(uint16_t*)p = v;
+#else
+	p[0] = (uint8_t)v;
+	p[1] = (uint8_t)(v >> 8);
+#endif
+}
+
+inline uint32_t load_little_u24(const uint8_t* p) noexcept {
+	return load_little_u16(p) | ((uint32_t)p[2] << 16);
+}
+
+inline void store_little_u24(uint8_t* p, uint32_t v) noexcept {
+	store_little_u16(p, (uint16_t)v);
+	p[2] = (uint8_t)(v >> 16);
+}
+
+inline uint32_t load_little_u32(const uint8_t* p) noexcept {
+#if UCFG_CPU_X86_X64
+	return *(const uint32_t*)p;
+#else
+	return p[0] | ((uint16_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+#endif
+}
+
+inline void store_little_u32(uint8_t* p, uint32_t v) noexcept {
+#if UCFG_CPU_X86_X64
+	*(uint32_t*)p = v;
+#else
+	p[0] = (uint8_t)v;
+	p[1] = (uint8_t)(v >> 8);
+	p[2] = (uint8_t)(v >> 16);
+	p[3] = (uint8_t)(v >> 24);
+#endif
+}
+
 template <typename T> class BeInt {
 	T m_val;
 public:
@@ -103,15 +148,21 @@ typedef BeInt<uint16_t> BeUInt16;
 typedef BeInt<uint32_t> BeUInt32;
 typedef BeInt<uint64_t> BeUInt64;
 
+#define EXT_NULLPTR_TRACE_LITERAL "#<nullptr>"
+
 inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
 	const char* p = (const char*)s;
-	return os << (p ? p : "<#nullptr>");
+	return os << (p ? p : EXT_NULLPTR_TRACE_LITERAL);
 }
 
 inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
 	return s == nullptr
-		? os << "<#nullptr>"
+		? os << EXT_NULLPTR_TRACE_LITERAL
 		: os << (std::wstring)explicit_cast<std::wstring>(s);
+}
+
+inline std::ostream& AFXAPI operator<<(std::ostream& os, const wchar_t* s) {
+	return os << String(s);
 }
 
 inline std::istream& AFXAPI getline(std::istream& is, String& s, char delim = '\n') {
@@ -162,6 +213,7 @@ public:
 	//!!!R	static AFX_API int32_t AFXAPI ToInt32(RCString s, int fromBase = 10);
 	static AFX_API String AFXAPI ToString(int64_t v, int base = 10);
 	static AFX_API String AFXAPI ToString(uint64_t v, int base = 10);
+	static AFX_API String ToIecSuffixedString(uint64_t v, RCString unit = nullptr);
 	static AFX_API String AFXAPI ToString(int64_t v, const char* format);
 	//!!!	static String AFXAPI ToString(size_t v, int base = 10) { return ToString(uint64_t(v), base); }
 	static String AFXAPI ToString(int32_t v, int base = 10) { return ToString(int64_t(v), base); }
@@ -223,7 +275,7 @@ public:
 
 	void ReadBufferAhead(void* buf, size_t count) const override;
 	size_t Read(void* buf, size_t count) const override;
-	void ReadBuffer(void* buf, size_t count) const override;
+	void ReadExactly(void* buf, size_t count) const override;
 	int ReadByte() const override;
 };
 
@@ -265,12 +317,13 @@ public:
 private:
 	typedef AutoBlob<DEFAULT_CAPACITY> CBlob;
 	CBlob m_blob;
-	size_t m_size;
+	size_t m_size = 0;
 public:
 	MemoryStream(size_t capacity = DEFAULT_CAPACITY);
 	uint64_t get_Length() const override { return m_size; }
     size_t size() const { return m_size; }
     const uint8_t *data() const { return m_blob.data(); }
+	size_t Read(void* buf, size_t count) const override;
 	void WriteBuffer(const void* buf, size_t count) override;
 	bool Eof() const override;
 	void Reset(size_t capacity = DEFAULT_CAPACITY);
@@ -298,50 +351,21 @@ inline String AFXAPI operator+(const String::value_type* p, const String& s) { r
 class CIosStream : public Stream {
 	typedef CIosStream class_type;
 protected:
-	std::istream* m_pis;
-	std::ostream* m_pos;
+	std::istream* m_pis = 0;
+	std::ostream* m_pos = 0;
 public:
 	CIosStream(std::istream& ifs)
 		: m_pis(&ifs)
-		, m_pos(0) {}
+		{}
 
 	CIosStream(std::ostream& ofs)
-		: m_pis(0)
-		, m_pos(&ofs) {}
+		: m_pos(&ofs) {}
 
-	size_t Read(void* buf, size_t count) const override {
-		m_pis->read((char*)buf, (std::streamsize)count);
-		if (!*m_pis)
-			Throw(ExtErr::NoInputStream);
-		return (size_t)m_pis->gcount();
-	}
-
-	void ReadBuffer(void* buf, size_t count) const override {
-		m_pis->read((char*)buf, (std::streamsize)count);
-		if (!*m_pis)
-			Throw(ExtErr::NoInputStream);
-	}
-
-	void WriteBuffer(const void* buf, size_t count) override {
-		m_pos->write((const char*)buf, (std::streamsize)count);
-		if (!*m_pos)
-			Throw(ExtErr::NoOutputStream);
-	}
-
-	uint64_t get_Position() const override { return m_pis ? m_pis->tellg() : m_pos->tellp(); }
-
-	void put_Position(uint64_t pos) const override {
-		if (m_pis) {
-			m_pis->seekg((long)pos);
-			if (!*m_pis)
-				Throw(ExtErr::NoInputStream);
-		}
-		if (m_pos) {
-			m_pos->seekp((long)pos);
-			if (!*m_pos)
-				Throw(ExtErr::NoOutputStream);
-		}
-	}
+	size_t Read(void* buf, size_t count) const override;
+	void ReadExactly(void* buf, size_t count) const override;
+	void WriteBuffer(const void* buf, size_t count) override;
+	uint64_t get_Position() const override;
+	void put_Position(uint64_t pos) const override;
 
 	bool Eof() const override { return m_pis->eof(); }
 
@@ -351,9 +375,7 @@ public:
 	}
 
 protected:
-	CIosStream()
-		: m_pis(0)
-		, m_pos(0) {}
+	CIosStream() {}
 };
 
 class StringInputStream : public CIosStream {
@@ -371,7 +393,9 @@ public:
 template <typename EL, typename TR> inline std::basic_ostream<EL, TR>& operator<<(std::basic_ostream<EL, TR>& os, const CPrintable& ob) { return os << ob.ToString(); }
 
 inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) {
+#if UCFG_TRC
 	ob.Print(os);
+#endif
 	return os;
 }
 
@@ -406,7 +430,9 @@ public:
 	static MacAddress __stdcall Null() { return MacAddress(); }
 	static MacAddress __stdcall Broadcast() { return MacAddress(0xFFFFFFFFFFFFLL); }
 
+#if UCFG_TRC
 	void Print(ostream& os) const override;
+#endif
 };
 
 #if !UCFG_WCE
@@ -460,13 +486,14 @@ public:
 	static bool AFXAPI SetThreadIgnoreIncorrectChars(bool v);
 	static Encoding* AFXAPI GetEncoding(RCString name);
 	static Encoding* AFXAPI GetEncoding(int codepage);
-	virtual size_t GetCharCount(RCSpan mb);
-	virtual size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
-	EXT_API virtual std::vector<String::value_type> GetChars(RCSpan mb);
-	virtual size_t GetByteCount(const String::value_type* chars, size_t charCount);
-	virtual size_t GetByteCount(RCString s) { return GetByteCount(s, s.length()); }
-	virtual size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	virtual Blob GetBytes(RCString s);
+	virtual size_t GetCharCount(RCSpan mb) const;
+	virtual size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount) const;
+	String GetString(RCSpan s) const;
+	EXT_API virtual std::vector<String::value_type> GetChars(RCSpan mb) const;
+	virtual size_t GetByteCount(const String::value_type* chars, size_t charCount) const;
+	virtual size_t GetByteCount(RCString s) const { return GetByteCount(s, s.length()); }
+	virtual size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount) const;
+	virtual Blob GetBytes(RCString s) const;
 
 	class CIgnoreIncorrectChars {
 		bool m_prev;
@@ -487,24 +514,23 @@ public:
 	UTF8Encoding()
 		: base(CP_UTF8) {}
 
-	Blob GetBytes(RCString s);
-	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(RCSpan mb);
-	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
-	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
-
+	Blob GetBytes(RCString s) const;
+	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount) const override;
+	size_t GetCharCount(RCSpan mb) const override;
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb) const override;
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount) const override;
 protected:
-	void Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor);
-	void PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<uint8_t, bool>& visitor);
+	void Pass(RCSpan mb, UnaryFunction<String::value_type, bool>& visitor) const;
+	void PassToBytes(const String::value_type* pch, size_t nCh, UnaryFunction<uint8_t, bool>& visitor) const;
 };
 
 class ASCIIEncoding : public Encoding {
 public:
-	Blob GetBytes(RCString s);
-	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount);
-	size_t GetCharCount(RCSpan mb);
-	EXT_API std::vector<String::value_type> GetChars(RCSpan mb);
-	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount);
+	Blob GetBytes(RCString s) const override;
+	size_t GetBytes(const String::value_type* chars, size_t charCount, uint8_t* bytes, size_t byteCount) const override;
+	size_t GetCharCount(RCSpan mb) const override;
+	EXT_API std::vector<String::value_type> GetChars(RCSpan mb) const override;
+	size_t GetChars(RCSpan mb, String::value_type* chars, size_t charCount) const override;
 };
 
 class CodePageEncoding : public Encoding {

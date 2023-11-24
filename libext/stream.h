@@ -16,7 +16,7 @@ ENUM_CLASS(SeekOrigin) {
 class EXTCLASS Stream {
 	typedef Stream class_type;
 public:
-	static const size_t DEFAULT_BUF_SIZE = 8192;
+	static const size_t DEFAULT_BUF_SIZE;
 
 	virtual ~Stream() {}
 	virtual void WriteBuffer(const void *buf, size_t count) { Throw(E_NOTIMPL); }
@@ -26,9 +26,10 @@ public:
 
     void Write(Span s) { WriteBuffer(s.data(), s.size_bytes()); }
 
+	virtual void Write(uint64_t pos, Span s);
 	virtual bool Eof() const;
 	virtual size_t Read(void *buf, size_t count) const { Throw(E_NOTIMPL); }
-	virtual void ReadBuffer(void *buf, size_t count) const;
+	virtual void ReadExactly(void *buf, size_t count) const;
 	virtual int ReadByte() const;
 	virtual int64_t Seek(int64_t offset, SeekOrigin origin) const { Throw(E_NOTIMPL); }		// mandatory to implement where put_Position implemented
 
