@@ -78,7 +78,6 @@ class File;
 class CFont;
 class CFrameWnd;
 class CGdiObject;
-class ImageList;
 class CPalette;
 class CListBox;
 class CRuntimeClass;
@@ -88,10 +87,7 @@ class CView;
 class CWinApp;
 class CWinThread;
 class CWnd;
-
-
-
-
+class Rectangle;
 
 } // Ext::
 
@@ -160,33 +156,15 @@ AFX_API LRESULT AFXAPI AfxWndProc(const MSG& msg);
 
 
 
-class AFX_CLASS CWaitCursor
-{
+class AFX_CLASS CWaitCursor {
+#if !UCFG_EXTENDED
+	HCURSOR hOrigCursor;
+#endif
 public:
 	CWaitCursor();
 	~CWaitCursor();
 	static void AFXAPI Restore();
 };
-
-
-// special struct for WM_SIZEPARENT
-struct AFX_SIZEPARENTPARAMS
-{
-	HDWP hDWP;
-	Rectangle rect;       // parent client rectangle (trim as appropriate)
-	SIZE sizeTotal;  // total size on each side as layout proceeds
-	BOOL bStretch;   // should stretch to fill all space
-};
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -321,7 +299,6 @@ struct AFX_OLDTOOLINFO //!!!
 
 
 
-
 class AFX_CLASS CCursor {
 public:
 	static Point AFXAPI get_Position();
@@ -402,7 +379,7 @@ namespace Ext {
 inline std::ostream& AFXAPI operator<<(std::ostream& os, RCSpan mb) {
 	os << "{ ";
 	for (size_t i=0; i<mb.Size; ++i)
-		os << std::hex << std::setw(2) << std::setfill('0') << int(mb.P[i]) << " ";
+		os << std::hex << std::setw(2) << std::setfill('0') << int(mb[i]) << " ";
 	return os << "}";
 }
 

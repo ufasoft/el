@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -92,6 +92,10 @@ public:
 
 class AFX_CLASS RegistryKey : public SafeHandle {
 	typedef RegistryKey class_type;
+
+	HKEY m_parent;
+	String m_subKey;
+	bool m_create;
 public:
 	struct CRegKeyInfo {
 		DateTime LastWriteTime;
@@ -108,11 +112,7 @@ public:
 		}
 	};
 
-	String m_subKey;
 	ACCESS_MASK AccessRights;
-private:
-	HKEY m_parent;
-	bool m_create;
 public:
 	RegistryKey()
 		: AccessRights(MAXIMUM_ALLOWED)

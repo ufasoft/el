@@ -1,7 +1,7 @@
 #pragma once
 
 //!!! #if UCFG_EXTENDED
-#include <el/inc/inc_configs.h>
+//#include <el/inc/inc_configs.h>
 //!!! #endif
 
 #ifdef HAVE_CONFIG_H
@@ -75,6 +75,14 @@
 
 #define UCFG_USE_OLD_MSVCRTDLL (UCFG_CRT=='O')
 
+#ifndef UCFG_OPT_SIZ
+#	define UCFG_OPT_SIZ UCFG_USE_OLD_MSVCRTDLL
+#endif
+
+#ifndef UCFG_RTTI
+#	define UCFG_RTTI 1
+#endif
+
 #ifndef UCFG_UTF8_PATH
 #	define UCFG_UTF8_PATH (UCFG_CRT=='U')
 #endif
@@ -128,7 +136,7 @@
 #define _CRT_NON_CONFORMING_SWPRINTFS
 
 
-#define _ATL_DLL_IMPL
+
 
 
 #ifndef UCFG_INTRINSIC_MEMFUN
@@ -146,6 +154,10 @@
 
 #ifndef UCFG_TRC
 #	define UCFG_TRC UCFG_DEBUG
+#endif
+
+#ifndef UCFG_STACK_TRACE
+#	define UCFG_STACK_TRACE UCFG_TRC
 #endif
 
 
@@ -261,8 +273,24 @@
 #	endif
 #endif
 
-#ifndef UCFG_USE_ATL
-#	define UCFG_USE_ATL 0 //!!!? UCFG_EXTENDED && !UCFG_MINISTL
+#ifndef UCFG_THREAD_MANAGEMENT
+#	define UCFG_THREAD_MANAGEMENT (UCFG_EXTENDED || UCFG_WIN32)
+#endif
+
+#ifndef UCFG_ATL
+#	define UCFG_ATL 0 //!!!? UCFG_EXTENDED && !UCFG_MINISTL
+#endif
+
+#ifndef UCFG_ASSERT
+#	define UCFG_ASSERT 1
+#endif
+
+#ifndef UCFG_ATL_ASSERT
+#	define UCFG_ATL_ASSERT UCFG_ASSERT
+#endif
+
+#ifndef UCFG_TRACE
+#	define UCFG_TRACE UCFG_DEBUG
 #endif
 
 #ifndef UCFG_WIN_MSG
@@ -525,6 +553,10 @@
 #	define UCFG_MANUFACTURER "Ufasoft"
 #endif
 
+#ifndef UCFG_AUTHOR
+#	define UCFG_AUTHOR "Sergey Pavlov dev@ufasoft.com"
+#endif
+
 #ifndef UCFG_NS_EXT_VC
 #	define UCFG_NS_EXT_VC 1
 #endif
@@ -532,3 +564,12 @@
 #ifndef UCFG_STL_VERIFY
 #	define UCFG_STL_VERIFY 0
 #endif
+
+#if !UCFG_AFXDLL
+#	define IMPEXP_API
+#elif defined(_EXT)
+#	define IMPEXP_API DECLSPEC_DLLEXPORT
+#else
+#	define IMPEXP_API DECLSPEC_DLLIMPORT
+#endif
+

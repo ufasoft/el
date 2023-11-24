@@ -1,6 +1,16 @@
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
+
 // Code common for Win32 and Kernel mode
 
 #pragma once
+
+#include <el/libext/ptr.h>
+#include <el/libext/cpp-old.h>
+#include <el/libext/object.h>
 
 #ifndef UCFG_STD_EXCHANGE
 #	ifdef __cpp_lib_exchange_function
@@ -100,22 +110,6 @@ inline long exchange(long& obj, long new_val) {
 
 namespace Ext {
 
-class NonInterlockedPolicy {
-public:
-	template <class T> static int Increment(T& v) { int r = v + 1; v = r; return r; }
-	template <class T> static int Decrement(T& v) { int r = v - 1; v = r; return r; }
-};
-
-class InterlockedPolicy {
-public:
-	template <class T> static T Increment(atomic<T>& a) { return ++a; }
-	template <class T> static T Decrement(atomic<T>& a) { return --a; }
-};
-
-template <typename T>
-struct ptr_traits {
-	typedef typename T::interlocked_policy interlocked_policy;
-};
 
 
 	/*!!!
@@ -173,7 +167,9 @@ public:
 };
 
 template <typename T>
-class Keeper : noncopyable {
+class Keeper {
+	Keeper(const Keeper&);
+	Keeper& operator=(const Keeper&);
 public:
 	volatile T& m_t;
 	T m_prev;
@@ -373,45 +369,6 @@ class CRuntimeClass;
 //class ostream;
 //typedef ostream CDumpContext;
 
-
-class Object {
-public:
-//	typedef NonInterlockedPolicy interlocked_policy;	// Must be explicit for safity
-
-	static const AFX_DATA CRuntimeClass classObject;
-	mutable atomic<int> m_aRef;
-
-	Object()
-		: m_aRef(0)
-	{
-	}
-
-	Object(const Object& ob)
-		: m_aRef(0)
-	{
-	}
-
-	Object& operator=(const Object& ob) {
-		m_aRef.store(0);
-		return *this;
-	}
-
-	virtual ~Object() {
-	}
-
-	int RefCount() const noexcept { return m_aRef.load(); }
-
-	bool IsHeaped() const { return m_aRef < (10000); }			//!!! should be replaced to some num limits
-	void InitInStack() { m_aRef = 20000; }
-
-//!!!R	virtual CRuntimeClass *GetRuntimeClass() const;
-
-#ifdef _AFXDLL
-	static CRuntimeClass* PASCAL _GetBaseClass();
-	static CRuntimeClass* PASCAL GetThisClass();
-#endif
-
-};
 
 class InterlockedObject : public Object {
 public:
@@ -662,14 +619,25 @@ public:
 	friend class CTraceWriter;
 };
 
-class AFX_CLASS CTrace {
+class TraceIndent {
+public:
+	TraceIndent();
+	~TraceIndent();
+	static int GetCurrent();
+};
+
+enum class TraceLevel : int {
+	Com = 2					// COM events
+};
+
+class AFX_CLASS Trace {
 	static Stream *s_pOstream, *s_pSecondStream;
 public:
 	typedef unsigned long (_cdecl* PFN_DbgPrint)(const char *format, ...);
 	EXT_DATA static PFN_DbgPrint s_pTrcPrint;
 
-	EXT_DATA static bool s_bShowCategoryNames;
 	EXT_DATA static int s_nLevel;
+	EXT_DATA static bool s_bShowCategoryNames;
 	EXT_DATA static bool s_bPrintDate;
 
 	static void AFXAPI InitTraceLog(RCString regKey);
@@ -787,14 +755,15 @@ String TruncPrettyFunction(const char *fn);
 #	define DBG_PARAM(param) param
 #	define TRC_CUT_PREFIX(prefix) Ext::CLocalTracePrefix _localTracePrefix(prefix);
 #	define TRC_GLOBAL_CUT_PREFIX(prefix) static Ext::CGlobalTracePrefix EXT_UNIQUE_SUFFIX(_globalTracePrefix)(prefix);
-#	define TRC(level, s) { if ((1 << level) & Ext::CTrace::s_nLevel) Ext::CTraceWriter(1 << level, EXT_TRC_FUNCNAME).Stream() << s; }
+#	define TRC(level, s) { if ((1 << (int)level) & Ext::Trace::s_nLevel) Ext::CTraceWriter(1 << (int)level, EXT_TRC_FUNCNAME).Stream() << s; }
 
-#	define TRCP(level, s) { if (level & Ext::CTrace::s_nLevel) {				\
+#	define TRCP(level, s) { if (level & Ext::Trace::s_nLevel) {				\
 		char obj[sizeof(Ext::CTraceWriter)];									\
 		Ext::CTraceWriter& w = Ext::CTraceWriter::CreatePreObject(obj, level, EXT_TRC_FUNCNAME);				\
 		w.Printf s;																\
 		w.~CTraceWriter(); }}
 
+#	define TRC_INDENT TraceIndent _traceIndent
 
 #	define TRC_SHORT(level, s) //!!!? ( (1<<level) & Ext::CTrace::s_nLevel ? OUTPUT_DEBUG(' ' << s) : 0)
 #	define D_TRACE(cat, level, args) //!!!?( ((1<<level) & Ext::CTrace::s_nLevel) && cat.Enabled ? OUTPUT_DEBUG(cat.m_name << ": " << args << endl):0)
@@ -809,14 +778,15 @@ String TruncPrettyFunction(const char *fn);
 		{} \
 	}  _classTrace; \
 
-#	define TRC_PRINT(p) while (Ext::CTrace::s_pTrcPrint) { Ext::CTrace::s_pTrcPrint p; break; }
+#	define TRC_PRINT(p) while (Ext::Trace::s_pTrcPrint) { Ext::Trace::s_pTrcPrint p; break; }
 
 #else
 #	define DBG_PARAM(param)
 #	define TRC_CUT_PREFIX(prefix)
 #	define TRC_GLOBAL_CUT_PREFIX(prefix)
-#	define TRC(level, s)
-#	define TRCP(level, s)
+#	define TRC(level, s) ;
+#	define TRCP(level, s) ;
+#	define TRC_INDENT
 #	define TRC_SHORT(level, s)
 #	define D_TRACE(cat, level, args)
 #	define FUN_TRACE

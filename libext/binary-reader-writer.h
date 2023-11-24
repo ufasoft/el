@@ -48,7 +48,7 @@ public:
 		, Encoding(enc)
 	{}
 
-	const BinaryReader& EXT_FASTCALL Read(void *buf, size_t count) const { BaseStream.ReadBuffer(buf, count); return *this; }
+	const BinaryReader& EXT_FASTCALL Read(void *buf, size_t count) const { BaseStream.ReadExactly(buf, count); return *this; }
 
 	const BinaryReader& operator>>(char& v) const {
 		Read(&v, 1);
@@ -140,7 +140,7 @@ public:
 	size_t ReadSize() const {
 		uint64_t v = Read7BitEncoded();
 		if (v > (std::numeric_limits<size_t>::max)())
-			Throw(HRESULT_FROM_WIN32(ERROR_ARITHMETIC_OVERFLOW));
+			ThrowWin32(ERROR_ARITHMETIC_OVERFLOW);
 		return (size_t)v;
 	}
 
@@ -348,7 +348,7 @@ public:
 	}
 private:
 	void ReadByte() {
-		BaseStream.ReadBuffer(&m_b, 1);
+		BaseStream.ReadExactly(&m_b, 1);
 		m_n = 8;
 	}
 };

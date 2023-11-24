@@ -1,9 +1,13 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
+
+namespace std {
+template <class T> class sub_match;
+}
 
 namespace Ext {
 
@@ -157,6 +161,10 @@ public:
 
 	const char *c_str() const;
 	operator const char *() const { return c_str(); }
+
+#if UCFG_STRING_CHAR == 16
+	const wchar_t* c_wstr() const { return m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() : 0; }
+#endif
 	operator const value_type *() const { return m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() : 0; }
 
 	const_iterator begin() const { return const_iterator(m_blob.m_pData ? (const value_type*)m_blob.m_pData->GetBSTR() : 0); }
@@ -331,6 +339,7 @@ inline bool AFXAPI operator==(const String& s1, const String& s2) noexcept { ret
 AFX_API bool AFXAPI operator!=(const String& s1, const String& s2) noexcept;
 AFX_API bool AFXAPI operator<=(const String& s1, const String& s2) noexcept;
 AFX_API bool AFXAPI operator>=(const String& s1, const String& s2) noexcept;
+AFX_API bool AFXAPI operator>(const String& s1, const String& s2) noexcept;
 
 AFX_API bool AFXAPI operator==(const String& s1, const char * s2);
 AFX_API bool AFXAPI operator==(const char * s1, const String& s2);
@@ -392,13 +401,7 @@ inline String ToUpper(RCString s) { return s.ToUpper(); }
 
 inline char ToLowerChar(char ch) { return (char)::tolower(ch); }
 
-inline std::string ToLower(const std::string& s) {
-	std::string r = s;
-	std::transform(r.begin(), r.end(), r.begin(), ToLowerChar);
-	return r;
-}
-
-
+std::string ToLower(const std::string& s);
 
 
 } // Ext::

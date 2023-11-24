@@ -12,6 +12,10 @@ typedef struct tagEXCEPINFO EXCEPINFO;
 #	include <nl_types.h>
 #endif
 
+#if UCFG_COM
+#	include <objbase.h>
+#endif
+
 #include EXT_HEADER_SHARED_MUTEX
 
 #include EXT_HEADER_FILESYSTEM
@@ -128,13 +132,13 @@ class DlProcWrapBase {
 protected:
 	void* m_p;
 public:
-	void Init(HMODULE hModule, RCString funname);
+	void Init(HMODULE hModule, RCString funname, int id = 0);
 protected:
 	DlProcWrapBase()
 		: m_p(0)
 	{}
 
-	DlProcWrapBase(RCString dll, RCString funname);
+	DlProcWrapBase(RCString dll, RCString funname, int id = 0);
 };
 
 template <typename F>
@@ -144,12 +148,12 @@ public:
 	DlProcWrap() {
 	}
 
-	DlProcWrap(HMODULE hModule, RCString funname) {
-		Init(hModule, funname);
+	DlProcWrap(HMODULE hModule, RCString funname, int id = 0) {
+		Init(hModule, funname, id);
 	}
 
-	DlProcWrap(RCString dll, RCString funname)
-		: base(dll, funname)
+	DlProcWrap(RCString dll, RCString funname, int id = 0)
+		: base(dll, funname, id)
 	{
 	}
 
@@ -197,8 +201,6 @@ private:
 
 
 #if UCFG_COM
-
-const int COINIT_APARTMENTTHREADED  = 0x2;
 
 class AFX_CLASS CUsingCOM {
 	CDynamicLibrary m_dllOle;
@@ -565,14 +567,10 @@ public:
 		Open(p, mode, access, share, bufferSize, options);
 	}
 
-	~FileStream() {
-		if (m_fstm)
-			Close();
-	}
-
+	~FileStream();
 	EXT_API void Open(const path& p, FileMode mode, FileAccess access = FileAccess::ReadWrite, FileShare share = FileShare::None, size_t bufferSize = 4096, FileOptions options = FileOptions::None);
 	size_t Read(void *buf, size_t count) const override;
-	void ReadBuffer(void *buf, size_t count) const override;
+	void ReadExactly(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
 	void Close() const override;
 	void Flush() override;
@@ -646,7 +644,7 @@ public:
 	}
 
 	size_t Read(void *buf, size_t count) const override;
-	void ReadBuffer(void *buf, size_t count) const override;
+	void ReadExactly(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
 };
 
@@ -682,6 +680,9 @@ public:
 	explicit Guid(RCString s);
 
 	static Guid AFXAPI NewGuid();
+#if UCFG_COM
+	static Guid AFXAPI FromProgId(RCString progId);
+#endif
 
 	Guid& operator=(const GUID& guid) {
 		*(GUID*)this = guid;
@@ -689,6 +690,7 @@ public:
 	}
 
 	bool operator==(const GUID& guid) const { return !memcmp(this, &guid, sizeof(GUID)); }
+	bool operator==(const Guid& guid) const { return !memcmp(this, &guid, sizeof(GUID)); }
 
 	String ToString(RCString format = nullptr) const;
 };
@@ -1133,14 +1135,15 @@ public:
 	static bool AFXAPI Is64BitProcess() { return sizeof(void*) == 8; }
 	static bool AFXAPI Is64BitOperatingSystem();
 
-	int get_ProcessorCount();
-	DEFPROP_GET(int, ProcessorCount);
+	static int get_ProcessorCount();
 
 	int get_ProcessorCoreCount();
 	DEFPROP_GET(int, ProcessorCoreCount);
 };
 
+/*!!!T
 extern EXT_DATA Ext::Environment Environment;
+*/
 
 bool AFXAPI IsConsole();
 
@@ -1399,6 +1402,10 @@ private:
 	}
 };
 
+inline std::ostream& operator<<(std::ostream& os, const GUID& guid) {
+	return os << Guid(guid).ToString();
+}
+
 inline std::ostream& operator<<(std::ostream& os, const VarValue& v) {
 	v.Print(os);
 	return os;
@@ -1599,7 +1606,9 @@ public:
 #if UCFG_WIN32
 	ProcessObj(pid_t pid, DWORD dwAccess = MAXIMUM_ALLOWED, bool bInherit = false);
 
+#if UCFG_THREAD_MANAGEMENT
 	EXT_API std::unique_ptr<CWinThread> Create(RCString commandLine, DWORD dwFlags = 0, const char *dir = 0, bool bInherit = false, STARTUPINFO *psi = 0);
+#endif
 
 	void Terminate(DWORD dwExitCode)  {	Win32Check(::TerminateProcess((HANDLE)(intptr_t)HandleAccess(*this), dwExitCode)); }
 
@@ -1716,6 +1725,5 @@ public:
 
 
 #if UCFG_USE_REGEX
-#	include "ext-regex.h"
+#	include <el/libext/regex.h>
 #endif
-

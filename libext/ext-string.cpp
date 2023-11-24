@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-20159 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -227,7 +227,7 @@ int String::Replace(RCString sOld, RCString sNew) {
 		nOldLen = (int)sOld.length(),
 		nReplLen = (int)sNew.length();
 	for (; p<q; p += traits_type::length(p)+1) {
-		while (r = StrStr<value_type>(p, sOld)) {
+		while (r = ExtStrStr<value_type>(p, sOld)) {
 			nCount++;
 			p = r+nOldLen;
 		}
@@ -237,7 +237,7 @@ int String::Replace(RCString sOld, RCString sNew) {
 		value_type *pTarg = (value_type*)alloca(nLen * sizeof(value_type)),
 			*z = pTarg;
 		for (p = _self; p<q;) {
-			if (StrNCmp<value_type>(p, sOld, nOldLen))
+			if (ExtStrNCmp<value_type>(p, sOld, nOldLen))
 				*z++ = *p++;
 			else {
 				memcpy(z, (const value_type*)sNew, nReplLen * sizeof(value_type));
@@ -294,7 +294,7 @@ String::String(UNICODE_STRING *pus)
 String::operator UNICODE_STRING*() const {
 	if (CStringBlobBuf *pBuf = (CStringBlobBuf*)m_blob.m_pData) {
 		UNICODE_STRING *us = &pBuf->m_us;
-		us->Length = us->MaximumLength = (USHORT)m_blob.Size;
+		us->Length = us->MaximumLength = (USHORT)m_blob.size();
 		us->Buffer = (WCHAR*)(const wchar_t*)_self;
 		return us;
 	} else
@@ -360,26 +360,35 @@ static locale& UserLocale() {
 }
 
 #else
+#	if UCFG_USE_LOCALE
 static locale& UserLocale() {
 	static locale s_locale("");
 	return s_locale;
 }
+#	endif
 
 #endif // UCFG_WDM
 
+#if UCFG_USE_LOCALE
 static locale& s_locale_not_used = UserLocale();	// initialize while one thread, don't use
+#endif
 
 int String::CompareNoCase(const String& s) const {
 	value_type *s1 = (value_type*)m_blob.constData(),
 		*s2 = (value_type*)s.m_blob.constData();
 	for (size_t len1 = length(), len2 = s.length();; --len1, --len2) {
 		value_type ch1 = *s1++, ch2 = *s2++;
-#if UCFG_USE_POSIX
+#if UCFG_USE_LOCALE
+#	if UCFG_USE_POSIX
 		ch1 = (value_type)tolower<wchar_t>(ch1, UserLocale());
 		ch2 = (value_type)tolower<wchar_t>(ch2, UserLocale());
-#else
+#	else
 		ch1 = (value_type)tolower(ch1, UserLocale());
 		ch2 = (value_type)tolower(ch2, UserLocale());
+#	endif
+#else
+		ch1 = towlower(ch1);
+		ch2 = towlower(ch2);
 #endif
 		if (ch1 < ch2)
 			return -1;
@@ -488,7 +497,7 @@ vector<String> String::Split(RCString separator, size_t count) const {
 	vector<String> ar;
 	for (const value_type *p = _self; count-- && *p;) {
 		if (count) {
-			size_t n = StrCSpn<value_type>(p, sep);
+			size_t n = ExtStrCSpn<value_type>(p, sep);
 			ar.push_back(String(p, n));
 			if (*(p += n) && !*++p)
 				ar.push_back("");
@@ -508,10 +517,14 @@ String String::Join(RCString separator, const std::vector<String>& value) {
 void String::MakeUpper() {
 	MakeDirty();
 	for (value_type *p=(value_type*)m_blob.data(); *p; ++p) {
-#if UCFG_USE_POSIX
+#if UCFG_USE_LOCALE
+#	if UCFG_USE_POSIX
 		*p = (value_type)toupper<wchar_t>(*p, UserLocale());
-#else
+#	else
 		*p = (value_type)toupper(*p, UserLocale());
+#	endif
+#else
+		*p = towupper(*p);
 #endif
 	}
 }
@@ -519,10 +532,14 @@ void String::MakeUpper() {
 void String::MakeLower() {
 	MakeDirty();
 	for (value_type *p=(value_type*)m_blob.data(); *p; ++p) {
-#if UCFG_USE_POSIX
+#if UCFG_USE_LOCALE
+#	if UCFG_USE_POSIX
 		*p = (value_type)tolower<wchar_t>(*p, UserLocale());
-#else
+#	else
 		*p = (value_type)tolower(*p, UserLocale());
+#	endif
+#else
+		*p = towlower(*p);
 #endif
 	}
 }
@@ -554,8 +571,9 @@ String AFXAPI operator+(const String& string1, const String& string2) {
 		len2 = string2.length() * sizeof(String::value_type);
 	String s;
 	s.m_blob.resize(len1 + len2);
-	memcpy(s.m_blob.data(), string1.m_blob.constData(), len1);
-	memcpy(s.m_blob.data()+len1, string2.m_blob.constData(), len2);
+	uint8_t* dst = s.m_blob.data();
+	memcpy(dst, string1.m_blob.constData(), len1);
+	memcpy(dst + len1, string2.m_blob.constData(), len2);
 	return s;
 }
 
@@ -612,6 +630,13 @@ bool AFXAPI operator<=(const String::value_type * s1, const String& s2) { return
 bool AFXAPI operator>=(const String& s1, const String::value_type *s2) { return s1.compare(s2) >= 0; }
 bool AFXAPI operator>=(const String::value_type * s1, const String& s2) { return s2.compare(s1) <= 0; }
 
+string ToLower(const string& s) {
+	string r = s;
+	transform(r.begin(), r.end(), r.begin(), ToLowerChar);
+	return r;
+}
+
+
 
 } // Ext::
 
@@ -661,7 +686,8 @@ bool AFXAPI isalpha(wchar_t ch, const locale& loc) {
 #endif
 
 
-#if UCFG_WIN32
+
+#if UCFG_WIN32 && UCFG_THREAD_MANAGEMENT
 
 class ThreadStrings {
 public:
@@ -702,7 +728,6 @@ extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
 	}
 	return r;
 }
-
 
 
 #endif // UCFG_WIN32

@@ -1,15 +1,72 @@
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
-#include "../../gui/extdef.h"
+#include <unknwn.h>
+#include <ocidl.h>
 
-#include <el/libext/win32/ext-win.h>
+#if UCFG_ATL=='S'
+#	ifndef _NTSTATUS_
+#		include <cguid.h>
+#		include <winnt.h>
+#	endif
+#	include <atlcomcli.h>
+#	include <atlbase.h>
+#	include <atlcom.h>
+#elif UCFG_ATL=='U'
+#	include <el/libext/win32/ext-atl.h>
+#endif
+
+#include <el/gui/extdef.h>
+
+#if (!defined(_CRTBLD) || UCFG_CRT=='U') && UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
+#	ifdef _DEBUG
+#		pragma comment(lib, "comsuppwd")
+#	else
+#		pragma comment(lib, "comsuppw")
+#	endif
+#endif
+
+#if UCFG_COM && defined(_MSC_VER) && !UCFG_MINISTL
+//!!!R#	include <windows.h>
+		//#undef lstrlenW // because used ::lstrlenW
+#	undef lstrlen
+#	ifdef _UNICODE
+#		define lstrlen wcslen
+#	else
+#		define lstrlen strlen
+#	endif
+#	include <comdef.h> // must be after comment(lib, "ext.lib") to override som COM-support funcs
+
+#	if !UCFG_STDSTL && defined(_M_IX86)
+#		pragma comment(linker, "/NODEFAULTLIB:comsuppwd.lib")
+#		pragma comment(linker, "/NODEFAULTLIB:comsuppw.lib")
+#		pragma comment(linker, "/NODEFAULTLIB:comsuppd.lib")
+#		pragma comment(linker, "/NODEFAULTLIB:comsupp.lib")
+
+#		pragma comment(lib, "o_comsuppw.lib")
+#	endif
+#endif
+
+
+//#include <el/libext/win32/ext-win.h>
 
 namespace Ext {
+using namespace ATL;
 
 class CInternalUnknown;
 class CComGeneralClass;
 class COleControlContainer;
 class COleControlSite;
+
+inline HRESULT OleCheck(HRESULT hr) {
+	if (FAILED(hr))
+		Throw(hr);
+	return hr;
+}
 
 #if UCFG_BLOB_POLYMORPHIC
 
@@ -40,171 +97,6 @@ public:
 
 //#include "extmfc.h"
 
-class CComPtrBase {
-protected:
-	IUnknown* m_unk;
-public:
-	CComPtrBase()
-		: m_unk(0)
-	{}
-
-	CComPtrBase(const CComPtrBase& p);
-	CComPtrBase(IUnknown *unk, const IID *piid = 0);
-
-	~CComPtrBase() {
-		if (m_unk)
-			m_unk->Release();
-	}
-
-	void Attach(IUnknown *unk);
-	void Release();
-	bool operator==(IUnknown *lp) const;
-	bool operator!() const { return m_unk == 0; }
-protected:
-	IUnknown **operator&();
-	void Assign(IUnknown *lp, const IID *piid);
-};
-
-template <class T, const IID* piid =
-#ifdef _MSC_VER
-&__uuidof(T)
-#else
-0 //!!!
-#endif
-> class /*!!!AFX_CLASS*/ CComPtr2 : public CComPtrBase {
-	typedef CComPtrBase base;
-public:
-	typedef CComPtr2 class_type;
-
-	CComPtr2()
-	{}
-
-	CComPtr2(const CComPtr2& p)
-		: CComPtrBase((T*)p)
-	{
-	}
-
-	CComPtr2(T * lp)
-		: CComPtrBase(lp)
-	{}
-
-	CComPtr2(IUnknown *unk, const IID *piid)
-		: base(unk, piid)
-	{}
-
-
-/*!!!	CComPtr2(IUnknown *unk)
-		:	CComPtrBase(unk, piid)
-	{}*/
-
-	/*!!!  CComPtr(CUnknownHelper uh)
-	:CComPtrBase(uh.m_unk, piid)
-	{}*/
-
-	T *get_P() const { return (T*)m_unk; }
-	DEFPROP_GET(T*, P);
-
-	operator T*() const {
-		return P;
-	}
-
-	T **operator&() {
-		return (T**)CComPtrBase::operator&();
-	}
-
-	T *operator=(const CComPtr2& p) {
-		return operator=((T*)p);
-	}
-
-
-	/*!!!  T *operator=(CUnknownHelper uh) {
-	Assign(uh.m_unk, piid);
-	return (T*)m_unk;
-	}
-
-	T *operator=(CUnkPtr up) {
-	Assign((IUnknown*)up, piid);
-	return (T*
-
-	)m_unk;
-	}*/
-
-	void Assign(IUnknown *lp) {
-		base::Assign(lp, piid);
-	}
-
-	void Assign(IUnknown *lp, const IID* p) {
-		base::Assign(lp, p);
-	}
-
-	T *operator=(T *cp) {
-		base::Assign(cp, 0);
-		return (T*)m_unk;
-	}
-
-	bool operator==(T *lp) const {
-		return CComPtrBase::operator==(lp);
-	}
-
-	T* operator->() const {
-		return (T*)m_unk;
-	}
-
-#ifdef _MSC_VER
-	template <class Q> void QueryInterface(Q** pp) const {
-		OleCheck(m_unk->QueryInterface(__uuidof(Q), (void**)pp));
-	}
-
-	template <class Q> bool TryQueryInterface(Q** pp) const {
-		HRESULT hr = m_unk->QueryInterface(__uuidof(Q), (void**)pp);
-		if (hr == E_NOINTERFACE)
-			return false;
-		OleCheck(hr);
-		return true;
-	}
-#endif
-
-	T *Detach() {
-		return (T*)exchange(m_unk, (IUnknown*)0);
-	}
-};
-
-template <class T, const IID* piid =
-#ifdef _MSC_VER
-&__uuidof(T)
-#else
-0 //!!!
-#endif
-> class /*!!!AFX_CLASS*/ CComPtr : public CComPtr2<T, piid> {
-public:
-	CComPtr()
-	{}
-
-	CComPtr(T * lp)
-		: CComPtr2(lp)
-	{}
-
-	CComPtr(IUnknown *unk)
-		: CComPtr2(unk, piid)
-	{}
-
-
-	T *operator=(IUnknown *unk) {
-		Assign(unk);
-		return (T*)m_unk;
-	}
-};
-
-template <>
-class /*!!!AFX_CLASS*/ CComPtr<IUnknown> : public CComPtr2<IUnknown> {
-public:
-	CComPtr()
-	{}
-
-	CComPtr(IUnknown *unk)
-		: CComPtr2(unk, &__uuidof(IUnknown))
-	{}
-};
 
 class AFX_CLASS COleCurrency {
 public:
@@ -459,7 +351,7 @@ public:
 };
 
 
-typedef CComPtr<IUnknown> CUnkPtr;	//!!! temporary
+typedef ATL::CComPtr<IUnknown> CUnkPtr;	//!!! temporary
 
 /*!!!R
 class CUnkPtr {
@@ -551,7 +443,7 @@ public:
 	{}
 
 	size_t Read(void *buf, size_t count) const override;
-	void ReadBuffer(void *buf, size_t count) const override;
+	void ReadExactly(void *buf, size_t count) const override;
 	void WriteBuffer(const void *buf, size_t count) override;
 	bool Eof() const override;
 	void Flush() override;
@@ -562,7 +454,7 @@ public:
 	void Write(const Blob& blob);
 	*/
 
-	void SetSize(DWORDLONG libNewSize);
+	void SetSize(uint64_t newSize);
 
 	DateTime get_ModTime();
 	DEFPROP_GET(DateTime, ModTime);
@@ -636,6 +528,8 @@ public:
 	virtual DWORD InternalAddRef();
 	virtual DWORD InternalRelease();
 	virtual HRESULT InternalQueryInterface(REFIID iid, LPVOID *ppvObj) =0;
+
+	static const struct _ATL_CATMAP_ENTRY* GetCategoryMap() { return NULL; }
 
 	static HRESULT AFXAPI InternalQueryInterface(void *pThis, const _ATL_INTMAP_ENTRY* pEntries, REFIID iid, LPVOID* ppvObj);
 	static HRESULT AFXAPI _Chain(void* pv, REFIID iid, void** ppvObject, DWORD_PTR dw);
@@ -813,9 +707,12 @@ public:
 #define _EXT_END_OBJECT_MAP()   {0, 0}};
 #define _EXT_OBJECT_ENTRY(clsid, class) {&clsid, class::CreateInstance},
 
-#define METHOD_BEGIN { AFX_MAINTAIN_STATE_COM _ctlState(this); try
-#define METHOD_BEGIN_EX { AFX_MAINTAIN_STATE_COM _ctlState(GetComClass()); try
-#define METHOD_END catch(RCExc e) { _ctlState.SetFromExc(e); } return _ctlState.HResult; }
+#define METHOD_SPEC __declspec(nothrow) HRESULT __stdcall
+
+#define METHOD_BEGIN_IMP { AFX_MAINTAIN_STATE_COM _ctlState(this); TRC_INDENT; TRC(Ext::TraceLevel::Com, "COM this: 0x" << this); try
+#define METHOD_BEGIN noexcept override METHOD_BEGIN_IMP
+#define METHOD_BEGIN_EX noexcept override { AFX_MAINTAIN_STATE_COM _ctlState(GetComClass()); try
+#define METHOD_END catch(RCExc e) { TRC(Ext::TraceLevel::Com, hex << HResultInCatch(e) << " " << e.what()); _ctlState.SetFromExc(e); } return _ctlState.HResult; }
 
 #define DECLARE_STANDARD_UNKNOWN() \
 STDMETHOD(QueryInterface)(REFIID riid, void **ppvObjOut) { \
@@ -927,7 +824,7 @@ public:
 		_EXT_COM_INTERFACE_ENTRY(IStream)
 	_EXT_END_COM_MAP()
 
-	STDMETHOD(Read)(void *pv, ULONG cb, ULONG *pcbRead);
+	STDMETHOD(Read)(void *pv, ULONG cb, ULONG *pcbRead) noexcept;
 	STDMETHOD(Write)(const void *pv, ULONG cb, ULONG *pcbWritten);
 	STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition);
 	STDMETHOD(SetSize)(ULARGE_INTEGER libNewSize);
@@ -973,19 +870,6 @@ enum CUniType {
 #define AFX_OLE_TRUE (-1)
 #define AFX_OLE_FALSE 0
 
-class CComBSTR {
-public:
-	BSTR m_str;
-
-	CComBSTR();
-	CComBSTR(LPCOLESTR pSrc);
-	CComBSTR(LPCSTR pSrc);
-	~CComBSTR();
-	operator BSTR() const;
-	BSTR *operator&();
-	void Attach(BSTR src);
-	BSTR Detach();
-};
 
 class ComExc : public Exception {
 	typedef Exception base;
@@ -1000,7 +884,21 @@ protected:
 	String get_Message() const override { return (LPCWSTR)m_comError.Description(); }
 };
 
+#if UCFG_ATL
+inline std::ostream& AFXAPI operator<<(std::ostream& os, CComVariant v) {
+	OleCheck(v.ChangeType(VT_BSTR));
+	return os << String(v.bstrVal);
+}
+#endif
+
+template <class T, class I, class... ARGS>
+void CreateComInstance(I **ppRetVal, ARGS&&... args) {
+	TRC(1, typeid(T).name());
+	CComObject<T>* r;
+	OleCheck(CComObject<T>::CreateInstance(&r));
+	CUnkPtr keepAlive = r->GetUnknown();
+	r->Init(forward<ARGS>(args)...);
+	OleCheck(r->QueryInterface(__uuidof(I), (LPVOID*)ppRetVal));
+}
 
 } // Ext::
-
-

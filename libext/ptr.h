@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -7,12 +7,42 @@
 
 // Smart Pointers
 
+#include <el/libext/ext-cpp.h>
+#include EXT_HEADER_ATOMIC
+
 namespace Ext {
 
+template <typename T> class PtrBase {
+protected:
+	T* m_p;
+public:
+	typedef T element_type;
+	typedef T *pointer;
+	typedef T &reference;
+
+	PtrBase(T *p = 0)
+		: m_p(p) {}
+
+	inline T *get() const EXT_FAST_NOEXCEPT { return m_p; }
+	inline T *operator->() const EXT_FAST_NOEXCEPT { return m_p; }
+
+	T *release() noexcept {
+		pointer r = m_p;
+		m_p = nullptr;
+		return r;
+	}
+
+	void swap(PtrBase &p) noexcept {
+	//!!!Not defined yet	std::swap(m_p, p.m_p);
+		T *t = m_p;
+		m_p = p;
+		p.m_p = t;
+	}
+};
 
 template <typename T> class SelfCountPtr {
 	T *m_p;
-	atomic<int> *m_pRef;
+	std::atomic<int> *m_pRef;
 
 	void Destroy() {
 		if (m_pRef && !--m_pRef) {
@@ -164,6 +194,10 @@ protected:
 	}
 };
 
+template <typename T>
+struct ptr_traits {
+	typedef typename T::interlocked_policy interlocked_policy;
+};
 
 template <typename T, typename I = typename ptr_traits<T>::interlocked_policy>
 class ptr : public RefPtr<T, CCounterIncDec<T, I> > {
@@ -304,7 +338,7 @@ class AFX_CLASS CRefCounted {
 public:
 	class AFX_CLASS CRefCountedData : public T {
 	public:
-		atomic<int> m_aRef;
+		std::atomic<int> m_aRef;
 
 		CRefCountedData()
 			: m_aRef(0)
@@ -366,3 +400,56 @@ namespace EXT_HASH_VALUE_NS {
 	    return reinterpret_cast<size_t>(v.get());
 	}
 }
+
+namespace std {
+#if !UCFG_STD_OBSERVER_PTR
+
+template <class T>
+class observer_ptr : public Ext::PtrBase<T> {
+	typedef Ext::PtrBase<T> base;
+
+	using base::m_p;
+public:
+	using typename base::element_type;
+	using typename base::pointer;
+	using typename base::reference;
+
+	observer_ptr() noexcept
+		: base(0) {
+	}
+
+	observer_ptr(nullptr_t) noexcept
+		: base(0) {
+	}
+
+	observer_ptr(const observer_ptr& p) noexcept
+		: base(p.m_p) {
+	}
+
+	explicit observer_ptr(T *p) noexcept
+		: base(p) {
+	}
+
+//!!!R	T *get() const noexcept { return m_p; }
+//!!!R	T *operator->() const EXT_FAST_NOEXCEPT { return get(); }
+
+	EXT_OPERATOR_BOOL() const noexcept { return m_p ? _CONVERTIBLE_TO_TRUE : 0; }
+
+	T& operator*() const EXT_FAST_NOEXCEPT { return *m_p; }
+	operator pointer() const EXT_FAST_NOEXCEPT { return m_p; }
+	bool operator==(T *p) const noexcept { return m_p == p; }
+	bool operator<(T *p) const noexcept { return m_p < p; }
+
+/*!!!R	pointer release() noexcept {		// std::exchange may be unavailable yet
+		pointer r = m_p;
+		m_p = nullptr;
+		return r;
+	}
+	*/
+	void reset(pointer p) { m_p = p; }										//!!!TODO  = nullptr
+};
+
+#endif // !UCFG_STD_OBSERVER_PTR
+
+
+} // std::

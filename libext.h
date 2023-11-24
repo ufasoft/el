@@ -14,7 +14,7 @@
 #endif
 
 #ifdef _MSC_VER
-#	include "vc/vc-warnings.h"
+#	include <el/vc/vc-warnings.h>
 #elif defined(__clang__)
 #	pragma clang diagnostic ignored "-Wswitch"
 #	pragma clang diagnostic ignored "-Winvalid-offsetof"
@@ -23,6 +23,20 @@
 #	pragma clang diagnostic ignored "-Wswitch-enum"
 #	pragma clang diagnostic ignored "-Wunused-value"
 #endif
+
+#if !UCFG_ASSERT && !defined(_ASSERT_EXPR)
+#	define _ASSERT_EXPR(expr, msg)
+#endif
+
+#if !UCFG_ATL_ASSERT
+#	define ATLENSURE_RETURN_VAL(expr, val)
+#endif
+
+#if !UCFG_TRACE
+#	define ATLTRACE __noop
+#	define ATLTRACE2 __noop
+#endif
+
 
 #if defined(_MSC_VER) && !UCFG_EXT_C && _FILE_OFFSET_BITS == 64 // Non-ANSI name for compatibility
 typedef __int64 off_t;											// incompatible with VC
@@ -227,6 +241,7 @@ inline bool iswspace(wchar_t ch) {
 #		endif
 #	endif
 
+#	define AFX_DATA
 #else
 #	ifdef _CRTBLD
 #		define AFX_RT DECLSPEC_DLLEXPORT
@@ -261,7 +276,7 @@ inline bool iswspace(wchar_t ch) {
 #endif
 
 #if !UCFG_STDSTL
-#	define std ExtSTL
+//!!!? #	define std ExtSTL
 #endif
 
 //!!!T #if UCFG_USE_OLD_MSVCRTDLL
@@ -272,7 +287,7 @@ inline bool iswspace(wchar_t ch) {
 #if UCFG_WIN32 && UCFG_STAT64 && _VC_CRT_MAJOR_VERSION < 14
 #	define _INC_STAT_INL
 
-#	if UCFG_USE_OLD_MSVCRTDLL && !defined(_WIN64)
+#	if 0 //!!!R? UCFG_USE_OLD_MSVCRTDLL && !defined(_WIN64)
 #		define _stat64 API_stat64
 #		define _wcstol_l C_wcstol_l
 #	endif
@@ -287,7 +302,7 @@ inline bool iswspace(wchar_t ch) {
 #	define fstat _fstat64
 #	define _fstat _fstat64
 
-#	if UCFG_USE_OLD_MSVCRTDLL && UCFG_PLATFORM_IX86
+#	if 0 //!!!R UCFG_USE_OLD_MSVCRTDLL && UCFG_PLATFORM_IX86
 //!!!R#		define fstat C_fstat
 #		define _fstat64i32 C__fstat64i32
 #		define _wstat64i32 C__wstat64i32
@@ -308,11 +323,11 @@ __END_DECLS
 #		endif
 #	endif
 
-#	if !UCFG_WCE
+#	if !UCFG_USE_OLD_MSVCRTDLL && !UCFG_WCE
 #		include <sys/stat.h>
 #	endif
 
-#	if UCFG_USE_OLD_MSVCRTDLL
+#	if 0 && UCFG_USE_OLD_MSVCRTDLL //!!!?
 #		undef _fstat64i32
 #		undef _wstat64i32
 
@@ -351,7 +366,7 @@ __END_DECLS
 #	endif
 
 #	if !UCFG_STDSTL && !UCFG_EXT_C
-#		define std ExtSTL
+//!!!? #		define std ExtSTL
 #		include <stddef.h>
 #	endif
 
@@ -380,6 +395,11 @@ typedef unsigned __int64 uint64_t;
 typedef unsigned short char16_t;
 #endif
 
+
+#if UCFG_WIN32
+#	include <minwindef.h>
+#endif
+
 #if !defined(WIN32) && !defined(_MINWINDEF_)
 #	ifdef _MSC_VER
 		typedef unsigned long DWORD;
@@ -398,7 +418,7 @@ typedef unsigned long u_long;
 
 #ifdef __cplusplus
 #	if !UCFG_STDSTL
-#		define nan C_nan
+//!!!?#		define nan C_nan
 #	endif
 
 namespace Ext {
@@ -500,9 +520,11 @@ typedef wchar_t Char16;
 #			undef __GOT_SECURE_LIB__
 #		endif
 
+/*!!!?
 #		if UCFG_USE_OLD_MSVCRTDLL && UCFG_PLATFORM_IX86
 #			define __iob_func redef__iob_func
 #		endif
+*/
 #	endif
 
 #	if !UCFG_MINISTL && !defined(_CRTBLD) || (UCFG_CRT == 'U')
@@ -523,7 +545,7 @@ extern "C" {
 } /* end of extern "C" */
 #	endif
 
-#	if (defined(_WIN64) || UCFG_STDSTL) && !UCFG_WCE
+#	if (defined(_WIN64) || UCFG_STDSTL) && !UCFG_USE_OLD_MSVCRTDLL && !UCFG_WCE
 #		include <wchar.h>
 #		include <sys/stat.h>
 #	endif
@@ -551,7 +573,7 @@ extern "C" {
 #		else
 #			ifdef _AFXDLL
 #				pragma comment(lib, "libext")
-#				pragma comment(lib, "ext.lib") // we need these #pragmas before comment(lib) of C++ libs
+//#				pragma comment(lib, "ext.lib") // we need these #pragmas before comment(lib) of C++ libs
 #				if UCFG_WCE
 #					pragma comment(lib, "libext") // can't merge it with ext.lib because /QMFPE warning
 #				endif
@@ -559,7 +581,7 @@ extern "C" {
 #				ifndef _CRTBLD // to prevent elst.lib
 //!!!R					#if UCFG_EXTENDED
 #					if !UCFG_COMPLEX_WINAPP
-#						error "elst requires UCFG_COMPLEX_WINAPP"
+//!!!?#						error "elst requires UCFG_COMPLEX_WINAPP"
 #					endif
 
 //#						pragma comment(lib, "elst")
@@ -602,25 +624,18 @@ typedef unsigned short sa_family_t;
 #	endif
 
 #	ifndef __cplusplus
-#		define read _read
-#		define write _write
 
 #		ifndef _CRTDBG_MAP_ALLOC
 #			define strdup _strdup
 #		endif
 
-#		define stricmp _stricmp
 #		define strnicmp _strnicmp
-#		define mkdir _mkdir
-#		define unlink _unlink
-#		define snprintf _snprintf
 #		define umask _umask
 
 #		define setmode _setmode
 #		define dup _dup
 #		define dup2 _dup2
 #		define lseek _lseek
-#		define write _write
 #		define spawnvp _spawnvp
 //!!!		#define stat _stat
 //!!!		#define fstat _fstat
@@ -684,7 +699,7 @@ __END_DECLS
 #		endif
 
 #		undef strtoull
-#		define strtoull API_strtoull
+//!!!?#		define strtoull API_strtoull
 
 #		if defined(__cplusplus) //!!!R && UCFG_PLATFORM_IX86
 extern "C++" {
@@ -811,7 +826,7 @@ typedef WCHAR *BSTR;
 #endif
 
 #if defined(_MSC_VER) && (UCFG_WDM || UCFG_WCE || !UCFG_STDSTL)
-#	include "libext/vc/default-libs.h"
+#	include <el/libext/vc/default-libs.h>
 #endif
 
 #define EXT_FASTCALL //!!!__fastcall
@@ -897,8 +912,10 @@ DECLSPEC_NORETURN __forceinline void Throw(const std::error_code &ec) {
 
 #	define THROW_UNK() Throw(MAKE_HRESULT(SEVERITY_ERROR, FACILITY_LINE_NUMBER, __LINE__))
 
+DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowWin32(int code);
+
 } // namespace Ext
-#endif
+#endif // __cplusplus
 
 #if !defined(_SIZE_T_DEFINED) && !defined(_M_X64)
 typedef unsigned int size_t;
@@ -966,7 +983,7 @@ int __cdecl API_fdclass(float d);
 int __cdecl API_dclass(double d);
 int __cdecl API_ldclass(long double d);
 
-#if defined(_MSC_VER) || !__GLIBC_USE(LIB_EXT2)
+#if !__GLIBC_USE(LIB_EXT2)
 int __cdecl vasprintf(char **strp, const char *format, va_list args);
 int __cdecl asprintf(char **strp, const char *format, ...);
 #endif
@@ -1033,17 +1050,15 @@ __END_DECLS
 #	include <stdlib.h>
 #endif
 
-#if UCFG_USE_OLD_MSVCRTDLL && !defined(_CRTBLD) && UCFG_PLATFORM_IX86
+#if 0 //!!!? UCFG_USE_OLD_MSVCRTDLL && !defined(_CRTBLD) && UCFG_PLATFORM_IX86
 
 #	define _wassert C_wassert
 
 #	include <stdarg.h>
 #	include <malloc.h>
 
-#	ifndef _EXT
+#	ifndef _VCRT_BUILD
 #		include <assert.h>
-#	else
-#		include <assert.h> //!!!
 #	endif
 
 #	define time C_time
@@ -1085,7 +1100,9 @@ __END_DECLS
 #	include <el/inc/crt/crt.h>
 
 #else
-#	include <assert.h>
+#	ifndef _VCRT_BUILD
+#		include <assert.h>
+#	endif
 
 #	ifdef _WIN64
 #		define getcwd _getcwd
@@ -1106,6 +1123,7 @@ __END_DECLS
 
 #define strlwr _strlwr
 
+/*!!!?
 #if UCFG_USE_OLD_MSVCRTDLL && !defined(_CRTBLD) || UCFG_WCE
 __BEGIN_DECLS
 
@@ -1117,6 +1135,7 @@ AFX_RT void __cdecl my_aligned_free(void *);
 
 __END_DECLS
 #endif
+*/
 
 #if UCFG_CRT == 'U'
 #	define _TIMESPEC_DEFINED
@@ -1221,7 +1240,7 @@ __END_DECLS
 //#		include <msxml2.h>
 #	endif
 
-#	if defined(__cplusplus) && UCFG_USE_ATL
+#	if defined(__cplusplus) && UCFG_ATL=='S'
 #		include <atldef.h>
 #	endif
 
@@ -1287,7 +1306,7 @@ inline int __cdecl API_close(int fh) {
 void(__cdecl *__cdecl API_signal(int _SigNum, void(__cdecl *_Func)(int)))(int);
 __END_DECLS
 
-#if UCFG_USE_OLD_MSVCRTDLL && UCFG_PLATFORM_IX86
+#if 0 //!!!R? UCFG_USE_OLD_MSVCRTDLL && UCFG_PLATFORM_IX86
 #	define signal API_signal
 #endif
 
@@ -1334,12 +1353,6 @@ __END_DECLS
 #	undef lseek
 #	undef fseek
 //#	undef _vsnprintf
-#endif
-
-#ifdef _EXT
-#	define IMPEXP_API DECLSPEC_DLLEXPORT
-#else
-#	define IMPEXP_API DECLSPEC_DLLIMPORT
 #endif
 
 __BEGIN_DECLS
@@ -1501,7 +1514,7 @@ EXT_DATA extern uint8_t g_bHasSse2;
 __END_DECLS
 #endif // UCFG_CPU_X86_X64
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !defined(_CORECRT_BUILD)
 #	include "libext/ext-cpu.h"
 #endif
 
@@ -1526,7 +1539,7 @@ __END_DECLS
 #	include "el/inc/extver.h"
 #endif
 
-#ifdef WIN32
+#if UCFG_WIN32 && !UCFG_USE_OLD_MSVCRTDLL
 #	include <malloc.h>
 #	undef _mm_free //!!! to disable SSE2_INTRINSICS_AVAILABLE in Crypto++
 #endif
@@ -1590,7 +1603,7 @@ extern "C" IMPEXP_API void __stdcall My_CxxThrowException(void *pExceptionObject
 #	endif
 #endif
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && !UCFG_USE_OLD_MSVCRTDLL
 #	include <cmath>
 #	if !UCFG_STDSTL
 #		undef nan

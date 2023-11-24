@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -18,41 +18,38 @@
 namespace Ext {
 using namespace std;
 
-CRegistryValue::CRegistryValue(uint32_t typ, uint8_t *p, int len)
-	:	m_type(typ)
-	,	m_blob(p, len)
-{
+#if UCFG_USE_REGISTRY
+
+CRegistryValue::CRegistryValue(uint32_t typ, uint8_t* p, int len)
+	: m_type(typ)
+	, m_blob(p, len) {
 }
 
 CRegistryValue::CRegistryValue(int v)
-	:	m_type(REG_DWORD)
-	,	m_blob(&v, sizeof(v))
-{
+	: m_type(REG_DWORD)
+	, m_blob(&v, sizeof(v)) {
 }
 
 CRegistryValue::CRegistryValue(uint32_t v)
-	:	m_type(REG_DWORD)
-	,	m_blob(&v, sizeof(v))
-{
+	: m_type(REG_DWORD)
+	, m_blob(&v, sizeof(v)) {
 }
 
 #if	UCFG_SEPARATE_LONG_TYPE
 CRegistryValue::CRegistryValue(unsigned long v)
-	:	m_type(REG_DWORD)
-	,	m_blob(&v, sizeof(v))
-{
+	: m_type(REG_DWORD)
+	, m_blob(&v, sizeof(v)) {
 }
 #endif
 
 CRegistryValue::CRegistryValue(uint64_t v)
-	:	m_type(REG_QWORD)
-	,	m_blob(&v, sizeof(v))
-{
+	: m_type(REG_QWORD)
+	, m_blob(&v, sizeof(v)) {
 }
 
 /*!!!
 CRegistryValue::CRegistryValue(LPCSTR s)
-:	m_type(REG_SZ)
+: m_type(REG_SZ)
 {
 if (!s)
 s = "";
@@ -60,28 +57,26 @@ m_blob = Blob(s, strlen(s)+1); //!!!
 }*/
 
 CRegistryValue::CRegistryValue(RCString s, bool bExpand)
-	:	m_type(bExpand ? REG_EXPAND_SZ : REG_SZ)
-	,	m_blob((const TCHAR*)s, s != nullptr ? (s.length()+1)*sizeof(TCHAR) : 0)
-{
+	: m_type(bExpand ? REG_EXPAND_SZ : REG_SZ)
+	, m_blob(s != nullptr ? Blob((const TCHAR*)s, (s.length() + 1) * sizeof(TCHAR)) : Blob(nullptr)) {
 }
 
 CRegistryValue::CRegistryValue(RCSpan mb)
-	:	m_type(REG_BINARY)
-	,	m_blob(mb)
-{
+	: m_type(REG_BINARY)
+	, m_blob(mb) {
 }
 
 void CRegistryValue::Init(const CStringVector& ar) {
 	m_type = REG_MULTI_SZ;
 	size_t size = 1,
 		i;
-	for (i=0; i<ar.size(); i++)
-		size += ar[i].length()+1;
+	for (i = 0; i < ar.size(); i++)
+		size += ar[i].length() + 1;
 	m_blob.resize(size * sizeof(TCHAR));
-	TCHAR *p = (TCHAR*)m_blob.data();
-	for (i=0; i<ar.size(); i++) {
+	TCHAR* p = (TCHAR*)m_blob.data();
+	for (i = 0; i < ar.size(); i++) {
 		_tcscpy(p, ar[i]);
-		p += _tcslen(p)+1;
+		p += _tcslen(p) + 1;
 	}
 	*p = 0;
 }
@@ -111,7 +106,8 @@ CRegistryValue::operator uint64_t() const {
 CRegistryValue::operator String() const {
 	if (m_type != REG_SZ)
 		Throw(ExtErr::Registry);
-	return (const TCHAR*)m_blob.constData();
+	auto bb = !!m_blob; //!!!T
+	return !!m_blob ? String((const TCHAR*)m_blob.constData()) : String(nullptr);
 }
 
 CRegistryValue::operator Blob() const {
@@ -124,10 +120,10 @@ CRegistryValue::operator CStringVector() const {
 	if (m_type != REG_MULTI_SZ)
 		Throw(ExtErr::Registry);
 	vector<String> vec;
-	for (TCHAR *p=(TCHAR*)m_blob.constData(); *p;) {
+	for (TCHAR* p = (TCHAR*)m_blob.constData(); *p;) {
 		String s = p;
 		vec.push_back(s);
-		p += s.length()+1;
+		p += s.length() + 1;
 	}
 	return vec;
 }
@@ -136,7 +132,7 @@ CRegistryValue::operator CStringVector() const {
 
 void AFXAPI RegCheck(LONG v, LONG allowableError) {
 	if (v != ERROR_SUCCESS && v != allowableError)
-		Throw(HRESULT_FROM_WIN32(v));
+		ThrowWin32(v);
 }
 
 void RegistryKey::ReleaseHandle(intptr_t h) const {
@@ -144,11 +140,11 @@ void RegistryKey::ReleaseHandle(intptr_t h) const {
 }
 
 CRegistryValue CRegistryValues::operator[](int i) {
-	DWORD nameLen = m_key.GetMaxValueNameLen()+1,
+	DWORD nameLen = m_key.GetMaxValueNameLen() + 1,
 		valueLen = m_key.GetMaxValueLen(),
 		typ;
-	TCHAR *name = (TCHAR*)alloca(sizeof(TCHAR)*nameLen);
-	BYTE *value = (BYTE*)alloca(valueLen);
+	TCHAR* name = (TCHAR*)alloca(sizeof(TCHAR) * nameLen);
+	BYTE* value = (BYTE*)alloca(valueLen);
 	RegCheck(::RegEnumValue(m_key, i, name, &nameLen, 0, &typ, value, &valueLen));
 	CRegistryValue r = CRegistryValue(typ, value, valueLen);
 	r.m_name = name;
@@ -179,7 +175,7 @@ void RegistryKey::DeleteSubKeyTree(RCString subkey) {
 	{
 		RegistryKey key(_self, subkey);
 		vector<String> subkeys = key.GetSubKeyNames();
-		for (size_t i=0; i<subkeys.size(); i++)
+		for (size_t i = 0; i < subkeys.size(); i++)
 			key.DeleteSubKeyTree(subkeys[i]);
 	}
 	DeleteSubKey(subkey);
@@ -234,12 +230,11 @@ void RegistryKey::GetSubKey(int idx, RegistryKey& sk) {
 
 CStringVector RegistryKey::GetSubKeyNames() {
 	vector<String> ar;
-	for (int i=0;; i++) {
+	for (int i = 0;; i++) {
 		TCHAR subKey[256];
 		DWORD subKeyLen = size(subKey);
 		LONG rr = ::RegEnumKeyEx(_self, i, subKey, &subKeyLen, 0, 0, 0, 0);
-		switch (rr)
-		{
+		switch (rr) {
 		case ERROR_NO_MORE_ITEMS:
 			return ar;
 		default:
@@ -261,10 +256,10 @@ bool RegistryKey::ValueExists(RCString name) {
 #endif
 
 RegistryKey::RegistryKey(HKEY key, RCString subKey, bool create)
-	:	m_parent(key)
-	,	m_subKey(subKey)
-	,	m_create(create)
-	,	AccessRights(MAXIMUM_ALLOWED)			//!!! KEY_READ|KEY_WRITE|KEY_CREATE_SUB_KEY
+	: m_parent(key)
+	, m_subKey(subKey)
+	, m_create(create)
+	, AccessRights(MAXIMUM_ALLOWED)			//!!! KEY_READ|KEY_WRITE|KEY_CREATE_SUB_KEY
 {
 }
 
@@ -277,7 +272,7 @@ void RegistryKey::Create() const {
 		HKEY hKey;
 #if UCFG_WIN32
 		DWORD dw;
-		RegCheck(::RegCreateKeyEx(m_parent, m_subKey, 0, 0, REG_OPTION_NON_VOLATILE, AccessRights, 0, (HKEY *)&hKey, &dw));
+		RegCheck(::RegCreateKeyEx(m_parent, m_subKey, 0, 0, REG_OPTION_NON_VOLATILE, AccessRights, 0, (HKEY*)&hKey, &dw));
 #else
 		OBJECT_ATTRIBUTES oa;
 		InitializeObjectAttributes(&oa, m_subKey, OBJ_KERNEL_HANDLE, m_parent, nullptr);
@@ -324,9 +319,9 @@ void RegistryKey::Flush() {
 
 void RegistryKey::DeleteValue(RCString name, bool throwOnMissingValue) {
 #if UCFG_WIN32
-	RegCheck(::RegDeleteValue(_self, name), throwOnMissingValue ? ERROR_FILE_NOT_FOUND : ERROR_SUCCESS);
+	RegCheck(::RegDeleteValue(_self, name), throwOnMissingValue ? ERROR_SUCCESS: ERROR_FILE_NOT_FOUND);
 #else
-	NtCheck(::ZwDeleteValueKey(_self, name), throwOnMissingValue ? STATUS_OBJECT_NAME_NOT_FOUND  : STATUS_SUCCESS);
+	NtCheck(::ZwDeleteValueKey(_self, name), throwOnMissingValue ? STATUS_SUCCESS : STATUS_OBJECT_NAME_NOT_FOUND);
 #endif
 }
 
@@ -349,13 +344,13 @@ RegistryKey::CRegKeyInfo RegistryKey::GetRegKeyInfo() {
 	KEY_FULL_INFORMATION kfi;
 	ULONG rLen;
 	NtCheck(::ZwQueryKey(_self, KeyFullInformation, &kfi, sizeof kfi, &rLen));
-	rki.SubKeys			= kfi.SubKeys;
-	rki.MaxSubKeyLen	= kfi.MaxNameLen;
-	rki.MaxClassLen		= kfi.MaxClassLen;
-	rki.Values			= kfi.Values;
+	rki.SubKeys = kfi.SubKeys;
+	rki.MaxSubKeyLen = kfi.MaxNameLen;
+	rki.MaxClassLen = kfi.MaxClassLen;
+	rki.Values = kfi.Values;
 	rki.MaxValueNameLen = kfi.MaxValueNameLen;
-	rki.MaxValueLen		 = kfi.MaxValueDataLen;
-	rki.LastWriteTime	= DateTime(kfi.LastWriteTime.QuadPart);
+	rki.MaxValueLen = kfi.MaxValueDataLen;
+	rki.LastWriteTime = DateTime(kfi.LastWriteTime.QuadPart);
 #endif
 	return rki;
 }
@@ -374,15 +369,15 @@ CRegistryValue RegistryKey::QueryValue(RCString name) {
 #if !UCFG_WIN32
 	valueLen += sizeof(KEY_VALUE_PARTIAL_INFORMATION);
 #endif
-	uint8_t *p = (uint8_t*)alloca(valueLen);
+	uint8_t* p = (uint8_t*)alloca(valueLen);
 #if UCFG_WIN32
 	DWORD typ;
 	RegCheck(::RegQueryValueEx(_self, name, 0, &typ, p, &valueLen));
 	CRegistryValue r(typ, p, valueLen);
 #else
 	ULONG rLen;
-	NtCheck(::ZwQueryValueKey(_self, name,  KeyValuePartialInformation, p, valueLen, &rLen));
-	KEY_VALUE_PARTIAL_INFORMATION *pi = (KEY_VALUE_PARTIAL_INFORMATION*)p;
+	NtCheck(::ZwQueryValueKey(_self, name, KeyValuePartialInformation, p, valueLen, &rLen));
+	KEY_VALUE_PARTIAL_INFORMATION* pi = (KEY_VALUE_PARTIAL_INFORMATION*)p;
 	CRegistryValue r(pi->Type, pi->Data, pi->DataLength);
 #endif
 	r.m_name = name;
@@ -395,7 +390,7 @@ CRegistryValue RegistryKey::TryQueryValue(RCString name, const CRegistryValue& d
 #if !UCFG_WIN32
 	valueLen += sizeof(KEY_VALUE_PARTIAL_INFORMATION);
 #endif
-	uint8_t *p = (uint8_t*)alloca(valueLen);
+	uint8_t* p = (uint8_t*)alloca(valueLen);
 #if UCFG_WIN32
 	DWORD typ;
 	LONG rc = ::RegQueryValueEx(_self, name, 0, &typ, p, &valueLen);
@@ -403,14 +398,13 @@ CRegistryValue RegistryKey::TryQueryValue(RCString name, const CRegistryValue& d
 		CRegistryValue r(typ, p, valueLen);
 		r.m_name = name;
 		return r;
-	} else {
-		if (rc != ERROR_FILE_NOT_FOUND)
-			Throw(HRESULT_FROM_WIN32(rc));
+	} else if (rc != ERROR_FILE_NOT_FOUND) {
+		ThrowWin32(rc);
 	}
 #else
 	ULONG rLen;
-	if (NT_SUCCESS(::ZwQueryValueKey(_self, name,  KeyValuePartialInformation, p, valueLen, &rLen))) {
-		KEY_VALUE_PARTIAL_INFORMATION *pi = (KEY_VALUE_PARTIAL_INFORMATION*)p;
+	if (NT_SUCCESS(::ZwQueryValueKey(_self, name, KeyValuePartialInformation, p, valueLen, &rLen))) {
+		KEY_VALUE_PARTIAL_INFORMATION* pi = (KEY_VALUE_PARTIAL_INFORMATION*)p;
 		CRegistryValue r(pi->Type, pi->Data, pi->DataLength);
 		r.m_name = name;
 		return r;
@@ -436,11 +430,9 @@ RegistryKey::operator HKEY() const {
 	return (HKEY)DangerousGetHandleEx();
 }
 
-#if UCFG_WIN32
-
-typedef LONG (APIENTRY *PFN_RegDisableReflectionKey)(HKEY hBase);
-typedef LONG (APIENTRY *PFN_RegEnableReflectionKey)(HKEY hBase);
-typedef LONG (APIENTRY *PFN_RegQueryReflectionKey)(HKEY hBase, BOOL *bIsReflectionDisabled);
+typedef LONG(APIENTRY* PFN_RegDisableReflectionKey)(HKEY hBase);
+typedef LONG(APIENTRY* PFN_RegEnableReflectionKey)(HKEY hBase);
+typedef LONG(APIENTRY* PFN_RegQueryReflectionKey)(HKEY hBase, BOOL* bIsReflectionDisabled);
 
 bool RegistryKey::get_Reflected() {
 	BOOL bIsDisabled = TRUE;
@@ -455,7 +447,7 @@ void RegistryKey::put_Reflected(bool v) {
 	if (pfn)
 		RegCheck(pfn(_self));
 }
-#endif
+#endif // UCFG_USE_REGISTRY
 
 } // Ext::
 

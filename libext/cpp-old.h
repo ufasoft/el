@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -14,7 +14,6 @@
 #endif
 
 #if UCFG_CPP11_ENUM
-
 #	define ENUM_CLASS(name) enum class name
 #	define ENUM_CLASS_BASED(name, base) enum class name : base
 #	define END_ENUM_CLASS(name) ; 	inline name operator|(name a, name b) { return (name)((int)a|(int)b); } \
@@ -76,18 +75,7 @@ namespace std {
 #	define THREAD_LOCAL __declspec(thread)
 #endif
 
-#if UCFG_CPP11_EXPLICIT_CAST
-#	define EXPLICIT_OPERATOR_BOOL explicit operator bool
-#	define EXT_OPERATOR_BOOL explicit operator bool
-#	define EXT_CONVERTIBLE_TO_TRUE true
-#	define _TYPEDEF_BOOL_TYPE
-#else
-#	define EXPLICIT_OPERATOR_BOOL struct _Boolean { int i; }; operator int _Boolean::*
-#	define EXT_OPERATOR_BOOL operator _Bool_type
-#	define EXT_CONVERTIBLE_TO_TRUE (&_Boolean::i)
-#endif
-
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !UCFG_USE_OLD_MSVCRTDLL
 #   include <eh.h>
 #endif
 
@@ -193,56 +181,7 @@ T clamp(const T& v, const T& lo, const T& hi) {
 	return clamp<T, std::less<T>>(v, lo, hi, std::less<T>());
 }
 
-#endif // #if !UCFG_STD_OBSERVER_PTR
-
-#if !UCFG_STD_OBSERVER_PTR
-
-template <class T>
-class observer_ptr : public Ext::PtrBase<T> {
-	typedef Ext::PtrBase<T> base;
-
-	using base::m_p;
-public:
-	using typename base::element_type;
-	using typename base::pointer;
-	using typename base::reference;
-
-	observer_ptr() noexcept
-		: base(0) {
-	}
-
-	observer_ptr(nullptr_t) noexcept
-		: base(0) {
-	}
-
-	observer_ptr(const observer_ptr& p) noexcept
-		: base(p.m_p) {
-	}
-
-	explicit observer_ptr(T *p) noexcept
-		: base(p) {
-	}
-
-//!!!R	T *get() const noexcept { return m_p; }
-//!!!R	T *operator->() const EXT_FAST_NOEXCEPT { return get(); }
-
-	EXT_OPERATOR_BOOL() const noexcept { return m_p ? _CONVERTIBLE_TO_TRUE : 0; }
-
-	T& operator*() const EXT_FAST_NOEXCEPT { return *m_p; }
-	operator pointer() const EXT_FAST_NOEXCEPT { return m_p; }
-	bool operator==(T *p) const noexcept { return m_p == p; }
-	bool operator<(T *p) const noexcept { return m_p < p; }
-
-/*!!!R	pointer release() noexcept {		// std::exchange may be unavailable yet
-		pointer r = m_p;
-		m_p = nullptr;
-		return r;
-	}
-	*/
-	void reset(pointer p) { m_p = p; }										//!!!TODO  = nullptr
-};
-
-#endif // !UCFG_STD_OBSERVER_PTR
+#endif // UCFG_STD_CLAMP
 
 
 

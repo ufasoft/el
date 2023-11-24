@@ -39,8 +39,12 @@ inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v, const char *funname
 class CPrintable {
 public:
 	virtual ~CPrintable() {}
+#if UCFG_TRC
 	virtual void Print(std::ostream& os) const;
 	virtual String ToString() const;
+#else
+	virtual String ToString() const { return ""; }
+#endif
 };
 
 
@@ -53,11 +57,11 @@ public:
 	vector<uint64_t> Frames;
 
 	CStackTrace()
-		:	AddrSize(sizeof(void*))
+		: AddrSize(sizeof(void*))
 	{}
 
 	static CStackTrace AFXAPI FromCurrentThread();
-	String ToString() const;
+	String ToString() const override;
 };
 #endif
 
@@ -71,7 +75,7 @@ public:
 	typedef Exception class_type;
 
 #if !UCFG_WDM
-	static thread_specific_ptr<String> t_LastStringArg;
+	static thread_local const wchar_t* t_LastStringArg;
 #endif
 
 	mutable String m_message;
@@ -79,7 +83,7 @@ public:
 	typedef std::map<String, String> CDataMap;
 	CDataMap Data;
 
-#if !UCFG_WCE
+#if UCFG_STACK_TRACE
 	CStackTrace StackTrace;
 #endif	
 
@@ -95,36 +99,34 @@ public:
 	const char* what() const noexcept override;
 protected:
 	virtual String get_Message() const;
+private:
+	void TryStackTrace();
 };
 
 class ExcLastStringArgKeeper {
 public:
-	String m_prev;
+	const wchar_t* m_prev;
 
-	ExcLastStringArgKeeper(RCString s) {
+	ExcLastStringArgKeeper(const wchar_t* s) {
 #if !UCFG_WDM
-		String *ps = Exception::t_LastStringArg;
-		if (!ps)
-			Exception::t_LastStringArg.reset(ps = new String);
-		m_prev = exchange(*ps, s);
+		m_prev = Exception::t_LastStringArg;
+		Exception::t_LastStringArg = s;
 #endif
 	}
 
 	~ExcLastStringArgKeeper() {
 #if !UCFG_WDM
-		*Exception::t_LastStringArg = m_prev;
+		Exception::t_LastStringArg = m_prev;
 #endif
 	}
 
-	operator const String&() const {
+	operator const wchar_t *() const {
 #if !UCFG_WDM
-		String *ps = Exception::t_LastStringArg;
-		if (!ps)
-			Exception::t_LastStringArg.reset(ps = new String);
-		return *ps;
+		return Exception::t_LastStringArg;
 #endif
 	}
 
+/*!!!?
 	operator const char *() const {
 #if !UCFG_WDM
 		String *ps = Exception::t_LastStringArg;
@@ -142,6 +144,7 @@ public:
 		return *ps;
 #endif
 	}
+	*/
 };
 
 #define EXT_DEFINE_EXC(c, b, code) class c : public b { public: c(HRESULT hr = code) : b(hr) {} };
@@ -322,6 +325,9 @@ inline void ResourceRelease(const H& h) {
 
 template <typename H>
 class ResourceWrapper {
+#if UCFG_USE_IN_EXCEPTION
+	CInException InException;
+#endif
 public:
 	typedef HandleTraits<H> traits_type;
 	typedef typename HandleTraits<H>::handle_type handle_type;
@@ -333,13 +339,14 @@ public:
 	{}
 
 	ResourceWrapper(const ResourceWrapper& res)
-		:	m_h(traits_type::ResourseNull())
+		: m_h(traits_type::ResourseNull())
 	{
 		operator=(res);
 	}
 
 	~ResourceWrapper() {
 		if (Valid()) {
+#if UCFG_USE_IN_EXCEPTION
 			if (!InException)
 				traits_type::ResourceRelease(m_h);
 			else {
@@ -349,6 +356,9 @@ public:
 				//	TRC(0, e);
 				}
 			}
+#else
+			traits_type::ResourceRelease(m_h);
+#endif
 		}
 	}
 
@@ -389,8 +399,6 @@ public:
 			m_h = traits_type::Retain(res.m_h);
 		return *this;
 	}
-private:
-	CInException InException;
 };
 
 

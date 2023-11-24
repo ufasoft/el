@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef _DLL
-#	define _AFXDLL
-#endif
-
 #if !defined(DEBUG) && defined(_DEBUG)
 #	define DEBUG 1
 #endif
@@ -21,7 +17,7 @@
 #endif
 
 #ifndef _WIN32_IE
-#	define _WIN32_IE 0x500
+#	define _WIN32_IE 0x601
 #endif
 
 #ifdef _WIN32
@@ -94,6 +90,19 @@
 #	define UCFG_PLATFORM_X64 0
 #endif
 
+
+#ifdef _M_ARM
+#	define UCFG_PLATFORM_ARM 1
+#else
+#	define UCFG_PLATFORM_ARM 0
+#endif
+
+#ifdef _M_ARM64
+#	define UCFG_PLATFORM_ARM64 1
+#else
+#	define UCFG_PLATFORM_ARM64 0
+#endif
+
 #ifdef _M_X64
 #	define UCFG_PLATFORM_SHORT_NAME "x64"
 #elif defined(_M_IX86)
@@ -102,11 +111,13 @@
 #	define UCFG_PLATFORM_SHORT_NAME "mips"
 #elif defined(_M_ARM)
 #	define UCFG_PLATFORM_SHORT_NAME "arm"
+#elif defined(_M_ARM64)
+#	define UCFG_PLATFORM_SHORT_NAME "arm64"
 #else
 #	define UCFG_PLATFORM_SHORT_NAME "platform"
 #endif
 
-#if UCFG_PLATFORM_IX86 || UCFG_PLATFORM_X64 || defined(_M_MIPS) || defined(_M_ARM)
+#if UCFG_PLATFORM_IX86 || UCFG_PLATFORM_X64 || defined(_M_MIPS) || defined(_M_ARM) || defined(_M_ARM64)
 #	define UCFG_LITLE_ENDIAN 1
 #endif
 
@@ -178,13 +189,16 @@
 
 //!!!? not defined in SDK
 //#define _WIN32_WINNT_WINTHRESHOLD 0x0700		//!!!? defined in sdkddkver.h
+#define _WIN32_WINNT_WIN10_FE 0x0A00
 #define _WIN32_WINNT_WIN10_TH2 0x0A01
 #define _WIN32_WINNT_WIN10_RS1 0x0A02
 #define _WIN32_WINNT_WIN10_RS2 0x0A03
+#define _WIN32_WINNT_WIN10_NI 0x0A03  	//!!!?
 #define _WIN32_WINNT_WIN10_RS3 0x0A04
 #define _WIN32_WINNT_WIN10_RS4 0x0A05
 #define _NT_TARGET_VERSION_WIN10_RS4 _WIN32_WINNT_WIN10_RS4
 #define _WIN32_WINNT_WIN10_RS5 0x0A06
+#define _WIN32_WINNT_WIN10_19H2 0x0A07	//!!!?
 
 #define NTDDI_WIN7SP1 0x06010001 //!!!?
 
@@ -292,11 +306,20 @@
 #	define UCFG_CPLUSPLUS 0
 #endif
 
+#ifndef UCFG_CPP23
+#	if UCFG_CPLUSPLUS >= 202300 || (UCFG_MSVC_LANG >= 202002L) || (UCFG_GNUC_VERSION && UCFG_CPLUSPLUS >= 202300)
+#		define UCFG_CPP23 1
+#	else
+#		define UCFG_CPP23 0
+#	endif
+#endif
+
+
 #ifndef UCFG_CPP20
 #	if UCFG_CPLUSPLUS >= 202000 || (UCFG_MSVC_LANG >= 202000) || (UCFG_GNUC_VERSION && UCFG_CPLUSPLUS >= 201709)
 #		define UCFG_CPP20 1
 #	else
-#		define UCFG_CPP20 0
+#		define UCFG_CPP20 UCFG_CPP23
 #	endif
 #endif
 
@@ -333,7 +356,9 @@
 #endif
 
 #ifndef UCFG_CPP11_EXPLICIT_CAST
-#	if defined(_MSC_VER) && _MSC_VER <= 1700 || defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
+#	if defined(__cpp_conditional_explicit)
+#		define UCFG_CPP11_EXPLICIT_CAST 1
+#	elif defined(_MSC_VER) && _MSC_VER <= 1700 || defined(__GXX_EXPERIMENTAL_CXX0X__) && __GNUC__ == 4 && __GNUC_MINOR__ < 5
 #		define UCFG_CPP11_EXPLICIT_CAST 0
 #	else
 #		define UCFG_CPP11_EXPLICIT_CAST UCFG_CPP11
@@ -341,7 +366,7 @@
 #endif
 
 #ifndef UCFG_CPP11_NULLPTR
-#	if defined(_NATIVE_NULLPTR_SUPPORTED)
+#	if defined(_NATIVE_NULLPTR_SUPPORTED) || defined(__cpp_lib_is_null_pointer)
 #		define UCFG_CPP11_NULLPTR 1
 #	elif defined(_MSC_VER) && _MSC_VER < 1600
 #		define UCFG_CPP11_NULLPTR 0
@@ -357,12 +382,18 @@
 #endif
 
 #ifndef UCFG_CPP11_FOR_EACH
-#	define UCFG_CPP11_FOR_EACH UCFG_CPP11
+#	if defined(__cpp_range_based_for)
+#		define UCFG_CPP11_FOR_EACH 1
+#	else
+#		define UCFG_CPP11_FOR_EACH UCFG_CPP11
+#	endif
 #endif
 
 #ifndef UCFG_CPP11_RVALUE
 #	if defined(_MSC_VER) && _MSC_VER < 1600
 #		define UCFG_CPP11_RVALUE 0
+#	elif defined(__cpp_rvalue_references)
+#		define UCFG_CPP11_RVALUE 1
 #	else
 #		define UCFG_CPP11_RVALUE UCFG_CPP11
 #	endif
@@ -386,6 +417,13 @@
 #	else
 #		define EXT_NOEXCEPT
 #	endif
+#endif
+
+#if UCFG_CPP14_NOEXCEPT
+#	define EXT_FAST_NOEXCEPT //	noexcept prevents inline expansion in VC
+#else
+#	define noexcept throw()
+#	define EXT_FAST_NOEXCEPT noexcept
 #endif
 
 #ifndef UCFG_C99_FUNC
@@ -412,11 +450,19 @@
 #	endif
 
 #	ifndef UCFG_STD_OPTIONAL
-#		define UCFG_STD_OPTIONAL UCFG_CPP17
+#		if defined(__cpp_lib_optional)
+#			define UCFG_STD_OPTIONAL 1
+#		else
+#			define UCFG_STD_OPTIONAL UCFG_CPP17
+#		endif
 #	endif
 
 #	ifndef UCFG_STD_SPAN
-#		define UCFG_STD_SPAN (UCFG_CPP20)
+#		if defined(__cpp_lib_span)
+#			define UCFG_STD_SPAN 1
+#		else
+#			define UCFG_STD_SPAN (UCFG_CPP20)
+#		endif
 #	endif
 
 #	ifndef UCFG_STD_IDENTITY
@@ -424,7 +470,11 @@
 #	endif
 
 #	ifndef UCFG_STD_CONCEPTS
-#		define UCFG_STD_CONCEPTS (UCFG_CPP20 || UCFG_MSVC_LANG >= 201704)
+#		if defined(__cpp_lib_concepts)
+#			define UCFG_STD_CONCEPTS 1
+#		else
+#			define UCFG_STD_CONCEPTS (UCFG_CPP20 || UCFG_MSVC_LANG >= 201704)
+#		endif
 #	endif
 
 #	ifndef UCFG_CPP11_HAVE_REGEX
@@ -436,7 +486,11 @@
 #	endif
 
 #	ifndef UCFG_STD_FILESYSTEM
-#		define UCFG_STD_FILESYSTEM (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCPP_VERSION < 1200))
+#		if defined(__cpp_lib_filesystem)
+#			define UCFG_STD_FILESYSTEM 1
+#		else
+#			define UCFG_STD_FILESYSTEM (UCFG_CPP14 && !(UCFG_LIBCPP_VERSION && UCFG_LIBCPP_VERSION < 1200))
+#		endif
 #	endif
 
 #	ifndef UCFG_STD_DYNAMIC_BITSET
@@ -457,7 +511,11 @@
 #endif // __cplusplus
 
 #ifndef UCFG_HAVE_STATIC_ASSERT
-#	define UCFG_HAVE_STATIC_ASSERT UCFG_CPP11
+#	if defined(__cpp_static_assert)
+#		define UCFG_HAVE_STATIC_ASSERT 1
+#	else
+#		define UCFG_HAVE_STATIC_ASSERT UCFG_CPP11
+#	endif
 #endif
 
 #ifndef UCFG_STD_DECIMAL
@@ -481,7 +539,11 @@
 #endif
 
 #ifndef UCFG_STD_UNCAUGHT_EXCEPTIONS
-#	define UCFG_STD_UNCAUGHT_EXCEPTIONS (UCFG_CPP17 || UCFG_MSC_VERSION >= 1900)
+#	if defined(__cpp_lib_uncaught_exceptions)
+#		define UCFG_STD_UNCAUGHT_EXCEPTIONS 1
+#	else
+#		define UCFG_STD_UNCAUGHT_EXCEPTIONS (UCFG_CPP17 || UCFG_MSC_VERSION >= 1900)
+#	endif
 #endif
 
 #if UCFG_WDM || (UCFG_MSC_VERSION && !defined _CPPUNWIND)
@@ -493,7 +555,11 @@
 
 
 #ifndef UCFG_STD_CLAMP
-#	define UCFG_STD_CLAMP UCFG_CPP17
+#	if defined(__cpp_lib_clamp)
+#		define UCFG_STD_CLAMP 1
+#	else
+#		define UCFG_STD_CLAMP UCFG_CPP17
+#	endif
 #endif
 
 #ifndef UCFG_STD_OBSERVER_PTR
@@ -510,7 +576,9 @@
 
 #define _HAS_NAMESPACE 1
 
+#define _ATL_DLL_IMPL
 #define _ATL_NO_AUTOMATIC_NAMESPACE
+#define _ATL_NO_DEBUG_CRT
 
 #define _ATL_ALLOW_CHAR_UNSIGNED // to prevent ATL error in VS11
 
@@ -566,7 +634,7 @@
 #	define UCFG_GNUC 0
 #endif
 
-#if UCFG_WDM && (UCFG_CPU_X86_X64 || defined(_M_ARM)) //!!!?
+#if UCFG_WDM && (UCFG_CPU_X86_X64 || defined(_M_ARM) || defined(_M_ARM64)) //!!!?
 #	define UCFG_FPU 0
 #else
 #	define UCFG_FPU 1
@@ -612,7 +680,7 @@
 #endif
 
 #if UCFG_GNUC_VERSION || UCFG_CLANG_VERSION
-#	if defined(_M_X64) || defined(_M_ARM) || defined(_M_MIPS)
+#	if defined(_M_X64) || defined(_M_ARM) || defined(_M_ARM64) || defined(_M_MIPS)
 #		define __cdecl
 #		define _cdecl
 #		define __stdcall
@@ -653,7 +721,7 @@
 #		ifndef _thiscall
 #			define _thiscall __attribute((__thiscall__))
 #		endif
-#	endif // defined(_M_X64) || defined(_M_ARM) || defined(_M_MIPS)
+#	endif // defined(_M_X64) || defined(_M_ARM)|| defined(_M_ARM64) || defined(_M_MIPS)
 
 #	ifndef PASCAL
 #		define PASCAL
@@ -663,3 +731,60 @@
 #ifndef __GLIBC_USE
 #	define __GLIBC_USE(x) 0
 #endif
+
+#define _HAS_IF_CONSTEXPR 1
+
+#define _CRT_DECLARE_GLOBAL_VARIABLES_DIRECTLY 1
+#define _CRT_GLOBAL_STATE_ISOLATION 1
+
+#ifndef UCFG_LOCALE
+#	define UCFG_LOCALE 1
+#endif
+
+#ifndef UCFG_USE_LOCALE
+#	define UCFG_USE_LOCALE UCFG_LOCALE
+#endif
+
+#ifndef UCFG_ERROR_MESSAGE
+#	define UCFG_ERROR_MESSAGE 1
+#endif
+
+#ifndef UCFG_USE_REGISTRY
+#	define UCFG_USE_REGISTRY UCFG_WIN32
+#endif
+
+#ifndef UCFG_USE_WIN_RTLP_PROXY
+#	define UCFG_USE_WIN_RTLP_PROXY 0
+#endif
+
+
+#ifndef UCFG_EH_EXPORT
+#	define UCFG_EH_EXPORT 1
+#endif
+
+
+#ifndef UCFG_IMP_RtlUnwindEx
+#	define UCFG_IMP_RtlUnwindEx (UCFG_EH_PDATA && !UCFG_EH_OS_UNWIND)
+#endif
+
+#ifndef UCFG_IMP_RtlVirtualUnwind
+#	define UCFG_IMP_RtlVirtualUnwind 0
+#endif
+
+
+#ifndef UCFG_IMP_C_SPECIFIC_HANDLER
+#	define UCFG_IMP_C_SPECIFIC_HANDLER (UCFG_PLATFORM_X64 && !UCFG_EH_OS_UNWIND)
+#endif
+
+#ifndef UCFG_AFXDLL
+#	define UCFG_AFXDLL defined(_DLL)
+#endif
+
+#if UCFG_AFXDLL
+#	define _AFXDLL
+#endif
+
+#ifndef UCFG_USE_MODULE_STATE
+#	define UCFG_USE_MODULE_STATE 1
+#endif
+

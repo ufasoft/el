@@ -1,11 +1,15 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
 
-#include <el/libext/win32/ext-com.h>
+#include <el/libext/win32/com.h>
+
+#if UCFG_OLE
+#	include "ole.h"
+#endif
 
 namespace Ext {
 
@@ -105,7 +109,7 @@ AFX_API CComPtr<IDispatch> AFXAPI AsDispatch(const VARIANT& v);
 } \
 	STDMETHOD(Invoke)(DISPID dispid, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pdispparams, VARIANT *pVarResult, EXCEPINFO *pexcepinfo, UINT *puArgErr) { \
 	return CComDispatchImpl::Invoke(dispid, riid, lcid, wFlags, pdispparams, pVarResult, pexcepinfo, puArgErr); \
-} 
+}
 
 #define DECLARE_STANDARD_CLASSFACTORY() \
 	STDMETHOD(CreateInstance)(LPUNKNOWN pUnkOuter, REFIID riid, void** ppvObj) { \
@@ -237,7 +241,7 @@ public:
 protected:
 	ITypeInfo *get_TypeInfo() {
 		return m_pClass->GetTypeInfo(&__uuidof(I));
-	}  
+	}
 };
 
 template <class T> class CEnumArray {
@@ -305,7 +309,7 @@ public:
 
 	IComEnumImpl(const IComEnumImpl& impl)
 		:	m_i(impl.m_i)
-		,	m_ar(impl.m_ar)     
+		,	m_ar(impl.m_ar)
 	{
 	}
 
@@ -376,7 +380,7 @@ public:
 template <class T> class IConnectionPointContainerImpl : public IConnectionPointContainer,
 public CEnumArray<IConnectionPoint*>
 {
-protected:  
+protected:
 	virtual CComClass *GetComClass() =0;
 public:
 	IConnectionPointContainerImpl()
@@ -392,14 +396,14 @@ public:
 	}
 
 	STDMETHOD(EnumConnectionPoints)(IEnumConnectionPoints **ppEnum)
-		METHOD_BEGIN_EX {
+	METHOD_BEGIN_EX {
 		IComEnumImpl<IEnumConnectionPoints, IConnectionPoint*, _CopyInterface<IConnectionPoint> > *pEnum =
 		new IComEnumImpl<IEnumConnectionPoints, IConnectionPoint*, _CopyInterface<IConnectionPoint> >(this);
 	return pEnum->InternalQueryInterface(IID_IEnumConnectionPoints, (void**)ppEnum);
 	} METHOD_END
 
-		STDMETHOD(FindConnectionPoint)(REFIID riid, IConnectionPoint **ppCP)
-		METHOD_BEGIN_EX {
+	STDMETHOD(FindConnectionPoint)(REFIID riid, IConnectionPoint **ppCP)
+	METHOD_BEGIN_EX {
 		if (ppCP == NULL)
 			return E_POINTER;
 	*ppCP = NULL;
@@ -474,9 +478,8 @@ public:
 			return ((T*)this)->ExternalQueryInterface(IID_IConnectionPointContainer, (void**)ppCPC);
 	} METHOD_END
 
-		STDMETHOD(Advise)(IUnknown* pUnkSink, DWORD* pdwCookie)
-		METHOD_BEGIN_EX {
-		CONNECTDATA cd;
+	STDMETHOD(Advise)(IUnknown* pUnkSink, DWORD* pdwCookie) METHOD_BEGIN_EX {
+	CONNECTDATA cd;
 	IID iid;
 	OleCheck(GetConnectionInterface(&iid));
 	OleCheck(pUnkSink->QueryInterface(iid, (void**)&cd.pUnk));
@@ -484,9 +487,8 @@ public:
 	m_ar.push_back(cd);
 	} METHOD_END
 
-		STDMETHOD(Unadvise)(DWORD dwCookie)
-		METHOD_BEGIN_EX {
-		for (vector<CONNECTDATA>::iterator i(m_ar.begin()); i!=m_ar.end(); ++i)
+	STDMETHODIMP Unadvise(DWORD dwCookie) METHOD_BEGIN_EX {
+		for (vector<CONNECTDATA>::iterator i(m_ar.begin()); i != m_ar.end(); ++i)
 		{
 			if (i->dwCookie == dwCookie)
 			{
@@ -495,14 +497,13 @@ public:
 				break;
 			}
 		}
-		} METHOD_END
+	} METHOD_END
 
-			STDMETHOD(EnumConnections)(IEnumConnections** ppEnum)
-			METHOD_BEGIN_EX {
-			IComEnumImpl<IEnumConnections, CONNECTDATA> *pEnum = new IComEnumImpl<IEnumConnections, CONNECTDATA>(this);
-		return pEnum->InternalQueryInterface(IID_IEnumConnections, (void**)ppEnum);
-		} METHOD_END
-protected:  
+	STDMETHOD(EnumConnections)(IEnumConnections** ppEnum) METHOD_BEGIN_EX {
+		IComEnumImpl<IEnumConnections, CONNECTDATA> *pEnum = new IComEnumImpl<IEnumConnections, CONNECTDATA>(this);
+	return pEnum->InternalQueryInterface(IID_IEnumConnections, (void**)ppEnum);
+	} METHOD_END
+protected:
 	virtual CComClass *GetComClass() =0;
 };
 
@@ -516,134 +517,6 @@ public:
 	}
 };
 
-#if !UCFG_WCE
-
-class COleControlSite : public CComObjectRootBase,
-	public IOleClientSite,
-	public IOleInPlaceSite,
-	public IOleControlSite              
-{
-	STDMETHOD(SaveObject)();
-	STDMETHOD(GetMoniker)(DWORD, DWORD, LPMONIKER*);
-	STDMETHOD(GetContainer)(LPOLECONTAINER*);
-	STDMETHOD(ShowObject)();
-	STDMETHOD(OnShowWindow)(BOOL);
-	STDMETHOD(RequestNewObjectLayout)();
-
-	STDMETHOD(GetWindow)(HWND*);
-	STDMETHOD(ContextSensitiveHelp)(BOOL);
-	STDMETHOD(CanInPlaceActivate)();
-	STDMETHOD(OnInPlaceActivate)();
-	STDMETHOD(OnUIActivate)();
-	STDMETHOD(GetWindowContext)(LPOLEINPLACEFRAME*, LPOLEINPLACEUIWINDOW*, LPRECT, LPRECT, LPOLEINPLACEFRAMEINFO);
-	STDMETHOD(Scroll)(SIZE);
-	STDMETHOD(OnUIDeactivate)(BOOL);
-	STDMETHOD(OnInPlaceDeactivate)();
-	STDMETHOD(DiscardUndoState)();
-	STDMETHOD(DeactivateAndUndo)();
-	STDMETHOD(OnPosRectChange)(LPCRECT);
-
-	STDMETHOD(OnControlInfoChanged)();
-	STDMETHOD(LockInPlaceActive)(BOOL fLock);
-	STDMETHOD(GetExtendedControl)(LPDISPATCH* ppDisp);
-	STDMETHOD(TransformCoords)(POINTL* lpptlHimetric, POINTF* lpptfContainer, DWORD flags);
-	STDMETHOD(TranslateAccelerator)(LPMSG lpMsg, DWORD grfModifiers);
-	STDMETHOD(OnFocus)(BOOL fGotFocus);
-	STDMETHOD(ShowPropertyFrame)();
-
-	_EXT_BEGIN_COM_MAP(COleControlSite)
-		_EXT_COM_INTERFACE_ENTRY(IOleClientSite)
-		_EXT_COM_INTERFACE_ENTRY(IOleInPlaceSite)
-		_EXT_COM_INTERFACE_ENTRY(IOleControlSite)
-		_EXT_END_COM_MAP()
-protected:
-	void OnFinalRelease();
-	void AttachWindow();
-	void DetachWindow();
-	void CreateOrLoad(REFCLSID clsid, Stream *pStream, BOOL bStorage, BSTR bstrLicKey);
-	void SetExtent();
-public:
-	DECLARE_STANDARD_UNKNOWN()
-
-	CWnd *m_pWndCtrl;
-	COleControlContainer *m_pCtrlCont;
-	COleDispatchDriver m_dispDriver;
-	UINT m_nID;
-	DWORD m_dwStyleMask;
-	DWORD m_dwStyle;
-	DWORD m_dwMiscStatus;
-	Rectangle m_rect;
-	HWND m_hWnd;
-	CComPtr<IOleObject> m_iObject;
-	CComPtr<IOleInPlaceObject> m_iInPlaceObject;
-
-	COleControlSite(COleControlContainer *pCtrlCont);
-	~COleControlSite();
-	void CreateControl(CWnd* pWndCtrl, REFCLSID clsid, LPCTSTR lpszWindowName, DWORD dwStyle, const RECT& rect, UINT nID,
-		Stream *pStream = 0, BOOL bStorage=FALSE, BSTR bstrLicKey=NULL);
-	void CreateControl(CWnd* pWndCtrl, REFCLSID clsid, LPCTSTR lpszWindowName, DWORD dwStyle, const POINT* ppt,
-		const SIZE* psize, UINT nID, Stream *pStream = 0, BOOL bStorage=FALSE, BSTR bstrLicKey=NULL);
-	virtual void DoVerb(LONG nVerb, LPMSG lpMsg = NULL);
-	void InvokeHelperV(DISPID dwDispID, WORD wFlags, VARTYPE vtRet, void* pvRet, const BYTE* pbParamInfo, va_list argList);
-	virtual void SetPos(const CWnd* pWndInsertAfter, int x, int y, int cx, int cy, UINT nFlags);
-	virtual void DestroyControl();
-	virtual void ShowWindow(int nCmdShow);
-};
-
-class COleControlContainer : public CComObjectRootBase,
-	public IOleInPlaceFrame,
-	public IOleContainer
-{
-	STDMETHOD(GetWindow)(HWND*);
-	STDMETHOD(ContextSensitiveHelp)(BOOL);
-	STDMETHOD(GetBorder)(LPRECT);
-	STDMETHOD(RequestBorderSpace)(LPCBORDERWIDTHS);
-	STDMETHOD(SetBorderSpace)(LPCBORDERWIDTHS);
-	STDMETHOD(SetActiveObject)(LPOLEINPLACEACTIVEOBJECT, LPCOLESTR);
-	STDMETHOD(InsertMenus)(HMENU, LPOLEMENUGROUPWIDTHS);
-	STDMETHOD(SetMenu)(HMENU, HOLEMENU, HWND);
-	STDMETHOD(RemoveMenus)(HMENU);
-	STDMETHOD(SetStatusText)(LPCOLESTR);
-	STDMETHOD(EnableModeless)(BOOL);
-	STDMETHOD(TranslateAccelerator)(LPMSG, WORD);
-
-	STDMETHOD(ParseDisplayName)(LPBINDCTX, LPOLESTR, ULONG*, LPMONIKER*);
-	STDMETHOD(EnumObjects)(DWORD, LPENUMUNKNOWN*);
-	STDMETHOD(LockContainer)(BOOL);
-
-	_EXT_BEGIN_COM_MAP(COleControlContainer)
-		_EXT_COM_INTERFACE_ENTRY(IOleInPlaceFrame)
-		_EXT_COM_INTERFACE_ENTRY(IOleContainer)
-		_EXT_END_COM_MAP()
-public:
-	DECLARE_STANDARD_UNKNOWN()
-
-	CWnd *m_pWnd;
-
-	typedef std::map<HWND, ptr<COleControlSite> > CMapSite;
-	CMapSite m_mapSite;
-
-	COleControlContainer(CWnd *pWnd);
-	COleControlSite *CreateControl(CWnd* pWndCtrl, REFCLSID clsid, LPCTSTR lpszWindowName, DWORD dwStyle, const RECT& rect, UINT nID,
-		Stream *pStream = 0, BOOL bStorage=FALSE, BSTR bstrLicKey=NULL);
-	COleControlSite *CreateControl(CWnd* pWndCtrl, REFCLSID clsid, LPCTSTR lpszWindowName, DWORD dwStyle, const POINT* ppt, const SIZE* psize,
-		UINT nID, Stream *pStream = 0, BOOL bStorage=FALSE, BSTR bstrLicKey=NULL);
-	COleControlSite *FindItem(UINT nID) const;
-	void GetDlgItem(int nID, HWND* phWnd) const;
-	virtual void AttachControlSite(CWnd *pWnd);
-	void OnFinalRelease();
-};
-
-#endif
-
-class CGlobalAlloc {
-public:
-	HGLOBAL m_handle;
-
-	CGlobalAlloc(const Blob& blob);
-	~CGlobalAlloc();
-	HGLOBAL Detach();
-};
 
 class CILockBytes {
 public:
@@ -674,12 +547,6 @@ public:
 
 #endif // UCFG_COM_IMPLOBJ
 
-AFX_API String AFXAPI StringFromIID(const IID& iid);
-AFX_API String AFXAPI StringFromCLSID(const CLSID& clsid);
-AFX_API String AFXAPI StringFromGUID(const GUID& guid);
-AFX_API CLSID AFXAPI StringToCLSID(RCString s);
-AFX_API CLSID AFXAPI ProgIDToCLSID(RCString s);
-
 AFX_API bool AFXAPI AfxOleCanExitApp();
 AFX_API void AFXAPI AfxOleLockApp();
 AFX_API void AFXAPI AfxOleUnlockApp();
@@ -706,6 +573,21 @@ AFX_API Blob AFXAPI AsOptionalBlob(const VARIANT& v, const Blob& blob = Blob());
 //!!!AFX_EXT_API COleSafeArray AsOleSafeArray(const Blob& blob);
 AFX_API void AFXAPI InitializeSecurity();
 
+namespace Ole {
 
+class StorageMedium : public STGMEDIUM
+{
+public:
+	StorageMedium() {
+		ZeroStruct(*this);
+	}
+
+	~StorageMedium() {
+		::ReleaseStgMedium(this);
+	}
+};
+
+
+} // Ext::Ole::
 
 } // Ext::

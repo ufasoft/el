@@ -20,39 +20,14 @@
 
 #include <psapi.h>
 
-#if (!defined(_CRTBLD) || UCFG_CRT=='U') && UCFG_FRAMEWORK && UCFG_WCE && UCFG_OLE
-#	ifdef _DEBUG
-#		pragma comment(lib, "comsuppwd")
-#	else
-#		pragma comment(lib, "comsuppw")
-#	endif
-#endif
-
-#if UCFG_COM && defined(_MSC_VER) && !UCFG_MINISTL
-//!!!R#	include <windows.h>
-		//#undef lstrlenW // because used ::lstrlenW
-#	undef lstrlen
-#	ifdef _UNICODE
-#		define lstrlen wcslen
-#	else
-#		define lstrlen strlen
-#	endif
-#	include <comdef.h> // must be after comment(lib, "ext.lib") to override som COM-support funcs
-
-#	if !UCFG_STDSTL && defined(_M_IX86)
-#		pragma comment(linker, "/NODEFAULTLIB:comsuppwd.lib")
-#		pragma comment(linker, "/NODEFAULTLIB:comsuppw.lib")
-#		pragma comment(linker, "/NODEFAULTLIB:comsuppd.lib")
-#		pragma comment(linker, "/NODEFAULTLIB:comsupp.lib")
-
-#		pragma comment(lib, "\\src\\foreign\\lib\\o_comsuppw.lib")
-#	endif
-#endif
-
 
 #ifndef WM_NCDESTROY
 #	define WM_NCDESTROY            (WM_APP - 1)
 #endif
+
+//#include <el/libext/win32/extwin32.h>
+#include <el/libext/win32/com.h>
+
 
 typedef int (__cdecl * _PNH)( size_t );
 
@@ -65,12 +40,6 @@ class CComClass;
 #	undef GetNextWindow
 	inline HWND GetNextWindow(HWND hWnd, UINT nDirection) { return ::GetWindow(hWnd, nDirection); }
 #endif
-
-inline HRESULT OleCheck(HRESULT hr) {
-	if (FAILED(hr))
-		Throw(hr);
-	return hr;
-}
 
 int AFXAPI WinerrToErrno(int rc);
 
@@ -253,13 +222,22 @@ public:
 typedef Rectangle Rect;
 
 
+// special struct for WM_SIZEPARENT
+struct AFX_SIZEPARENTPARAMS
+{
+	HDWP hDWP;
+	Rectangle rect;       // parent client rectangle (trim as appropriate)
+	SIZE sizeTotal;  // total size on each side as layout proceeds
+	BOOL bStretch;   // should stretch to fill all space
+};
 
-}
 
-#			if UCFG_OLE
-#				include "ext-com.h"
-#				include "excom.h"
-#			endif
+
+
+
+
+
+} // Ext::
 
 
 //!!!R #ifndef _EXT
@@ -354,7 +332,7 @@ namespace Ext {
 #	error ext-win  work only on Win32 platforms
 #endif
 
-#if !UCFG_WCE
+#if UCFG_LIB_DECLS && !UCFG_WCE
 #	pragma comment(lib, "delayimp.lib")
 #	pragma comment(lib, "wininet.lib")
 #	pragma comment(lib, "psapi.lib")
@@ -368,6 +346,8 @@ namespace Ext {
 
 class COvlEvent : public OVERLAPPED, public Object {
 public:
+	typedef InterlockedPolicy interlocked_policy; //!!!?
+
 	CEvent m_ev;
 	SafeHandle::HandleAccess m_ha;
 
@@ -425,7 +405,7 @@ enum COsVersion {
 	, OSVER_FLAG_CE      = 0x40 | OSVER_FLAG_UNICODE
 	, OSVER_FLAG_SERVER   = 0x80
 	, OSVER_FLAG_2K_BRANCH = 0x100 | OSVER_FLAG_NT | OSVER_FLAG_UNICODE
-	
+
 	, OSVER_95      = 1
 	, OSVER_98      = 2
 	, OSVER_ME      = 3
@@ -704,6 +684,7 @@ public:
 };
 
 class AFX_MODULE_THREAD_STATE {
+	std::unique_ptr<CThreadHandleMaps> m_handleMaps;
 public:
 	_PNH m_pfnNewHandler;
 	//!!!  COwnerArray<CComTypeLibHolder> m_tlList;
@@ -720,8 +701,6 @@ public:
 	AFX_MODULE_THREAD_STATE();
 	~AFX_MODULE_THREAD_STATE();
 	CThreadHandleMaps& GetHandleMaps();
-private:
-	std::unique_ptr<CThreadHandleMaps> m_handleMaps;
 };
 
 AFX_API AFX_MODULE_THREAD_STATE * AFXAPI AfxGetModuleThreadState();
@@ -732,7 +711,9 @@ class CAppBase;
 
 class EXTAPI AFX_MODULE_STATE : noncopyable {
 public:
+#if UCFG_THREAD_MANAGEMENT
 	thread_specific_ptr<AFX_MODULE_THREAD_STATE> m_thread;
+#endif
 	CWinApp *m_pCurrentWinApp;
 #if UCFG_COMPLEX_WINAPP
 	CAppBase *m_pCurrentCApp;
@@ -796,7 +777,7 @@ extern AFX_MODULE_STATE _afxBaseModuleState;
 #	define AFX_MANAGE_STATE(p)
 #endif
 
-//!!!extern AFX_MODULE_STATE afxModuleState;
+extern AFX_MODULE_STATE afxModuleState;
 
 class _AFX_THREAD_STATE {
 public:
@@ -840,14 +821,22 @@ public:
 	~AFX_MAINTAIN_STATE2();
 };
 
-class AFX_CLASS AFX_MAINTAIN_STATE_COM : public AFX_MAINTAIN_STATE2 {
-	typedef AFX_MAINTAIN_STATE2 base;
+#if UCFG_USE_MODULE_STATE
+	class AFX_CLASS AFX_MAINTAIN_STATE_COM : public AFX_MAINTAIN_STATE2 {
+		typedef AFX_MAINTAIN_STATE2 base;
+	public:
+		AFX_MAINTAIN_STATE_COM(CComClass* pComClass);
+		AFX_MAINTAIN_STATE_COM(CComObjectRootBase* pBase);
+#else
+	class AFX_CLASS AFX_MAINTAIN_STATE_COM {
+	public:
+		AFX_MAINTAIN_STATE_COM(void*) {}
+#endif
+
 public:
 	String Description;
-	HRESULT HResult;
+	HRESULT HResult = 0;
 
-	AFX_MAINTAIN_STATE_COM(CComObjectRootBase *pBase);
-	AFX_MAINTAIN_STATE_COM(CComClass *pComClass);
 	~AFX_MAINTAIN_STATE_COM();
 	void SetFromExc(RCExc e);
 };
@@ -883,8 +872,8 @@ struct CResource {
 	DWORD m_size;
 };*/
 
-#ifdef _AFXDLL
 	void AFXAPI AfxSetModuleState(AFX_MODULE_STATE* pNewState);
+#ifdef _AFXDLL
 	void AFXAPI AfxRestoreModuleState();
 	AFX_API HINSTANCE AFXAPI AfxTryFindResourceHandle(const CResID& lpszName, const CResID& lpszType);
 	AFX_API HINSTANCE AFXAPI AfxFindResourceHandle(const CResID& lpszName, const CResID& lpszType);
@@ -939,6 +928,82 @@ inline SYSTEM_INFO AFXAPI GetSystemInfo() {
 	::GetSystemInfo(&r);
 	return r;
 }
+
+namespace Win {
+
+class CGlobalAlloc {
+	HGLOBAL m_handle;
+public:
+	operator HGLOBAL() const { return m_handle; }
+
+	CGlobalAlloc(size_t size, DWORD flags = GMEM_FIXED);
+	CGlobalAlloc(const Blob& blob);
+	~CGlobalAlloc();
+	HGLOBAL Detach();
+};
+
+class GlobalLocker {
+	HGLOBAL _hGlobal;
+	void* _ptr;
+public:
+	operator void* () const { return _ptr; }
+
+	template <typename T>
+	T Cast() const { return (T)_ptr; }
+
+	GlobalLocker(HGLOBAL hGlobal);
+	~GlobalLocker();
+};
+
+template <class T>
+class GlobalLockerT : public GlobalLocker {
+	typedef GlobalLocker base;
+public:
+	T& operator *() const { return *Cast<T*>(); }
+
+	GlobalLockerT(HGLOBAL hGlobal) : base(hGlobal) {}
+};
+
+
+class Message {
+	UINT _uMessage;
+public:
+	operator UINT() const { return _uMessage; }
+
+	Message(UINT uMessage) : _uMessage(uMessage) {}
+};
+
+std::ostream& AFXAPI operator<<(std::ostream& os, const Message& msg);
+
+
+class AcceleratorTable {
+	HACCEL _hAccel;
+public:
+	AcceleratorTable() : _hAccel(0) {}
+
+	AcceleratorTable(HINSTANCE hInstance, const CResID resId) {
+		Win32Check((_hAccel = ::LoadAccelerators(hInstance, resId)) != 0);
+	}
+
+	AcceleratorTable(const span<ACCEL>& accels) {
+		Win32Check((_hAccel = ::CreateAcceleratorTable(accels.data(), accels.size())) != 0);
+	}
+
+	AcceleratorTable(const AcceleratorTable& other) {
+		operator=(other);
+	}
+
+	~AcceleratorTable() {
+		if (_hAccel)
+			::DestroyAcceleratorTable(_hAccel);
+	}
+
+	AcceleratorTable& operator=(const AcceleratorTable& other);
+
+	operator HACCEL() const { return _hAccel; }
+};
+
+} // Ext::Win::
 
 } // Ext::
 

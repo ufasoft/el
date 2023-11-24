@@ -13,6 +13,8 @@
 #	endif
 #endif
 
+#include <el/libext/exthelpers.h>
+
 namespace Ext {
 
 class Exception;
@@ -102,6 +104,7 @@ public:
 	T* operator->() const noexcept { return operator T*(); }
 };
 
+/*!!!T
 class CDestructibleTls : public CTls {
 	typedef CTls base;
 public:
@@ -111,13 +114,14 @@ public:
 	~CDestructibleTls();
 	virtual void OnThreadDetach(void *p) {}
 };
-
+*/
 #if UCFG_CPP11_THREAD_LOCAL || UCFG_USE_DECLSPEC_THREAD
 #	define EXT_THREAD_PTR(typ) THREAD_LOCAL typ*
 #else
 #	define EXT_THREAD_PTR(typ) Ext::single_tls_ptr<typ>
 #endif
 
+/*!!!T
 template <typename T>
 class thread_specific_ptr : CDestructibleTls {
 public:
@@ -148,7 +152,7 @@ public:
 		return *r;
 	}
 };
-
+*/
 
 #endif // !WDM_DRIVER
 

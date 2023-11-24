@@ -1,5 +1,8 @@
 #pragma once
 
+#define ExtSTL std
+#include <el/libext/interlocked.h>
+
 #if UCFG_STDSTL
 #	define EXT_HEADER(hname) <hname>
 #else
@@ -33,7 +36,7 @@
 #endif
 
 #if UCFG_STD_OPTIONAL
-#	define EXT_HEADER_OPTIONAL EXT_HEADER(optional)
+#	define EXT_HEADER_OPTIONAL <optional>
 #else
 #	define EXT_HEADER_OPTIONAL <el/stl/optional>
 #endif
@@ -63,6 +66,29 @@
 #endif
 
 #define EXT_HASH_VALUE_NS Ext
+
+#if UCFG_CPP11_RVALUE
+#	define EXT_MOVABLE_BUT_NOT_COPYABLE(TYPE)   \
+		private:                                    \
+			TYPE(const TYPE &);                     \
+			TYPE &operator=(const TYPE &);
+
+#	define EXT_RV_REF(typ) typ &&
+#endif // UCFG_CPP11_RVALUE
+
+#if UCFG_CPP11_EXPLICIT_CAST
+#	define EXPLICIT_OPERATOR_BOOL explicit operator bool
+#	define EXT_OPERATOR_BOOL explicit operator bool
+#	define EXT_CONVERTIBLE_TO_TRUE true
+#	define _TYPEDEF_BOOL_TYPE
+#else
+#	define EXPLICIT_OPERATOR_BOOL struct _Boolean { int i; }; operator int _Boolean::*
+#	define EXT_OPERATOR_BOOL operator _Bool_type
+#	define EXT_CONVERTIBLE_TO_TRUE (&_Boolean::i)
+#endif
+
+
+#ifndef _CORECRT_BUILD
 
 #ifdef _M_CEE
 
@@ -102,6 +128,27 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 #	define M_ABSTRACT
 #	define M_ENUM enum
 
+
+namespace Ext {
+class noncopyable {
+	noncopyable(const noncopyable&);
+	noncopyable& operator=(const noncopyable&);
+protected:
+	noncopyable() {}
+};
+
+#if UCFG_USE_IN_EXCEPTION
+class CInException : noncopyable {
+	int m_nUncaught;
+public:
+	CInException() noexcept;
+	void swap(CInException& r);
+	explicit operator bool() const noexcept;
+};
+#endif // UCFG_USE_IN_EXCEPTION
+
+} // namespace Ext
+
 #	if !UCFG_STDSTL && (!defined(_MSC_VER) || _MSC_VER >= 1600)
 namespace ExtSTL {
 typedef decltype(__nullptr) nullptr_t;
@@ -109,56 +156,19 @@ using std::nullptr_t;
 } // namespace ExtSTL
 #	endif
 
-#	if UCFG_CPP14_NOEXCEPT
-#		define EXT_FAST_NOEXCEPT //	noexcept prevents inline expansion in VC
-#	else
-#		define noexcept throw()
-#		define EXT_FAST_NOEXCEPT noexcept
-#	endif
 
 extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 
-namespace Ext {
-
-template <typename T> class PtrBase {
-protected:
-	T* m_p;
-public:
-	typedef T element_type;
-	typedef T *pointer;
-	typedef T &reference;
-
-	PtrBase(T *p = 0)
-		: m_p(p) {}
-
-	inline T *get() const EXT_FAST_NOEXCEPT { return m_p; }
-	inline T *operator->() const EXT_FAST_NOEXCEPT { return m_p; }
-
-	T *release() noexcept {
-		pointer r = m_p;
-		m_p = nullptr;
-		return r;
-	}
-
-	void swap(PtrBase &p) noexcept {
-	//!!!Not defined yet	std::swap(m_p, p.m_p);
-		T *t = m_p;
-		m_p = p;
-		p.m_p = t;
-	}
-};
-
-} // namespace Ext
 
 #	if defined(_VC_CRT_MAJOR_VERSION) && _VC_CRT_MAJOR_VERSION >= 14
 #		include <vcruntime_exception.h>
 #	endif
 
 //!!!R #ifndef _CRTBLD
-#	include "cpp-old.h"
+#	include <el/libext/cpp-old.h>
 //!!! #endif
 
-#	include "ext-err.h"
+#	include <el/libext/ext-err.h>
 
 #	if UCFG_STDSTL
 #		include <cstddef> // to define std::nullptr_t in GCC
@@ -208,7 +218,6 @@ namespace Ext {
 #		endif
 #	endif
 
-#	include "interlocked.h"
 #	undef noexcept
 
 #	if UCFG_STL
@@ -281,15 +290,6 @@ using std::pair;
 
 #	endif //  UCFG_STL
 
-namespace Ext {
-class noncopyable {
-	noncopyable(const noncopyable&);
-	noncopyable& operator=(const noncopyable&);
-protected:
-	noncopyable() {}
-};
-} // namespace Ext
-
 #	include EXT_HEADER_ATOMIC
 
 namespace Ext {
@@ -297,7 +297,7 @@ using std::atomic;
 using std::atomic_flag;
 } // namespace Ext
 
-#	include "exthelpers.h" // uses std::swap() from <utility>
+#	include <el/libext/exthelpers.h> // uses std::swap() from <utility>
 
 namespace Ext {
 class CCriticalSection;
@@ -311,14 +311,7 @@ template <typename P1, typename R> struct UnaryFunction { virtual R operator()(P
 #		include <el/stl/type_traits>
 #	endif
 
-#	if UCFG_CPP11_RVALUE
-#		define EXT_MOVABLE_BUT_NOT_COPYABLE(TYPE)                                                                                                                                                                                                            \
-		private:                                                                                                                                                                                                                                              \
-			TYPE(const TYPE &);                                                                                                                                                                                                                               \
-			TYPE &operator=(const TYPE &);
-
-#		define EXT_RV_REF(typ) typ &&
-#	else
+#	if !UCFG_CPP11_RVALUE
 
 namespace Ext {
 
@@ -360,77 +353,29 @@ template <class T> typename enable_if<Ext::is_movable<T>::value, Ext::rv<T> &>::
 #		define noexcept throw() //!!! repeated because somewhere undefined
 #	endif
 
-#	include "ext-ptr.h"
+#	include <el/libext/ptr.h>
 
 #	if !UCFG_MINISTL
-#		include "ext-meta.h"
+#		include <el/libext/ext-meta.h>
 #	endif
 
 #include EXT_HEADER(exception)
 
-#if UCFG_USE_IN_EXCEPTION
-
-namespace Ext {
-class CInException : noncopyable {
-	int m_nUncaught;
-public:
-	CInException() noexcept
-		: m_nUncaught(std::uncaught_exceptions()) {}
-
-	void swap(CInException& r) {
-		r.m_nUncaught = std::exchange(m_nUncaught, r.m_nUncaught);
-	}
-
-	EXPLICIT_OPERATOR_BOOL() const noexcept { return std::uncaught_exceptions() > m_nUncaught ? EXT_CONVERTIBLE_TO_TRUE : 0; }
-};
-} // namespace Ext
-#endif // UCFG_USE_IN_EXCEPTION
 
 #	if UCFG_FRAMEWORK && !defined(_CRTBLD) //!!! || (UCFG_CRT=='U')
-#		include "ext-safehandle.h"
-#		include "ext-sync.h"
+#		include <el/libext/safehandle.h>
+#		include <el/libext/ext-sync.h>
 #	endif
 
 #	define AFX_STATIC_DATA extern __declspec(selectany)
 
 namespace Ext {
 
-class CAlloc {
-public:
-#	if UCFG_INDIRECT_MALLOC
-	EXT_DATA static void *(AFXAPI *s_pfnMalloc)(size_t size);
-	EXT_DATA static void(AFXAPI *s_pfnFree)(void *p) noexcept;
-	EXT_DATA static size_t(AFXAPI *s_pfnMSize)(void *p);
-	EXT_DATA static void *(AFXAPI *s_pfnRealloc)(void *p, size_t size);
-	EXT_DATA static void *(AFXAPI *s_pfnAlignedMalloc)(size_t size, size_t align);
-	EXT_DATA static void(AFXAPI *s_pfnAlignedFree)(void *p);
-#	endif
-	static void *AFXAPI Malloc(size_t size);
-	static void AFXAPI Free(void *p) EXT_NOEXCEPT;
-	static size_t AFXAPI MSize(void *p);
-	static void *AFXAPI Realloc(void *p, size_t size);
-	static void *AFXAPI AlignedMalloc(size_t size, size_t align);
-	static void AFXAPI AlignedFree(void *p);
-
-	static void AFXAPI DbgIgnoreObject(void *p)
-#	if UCFG_ALLOCATOR == 'T' && UCFG_HEAP_CHECK
-		;
-#	else
-	{}
-#	endif
-};
 
 #	if UCFG_WCE
 bool SetCeAlloc();
 #	endif
 
-inline void *__fastcall Malloc(size_t size) {
-#	if UCFG_INDIRECT_MALLOC
-	return CAlloc::s_pfnMalloc(size);
-#	else
-	return CAlloc::Malloc(size);
-#	endif
-}
 
 /*!!!
 	inline void __fastcall Free(void *p) noexcept {
@@ -441,31 +386,6 @@ inline void *__fastcall Malloc(size_t size) {
 #endif
 	}*/
 
-#	if UCFG_HAS_REALLOC
-inline void *__fastcall Realloc(void *p, size_t size) {
-#		if UCFG_INDIRECT_MALLOC
-	return CAlloc::s_pfnRealloc(p, size);
-#		else
-	return CAlloc::Realloc(p, size);
-#		endif
-}
-#	endif
-
-inline void *__fastcall AlignedMalloc(size_t size, size_t align) {
-#	if UCFG_INDIRECT_MALLOC
-	return CAlloc::s_pfnAlignedMalloc(size, align);
-#	else
-	return CAlloc::AlignedMalloc(size, align);
-#	endif
-}
-
-inline void __fastcall AlignedFree(void *p) {
-#	if UCFG_INDIRECT_MALLOC
-	CAlloc::s_pfnAlignedFree(p);
-#	else
-	CAlloc::AlignedFree(p);
-#	endif
-}
 
 /*!!!
 #if UCFG_USE_POSIX
@@ -481,41 +401,16 @@ inline void __fastcall AlignedFree(void *p) {
 #endif
 */
 
-class AlignedMem {
-	void* m_p;
-public:
-	AlignedMem(size_t size = 0, size_t align = 0)
-		: m_p(0) {
-		if (size)
-			Alloc(size, align);
-	}
-
-	~AlignedMem() { Free(); }
-
-	void Alloc(size_t size, size_t align) {
-		if (m_p)
-			Throw(E_FAIL);
-		m_p = AlignedMalloc(size, align);
-	}
-
-	void Free() {
-		AlignedFree(m_p);
-		m_p = 0;
-	}
-
-	void *get() { return m_p; }
-};
-
 } // namespace Ext
 
-#	if UCFG_STL && !defined(_CRTBLD) //!!! || (UCFG_CRT=='U')
+#	if UCFG_STL && (!defined(_CRTBLD) || (UCFG_CRT=='O') || (UCFG_CRT=='U'))
 //#	define NS std
 #		if !UCFG_STDSTL || UCFG_WCE  //!!!
 #			include <el/stl/exttemplates.h>
 #			include <el/stl/clocale>
 #			include <el/stl/ext-locale.h>
 #		endif
-#		include "ext-hash.h"
+#		include <el/libext/ext-hash.h>
 #		if !UCFG_STDSTL
 #			include <el/stl/extstl.h>
 #		endif
@@ -604,7 +499,7 @@ inline int64_t abs(const int64_t& v) {
 }
 */
 
-//!!!R #include "ext-meta.h"
+//!!!R #include <el/libext/ext-meta.h>
 
 #	define HRESULT_OF_WIN32(x) ((HRESULT)((x)&0x0000FFFF | (FACILITY_WIN32 << 16) | 0x80000000)) // variant of HRESULT_FROM_WIN32 without condition
 
@@ -662,12 +557,12 @@ void __cdecl operator delete(void *p)EXT_LIBCXX_NOEXCEPT;
 void __cdecl operator delete[](void *p) EXT_LIBCXX_NOEXCEPT;
 void *__cdecl operator new[](size_t sz);
 
-#		include "ext-str.h"
+#		include <el/libext/ext-str.h>
 
 #		if UCFG_FRAMEWORK
 
-#			include "ext-blob.h"
-#			include "ext-string.h"
+#			include <el/libext/blob.h>
+#			include <el/libext/ext-string.h>
 
 #			if UCFG_USE_BOOST
 #				include <boost/functional/hash.hpp>
@@ -702,25 +597,8 @@ using std::tr1::hash;
 
 #		endif
 
-#		if UCFG_FRAMEWORK && !defined(_CRTBLD)
-#			include "afterstl.h"
-#			include "ext-lru.h"
 
-namespace Ext {
-class CIgnoreList {
-public:
-	typedef IntrusiveList<CLocalIgnoreBase> CIgnoredExceptions;
-	CIgnoredExceptions IgnoredExceptions;
-};
-//extern thread_specific_ptr<CIgnoreList> t_ignoreList;
 
-#			if UCFG_EH_SUPPORT_IGNORE
-//!!!?		extern EXT_THREAD_PTR(HResultItem) t_ignoreList;
-#			endif
-
-} // namespace Ext
-
-#		endif // UCFG_FRAMEWORK && !defined(_CRTBLD)
 
 #		if UCFG_FRAMEWORK
 extern std::ostream g_osDebug;
@@ -745,11 +623,11 @@ class CWnd;
 #		if defined(_MSC_VER) && defined(WIN32)
 
 #			if UCFG_EXTENDED
-#				include "el/extres.h"
+#				include <el/extres.h>
 #			endif
 
 #			if UCFG_GUI
-//#		include "win32/ext-afxdd_.h"
+//#		include <el/libext/win32/ext-afxdd_.h>
 #			endif
 
 #			if UCFG_WCE
@@ -871,7 +749,7 @@ namespace std {
 
 #		if !UCFG_STDSTL || UCFG_WCE //!!!
 #			if UCFG_FRAMEWORK
-#				include "ext-hashimp.h"
+#				include <el/libext/ext-hashimp.h>
 #				if !UCFG_STDSTL || UCFG_WCE //!!! && !UCFG_WDM
 #					include <el/stl/unordered_map>
 #				endif
@@ -881,7 +759,7 @@ namespace std {
 
 #		if !defined(_CRTBLD) || (UCFG_CRT == 'U')
 
-//!!!? #include "ext_messages.h"
+//!!!? #include <el/libext/ext_messages.h>
 
 namespace Ext {
 
@@ -952,74 +830,80 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 } // namespace Ext
 
 #			if UCFG_FRAMEWORK
-#				include "ext-stream.h"
+#				include <el/libext/stream.h>
 
 #				if defined(WIN32) // && UCFG_EXTENDED //!!!
-#					include "win32/ext-cmd.h"
+#					include <el/libext/win32/ext-cmd.h>
 #				endif
 
-#				include "ext-base.h"
-#				include "ext-os.h"
-#				include "ext-core.h"
-#				include "binary-reader-writer.h"
-#				include "datetime.h"
+#				include <el/libext/ext-base.h>
+#				include <el/libext/ext-os.h>
+#				include <el/libext/ext-core.h>
+#				include <el/libext/binary-reader-writer.h>
+#				include <el/libext/datetime.h>
 
-#				ifdef _WIN32
-#					include "win32/ext-registry.h"
+#				if UCFG_USE_REGISTRY
+#					include <el/libext/win32/registry.h>
 #				endif
 
 #				if !UCFG_WDM
 
 #					include <el/libext/ext-fw.h>
-//#		include "ext-net.h"
+//#		include <el/libext/ext-net.h>
 
 #					if UCFG_EXTENDED || UCFG_USE_LIBCURL
-//#			include "ext-http.h"
+//#			include <el/libext/ext-http.h>
 #					endif
 
 #					if UCFG_WIN32
-//#			include "win32/ext-win.h"
+//#			include <el/libext/win32/ext-win.h>
 #						if !UCFG_WCE
-//#				include "win32/ext-full-win.h"
+//#				include <el/libext/win32/ext-full-win.h>
 #						endif
 
 #						if UCFG_WND
-//#				include "win32/extwin32.h"
-//#				include "win32/ext-wnd.h"
+//#				include <el/libext/win32/extwin32.h>
+//#				include <el/libext/win32/ext-wnd.h>
 
 #							if UCFG_EXTENDED && UCFG_WIN_HEADERS
-//#					include "el/gui/ext-image.h"
-//#					include "win32/extmfc.h"
+//#					include <el/gui/ext-image.h>
+//#					include <el/libext/win32/extmfc.h>
 #							endif
 
 #						endif
 
 #						if UCFG_EXTENDED
 #							if UCFG_COM_IMPLOBJ
-//#					include "win32/extctl.h"
+//#					include <el/libext/win32/extctl.h>
 #							endif
-//!!!R				include "win32/simplemapi.h"
+//!!!R				include <el/libext/win32/simplemapi.h>
 //!!!R#				if !UCFG_WCE
-//!!!R#					include "win32/toolbar.h"
+//!!!R#					include <el/libext/win32/toolbar.h>
 //!!!R#				endif
-//!!!R#				include "lng.h"
+//!!!R#				include <el/libext/lng.h>
 #						endif
 #					endif
 
-#					include "ext-app.h"
+#					include <el/libext/ext-app.h>
 
 /*!!!?
 #		if UCFG_XML
-#			include "xml.h"
+#			include <el/libext/xml.h>
 #		endif
 */
 
+#		if UCFG_COM
+#			include <el/libext/win32/com.h>
+#			include <el/libext/win32/excom.h>
+#		endif
+
+
 #					if UCFG_WIN32 && UCFG_EXTENDED && !UCFG_WCE
-//!!!R#			include "lng.h"
-//!!!R#			include "docview.h"
+//!!!R#			include <el/libext/lng.h>
+//!!!R#			include <el/libext/docview.h>
 #					endif
 
-#					include "ext-protocols.h"
+#					include <el/libext/ext-protocols.h>
 
 #				endif
 
@@ -1099,7 +983,7 @@ template <class T> T max3(T a, T b, T c) { return std::max(std::max(a, b), c); }
 #			define EXT_BIN(expr, ...) Span(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
 
 #			if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !defined(WDM_DRIVER)
-  //#		include "win32/ext-atl.h"
+  //#		include <el/libext/win32/ext-atl.h>
 #			endif
 
 #		endif // _CRTBLD
@@ -1147,3 +1031,113 @@ inline void *__cdecl operator new[](size_t size, int id, const char *file, int l
 #if UCFG_STL && !UCFG_STDSTL && !defined(_CRTBLD) && UCFG_FRAMEWORK && _HAS_EXCEPTIONS
 #	include EXT_HEADER_FUTURE // uses AutoResetEvent
 #endif						   // UCFG_STL && !UCFG_STDSTL
+
+#endif // _CORECRT_BUILD
+
+namespace Ext {
+
+class CAlloc {
+public:
+#if UCFG_INDIRECT_MALLOC
+	EXT_DATA static void *(AFXAPI *s_pfnMalloc)(size_t size);
+	EXT_DATA static void(AFXAPI *s_pfnFree)(void *p) noexcept;
+	EXT_DATA static size_t(AFXAPI *s_pfnMSize)(void *p);
+	EXT_DATA static void *(AFXAPI *s_pfnRealloc)(void *p, size_t size);
+	EXT_DATA static void *(AFXAPI *s_pfnAlignedMalloc)(size_t size, size_t align);
+	EXT_DATA static void(AFXAPI *s_pfnAlignedFree)(void *p);
+#endif
+	static void *AFXAPI Malloc(size_t size);
+	static void AFXAPI Free(void *p) EXT_NOEXCEPT;
+	static size_t AFXAPI MSize(void *p);
+	static void *AFXAPI Realloc(void *p, size_t size);
+	static void *AFXAPI AlignedMalloc(size_t size, size_t align);
+	static void AFXAPI AlignedFree(void *p);
+
+	static void AFXAPI DbgIgnoreObject(void *p)
+#if UCFG_ALLOCATOR == 'T' && UCFG_HEAP_CHECK
+		;
+#else
+	{}
+#endif
+};
+
+inline void* __fastcall Malloc(size_t size) {
+#if UCFG_INDIRECT_MALLOC
+	return CAlloc::s_pfnMalloc(size);
+#else
+	return CAlloc::Malloc(size);
+#endif
+}
+
+#if UCFG_HAS_REALLOC
+inline void* __fastcall Realloc(void* p, size_t size) {
+#	if UCFG_INDIRECT_MALLOC
+	return CAlloc::s_pfnRealloc(p, size);
+#	else
+	return CAlloc::Realloc(p, size);
+#	endif
+}
+#endif
+
+inline void* __fastcall AlignedMalloc(size_t size, size_t align) {
+#if UCFG_INDIRECT_MALLOC
+	return CAlloc::s_pfnAlignedMalloc(size, align);
+#else
+	return CAlloc::AlignedMalloc(size, align);
+#endif
+}
+
+inline void __fastcall AlignedFree(void* p) {
+#if UCFG_INDIRECT_MALLOC
+	CAlloc::s_pfnAlignedFree(p);
+#else
+	CAlloc::AlignedFree(p);
+#endif
+}
+
+class AlignedMem {
+	void* m_p;
+public:
+	AlignedMem(size_t size = 0, size_t align = 0)
+		: m_p(0) {
+		if (size)
+			Alloc(size, align);
+	}
+
+	~AlignedMem() { Free(); }
+
+	void Alloc(size_t size, size_t align) {
+		if (m_p)
+			Throw(E_FAIL);
+		m_p = AlignedMalloc(size, align);
+	}
+
+	void Free() {
+		AlignedFree(m_p);
+		m_p = 0;
+	}
+
+	void* get() { return m_p; }
+};
+
+} // Ext::
+
+#if UCFG_FRAMEWORK && !defined(_CRTBLD)
+#	include <el/libext/afterstl.h>
+#	include <el/libext/lru.h>
+
+namespace Ext {
+class CIgnoreList {
+public:
+	typedef IntrusiveList<CLocalIgnoreBase> CIgnoredExceptions;
+	CIgnoredExceptions IgnoredExceptions;
+};
+//extern thread_specific_ptr<CIgnoreList> t_ignoreList;
+
+#	if UCFG_EH_SUPPORT_IGNORE
+//!!!?		extern EXT_THREAD_PTR(HResultItem) t_ignoreList;
+#	endif
+
+} // Ext::
+
+#endif // UCFG_FRAMEWORK && !defined(_CRTBLD)

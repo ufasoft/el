@@ -10,7 +10,7 @@
 
 #	include <el/libext/win32/ext-win.h>
 #	if UCFG_COM
-#		include <el/libext/win32/ext-com.h>
+#		include <el/libext/win32/com.h>
 #	endif
 #endif
 
@@ -229,4 +229,3 @@ uint64_t BinaryReader::Read7BitEncoded() const {
 }
 
 } // Ext::
-

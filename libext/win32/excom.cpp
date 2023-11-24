@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -14,11 +14,8 @@ namespace Ext {
 using namespace std;
 
 
+#if UCFG_COM
 
-void CComPtrBase::Attach(IUnknown *unk) {
-	Release();
-	m_unk = unk;
-}
 
 
 /*!!!CComPtrBase::operator CUnknownHelper() const {
@@ -38,7 +35,7 @@ CComPtr<IDispatch> AFXAPI AsDispatch(const VARIANT& v) {
 	case VT_EMPTY:
 		break;
 	case VT_UNKNOWN:
-		return v.punkVal;
+		return CComQIPtr<IDispatch>(v.punkVal);
 	case VT_DISPATCH:
 		return v.pdispVal;
 	default:
@@ -65,7 +62,7 @@ CUnkPtr AFXAPI CreateLicensedComObject(const CLSID& clsid, RCString license) {
 	CUnkPtr r;
 	HRESULT hr = cf->CreateInstance(0, IID_IUnknown, (void**)&r);
 	if (hr == CLASS_E_NOTLICENSED) {
-		CComPtr<IClassFactory2> cf2 = cf;
+		CComQIPtr<IClassFactory2> cf2 = cf;
 		OleCheck(cf2->CreateInstanceLic(0, 0, IID_IUnknown, Bstr(license), (void**)&r));
 	} else
 		OleCheck(hr);
@@ -74,7 +71,7 @@ CUnkPtr AFXAPI CreateLicensedComObject(const CLSID& clsid, RCString license) {
 
 #if UCFG_OLE
 CUnkPtr AFXAPI CreateLicensedComObject(LPCTSTR s, RCString license) {
-	return CreateLicensedComObject(ProgIDToCLSID(s), license);
+	return CreateLicensedComObject(Guid::FromProgID(s), license);
 }
 #endif
 
@@ -171,7 +168,7 @@ CUnkPtr AFXAPI CreateLicensedRemoteComObject(RCString machineName, const CLSID& 
 	CUnkPtr r;
 	HRESULT hr = cf->CreateInstance(0, IID_IUnknown, (void**)&r);
 	if (hr == CLASS_E_NOTLICENSED) {
-		CComPtr<IClassFactory2> cf2 = cf;
+		CComQIPtr<IClassFactory2> cf2 = cf;
 		OleCheck(cf2->CreateInstanceLic(0, 0, IID_IUnknown, Bstr(license), (void**)&r));
 	} else
 		OleCheck(hr);
@@ -220,7 +217,7 @@ CStringVector AFXAPI AsOptionalStringArray(const VARIANT& v) {
 	return ar;
 }
 
-
+#endif // UCFG_COM
 
 }  // Ext::
 
