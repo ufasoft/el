@@ -18,6 +18,8 @@ extern "C" {
 
 namespace Ext {
 
+static AFX_MODULE_STATE afxModuleState(true);
+
 #ifdef _AFXDLL
 
 static LRESULT CALLBACK AfxWndProcDllStatic(HWND, UINT, WPARAM, LPARAM);
@@ -63,7 +65,7 @@ extern "C" BOOL WINAPI RawDllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID) {
 #endif
 
 
-#ifdef _AFXDLL
+//#ifdef _AFXDLL
 	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
 		afxModuleState.m_hCurrentInstanceHandle = (HMODULE)hInstance;
@@ -71,9 +73,12 @@ extern "C" BOOL WINAPI RawDllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID) {
 		AfxSetModuleState(&afxModuleState);
 		break;
 	case DLL_PROCESS_DETACH:
+#ifdef _AFXDLL
 		AfxRestoreModuleState();
-	}
 #endif
+		;
+	}
+//#endif
 	return TRUE;
 }
 
@@ -83,7 +88,8 @@ extern "C" BOOL WINAPI DllMain(HINST hInstance, DWORD dwReason, LPVOID ) {		//!!
 	switch (dwReason) {
 	case DLL_PROCESS_ATTACH:
 		{
-#ifdef _AFXDLL			
+		TRC(1, "DLL_PROCESS_ATTACH");
+#ifdef _AFXDLL
 			AfxCoreInitModule();										// wire up resources from core DLL
 #endif
 			AfxWinInit((HINSTANCE)hInstance, 0, _T(""), 0);
@@ -93,12 +99,12 @@ extern "C" BOOL WINAPI DllMain(HINST hInstance, DWORD dwReason, LPVOID ) {		//!!
 	#ifdef _AFXDLL
 			AfxRestoreModuleState();
 	#else
-			AfxInitLocalData(hInstance);
+//!!!?			AfxInitLocalData(hInstance);
 	#endif
 		}
 		break;
-	case DLL_PROCESS_DETACH:
-		{
+	case DLL_PROCESS_DETACH: {
+		TRC(1, "DLL_PROCESS_DETACH");
 #	ifdef _AFXDLL
  			AfxSetModuleState(&afxModuleState);
 #	endif
@@ -107,77 +113,28 @@ extern "C" BOOL WINAPI DllMain(HINST hInstance, DWORD dwReason, LPVOID ) {		//!!
 				pApp->ExitInstance();
 		}
 #	ifndef _AFXDLL
-		AfxTermLocalData(hInstance, true);
+//!!!?		AfxTermLocalData(hInstance, true);
 #	endif
 		break;
 	case DLL_THREAD_ATTACH:
 		break;
 	case DLL_THREAD_DETACH:
+#	ifdef _AFXDLL
 		AFX_MANAGE_STATE(&afxModuleState);
 		AfxTermThread((HINSTANCE)hInstance);
+#	endif
 		break;
 	}
 	return TRUE;
 }
 
-class CFlag {
-public:
-	bool m_bool;
-
-	CFlag()
-		:	m_bool(true)
-	{}
-
-	~CFlag() {
-		m_bool = false;
-	}
-};
-
-CFlag g_flag;
 
 
-CDllServer *CDllServer::I;
-static CDllServer s_dllServer;
 
-#if UCFG_COM_IMPLOBJ
-
-STDAPI DllCanUnloadNow() {
-	if (g_flag.m_bool)
-	{
-		AFX_MANAGE_STATE(AfxGetStaticModuleState());
-		return AfxDllCanUnloadNow();
-	}
-	else
-		return S_OK;
-}
-
-STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv) {
-	AFX_MANAGE_STATE(AfxGetStaticModuleState());
-	return AfxDllGetClassObject(rclsid, riid, ppv);
-}
-#endif
-
-STDAPI DllRegisterServer() {
-	AFX_MANAGE_STATE(AfxGetStaticModuleState());
-	try {
-		return CDllServer::I->OnRegister();
-	} catch (RCExc ex) {
-		return HResultInCatch(ex);
-	}
-}
-
-STDAPI DllUnregisterServer() {
-	AFX_MANAGE_STATE(AfxGetStaticModuleState());
-	try {
-		return CDllServer::I->OnUnregister();
-	} catch (RCExc ex) {
-		return HResultInCatch(ex);
-	}
-}
-
+#ifdef _AFXDLL
 void __cdecl AfxTermDllState() {
 	AfxTlsRelease();
 }
+#endif
 
 //!!!char _afxTermDllState = (char)(AfxTlsAddRef(), atexit(&AfxTermDllState));
-

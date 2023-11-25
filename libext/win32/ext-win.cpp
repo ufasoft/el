@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -59,41 +59,6 @@ CCursor Cursor;
 #endif // UCFG_EXTENDED
 
 
-#if UCFG_USE_DECLSPEC_THREAD
-__declspec(thread) HRESULT t_lastHResult;
-HRESULT AFXAPI GetLastHResult() { return t_lastHResult; }
-void AFXAPI SetLastHResult(HRESULT hr) { t_lastHResult = hr; }
-#else
-CTls t_lastHResult;
-HRESULT AFXAPI GetLastHResult() { return (HRESULT)(uintptr_t)t_lastHResult.Value; }
-void AFXAPI SetLastHResult(HRESULT hr) { t_lastHResult.Value = (void*)(uintptr_t)hr; }
-#endif // UCFG_USE_DECLSPEC_THREAD
-
-int AFXAPI Win32Check(LRESULT i) {
-	if (i)
-		return (int)i;
-	error_code ec;
-	if (DWORD dw = ::GetLastError()) {
-		if (dw & 0xFFFF0000)
-			Throw(dw);
-		ec = error_code(dw, system_category());
-	} else {
-		HRESULT hr = GetLastHResult();
-		ec = hr ? error_code(hr,  hresult_category()) : make_error_code(ExtErr::UnknownWin32Error);
-	}
- 	Throw(ec);
-}
-
-bool AFXAPI Win32Check(BOOL b, DWORD allowableError) {
-	Win32Check(b || ::GetLastError() == allowableError);
-	return b;
-}
-
-void CSyncObject::AttachCreated(intptr_t h) {
-	Attach(h);
-	m_bAlreadyExists = GetLastError()==ERROR_ALREADY_EXISTS;
-}
-
 ProcessModule::ProcessModule(class Process& process, HMODULE hModule)
 	: Process(process)
 	, HModule(hModule)
@@ -146,62 +111,8 @@ vector<ProcessModule> GetProcessModules(Process& process) {
 	return arm;
 }
 
-static String ToDosPath(RCString lpath) {
-	vector<String> lds = System.LogicalDriveStrings;
-	for (size_t i=0; i<lds.size(); ++i) {
-		String ld = lds[i];
-		String dd = ld.Right(1)=="\\" ? ld.Left(ld.length()-1) : ld;
-		vector<String> v = System.QueryDosDevice(dd);
-		if (v.size()) {
-			String lp = v[0];
-			if (lp.length() < lpath.length() && !lp.CompareNoCase(lpath.Left(lp.length()))) {
-				return ((ld.Right(1) == "\\" && lpath.at(0) == '\\') ? dd : ld) + lpath.substr(lp.length());
-			}
-		}
-	}
-	return lpath;
-}
-
-
-typedef DWORD (WINAPI *PFN_GetProcessImageFileName)(HANDLE hProcess, LPTSTR lpImageFileName, DWORD nSize);
-
-static CDynamicLibrary s_dllPsapi("psapi.dll");
-
-String ProcessObj::get_MainModuleFileName() {
-	TCHAR buf[MAX_PATH];
-	try {
-		DBG_LOCAL_IGNORE_WIN32(ERROR_PARTIAL_COPY);
-		DBG_LOCAL_IGNORE_WIN32(ERROR_INVALID_HANDLE);
-
-		Win32Check(::GetModuleFileNameEx((HANDLE)(intptr_t)Handle(_self), 0, buf, size(buf)));
-		return buf;
-	} catch (RCExc) {
-	}
-	DlProcWrap<PFN_GetProcessImageFileName> pfnGetProcessImageFileName(s_dllPsapi, EXT_WINAPI_WA_NAME(GetProcessImageFileName));
-	if (pfnGetProcessImageFileName) {
-		Win32Check(pfnGetProcessImageFileName((HANDLE)(intptr_t)Handle(_self), buf, size(buf)));
-		return ToDosPath(buf);
-	} else
-		Throw(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY));
-}
 
 #endif // !UCFG_WCE
-
-ProcessObj::ProcessObj(pid_t pid, DWORD dwAccess, bool bInherit)
-	: SafeHandle(0, false)
-	, m_pid(pid)
-{
-	CommonInit();
-	if (pid)
-		Attach((intptr_t)::OpenProcess(dwAccess, bInherit, pid));
-	/*!!!
-	else
-	{
-		Attach(::GetCurrentProcess());
-		m_bOwn = false;
-		m_ID = GetCurrentProcessId();
-	}*/
-}
 
 void COperatingSystem::MessageBeep(UINT uType) {
 	Win32Check(::MessageBeep(uType));
@@ -212,11 +123,6 @@ void COperatingSystem::MessageBeep(UINT uType) {
 
 #if !UCFG_WCE
 
-DWORD File::GetOverlappedResult(OVERLAPPED& ov, bool bWait) {
-	DWORD r;
-	Win32Check(::GetOverlappedResult((HANDLE)(intptr_t)HandleAccess(_self), &ov, &r, bWait));
-	return r;
-}
 
 
 DWORD File::DeviceIoControlAndWait(int code, LPCVOID bufIn, size_t nIn, LPVOID bufOut, size_t nOut) {
@@ -238,9 +144,11 @@ DWORD File::DeviceIoControlAndWait(int code, LPCVOID bufIn, size_t nIn, LPVOID b
 	AFX_MODULE_STATE _afxBaseModuleState(true); //!!!
 #endif
 
+#if UCFG_THREAD_MANAGEMENT
 _AFX_THREAD_STATE * AFXAPI AfxGetThreadState() {
 	return &ThreadBase::get_CurrentThread()->AfxThreadState();
 }
+#endif
 
 AFX_MODULE_THREAD_STATE::AFX_MODULE_THREAD_STATE()
 	: m_pfnNewHandler(0)
@@ -256,6 +164,7 @@ CThreadHandleMaps& AFX_MODULE_THREAD_STATE::GetHandleMaps() {
 	return *m_handleMaps.get();
 }
 
+#if UCFG_THREAD_MANAGEMENT
 AFX_MODULE_THREAD_STATE* AFXAPI AfxGetModuleThreadState() {
 	AFX_MODULE_STATE *ms = AfxGetModuleState();
 	AFX_MODULE_THREAD_STATE *r = ms->m_thread;
@@ -263,6 +172,7 @@ AFX_MODULE_THREAD_STATE* AFXAPI AfxGetModuleThreadState() {
 		ms->m_thread.reset(r = new AFX_MODULE_THREAD_STATE);
 	return r;
 }
+#endif
 
 void AFX_MODULE_STATE::SetHInstance(HMODULE hModule) {
 	m_hCurrentInstanceHandle = m_hCurrentResourceHandle = hModule;
@@ -601,9 +511,9 @@ int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType, UINT nIDHelp) {
 
 void AfxWinTerm() {
 	//!!!  ::CoFreeUnusedLibraries();
-	_AFX_THREAD_STATE *pTS = AfxGetThreadState();
 	if (!AfxGetModuleState()->m_bDLL) {
 #if !UCFG_WCE && UCFG_EXTENDED
+		_AFX_THREAD_STATE* pTS = AfxGetThreadState();
 		pTS->m_hookCbt.Unhook();
 		pTS->m_hookMsg.Unhook();
 #endif
@@ -691,143 +601,6 @@ AFX_MAINTAIN_STATE2::~AFX_MAINTAIN_STATE2() {
 	t_pModuleState = m_pPrevModuleState;
 }
 
-struct Win32CodeErrc {
-	uint16_t Code;
-	errc Errc;
-};
-
-static const Win32CodeErrc s_win32code2errc[] ={
-	ERROR_FILE_NOT_FOUND,		errc::no_such_file_or_directory,
-	ERROR_PATH_NOT_FOUND,		errc::no_such_file_or_directory,
-	ERROR_ACCESS_DENIED,		errc::permission_denied,
-	ERROR_INVALID_HANDLE,		errc::bad_file_descriptor,
-	ERROR_OUTOFMEMORY,			errc::not_enough_memory,
-	ERROR_NOT_ENOUGH_MEMORY,	errc::not_enough_memory,
-	ERROR_NOT_SUPPORTED,		errc::not_supported,
-	ERROR_INVALID_PARAMETER,	errc::invalid_argument,
-	ERROR_BROKEN_PIPE,			errc::broken_pipe,
-	ERROR_ALREADY_EXISTS,		errc::file_exists,
-	ERROR_FILENAME_EXCED_RANGE, errc::filename_too_long,
-	ERROR_FILE_TOO_LARGE,		errc::file_too_large,
-	ERROR_CANCELLED,			errc::operation_canceled,
-	ERROR_WAIT_NO_CHILDREN,		errc::no_child_process,
-	ERROR_ARITHMETIC_OVERFLOW,	errc::result_out_of_range,
-	ERROR_BUSY,					errc::device_or_resource_busy,
-	ERROR_DEVICE_IN_USE,		errc::device_or_resource_busy,
-	ERROR_BAD_FORMAT,			errc::executable_format_error,
-	ERROR_DIR_NOT_EMPTY,		errc::directory_not_empty,
-	ERROR_DISK_FULL,			errc::no_space_on_device,
-	ERROR_INVALID_ADDRESS,		errc::bad_address,
-	ERROR_TIMEOUT,				errc::timed_out,
-	ERROR_IO_PENDING,			errc::resource_unavailable_try_again,
-	ERROR_NOT_SAME_DEVICE,		errc::cross_device_link,
-	ERROR_WRITE_PROTECT,		errc::read_only_file_system,
-	ERROR_POSSIBLE_DEADLOCK,	errc::resource_deadlock_would_occur,
-	ERROR_PRIVILEGE_NOT_HELD,	errc::operation_not_permitted,
-	ERROR_INTERNET_CANNOT_CONNECT, errc::connection_refused,
-	WSAENOBUFS, 				errc::no_buffer_space,
-	WSAEINTR,					errc::interrupted,
-	WSAEBADF,					errc::bad_file_descriptor,
-	WSAEACCES,					errc::permission_denied,
-	WSAEFAULT,					errc::bad_address,
-	WSAEINVAL,					errc::invalid_argument,
-	WSAEMFILE,					errc::too_many_files_open,
-	WSAEWOULDBLOCK,				errc::operation_would_block,
-	WSAEINPROGRESS,				errc::operation_in_progress,
-	WSAEALREADY,				errc::connection_already_in_progress,
-	WSAENOTSOCK,				errc::not_a_socket,
-	WSAEDESTADDRREQ,			errc::destination_address_required,
-	WSAEMSGSIZE,				errc::message_size,
-	WSAEPROTOTYPE,				errc::wrong_protocol_type,
-	WSAENOPROTOOPT,				errc::no_protocol_option,
-	WSAEPROTONOSUPPORT,			errc::protocol_not_supported,
-	WSAEOPNOTSUPP,				errc::protocol_not_supported,
-	WSAEAFNOSUPPORT,			errc::address_family_not_supported,
-	WSAEADDRINUSE,				errc::address_in_use,
-	WSAEADDRNOTAVAIL,			errc::address_not_available,
-	WSAENETDOWN,				errc::network_down,
-	WSAENETUNREACH,				errc::network_unreachable,
-	WSAENETRESET,				errc::network_reset,
-	WSAECONNABORTED,			errc::connection_aborted,
-	WSAECONNRESET,				errc::connection_reset,
-	WSAEISCONN,					errc::already_connected,
-	WSAENOTCONN,				errc::not_connected,
-	WSAETIMEDOUT,				errc::timed_out,
-	WSAECONNREFUSED,			errc::connection_refused,
-	WSAELOOP,					errc::too_many_symbolic_link_levels,
-	WSAENAMETOOLONG,			errc::filename_too_long,
-	WSAEHOSTUNREACH,			errc::host_unreachable,
-	WSAENOTEMPTY,				errc::directory_not_empty,
-	WSAECANCELLED,				errc::operation_canceled,
-	0
-};
-
-static class Win32Category : public ErrorCategoryBase {			// outside function to eliminate thread-safe static machinery
-	typedef ErrorCategoryBase base;
-public:
-	Win32Category()
-		: base("Win32", FACILITY_WIN32)
-	{}
-
-	string message(int eval) const override {
-#if !UCFG_WDM
-		TCHAR buf[256];
-
-		if (eval >= INTERNET_ERROR_BASE && eval <= INTERNET_ERROR_LAST) {
-			if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS, LPCVOID(GetModuleHandle(_T("wininet.dll"))),
-				eval, 0, buf, sizeof buf, 0))
-				return "WinInet: " + String(buf);
-		} else if (eval >= WSABASEERR && eval<WSABASEERR + 1024) {
-			if (FormatMessage(FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
-				LPCVOID(_afxBaseModuleState.m_hCurrentResourceHandle),
-				eval, 0, buf, sizeof buf, 0))
-				return String(buf);
-		}
-		if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, eval, 0, buf, sizeof buf, 0))
-			return String(buf);
-#endif
-		return Convert::ToString(eval, 16);
-	}
-
-	error_condition default_error_condition(int errval) const noexcept override {
-		int code;
-		for (const Win32CodeErrc *p=s_win32code2errc; (code=p->Code); ++p)
-			if (code == errval)
-				return p->Errc;
-		switch (errval) {
-		case ERROR_HANDLE_EOF:			return ExtErr::EndOfStream;
-		case ERROR_WRONG_PASSWORD:
-		case ERROR_INVALID_PASSWORD:
-			return ExtErr::InvalidPassword;
-		case ERROR_LOGON_FAILURE:		return ExtErr::LogonFailure;
-		case ERROR_PWD_TOO_SHORT:		return ExtErr::PasswordTooShort;
-		case ERROR_CRC: 				return ExtErr::Checksum;
-		}
-		return error_condition(errval, *this);
-	}
-
-	bool equivalent(int errval, const error_condition& c) const noexcept override {			//!!!TODO
-		switch (errval) {
-		case ERROR_TOO_MANY_OPEN_FILES:	return c==errc::too_many_files_open || c==errc::too_many_files_open_in_system;
-		default:
-			return base::equivalent(errval, c);
-		}
-	}
-
-	bool equivalent(const error_code& ec, int errval) const noexcept override {
-		if (ec.category() == system_category())
-			return errval == ec.value();
-		if (ec.category() == hresult_category() && HRESULT_FACILITY(ec.value()) == FACILITY_WIN32)
-			return errval == (ec.value() & 0xFFFF);
-		else
-			return base::equivalent(ec, errval);
-	}
-
-} s_win32Category;
-
-const error_category& AFXAPI win32_category() {
-	return s_win32Category;
-}
 
 
 bool AFXAPI AfxHasResource(const CResID& name, const CResID& typ) {
@@ -897,4 +670,49 @@ LRESULT CWindowsHook::CallNext(int nCode, WPARAM wParam, LPARAM lParam) {
 
 #endif
 
+namespace Ext::Win {
 
+AcceleratorTable& AcceleratorTable::operator=(const AcceleratorTable& other) {
+	this->~AcceleratorTable();
+	_hAccel = 0;
+	if (other._hAccel) {
+		auto n = ::CopyAcceleratorTable(other._hAccel, 0, 0);
+		auto accels = (ACCEL*)alloca(n * sizeof(ACCEL));
+		::CopyAcceleratorTable(other._hAccel, accels, n);
+		Win32Check((_hAccel = ::CreateAcceleratorTable(accels, n)) != 0);
+	}
+	return *this;
+}
+
+CGlobalAlloc::CGlobalAlloc(size_t size, DWORD flags)
+	: m_handle(::GlobalAlloc(flags, size)) {
+	Win32Check(m_handle != 0);
+}
+
+CGlobalAlloc::CGlobalAlloc(const Blob& blob)
+	: m_handle(::GlobalAlloc(GMEM_FIXED, blob.size())) {
+	Win32Check(m_handle != 0);
+	memcpy(::GlobalLock(m_handle), blob.constData(), blob.size());
+	GlobalUnlock(m_handle);
+}
+
+CGlobalAlloc::~CGlobalAlloc() {
+	if (m_handle)
+		Win32Check(::GlobalFree(m_handle) == 0);
+}
+
+HGLOBAL CGlobalAlloc::Detach() {
+	return exchange(m_handle, HGLOBAL(0));
+}
+
+GlobalLocker::GlobalLocker(HGLOBAL hGlobal) {
+	_ptr = ::GlobalLock(_hGlobal = hGlobal);
+	Win32Check(_ptr != 0);
+}
+
+GlobalLocker::~GlobalLocker() {
+	Win32Check(::GlobalUnlock(_hGlobal), NO_ERROR);
+}
+
+
+} // Ext::Win::

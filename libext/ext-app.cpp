@@ -172,7 +172,7 @@ path AFXAPI GetAppDataManufacturerFolder() {
 String CAppBase::GetInternalName() {
 	if (!m_internalName.empty())
 		return m_internalName;
-#if UCFG_WIN32
+#if UCFG_WIN32 && UCFG_EXTENDED
 	DWORD dw;
 	if (GetFileVersionInfoSize((_TCHAR*)(const _TCHAR*)String(AfxGetModuleState()->FileName.native()), &dw))
 		return FileVersionInfo().InternalName;
@@ -397,26 +397,35 @@ void __cdecl CConApp::OnSigInt(int sig) {
 		signal(sig, OnSigInt);
 	else {
 		raise(sig);
-#ifdef WIN32
+#if UCFG_WIN32 && UCFG_THREAD_MANAGEMENT
 		AfxEndThread(0, true); //!!!
 #endif
 	}
 }
 #endif // !UCFG_WCE
 
+#if UCFG_WIN32_FULL && !UCFG_COUT_REDIRECTOR
+void CConApp::InitOutRedirectors() {
+#if UCFG_LOCALE
+	setlocale(LC_CTYPE, "");
+#endif
+}
+#endif // UCFG_WIN32_FULL && !UCFG_COUT_REDIRECTOR
+
 
 int CConApp::Main(int argc, argv_char_t *argv[]) {
 #if UCFG_WIN32_FULL && UCFG_COUT_REDIRECTOR!='R'
 	InitOutRedirectors();
-#else
+#elif UCFG_LOCALE
 	setlocale(LC_CTYPE, "");
 #endif
+#if UCFG_TRC
 	if (const char *slevel = getenv("UCFG_TRC")) {
-		if (!CTrace::GetOStream())
-			CTrace::SetOStream(new CIosStream(clog));
-		CTrace::s_nLevel = atoi(slevel);
+		if (!Trace::GetOStream())
+			Trace::SetOStream(new CIosStream(clog));
+		Trace::s_nLevel = atoi(slevel);
 	}
-
+#endif
 #if UCFG_USE_POSIX
 	cerr << " \b";		// mix of std::cerr && std::wcerr requires this hack
 #endif

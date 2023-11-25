@@ -1,9 +1,11 @@
-/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
+
+#include <el/libext/ext-cpp.h>
 
 #include EXT_HEADER(list)
 
@@ -33,7 +35,7 @@ private:
 template<> class Array<char> {
 public:
 	Array(size_t size)
-		: m_p((char*)Malloc(size))
+		: m_p((char*)malloc(size))
 	{
 	}
 
@@ -79,7 +81,7 @@ Ostream(streambuf *sb)
 {}
 };*/
 
-#if !defined(_MSC_VER) || _MSC_VER > 1400 
+#if !defined(_MSC_VER) || _MSC_VER > 1400
 
 
 //!!!R #define AutoPtr std::unique_ptr
@@ -224,7 +226,7 @@ public:
 	{
 		return const_iterator((MyNodeptr)pNode);
 	}
-#	elif defined(_MSC_VER) && _MSC_VER > 1400 
+#	elif defined(_MSC_VER) && _MSC_VER > 1400
 	static const_iterator ToConstIterator(void *pNode)
 	{
 		return _Const_iterator<false>((MyNodeptr)pNode);
@@ -443,7 +445,7 @@ public:
 protected:
 	uint8_t m_base[sizeof(value_type)];
 	size_t m_size;
-	
+
 	const T *getP() const { return (const T*)m_base; }
 	T *getP() { return (T*)m_base; }
 };
@@ -622,5 +624,3 @@ template <class T>
 size_t AFXAPI hash_value(const Ext::Pimpl<T>& v) { return hash_value(v.m_pimpl); }
 
 } // stdext::
-
-

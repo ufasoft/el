@@ -25,7 +25,6 @@ bool AFXAPI Equal(RCSpan x, RCSpan y) {
         : x.size() == y.size() && (px == py || !memcmp(px, py, x.size()));
 }
 
-#if UCFG_TRC
 void CPrintable::Print(ostream& os) const {
 	os << ToString();
 }
@@ -35,7 +34,6 @@ String CPrintable::ToString() const {
 	Print(os);
 	return os.str();
 }
-#endif // UCFG_TRC
 
 const class CRuntimeClass Object::classObject =
 	{ "Object", sizeof(Object), 0xffff, NULL, 0, NULL };
@@ -244,11 +242,11 @@ namespace ExtSTL {
 
 } // ExtSTL::
 
+#if UCFG_DEFINE_NEW
 void __cdecl operator delete(void* p) {
 	free(p);
 }
 
-#if UCFG_DEFINE_NEW
 void * __cdecl operator new(size_t sz) {
 	return Ext::Malloc(sz);
 }

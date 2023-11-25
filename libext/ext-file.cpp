@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -12,7 +12,9 @@
 
 #if UCFG_NTAPI && UCFG_WIN32
 #	include <el/win/nt.h>
-#	pragma comment(lib, "ntdll")
+#	if UCFG_LIB_DECLS
+#		pragma comment(lib, "ntdll")
+#	endif
 using namespace NT;
 #endif // UCFG_WIN32_FULL
 
@@ -23,7 +25,9 @@ using namespace NT;
 #endif
 
 #if UCFG_WIN32_FULL
-#	pragma comment(lib, "shlwapi")
+#	if UCFG_LIB_DECLS
+#		pragma comment(lib, "shlwapi")
+#	endif
 
 #	include <el/libext/win32/ext-full-win.h>
 #	include <el/win/nt.h>
@@ -101,20 +105,6 @@ pair<path, UINT> Path::GetTempFileName(const path& p, RCString prefix, UINT uUni
 #endif
 }
 
-path Path::GetPhysicalPath(const path& p) {
-	String ps = p.native();
-#if UCFG_WIN32_FULL
-	while (true) {
-		Path::CSplitPath sp = SplitPath(ps.c_str());
-		vector<String> vec = System.QueryDosDevice(sp.m_drive);				// expand SUBST-ed drives
-		if (vec.empty() || !vec[0].StartsWith("\\??\\"))
-			break;
-		ps = vec[0].substr(4) + sp.m_dir + sp.m_fname + sp.m_ext;
-	}
-#endif
-	return ps.c_str();
-}
-
 #if UCFG_WIN32_FULL && UCFG_USE_REGEX
 static StaticWRegex s_reDosName("^\\\\\\\\\\?\\\\([A-Za-z]:.*)");   //  \\?\x:
 #endif
@@ -165,7 +155,7 @@ path Path::GetTruePath(const path& p) {
 }
 
 
-#if UCFG_WIN32
+#if UCFG_WCE
 bool File::s_bCreateFileWorksWithMMF = (System.Version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) ||
 	(Environment.OSVersion.Platform==PlatformID::Win32NT) ||
 	(Environment.OSVersion.Version.Major >= 5); // CE
@@ -285,7 +275,7 @@ Blob File::ReadAllBytes(const path& p) {
 	if (len > numeric_limits<size_t>::max())
 		Throw(E_OUTOFMEMORY);
 	Blob blob(0, (size_t)len);
-	stm.ReadBuffer(blob.data(), blob.size());
+	stm.ReadExactly(blob.data(), blob.size());
 	return blob;
 }
 
@@ -346,19 +336,19 @@ bool File::DeviceIoControl(int code, LPCVOID bufIn, size_t nIn, LPVOID bufOut, s
 	return CheckPending(::DeviceIoControl((HANDLE)(intptr_t)HandleAccess(_self), code, (void*)bufIn, (DWORD)nIn, bufOut, (DWORD)nOut, pdw, pov));
 }
 
-void File::CancelIo() {
-	static CDynamicLibrary dll;
-	if (!dll)
-		dll.Load("kernel32.dll");
-	typedef BOOL(__stdcall *C_CancelIo)(HANDLE);
-	Win32Check(((C_CancelIo)dll.GetProcAddress((LPCTSTR)String("CancelIo")))((HANDLE)(intptr_t)HandleAccess(_self)));
-}
-
 bool File::CheckPending(BOOL b) {
 	if (b)
 		return true;
 	Win32Check(GetLastError() == ERROR_IO_PENDING);
 	return false;
+}
+
+void File::CancelIo() {
+	static CDynamicLibrary dll;
+	if (!dll)
+		dll.Load("kernel32.dll");
+	typedef BOOL(__stdcall* C_CancelIo)(HANDLE);
+	Win32Check(((C_CancelIo)dll.GetProcAddress((LPCTSTR)String("CancelIo")))((HANDLE)(intptr_t)HandleAccess(_self)));
 }
 
 #endif // !UCFG_USE_POSIX
@@ -545,6 +535,11 @@ void File::put_Length(uint64_t len) {
 #endif
 }
 
+FileStream::~FileStream() {
+	if (m_fstm)
+		Close();
+}
+
 void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare share, size_t bufferSize, FileOptions options) {
 	intptr_t h = File(p, mode, access, share, options).Detach();
 #if UCFG_WIN32_FULL
@@ -680,7 +675,7 @@ size_t FileStream::Read(void *buf, size_t count) const {
 	return m_pFile->Read(buf, (UINT)count);
 }
 
-void FileStream::ReadBuffer(void *buf, size_t count) const {
+void FileStream::ReadExactly(void *buf, size_t count) const {
 	if (m_fstm) {
 		size_t r = fread(buf, 1, count, m_fstm);
 		if (r != count) {
@@ -777,7 +772,7 @@ size_t PositionOwningFileStream::Read(void *buf, size_t count) const {
 	return cb;
 }
 
-void PositionOwningFileStream::ReadBuffer(void *buf, size_t count) const {
+void PositionOwningFileStream::ReadExactly(void *buf, size_t count) const {
 	if (Read(buf, count) != count)
 		Throw(ExtErr::EndOfStream);
 }
@@ -797,7 +792,9 @@ WIN32_FIND_DATA FileSystemInfo::GetData() const {
 }
 
 DWORD FileSystemInfo::get_Attributes() const {
-	DWORD r = ::GetFileAttributes(ExcLastStringArgKeeper(FullPath.native()));
+	String sNative = FullPath.native();
+	ExcLastStringArgKeeper keeper(sNative);
+	DWORD r = ::GetFileAttributes(sNative);
 	Win32Check(r != INVALID_FILE_ATTRIBUTES);
 	return r;
 }
@@ -878,9 +875,15 @@ void FileSystemInfo::put_LastWriteTime(const DateTime& dt) {
 #endif
 }
 
-
-
 #if UCFG_WIN32_FULL
+DWORD File::GetOverlappedResult(OVERLAPPED& ov, bool bWait) {
+	DWORD r;
+	Win32Check(::GetOverlappedResult((HANDLE)(intptr_t)HandleAccess(_self), &ov, &r, bWait));
+	return r;
+}
+#endif // UCFG_WIN32_FULL
+
+#if UCFG_USE_REGISTRY
 
 vector<String> AFXAPI SerialPort::GetPortNames() {
 	vector<String> r;
@@ -896,7 +899,7 @@ vector<String> AFXAPI SerialPort::GetPortNames() {
 	return r;
 }
 
-#endif // UCFG_WIN32_FULL
+#endif // UCFG_USE_REGISTRY
 
 
 

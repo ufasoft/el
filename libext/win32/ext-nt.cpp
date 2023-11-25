@@ -1,11 +1,13 @@
 #ifndef _ELDRV
-#	define WIN32_NO_STATUS
+//#	define WIN32_NO_STATUS
 #endif
+
+#include <ntstatus.h>
+#define WIN32_NO_STATUS
 
 #include <el/ext.h>
 
-#undef WIN32_NO_STATUS
-#include <ntstatus.h>
+//#undef WIN32_NO_STATUS
 
 namespace Ext {
 using namespace std;

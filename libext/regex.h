@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <el/libext/afterstl.h>
+
 namespace Ext {
 
 struct RegexTraits {

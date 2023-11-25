@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -132,6 +132,21 @@ int64_t Convert::ToInt64(RCString s, int fromBase) {
 	return r;
 }
 
+static const char s_iecSuffixes[] = "kMGTPEZYRQ";
+
+String Convert::ToIecSuffixedString(uint64_t v, RCString unit) {
+	char suffix = 0;
+	for (const char* pSuffix = s_iecSuffixes; v >= 1000 && *pSuffix; v /= 1000)
+		suffix = *pSuffix++;
+	ostringstream os;
+	os << v;
+	if (suffix)
+		os << ' ' << suffix;
+	if (!unit.empty())
+		os << (suffix ? "" : " ") << unit;
+	return os.str();
+}
+
 template <typename T>
 T CheckBounds(int64_t v) {
 	if (v > numeric_limits<T>::max() || v < numeric_limits<T>::min())
@@ -203,12 +218,14 @@ MacAddress::MacAddress(RCString s)
 		*p++ = (uint8_t)Convert::ToUInt32(ar[i], 16);
 }
 
+#if UCFG_TRC
 void MacAddress::Print(ostream& os) const {
 	Span s = AsSpan();
 	char buf[20];
 	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", s[0], s[1], s[2], s[3], s[4], s[5]);
 	os << buf;
 }
+#endif
 
 int StreamReader::ReadChar() {
 	if (m_prevChar == -1)
@@ -275,7 +292,53 @@ uint64_t ToUInt64AtBytePos(const dynamic_bitset<uint8_t> &bs, size_t pos) {
 	return r;
 }
 
+CInException::CInException() noexcept
+	: m_nUncaught(std::uncaught_exceptions())
+{}
 
+CInException::operator bool() const noexcept {
+	return std::uncaught_exceptions() > m_nUncaught ? EXT_CONVERTIBLE_TO_TRUE : 0;
+}
+
+void CInException::swap(CInException& r) {
+	r.m_nUncaught = std::exchange(m_nUncaught, r.m_nUncaught);
+}
+
+
+size_t CIosStream::Read(void* buf, size_t count) const {
+	m_pis->read((char*)buf, (std::streamsize)count);
+	if (!*m_pis)
+		Throw(ExtErr::NoInputStream);
+	return (size_t)m_pis->gcount();
+}
+
+void CIosStream::ReadExactly(void* buf, size_t count) const {
+	if (Read(buf, count) != count)
+		Throw(ExtErr::EndOfStream);
+}
+
+void CIosStream::WriteBuffer(const void* buf, size_t count) {
+	m_pos->write((const char*)buf, (std::streamsize)count);
+	if (!*m_pos)
+		Throw(ExtErr::NoOutputStream);
+}
+
+uint64_t CIosStream::get_Position() const {
+	return m_pis ? m_pis->tellg() : m_pos->tellp();
+}
+
+void CIosStream::put_Position(uint64_t pos) const {
+	if (m_pis) {
+		m_pis->seekg((long)pos);
+		if (!*m_pis)
+			Throw(ExtErr::NoInputStream);
+	}
+	if (m_pos) {
+		m_pos->seekp((long)pos);
+		if (!*m_pos)
+			Throw(ExtErr::NoOutputStream);
+	}
+}
 
 } // Ext::
 

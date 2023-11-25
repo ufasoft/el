@@ -15,8 +15,9 @@
 #endif
 
 
-#include "extmsg_.h"
-
+#if UCFG_ATL=='S'
+#	include "afxmsg_.h"
+#endif
 
 #include <psapi.h>
 

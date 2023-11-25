@@ -25,12 +25,13 @@ DlException::DlException()
 
 #elif UCFG_WIN32
 
-DlProcWrapBase::DlProcWrapBase(RCString dll, RCString funname) {
-	Init(::GetModuleHandle(dll), funname);
+DlProcWrapBase::DlProcWrapBase(RCString dll, RCString funname, int id) {
+	Init(::GetModuleHandle(dll), funname, id);
 }
 
-void DlProcWrapBase::Init(HMODULE hModule, RCString funname) {
-	m_p = ::GetProcAddress(hModule, funname);
+void DlProcWrapBase::Init(HMODULE hModule, RCString funname, int id) {
+	if (!(m_p = ::GetProcAddress(hModule, funname)))
+		m_p = ::GetProcAddress(hModule, (LPCSTR)MAKEINTRESOURCE(id));
 }
 #endif // UCFG_WIN32
 
@@ -61,7 +62,9 @@ void CDynamicLibrary::Free() {
 }
 
 FARPROC CDynamicLibrary::GetProcAddress(const CResID& resID) {
-	ExcLastStringArgKeeper argKeeper(resID.ToString());
+	String sResID = resID.ToString();
+	const wchar_t* psz = sResID;
+	ExcLastStringArgKeeper argKeeper(psz);
 
 	FARPROC proc;
 #if UCFG_USE_POSIX

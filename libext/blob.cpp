@@ -1,10 +1,13 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #include <el/ext.h>
 
+#if UCFG_WIN32
+#	include <shlwapi.h>
+#endif
 
 namespace Ext {
 using namespace std;
@@ -255,9 +258,10 @@ void Blob::Replace(size_t offset, size_t sz, RCSpan mb) {
 }
 
 AutoBlobBase::AutoBlobBase(const AutoBlobBase& x, size_t szSpace) {
-	if (x.IsInHeap(szSpace))
-		memcpy(m_p = (uint8_t*)Malloc(m_size = x.m_size), x.m_p, x.m_size);
-	else {
+	if (x.IsInHeap(szSpace)) {
+		m_p = (uint8_t *)Malloc(m_size = x.m_size);
+		memcpy(m_p, x.m_p, x.m_size);
+	} else {
 		size_t sz = x.m_p - x.m_space;
 		memcpy(m_space, x.m_space, sz);
 		m_p = m_space + sz;
@@ -362,35 +366,16 @@ void AutoBlobBase::DoResize(size_t sz, bool bZeroContent, size_t szSpace) {
 	}
 }
 
+
+size_t AFXAPI hash_value(const void* key, size_t len) {
+#if UCFG_OPT_SIZ && UCFG_WIN32
+	size_t r;
+	Win32Check(::HashData((BYTE*)key, len, (BYTE*)&r, sizeof(r)));
+	return r;
+#else
+	return MurmurHashAligned2(Span((const uint8_t*)key, len), _HASH_SEED);
+#endif
+}
+
 } // Ext::
 
-namespace std {
-
-static const char
-	s_upperHexDigits[] = "0123456789ABCDEF",
-	s_lowerHexDigits[] = "0123456789abcdef";
-
-ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf) {
-	if (!cbuf.data())
-		return os << "<#nullptr>";
-	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
-	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
-		uint8_t n = cbuf[i];
-		os.put(digits[n >> 4]).put(digits[n & 15]);
-	}
-	return os;
-}
-
-wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf) {
-	if (!cbuf.data())
-		return os << "<#nullptr>";
-	const char *digits = os.flags() & ios::uppercase ? s_upperHexDigits : s_lowerHexDigits;
-	for (size_t i = 0, size = cbuf.size(); i < size; ++i) {
-		uint8_t n = cbuf[i];
-		os.put(digits[n >> 4]).put(digits[n & 15]);
-	}
-	return os;
-}
-
-
-} // std::

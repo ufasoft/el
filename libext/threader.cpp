@@ -29,8 +29,10 @@
 #endif
 
 using namespace std;
+using std::chrono::milliseconds;
 using namespace Ext;
 
+/*!!!T
 class CListDestructibleTlses {
 public:
 	void insert(CDestructibleTls& tls) {
@@ -59,6 +61,7 @@ static InterlockedSingleton<CListDestructibleTlses> s_pDestructibleTlses;
 static void TlsCleanup(void *arg) {
 	s_pDestructibleTlses->ThreadCleanup();
 }
+*/
 
 #if UCFG_USE_PTHREADS
 
@@ -67,18 +70,22 @@ static volatile int s_initCleanup = ::pthread_key_create(&s_keyCleanup, &TlsClea
 
 #elif defined(_MSC_VER)
 
+/*!!!T
 static void NTAPI TlsCallback(PVOID dllHandle, DWORD reason, PVOID reserved) {
 	if (reason == DLL_THREAD_DETACH)
 		TlsCleanup(0);
 }
+*/
 
 extern "C" {
 
 extern DWORD _tls_used;
 DWORD volatile dw = _tls_used;	// forces a tls directory to be created, volatile prevent optimization
 
+/*!!!T
 #pragma section(".CRT$XLC",long,read)
  __declspec(allocate(".CRT$XLC")) PIMAGE_TLS_CALLBACK _xl_y  = TlsCallback;
+ */
 } // "C"
 
 #endif // _MSC_VER
@@ -101,6 +108,8 @@ ostream& operator<<(ostream& os, const thread::id& v) {
 
 
 namespace Ext {
+
+#if UCFG_THREAD_MANAGEMENT
 
 using namespace std;
 
@@ -133,7 +142,7 @@ ThreadBase::~ThreadBase() {
 		m_threadRef->StopChilds();
 		delete m_threadRef;
 	}
-#if UCFG_WIN32
+#if UCFG_THREAD_MANAGEMENT
 	if (_AFX_THREAD_STATE *ats = exchange(m_pAfxThreadState, nullptr))
 		delete ats;
 #endif
@@ -143,7 +152,7 @@ ThreadBase::~ThreadBase() {
 #endif
 }
 
-#if UCFG_WIN32
+#if UCFG_THREAD_MANAGEMENT
 
 _AFX_THREAD_STATE& ThreadBase::AfxThreadState() {
 	if (!m_pAfxThreadState)
@@ -161,6 +170,7 @@ ThreadBase::propclass_CurrentThread ThreadBase::CurrentThread; //!!!
 
 //!!!Rstatic CTls s_currentThread;
 
+/*!!!T
 static class CThreadDestructibleTls : public CDestructibleTls {
 	typedef CDestructibleTls base;
 public:
@@ -176,7 +186,7 @@ public:
 		CCounterIncDec<ThreadBase, InterlockedPolicy>::Release((ThreadBase*)p);
 	}
 } t_pCurThread;
-
+*/
 
 //EXT_THREAD_PTR(ThreadBase, t_pCurThread);
 
@@ -647,7 +657,7 @@ void AFXAPI AfxTermThread(HINSTANCE hInstTerm) {
 }
 
 void AFXAPI AfxEndThread(UINT nExitCode, bool bDelete) {
-#if UCFG_EXTENDED || UCFG_WIN32
+#if UCFG_THREAD_MANAGEMENT
 	AFX_MODULE_THREAD_STATE* pState = AfxGetModuleThreadState();
 	if (ThreadBase *pThread = Thread::TryGetCurrentThread()) {
 		pThread->OnEnd();
@@ -762,7 +772,7 @@ UINT ThreadBase::ThreaderFunction(LPVOID pParam)
 {
 	ThreadBase *pT = (ThreadBase*)pParam;;
 
-#if UCFG_WIN32 && defined(_AFXDLL)
+#if UCFG_WIN32 && defined(_AFXDLL) && UCFG_THREAD_MANAGEMENT
 	AfxSetModuleState(pT->m_pModuleStateForThread);
 	pT->m_pModuleState = pT->m_pModuleStateForThread ? pT->m_pModuleStateForThread : &_afxBaseModuleState;
 #endif
@@ -792,7 +802,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 {
 	ASSERT(!Valid());
 
-#ifdef WIN32
+#if UCFG_THREAD_MANAGEMENT
 	m_pModuleStateForThread.reset(AfxGetModuleState());
 #endif
 	++base::m_aRef;	// Runned thread decrements m_aRef;
@@ -961,31 +971,6 @@ void AFXAPI AfxTlsRelease() {
 	}
 }
 
-
-
-CTls::CTls() {
-#if UCFG_USE_PTHREADS
-	PthreadCheck(::pthread_key_create(&m_key, 0));
-#else
-	Win32Check((m_key = ::TlsAlloc()) != TLS_OUT_OF_INDEXES);
-#endif
-}
-
-CTls::~CTls() {
-#if UCFG_USE_PTHREADS
-	PthreadCheck(::pthread_key_delete(m_key));
-#else
-	Win32Check(::TlsFree(m_key));
-#endif
-}
-
-void CTls::put_Value(const void *p) {
-#if UCFG_USE_PTHREADS
-	PthreadCheck(::pthread_setspecific(m_key, p));
-#else
-	Win32Check(::TlsSetValue(m_key, (void*)p));
-#endif
-}
 
 CDestructibleTls::CDestructibleTls() {
 	s_pDestructibleTlses->insert(_self);
@@ -1158,6 +1143,6 @@ int CWinThread::ExitInstance() {
 }
 #endif
 
-
+#endif // UCFG_THREAD_MANAGEMENT
 
 } // Ext::

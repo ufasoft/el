@@ -7,7 +7,7 @@
 
 #ifndef UCFG_COUT_REDIRECTOR
 #	if UCFG_WIN32
-#		define UCFG_COUT_REDIRECTOR 'R'
+#		define UCFG_COUT_REDIRECTOR 0 //!!!T 'R'
 #	else
 #		define UCFG_COUT_REDIRECTOR 0
 #	endif
@@ -49,7 +49,7 @@ typedef char argv_char_t;
 #endif
 
 class CAppBase
-#if UCFG_COMPLEX_WINAPP	
+#if UCFG_COMPLEX_WINAPP
 	: public CWinThread //!!! must be Thread
 #endif
 {
@@ -76,7 +76,7 @@ public:
 
 	path m_appDataDir;
 
-	virtual path GetBaseDataFolder();
+	virtual path AFXAPI GetBaseDataFolder();
 	path get_AppDataDir();
 	DEFPROP_GET(path, AppDataDir);
 
@@ -142,7 +142,7 @@ public:
 
 	EXT_API int Main(int argc, argv_char_t *argv[]);
 	virtual void Usage() {}
-	virtual void Execute() {}	
+	virtual void Execute() {}
 	virtual bool OnSignal(int sig);
 
 #if UCFG_WIN32_FULL && UCFG_COUT_REDIRECTOR!='R'
@@ -222,7 +222,7 @@ protected:
 #if UCFG_COMPLEX_WINAPP
 
 protected:
-#if UCFG_EXTENDED && !UCFG_WCE	
+#if UCFG_EXTENDED && !UCFG_WCE
 
 	std::unique_ptr<CRecentFileList> m_pRecentFileList;
 
@@ -235,8 +235,6 @@ protected:
 	afx_msg void OnHelp();
 	afx_msg void OnAppExit();
 public:
-	String m_registryKey;
-	String m_profileName;
 	std::unique_ptr<Object> m_pDocManager;
 	ptr<CCommandLineInfo> m_pCmdInfo;
 
@@ -270,15 +268,22 @@ public:
 	DEFPROP_GET(CDocManager*, DocManager);
 
 	LRESULT ProcessWndProcException(RCExc e, const MSG *pMsg);
-	String GetProfileString(LPCTSTR lpszSection, LPCTSTR lpszEntry, LPCTSTR lpszDefault = 0);
-	void WriteProfileString(LPCTSTR lpszSection, LPCTSTR lpszEntry, LPCTSTR lpszValue);
 	void Enable3dControls();
-	void GetAppRegistryKey(RegistryKey& key);
 
 #endif
+
+	String m_profileName;
+
+#if UCFG_USE_REGISTRY
+	String m_registryKey;
+
+	RegistryKey GetAppRegistryKey();
+	String GetProfileString(LPCTSTR lpszSection, LPCTSTR lpszEntry, LPCTSTR lpszDefault = 0);
+	void WriteProfileString(LPCTSTR lpszSection, LPCTSTR lpszEntry, LPCTSTR lpszValue);
+#endif // UCFG_USE_REGISTRY
 };
 
-#define WM_USER                         0x0400
+#define WM_USER 0x0400
 
 const int UWM_NOTIFYICON = WM_USER+1;
 const int UWM_INVALID_REGCODE = WM_USER+10;
@@ -286,7 +291,7 @@ const int UWM_INVALID_REGCODE = WM_USER+10;
 
 //!!!FILETIME AFXAPI StringToFileTime(RCString s);
 
-//!!!#	ifndef _EXT 
+//!!!#	ifndef _EXT
 
 class CConsoleStreamHook {
 	FILE *m_file;

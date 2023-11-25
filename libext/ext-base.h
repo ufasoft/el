@@ -39,12 +39,8 @@ inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v, const char *funname
 class CPrintable {
 public:
 	virtual ~CPrintable() {}
-#if UCFG_TRC
 	virtual void Print(std::ostream& os) const;
 	virtual String ToString() const;
-#else
-	virtual String ToString() const { return ""; }
-#endif
 };
 
 
@@ -114,29 +110,36 @@ public:
 #endif
 	}
 
+	ExcLastStringArgKeeper(const std::wstring& s) {
+#if !UCFG_WDM
+		m_prev = Exception::t_LastStringArg;
+		Exception::t_LastStringArg = s.c_str();
+#endif
+	}
+
 	~ExcLastStringArgKeeper() {
 #if !UCFG_WDM
 		Exception::t_LastStringArg = m_prev;
 #endif
 	}
 
-	operator const wchar_t *() const {
+	operator const wchar_t* () const {
 #if !UCFG_WDM
 		return Exception::t_LastStringArg;
 #endif
 	}
 
-/*!!!?
-	operator const char *() const {
-#if !UCFG_WDM
-		String *ps = Exception::t_LastStringArg;
-		if (!ps)
-			Exception::t_LastStringArg.reset(ps = new String);
-		return ps->c_str();
-#endif
-	}
+	/*!!!?
+		operator const char *() const {
+	#if !UCFG_WDM
+			String *ps = Exception::t_LastStringArg;
+			if (!ps)
+				Exception::t_LastStringArg.reset(ps = new String);
+			return ps->c_str();
+	#endif
+		}
 
-	operator const String::value_type *() const {
+		operator const String::value_type *() const {
 #if !UCFG_WDM
 		String *ps = Exception::t_LastStringArg;
 		if (!ps)

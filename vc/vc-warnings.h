@@ -38,6 +38,7 @@
 #pragma warning(disable: 4365) // conversion from X to Y, signed/unsigned mismatch
 #pragma warning(disable: 4371) // layout of class may have changed from a previous version of the compiler due to better packing of member
 #pragma warning(disable: 4389) // signed/unsigned mismatch
+#pragma warning(disable: 4455) // operator ""sv': literal suffix identifiers that do not start with an underscore are reserved
 #pragma warning(disable: 4481) // nonstandard extension used: override specifier 'keyword'
 #pragma warning(disable: 4482) // nonstandard extension used: enum 'enum' used in qualified name
 #pragma warning(disable: 4512) // assignment operator could not be generated
@@ -93,12 +94,14 @@
 #	pragma warning(disable: 4456) // declaration of <id> hides previous local declaration
 #	pragma warning(disable: 4464) // relative include path contains '..'
 #	pragma warning(disable: 4592) // symbol will be dynamically initialized (implementation limitation)
+#	pragma warning(disable: 4648) // standard attribute is ignored
 #	pragma warning(disable: 5024) // move constructor was implicitly defined as deleted
 #	pragma warning(disable: 5025) // move assignment operator was implicitly defined as deleted
 #	pragma warning(disable: 5026) // move constructor was implicitly defined as deleted because a base class move constructor is inaccessible or deleted
 #	pragma warning(disable: 5027) // move assignment operator was implicitly defined as deleted because a base class move assignment operator is inaccessible or deleted
 #	pragma warning(disable: 5039) // 'function' : pointer or reference to potentially throwing function passed to extern C function under -EHc. Undefined behavior may occur if this function throws an exception
 #	pragma warning(disable: 5045) // Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
+#	pragma warning(disable: 5220) // a non-static data member with a volatile qualified type no longer implies
 #endif
 
 //#pragma warning(disable: 4786)  // name truncated
@@ -137,6 +140,7 @@
 //!!!? #pragma warning(default: 4623) // C4623: '__std_type_info_data': default constructor was implicitly defined as deleted because a base class default constructor is inaccessible or deleted
 #pragma warning(default: 4628) // digraphs not supported with -Ze. Character sequence 'digraph' not interpreted as alternate token for 'char'
 #pragma warning(default: 4641) // XML document comment has an ambiguous cross reference
+#pragma warning(disable: 4643) // Forward declaring in namespace std is not permitted by the C++ Standard
 
 #ifdef __cplusplus
 #	pragma warning(default: 4668) // 'symbol' is not defined as a preprocessor macro, replacing with '0' for 'directives'
@@ -150,3 +154,9 @@
 #pragma warning(default: 4906) // string literal cast to 'LPWSTR'
 #pragma warning(default: 4931) // we are assuming the type library was built for number-bit pointers
 #pragma warning(default: 4962) // 'function' : Profile-guided optimizations disabled because optimizations caused profile data to become inconsistent"
+
+#pragma warning(disable: 5204) // class has virtual functions, but its trivial destructor is not virtual; instances of objects derived from this class may not be destructed correctly
+#pragma warning(disable: 5247) // section is reserved for C++ dynamic initialization. Manually creating the section will interfere with C++ dynamic initialization and may lead to undefined behavior
+#pragma warning(disable: 5248) // section is reserved for C++ dynamic initialization. Variables manually put into the section may be optimized out and their order relative to compiler generated dynamic initializers is unspecified
+#pragma warning(disable: 5267) // definition of implicit copy constructor is deprecated because it has a user-provided assignment operator
+#pragma warning(disable: 6387) // could be '0'

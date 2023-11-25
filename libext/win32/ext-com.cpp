@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -16,154 +16,50 @@
 namespace Ext {
 using namespace std;
 
-CLSID AFXAPI ProgIDToCLSID(RCString s) {
-	CLSID clsid;
-	OleCheck(CLSIDFromProgID(s, &clsid));
-	return clsid;
-}
+#if UCFG_COM
 
 CUnkPtr AFXAPI CreateComObject(const CLSID& clsid, DWORD ctx) {
 	CUnkPtr r;
-	OleCheck(CoCreateInstance(clsid, 0, ctx, IID_IUnknown, (void**)&r));
+	OleCheck(::CoCreateInstance(clsid, 0, ctx, IID_IUnknown, (void**)&r));
 	return r;
 }
 
 CUnkPtr AFXAPI CreateComObject(RCString s, DWORD ctx) {
-	return CreateComObject(ProgIDToCLSID(s), ctx);
-}
-
-String AFXAPI StringFromIID(const IID& iid) {
-	COleString str;
-	OleCheck(::StringFromIID(iid, &str));
-	return str;
-}
-
-String AFXAPI StringFromCLSID(const CLSID& clsid) {
-	COleString str;
-	OleCheck(::StringFromCLSID(clsid, &str));
-	return str;
-}
-
-String AFXAPI StringFromGUID(const GUID& guid) {
-	OLECHAR buf[100];
-	Win32Check(StringFromGUID2(guid, buf, size(buf)));
-	return buf;
-}
-
-CLSID AFXAPI StringToCLSID(RCString s) {
-	CLSID clsid;
-	OleCheck(::CLSIDFromString(Bstr(s), &clsid));
-	return clsid;
-}
-
-CComPtrBase::CComPtrBase(const CComPtrBase& p)
-	: m_unk(p.m_unk)
-{
-	if (m_unk)
-		m_unk->AddRef();
-}
-
-CComPtrBase::CComPtrBase(IUnknown *unk, const IID *piid) {
-	if (unk) {
-		if (piid)
-			OleCheck(unk->QueryInterface(*piid, (void**)&m_unk));
-		else
-			(m_unk = unk)->AddRef();
-	} else
-		m_unk = 0;
-}
-
-bool CComPtrBase::operator==(IUnknown *lp) const {
-	return m_unk == lp;
-}
-
-void CComPtrBase::Release() {
-	if (m_unk)
-		exchange(m_unk, (IUnknown*)0)->Release();
-}
-
-void CComPtrBase::Assign(IUnknown *lp, const IID *piid) {
-	Release();
-	if (lp) {
-		if (piid)
-			OleCheck(lp->QueryInterface(*piid, (void**)&m_unk));
-		else
-			(m_unk = lp)->AddRef();
-	}
-}
-
-/*!!!R
-CUnkPtr::CUnkPtr(IUnknown *unk)
-	: m_unk(unk)
-{
-	if (m_unk)
-		m_unk->AddRef();
-}
-
-CUnkPtr::~CUnkPtr() {
-	if (m_unk)
-		m_unk->Release();
-}
-
-CUnkPtr::CUnkPtr()
-	: m_unk(0)
-{
-}
-
-CUnkPtr::CUnkPtr(const CUnkPtr& p)
-	: m_unk(p.m_unk)
-{
-	if (m_unk)
-		m_unk->AddRef();
-}
-
-void CUnkPtr::Attach(IUnknown *unk)
-{
-	if (m_unk)
-		m_unk->Release();
-	m_unk = unk;
-}
-
-IUnknown **CUnkPtr::operator&() {
-	if (m_unk)
-		Throw(ExtErr::InterfaceAlreadyAssigned);
-	return &m_unk;
-}
-
-CUnkPtr& CUnkPtr::operator=(const CUnkPtr& p) {
-	return operator=(p.m_unk);
-}
-
-CUnkPtr& CUnkPtr::operator=(IUnknown *unk) {
-	if (m_unk != unk) {
-		if (m_unk)
-			m_unk->Release();
-		if (m_unk = unk)
-			m_unk->AddRef();
-	}
-	return _self;
-}
-*/
-
-IUnknown **CComPtrBase::operator&() {
-	if (m_unk)
-		Throw(ExtErr::InterfaceAlreadyAssigned);
-	return &m_unk;
+	return CreateComObject(Guid::FromProgId(s), ctx);
 }
 
 size_t CIStream::Read(void *buf, size_t count) const {
 	DWORD dw;
-	OleCheck(m_stream->Read(buf, (ULONG)count, &dw));
-	return dw;
+	if (count <= ULONG_MAX) {
+		OleCheck(m_stream->Read(buf, (ULONG)count, &dw));
+		return dw;
+	}
+	for (size_t r = 0;; buf = (char*)buf + dw) {
+		auto hr = OleCheck(m_stream->Read(buf, (ULONG)(max)(size_t(ULONG_MAX), count), &dw));
+		r += dw;
+		if (!(count -= dw) || hr == S_FALSE)
+			return r;
+	}
 }
 
-void CIStream::ReadBuffer(void *buf, size_t count) const {
+void CIStream::ReadExactly(void *buf, size_t count) const {
 	if (Read(buf, count) != count)
 		Throw(ExtErr::EndOfStream);
 }
 
 void CIStream::WriteBuffer(const void *buf, size_t count) {
-	OleCheck(m_stream->Write(buf, (UINT)count, 0));
+	DWORD dw;
+	if (count <= ULONG_MAX) {
+		OleCheck(m_stream->Write(buf, (UINT)count, &dw));
+		ASSERT(dw = count);
+	}
+	else
+		for (size_t r = 0;; buf = (char*)buf + dw) {
+			OleCheck(m_stream->Write(buf, (ULONG)(max)(size_t(ULONG_MAX), count), &dw));
+			r += dw;
+			if (!(count -= dw))
+				break;
+		}
 }
 
 bool CIStream::Eof() const {
@@ -177,7 +73,7 @@ void CIStream::Flush() {
 /*!!!R
 Blob CIStream::Read(int size) {
 	Blob blob;
-	blob.Size = size;
+	blob.resize(size);
 	DWORD dw;
 	OleCheck(m_stream->Read(blob.data(), size, &dw));
 	if (size != dw)
@@ -186,7 +82,7 @@ Blob CIStream::Read(int size) {
 }
 
 void CIStream::Write(const Blob& blob) {
-	OleCheck(m_stream->Write(blob.constData(), (UINT)blob.Size, 0));
+	OleCheck(m_stream->Write(blob.constData(), (UINT)blob.size(), 0));
 }*/
 
 int64_t CIStream::Seek(int64_t offset, SeekOrigin origin) const {
@@ -197,10 +93,8 @@ int64_t CIStream::Seek(int64_t offset, SeekOrigin origin) const {
 	return r.QuadPart;
 }
 
-void CIStream::SetSize(DWORDLONG libNewSize) {
-	ULARGE_INTEGER uli;
-	uli.QuadPart = libNewSize;
-	OleCheck(m_stream->SetSize(uli));
+void CIStream::SetSize(uint64_t newSize) {
+	OleCheck(m_stream->SetSize(ULARGE_INTEGER{ .QuadPart = newSize }));
 }
 
 DateTime CIStream::get_ModTime() {
@@ -431,18 +325,12 @@ CUnkPtr AFXAPI AsUnknown(const VARIANT& v) {
 
 int AFXAPI AsOptionalInteger(const VARIANT& v, int r) {
 	COleVariant vv = AsImmediate(v);
-	if (vv.vt == VT_ERROR)
-		return r;
-	else
-		return Convert::ToInt32(vv);
+	return vv.vt == VT_ERROR ? r : Convert::ToInt32(vv);
 }
 
 String AFXAPI AsOptionalString(const VARIANT& v, String s) {
 	COleVariant vv = AsImmediate(v);
-	if (vv.vt == VT_ERROR)
-		return s;
-	else
-		return Convert::ToString(vv);
+	return vv.vt == VT_ERROR ? s : Convert::ToString(vv);
 }
 
 DATE AFXAPI AsDate(const VARIANT& v) {
@@ -483,9 +371,13 @@ CUniType AFXAPI UniType(const COleVariant& v) {
 	switch (v.vt) {
 	case VT_UI1:
 	case VT_I2:
+	case VT_UI2:
 	case VT_I4:
+	case VT_UI4:
+	case VT_I8:
 		return UT_INT;
 	case VT_CY:
+	case VT_DECIMAL:
 		return UT_CURRENCY;
 	case VT_R4:
 	case VT_R8:
@@ -534,10 +426,9 @@ void CUsingCOM::Initialize(DWORD dwCoInit) {
 }
 
 void CUsingCOM::Uninitialize() {
-	if (m_bInitialized) {
-		CoFreeUnusedLibraries();
-		CoUninitialize();
-		m_bInitialized = false;
+	if (exchange(m_bInitialized, false)) {
+		::CoFreeUnusedLibraries();
+		::CoUninitialize();
 	}
 }
 
@@ -657,41 +548,6 @@ bool Convert::ToBoolean(const VARIANT& v) {
 }
 
 
-
-CComBSTR::CComBSTR()
-	: m_str(0)
-{
-}
-
-CComBSTR::CComBSTR(LPCOLESTR pSrc) {
-	m_str = ::SysAllocString(pSrc);
-}
-
-CComBSTR::CComBSTR(LPCSTR pSrc) {
-	m_str = String(pSrc).AllocSysString();
-}
-
-CComBSTR::~CComBSTR() {
-	SysFreeString(m_str);
-}
-
-CComBSTR::operator BSTR() const {
-	return m_str;
-}
-
-BSTR *CComBSTR::operator&() {
-	ASSERT(!m_str);
-	return &m_str;
-}
-
-void CComBSTR::Attach(BSTR src) {
-	ASSERT(!m_str);
-	m_str = src;
-}
-
-BSTR CComBSTR::Detach() {
-	return exchange(m_str, (BSTR)0);
-}
 
 COleVariant::COleVariant(const VARIANT& varSrc) {
 	VariantInit(this);
@@ -1234,20 +1090,25 @@ COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 	case VT_R8:
 		result = ReadDouble();
 		break;
+#if UCFG_OLE
 	case VT_CY:
 		{
 			CY cy;
 			_self >> cy;
 			result = cy;
-			break;
 		}
+		break;
 	case VT_DATE:
 		{
 			DATE date;
 			_self >> date;
 			result = date;
-			break;
 		}
+		break;
+	case VT_VARIANT:
+		_self >> result;
+		break;
+#endif // UCFG_OLE
 	case VT_BOOL:
 		result = COleVariant(ReadBoolean());
 		break;
@@ -1258,9 +1119,6 @@ COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 			result.vt = VT_BSTR;
 			Read(result.bstrVal, len);
 		}
-		break;
-	case VT_VARIANT:
-		_self >> result;
 		break;
 	case VT_ARRAY_EX:
 		{
@@ -1306,6 +1164,7 @@ COleVariant BinaryReader::ReadVariantOfType(VARTYPE vt) const {
 	return result;
 }
 
+#if UCFG_OLE
 const BinaryReader& BinaryReader::operator>>(CY& v) const {
 	return Read(&v, sizeof v);
 }
@@ -1314,6 +1173,7 @@ const BinaryReader& BinaryReader::operator>>(COleVariant& v) const {
 	v = ReadVariantOfType(ReadByte());
 	return _self;
 }
+#endif
 
 COleVariant::COleVariant(const COleCurrency& curSrc) {
 	vt = VT_CY;
@@ -1772,7 +1632,7 @@ HRESULT AFXAPI CComObjectRootBase::_Chain(void* pv, REFIID iid, void** ppvObject
 
 
 #if defined(_DEBUG) && defined(_WIN64) && UCFG_WIN32 && _VC_CRT_MAJOR_VERSION<14
-#	pragma comment(lib, "runtmchk")
+//!!!?#	pragma comment(lib, "runtmchk")
 
 
 extern "C" void * __cdecl _CRT_RTC_INITW(void *_Res0, void **_Res1, int _Res2, int _Res3, int _Res4) {
@@ -1781,5 +1641,6 @@ extern "C" void * __cdecl _CRT_RTC_INITW(void *_Res0, void **_Res1, int _Res2, i
 
 #endif
 
+#endif // UCFG_COM
 
 } // Ext::

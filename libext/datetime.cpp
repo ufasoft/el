@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -15,7 +15,7 @@
 #	include <el/libext/win32/ext-win.h>
 
 #	if UCFG_COM
-#		include <el/libext/win32/ext-com.h>
+#		include <el/libext/win32/com.h>
 #	endif
 #endif
 
@@ -114,109 +114,10 @@ DateTime::DateTime(const SYSTEMTIME& st) {
 
 #endif
 
+#endif  // UCFG_WDM
+
 DateTime DateTime::from_time_t(int64_t epoch) {
 	return DateTime(epoch * 10000000 + Unix_DateTime_Offset);
-}
-
-String TimeSpan::ToString(int w) const {
-	ostringstream os;
-	Days days = duration_cast<Days>(*this);
-	if (days.count())
-		os << days.count() << ".";
-	os << setw(2) << setfill('0') << get_Hours() << ":" << setw(2) << setfill('0') << get_Minutes() << ":" << setw(2) << setfill('0') << get_Seconds();
-	int fraction = int(count() % 10000000L);
-	if (w || fraction) {
-		int full = 10000000;
-		os << ".";
-		if (!w)
-			w = 7;
-		if (w > 7)
-			w = 7;
-		for (int i=0; i<w; i++)
-			full /= 10;
-		os << setw(w) << setfill('0') << fraction/full;
-	}
-	return os.str();
-}
-
-String DateTime::ToString(DWORD dwFlags, LCID lcid) const {
-#if UCFG_USE_POSIX || !UCFG_OLE || UCFG_WDM
-	tm t = _self;
-	char buf[100];
-	strftime(buf, sizeof buf, "%x %X", &t);
-	return buf;
-#else
-	CComBSTR bstr;
-	OleCheck(::VarBstrFromDate(ToOADate(), lcid, dwFlags, &bstr));
-	return bstr;
-#endif
-}
-
-String DateTime::ToString(Microseconds) const {
-	ostringstream os;
-#if UCFG_USE_POSIX || UCFG_WDM
-	os << ToString();
-#else
-	os << ToString(VAR_DATEVALUEONLY, LOCALE_NEUTRAL);
-#endif
-	os << " " << get_TimeOfDay().ToString(6);
-	return os.str();
-}
-
-#	if !UCFG_WCE
-String DateTime::ToString(RCString format) const {
-	tm t = _self;
-	char buf[100];
-	if (format == "u")
-		strftime(buf, sizeof buf, "%Y-%m-%d %H:%M:%SZ", &t);
-	else
-		Throw(E_INVALIDARG);
-	return buf;
-}
-#	endif
-
-#	if UCFG_USE_REGEX
-
-static StaticRegex	s_reDateTimeFormat_u("(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d) (\\d\\d):(\\d\\d):(\\d\\d)Z"),
-					s_reDateTimeFormat_8601("(\\d\\d\\d\\d)-(\\d\\d)-(\\d\\d)T(\\d\\d):(\\d\\d):(\\d\\d)(?:\\.(\\d{1,6}))(?:Z|[+-](\\d\\d)(?::(\\d\\d))?)?");
-
-DateTime AFXAPI DateTime::ParseExact(RCString s, RCString format) {
-	cmatch m;
-	if (format == nullptr) {
-		if (regex_match(s.c_str(), m, *s_reDateTimeFormat_8601)) {
-			DateTime dt(stoi(string(m[1])), stoi(string(m[2])), stoi(string(m[3])), stoi(string(m[4])), stoi(string(m[5])), stoi(string(m[6])));
-			if (m[7].matched) {
-				String si(m[7]);
-				int n = atoi(si);
-				for (ssize_t i=7-m[7].length(); i--;)
-					n *= 10;
-				dt += TimeSpan(n);
-			}
-			return dt;						//!!!TODO adjust timezone
-		}
-	} else if (format == "u") {
-		if (regex_match(s.c_str(), m, *s_reDateTimeFormat_u))
-			return DateTime(stoi(string(m[1])), stoi(string(m[2])), stoi(string(m[3])), stoi(string(m[4])), stoi(string(m[5])), stoi(string(m[6])));
-	}
-	Throw(errc::invalid_argument);
-}
-#	endif // UCFG_USE_REGEX
-
-#endif   // !UCFG_WDM
-
-DateTime DateTime::FromAsctime(RCString s) {
-#if UCFG_WDM
-	Throw(E_NOTIMPL);
-#else
-	char month[4];
-	int year, day;
-	if (sscanf(s, "%3s %d %d", month, &day, &year) == 3) {
-		static const char s_months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
-		if (const char *p = strstr(s_months, month))
-			return DateTime(year, int(p-s_months)/3+1, day);
-	}
-	Throw(ExtErr::InvalidInteger);
-#endif
 }
 
 #if UCFG_WIN32_FULL
@@ -250,7 +151,7 @@ int64_t DateTime::SimpleUtc() {
 	::GetSystemTime(&st);
 	Win32Check(::SystemTimeToFileTime(&st, &ft));
 #	else
-	s_pfnGetSystemTimePreciseAsFileTime(&ft);
+	s_pfnGetSystemTimeAsFileTime(&ft);
 #	endif
 
 	return (int64_t&)ft + s_span1600;
@@ -374,16 +275,13 @@ int64_t CPreciseTimeBase::GetTime(PFNSimpleUtc pfnSimpleUtc) {
 			r = s_pCurrent->GetTime(pfnSimpleUtc);
 	} else if (r < m_stPrev) {
 		int64_t stPrev = m_stPrev;
-		if (stPrev-r > 10*10000000) {
-			TRC(6, "Time Anomaly: " << r-m_stPrev << "  stPrev = " << hex << stPrev << " r=" << hex << r);
-
-			m_stPrev = r;
+		if (stPrev - r > 10 * 10000000) {
+			TRC(6, "Time Anomaly: " << r - m_stPrev << "  stPrev = " << hex << stPrev << " r=" << hex << r);
 		} else {
-			r = m_stPrev = m_stPrev+1;
+			r = m_stPrev + 1;
 		}
-	} else {
-		m_stPrev = r;
 	}
+	m_stPrev = r;
 	return r;
 }
 
@@ -398,15 +296,15 @@ public:
 	int64_t GetTicks() noexcept override {
 		return __rdtsc();
 	}
-} s_tscPreciseTime;
+} *s_tscPreciseTime = new CTscPreciseTime;		// Avoid destruction because can be used on DLL unloading
 
 #if defined(_DEBUG) && defined(_MSC_VER)
 __declspec(dllexport) void __cdecl Debug_ResetTsc() {
-	return s_tscPreciseTime.Reset();
+	return s_tscPreciseTime->Reset();
 }
 
 __declspec(dllexport) int32_t __cdecl Debug_GetTscMul() {
-	return s_tscPreciseTime.m_mul;
+	return s_tscPreciseTime->m_mul;
 }
 #endif // _DEBUG && defined(_MSC_VER)
 
@@ -439,8 +337,7 @@ public:
 //!!!?not accurate		return freq;
 		return base::GetFrequency(stPeriod, tscPeriod);
 	}
-} s_perfCounterPreciseTime;
-
+} * s_perfCounterPreciseTime = new CPerfCounterPreciseTime;	// Avoid destruction because can be used on DLL unloading
 
 #endif // _WIN32
 
@@ -476,11 +373,11 @@ DateTime::operator SYSTEMTIME() const {
 
 #if UCFG_COM
 DATE DateTime::ToOADate() const {
-	return double(Ticks-OADateOffset)/TimeSpan::TicksPerDay;
+	return double(Ticks - OADateOffset) / TimeSpan::TicksPerDay;
 }
 
 DateTime DateTime::FromOADate(DATE date) {
-	return DateTime(OADateOffset + int64_t(date*TimeSpan::TicksPerDay));
+	return DateTime(OADateOffset + int64_t(date * TimeSpan::TicksPerDay));
 }
 
 DateTime DateTime::Parse(RCString s, DWORD dwFlags, LCID lcid) {
@@ -504,17 +401,25 @@ DateTime::DateTime(const COleVariant& v) {
 
 #endif
 
-/*!!!D
-String DateTime::ToString() const
-{
-  FILETIME ft;
-  (int64_t&)ft = m_ticks-s_span1600;
-	if ((int64_t&)ft < 0)
-		(int64_t&)ft = 0; //!!!
-	ATL::COleDateTime odt(ft);
-  return odt.Format();
+String DateTime::ToString() const {
+	return ToString("g");
 }
-*/
+
+String DateTime::ToString(const char* format) const {
+	switch (format[0]) {
+	case 'g':
+#if UCFG_WIN32
+		SYSTEMTIME st = *this;
+		TCHAR bufDate[100], bufTime[100];
+		Win32Check(::GetDateFormat(LOCALE_USER_DEFAULT, 0, &st, nullptr, bufDate, size(bufDate)));
+		Win32Check(::GetTimeFormat(LOCALE_USER_DEFAULT, 0, &st, nullptr, bufTime, size(bufTime)));
+		return String(bufDate) + " " + bufTime;
+#endif
+	default:
+		tm t = *this;
+		return asctime(&t);
+	}
+}
 
 
 /*!!!D

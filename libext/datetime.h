@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -10,7 +10,10 @@
 struct timeval;
 
 namespace Ext {
-using namespace std::chrono;
+//using namespace std::chrono;
+using std::chrono::duration;
+using std::chrono::system_clock;
+
 using std::ratio;
 using std::ratio_multiply;
 
@@ -236,14 +239,16 @@ public:
 
 #endif
 
+	/*!!!T
 	operator time_point() const {
 		return time_point(duration(Ticks - from_time_t(0).Ticks));
 	}
+	*/
 
 	void ToTimeval(timeval& tv) const;
 	void ToTm(tm& r) const;	// Optimized
 	void ToLocalTm(tm& r) const;	// Optimized
-	
+
 	operator tm() const {
 		tm r;
 		ToTm(r);
@@ -329,6 +334,12 @@ public:
 
 	TimeSpan operator-(const DateTime& dt) const { return TimeSpan(m_ticks - dt.m_ticks); }
 
+	auto operator<=>(const DateTime& x) const {
+		return Ticks < x.Ticks ? strong_ordering::less
+			: Ticks > x.Ticks ? strong_ordering::greater
+			: strong_ordering::equal;
+	}
+
 	LocalDateTime ToLocalTime() const;
 
 #if UCFG_USE_PTHREADS
@@ -386,9 +397,10 @@ public:
 	}
 	DEFPROP_GET(int, Year);
 
-	String ToString(DWORD dwFlags = 0, LCID lcid = LANG_USER_DEFAULT) const;
+	String ToString() const;
+	String ToString(DWORD dwFlags, LCID lcid = LANG_USER_DEFAULT) const;
 	String ToString(Microseconds) const;
-	String ToString(RCString format) const;
+	String ToString(const char* format) const;
 
 	static DateTime AFXAPI Parse(RCString s, DWORD dwFlags = 0, LCID lcid = LANG_USER_DEFAULT);
 	static DateTime AFXAPI ParseExact(RCString s, RCString format = nullptr);
@@ -396,7 +408,7 @@ public:
 #if UCFG_WCE
 	static const int DaysPerYear;
 	static const int DaysPer4Years;
-	static const int DaysPer100Years;	
+	static const int DaysPer100Years;
 	static const int DaysPer400Years;
 	static const int DaysTo1601;
 	static const int64_t FileTimeOffset;
@@ -414,12 +426,14 @@ private:
 	static const int64_t OADateOffset;
 };
 
+/*!!!R
 inline bool AFXAPI operator<(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks < dt2.Ticks; }
 inline bool AFXAPI operator>(const DateTime& dt1, const DateTime& dt2) { return dt2 < dt1; }
 inline bool AFXAPI operator<=(const DateTime& dt1, const DateTime& dt2) { return !(dt2 < dt1); }
 inline bool AFXAPI operator>=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 < dt2); }
 inline bool AFXAPI operator==(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks == dt2.Ticks; }
 inline bool AFXAPI operator!=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 == dt2); }
+*/
 
 inline BinaryWriter& AFXAPI operator<<(BinaryWriter& wr, const DateTimeBase& dt) {
 	dt.Write(wr);
@@ -560,4 +574,3 @@ int64_t AFXAPI to_time_t(const DateTime& dt);
 
 
 } // Ext::
-

@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1997-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1997-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,6 +9,11 @@
 namespace Ext {
 using namespace std;
 
+void Stream::Write(uint64_t pos, Span s) {
+	Position = pos;
+	Write(s);
+}
+
 bool Stream::Eof() const {
 	Throw(E_NOTIMPL);
 }
@@ -18,7 +23,7 @@ int Stream::ReadByte() const {
 	return Read(&b, 1) ? int(b) : -1;
 }
 
-void Stream::ReadBuffer(void *buf, size_t count) const {
+void Stream::ReadExactly(void *buf, size_t count) const {
 	uint8_t *p = (uint8_t *)buf;
 	for (size_t cb; count; count -= cb, p += cb) {
 		if (!(cb = Read(p, count)))
@@ -26,10 +31,13 @@ void Stream::ReadBuffer(void *buf, size_t count) const {
 	}
 }
 
+// Moore law buufer size
+const size_t Stream::DEFAULT_BUF_SIZE = clamp(4096 * (Clock::now().Year - 2021), 4096, 1024 * 1024);
+
 void Stream::CopyTo(Stream& dest, size_t bufsize) const {
 	vector<uint8_t> buf(bufsize);
-	for (size_t cb; cb = Read(&buf[0], buf.size());)
-		dest.WriteBuffer(&buf[0], cb);
+	for (size_t cb; cb = Read(buf.data(), buf.size());)
+		dest.WriteBuffer(buf.data(), cb);
 }
 
 BufferedStream::BufferedStream(Stream& stm, size_t bufferSize)
@@ -81,8 +89,15 @@ void CMemWriteStream::WriteBuffer(const void* buf, size_t count) {
 
 MemoryStream::MemoryStream(size_t capacity)
 	: m_blob(capacity, false)
-	, m_size(0)
 {
+}
+
+size_t MemoryStream::Read(void* buf, size_t count) const {
+	size_t r = std::min(count, size() - m_pos);
+	if (r)
+		memcpy(buf, m_blob.data() + m_pos, r);
+	m_pos += r;
+	return r;
 }
 
 void MemoryStream::WriteBuffer(const void *buf, size_t count) {
@@ -94,7 +109,7 @@ void MemoryStream::WriteBuffer(const void *buf, size_t count) {
 }
 
 bool MemoryStream::Eof() const {
-	Throw(E_NOTIMPL);
+	return m_pos == size();
 }
 
 void MemoryStream::Reset(size_t capacity) {
@@ -117,7 +132,7 @@ size_t CMemReadStream::Read(void *buf, size_t count) const {
 	return r;
 }
 
-void CMemReadStream::ReadBuffer(void *buf, size_t count) const {
+void CMemReadStream::ReadExactly(void *buf, size_t count) const {
 	if (count > m_mb.size() - m_pos)
 		Throw(ExtErr::EndOfStream);
 	if (buf)
@@ -135,7 +150,7 @@ void AFXAPI ReadOneLineFromStream(const Stream& stm, String& beg, Stream *pDupSt
 	char *p = vec;
 	for (int i = 0; i < MAX_LINE; i++) { //!!!
 		char ch;
-		stm.ReadBuffer(&ch, 1);
+		stm.ReadExactly(&ch, 1);
 		if (pDupStream)
 			pDupStream->WriteBuffer(&ch, 1);
 		switch (ch) {

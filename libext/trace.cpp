@@ -60,7 +60,7 @@ public:
 #if UCFG_WCE
 	OutputDebugString(s);
 #elif defined(WIN32)
-	OutputDebugStringA(s);
+	OutputDebugString(s);
 #elif defined WDM_DRIVER
 	KdPrint(("%s", s.c_str()));
 #else
@@ -122,24 +122,24 @@ String TruncPrettyFunction(const char *fn) {
 	return String(b, e-b);
 }
 
-bool CTrace::s_bShowCategoryNames;
+bool Trace::s_bShowCategoryNames;
 //static CDebugStreambuf s_debugStreambuf;
 //Stream *CTrace::s_pOstream = new ostream(&s_debugStreambuf);	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
-Stream *CTrace::s_pOstream = new CDebugStream;	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
+Stream *Trace::s_pOstream = new CDebugStream;	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
 
-Stream *CTrace::s_pSecondStream;
-bool CTrace::s_bPrintDate;
+Stream *Trace::s_pSecondStream;
+bool Trace::s_bPrintDate;
 
 #if UCFG_WDM && defined(_DEBUG)
 	int CTrace::s_nLevel = 1;
 	CTrace::PFN_DbgPrint CTrace::s_pTrcPrint = &DbgPrint;
 #else
-	int CTrace::s_nLevel = 0;
-	CTrace::PFN_DbgPrint CTrace::s_pTrcPrint = 0;
+	int Trace::s_nLevel = 0;
+	Trace::PFN_DbgPrint Trace::s_pTrcPrint = 0;
 #endif
 
-void CTrace::InitTraceLog(RCString regKey) {
-#ifdef _WIN32
+void Trace::InitTraceLog(RCString regKey) {
+#if UCFG_USE_REGISTRY
 	RegistryKey key(0, regKey);
 	s_nLevel = (DWORD)key.TryQueryValue("TraceLevel", s_nLevel);
 
@@ -151,15 +151,15 @@ void CTrace::InitTraceLog(RCString regKey) {
 #endif
 }
 
-Stream* CTrace::GetOStream() {
+Stream* Trace::GetOStream() {
 	return s_pOstream;
 }
 
-void CTrace::SetOStream(Stream *os) {
+void Trace::SetOStream(Stream *os) {
 	s_pOstream = os;
 }
 
-void CTrace::SetSecondOStream(Stream *os) {
+void Trace::SetSecondOStream(Stream *os) {
 	s_pSecondStream = os;
 }
 
@@ -168,9 +168,9 @@ void CTrace::SetSecondOStream(Stream *os) {
 static struct CTraceInit {
 	CTraceInit() {
 		if (const char *slevel = getenv("UCFG_TRC")) {
-			if (!CTrace::GetOStream())
-				CTrace::SetOStream(new CIosStream(clog));
-			CTrace::s_nLevel = atoi(slevel);
+			if (!Trace::GetOStream())
+				Trace::SetOStream(new CIosStream(clog));
+			Trace::s_nLevel = atoi(slevel);
 		}
 	}
 } s_traceInit;			//!!! Windows: too early here
@@ -314,20 +314,6 @@ CLocalTracePrefix::~CLocalTracePrefix() {
 	t_tracePrefixes = m_prev;
 }
 
-static CGlobalTracePrefix *s_tracePrefixes;
-
-CGlobalTracePrefix::CGlobalTracePrefix(const char *prefix)
-	: m_prefix(prefix)
-	, m_len(strlen(prefix))
-{
-	CGlobalTracePrefix* &refPrefix = s_tracePrefixes;
-	m_prev = exchange(refPrefix, this);
-}
-
-CGlobalTracePrefix::~CGlobalTracePrefix() {
-	s_tracePrefixes = m_prev;
-}
-
 CFunTrace::CFunTrace(const char *funName, int trclevel)
 	: m_funName(funName)
 	, m_trclevel(trclevel)	
@@ -363,8 +349,22 @@ public:
 	}
 };
 
-
 #endif // UCFG_WDM
+
+static CGlobalTracePrefix* s_tracePrefixes;
+
+CGlobalTracePrefix::CGlobalTracePrefix(const char* prefix)
+	: m_prefix(prefix)
+	, m_len(strlen(prefix))
+{
+	CGlobalTracePrefix*& refPrefix = s_tracePrefixes;
+	m_prev = exchange(refPrefix, this);
+}
+
+CGlobalTracePrefix::~CGlobalTracePrefix() {
+	s_tracePrefixes = m_prev;
+}
+
 
 inline intptr_t AFXAPI GetThreadNumber() {
 #ifdef WDM_DRIVER
@@ -381,11 +381,25 @@ inline intptr_t AFXAPI GetThreadNumber() {
 #endif
 }
 
+static thread_local int s_traceIndent;
+
+TraceIndent::TraceIndent() {
+	++s_traceIndent;
+}
+
+TraceIndent::~TraceIndent() {
+	--s_traceIndent;
+}
+
+int TraceIndent::GetCurrent() {
+	return s_traceIndent;
+}
+
 CTraceWriter::CTraceWriter(int level, const char* funname) noexcept
-	: m_pos(level & CTrace::s_nLevel ? CTrace::s_pOstream : 0)
+	: m_pos(level & Trace::s_nLevel ? Trace::s_pOstream : 0)
 {
 	if (m_pos) {
-		m_bPrintDate = CTrace::s_bPrintDate;
+		m_bPrintDate = Trace::s_bPrintDate;
 		Init(funname);
 	}
 }
@@ -399,25 +413,28 @@ CTraceWriter::CTraceWriter(Ext::Stream *pos) noexcept
 
 void CTraceWriter::Init(const char* funname) {
 	if (funname) {
+#if !UCFG_WDM
 		for (CLocalTracePrefix *pPrefix = t_tracePrefixes; pPrefix; pPrefix = pPrefix->m_prev)
 			if (!strncmp(pPrefix->m_prefix, funname, pPrefix->m_len)) {
 				funname += pPrefix->m_len;
 				break;
 			}
+#endif
 		for (CGlobalTracePrefix *pPrefix = s_tracePrefixes; pPrefix; pPrefix = pPrefix->m_prev)
 			if (!strncmp(pPrefix->m_prefix, funname, pPrefix->m_len)) {
 				funname += pPrefix->m_len;
 				break;
 			}
-
+		for (int i = TraceIndent::GetCurrent(); i--;)
+			m_os.put(' ');
 		m_os << funname << " ";
 	}
 }
 
 #if UCFG_USE_POSIX
-#	define EXT_TID_FORMATTER "%-4" EXT_LL_PREFIX "d"
+#	define EXT_TID_FORMATTER "%-5" EXT_LL_PREFIX "d"
 #else
-#	define EXT_TID_FORMATTER "%-4" EXT_LL_PREFIX "x"
+#	define EXT_TID_FORMATTER "%-5" EXT_LL_PREFIX "x"
 #endif
 
 CTraceWriter::~CTraceWriter() noexcept {
@@ -437,7 +454,7 @@ CTraceWriter::~CTraceWriter() noexcept {
 			sprintf(buf, EXT_TID_FORMATTER "%s", tid, bufTime);
 		string date_s = buf + str;
 		string time_str;
-		if (ostream *pSecondStream = (ostream*)CTrace::s_pSecondStream) {
+		if (ostream *pSecondStream = (ostream*)Trace::s_pSecondStream) {
 			sprintf(buf, EXT_TID_FORMATTER "%s", tid, bufTime);
 			time_str = buf + str;
 		}
@@ -451,7 +468,7 @@ CTraceWriter::~CTraceWriter() noexcept {
 			try {
 				m_pos->WriteBuffer(date_s.data(), date_s.size());
 			} catch (RCExc) {}
-			if (Ext::Stream *pSecondStream = CTrace::s_pSecondStream) {
+			if (Ext::Stream *pSecondStream = Trace::s_pSecondStream) {
 				try {
 					pSecondStream->WriteBuffer(time_str.data(), time_str.size());
 				} catch (RCExc) {}
@@ -472,11 +489,7 @@ ostream& CTraceWriter::Stream() noexcept {
 void CTraceWriter::VPrintf(const char* fmt, va_list args) {
 	if (m_pos) {
 		char buf[1000];
-#if UCFG_USE_POSIX
-		vsnprintf(buf, sizeof(buf), fmt, args );
-#else
-		_vsnprintf(buf, sizeof(buf), fmt, args );
-#endif
+		vsnprintf(buf, sizeof(buf), fmt, args);
 		m_os << buf;
 	}
 }

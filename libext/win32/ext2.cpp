@@ -21,7 +21,6 @@
 #endif
 
 #if UCFG_WIN32_FULL
-#	pragma comment(lib, "version")
 #	pragma comment(lib, "kernel32")
 #endif
 
@@ -59,47 +58,6 @@ bool NamedPipe::Connect(LPOVERLAPPED ovl) {
 #endif
 
 
-FileVersionInfo::FileVersionInfo(RCString fileName) {
-	String s = fileName != nullptr ? fileName : AfxGetModuleState()->FileName.native();
-	DWORD dw;
-	int size = GetFileVersionInfoSize((TCHAR*)(const TCHAR*)s, &dw);
-	if (!size && !fileName)
-		return; //!!!
-	Win32Check(size);
-	m_blob.resize(size);
-	Win32Check(GetFileVersionInfo((TCHAR*)(const TCHAR*)s, 0, size, m_blob.data()));
-}
-
-String FileVersionInfo::GetStringFileInfo(RCString s) {
-	UINT size;
-	void *p, *q;
-	Win32Check(::VerQueryValue(m_blob.data(), _T("\\VarFileInfo\\Translation"), &q, &size));
-	Win32Check(::VerQueryValue(m_blob.data(),
-		(TCHAR*)(const TCHAR*)(_T("\\StringFileInfo\\")+Convert::ToString((*(WORD*)q << 16) | *(WORD*)((char*)q+2), "X8")+_T("\\")+s),
-		&p, &size));
-	return (TCHAR*)p;
-}
-
-const VS_FIXEDFILEINFO& FileVersionInfo::get_FixedInfo() {
-	UINT size;
-	void *p;
-	Win32Check(::VerQueryValue(m_blob.data(), _T("\\"), &p, &size));
-	return *(VS_FIXEDFILEINFO*)p;
-}
-
-
-String AFXAPI TryGetVersionString(const FileVersionInfo& vi, RCString name, RCString val) {
-	//!!! FileVersionInfo vi(System.ExeFilePath);  
-	UINT size;
-	void *p, *q;
-	Win32Check(::VerQueryValue((void*)vi.m_blob.data(), _T("\\VarFileInfo\\Translation"), &q, &size));
-	BOOL b = ::VerQueryValue((void*)vi.m_blob.data(), (TCHAR*)(const TCHAR*)(_T("\\StringFileInfo\\")+Convert::ToString((*(WORD*)q << 16) | *(WORD*)((char*)q+2), "X8")+_T("\\")+name), &p, &size);
-	if (b)
-		return (TCHAR*)p;
-	else
-		return val;
-}
-
 bool AFXAPI IsConsole() {
 	BYTE *base = (BYTE*)GetModuleHandle(0);
 	IMAGE_DOS_HEADER *dh = (IMAGE_DOS_HEADER*)base;
@@ -114,7 +72,7 @@ bool AFXAPI IsConsole() {
 /*!!!D
 String ExtractFilePath(RCString path)
 {
-CSplitPath sp = SplitPath(path);  
+CSplitPath sp = SplitPath(path);
 return sp.m_drive+sp.m_dir;
 }*/
 
@@ -145,98 +103,8 @@ CStringVector AsciizArrayToStringArray(const TCHAR *p) {
 	return vec;
 }
 
-SIZE_T ProcessObj::ReadMemory(LPCVOID base, LPVOID buf, SIZE_T size) {
-	SIZE_T r;
-	Win32Check(::ReadProcessMemory((HANDLE)(intptr_t)HandleAccess(_self), base, buf, size, &r));
-	return r;
-}
-
-SIZE_T ProcessObj::WriteMemory(LPVOID base, LPCVOID buf, SIZE_T size) {
-	SIZE_T r;
-	Win32Check(::WriteProcessMemory((HANDLE)(intptr_t)HandleAccess(_self), base, (void*)buf, size, &r)); //!!!CE
-	return r;
-}
-
-DWORD ProcessObj::VirtualProtect(void *addr, size_t size, DWORD flNewProtect) {
-	DWORD r;
-	if (GetCurrentProcessId() == get_ID())
-		Win32Check(::VirtualProtect(addr, size, flNewProtect, &r));
-	else
-#if UCFG_WCE
-		Throw(E_FAIL);
-#else
-		Win32Check(::VirtualProtectEx((HANDLE)(intptr_t)HandleAccess(_self), addr, size, flNewProtect, &r));
-#endif
-	return r;
-}
-
-MEMORY_BASIC_INFORMATION ProcessObj::VirtualQuery(const void *addr) {
-	MEMORY_BASIC_INFORMATION r;
-	SIZE_T size;
-	if (GetCurrentProcessId() == get_ID())
-		size = ::VirtualQuery(addr, &r, sizeof r);
-	else
-#if UCFG_WCE
-		Throw(E_FAIL);
-#else
-		size = ::VirtualQueryEx((HANDLE)(intptr_t)HandleAccess(_self), addr, &r, sizeof r);
-#endif
-	if (!size)
-		ZeroStruct(r);
-	return r;
-}
-
-struct SMainWindowHandleInfo {
-	DWORD m_pid;
-	HWND m_hwnd;
-};
-
-static BOOL CALLBACK EnumWindowsProc_MainWindowHandle(HWND hwnd, LPARAM lParam) {
-	SMainWindowHandleInfo& info = *(SMainWindowHandleInfo*)lParam;
-	if ((::GetWindowLong(hwnd, GWL_STYLE) & WS_VISIBLE)) {
-		DWORD pidwin;
-		::GetWindowThreadProcessId(hwnd, &pidwin);
-		if (pidwin == info.m_pid) {
-			info.m_hwnd = hwnd;
-			::SetLastError(0);
-			return FALSE;
-		}
-	}
-	return TRUE;
-}
-
-HWND ProcessObj::get_MainWindowHandle() const {
-	SMainWindowHandleInfo info = { get_ID() };
-	Win32Check(::EnumWindows(&EnumWindowsProc_MainWindowHandle, (LPARAM)&info), 0);
-	return info.m_hwnd;
-}
-
-#if !UCFG_WCE
 
 
-DWORD ProcessObj::get_Version() const {
-	DWORD r = GetProcessVersion(get_ID());
-	Win32Check(r);
-	return r;
-}
-
-typedef WINBASEAPI BOOL (WINAPI *PFN_IsWow64Process)(HANDLE hProcess, PBOOL Wow64Process);
-
-bool ProcessObj::get_IsWow64() {
-	BOOL r = FALSE;
-	DlProcWrap<PFN_IsWow64Process> pfnIsWow64Process("KERNEL32.DLL", "IsWow64Process");
-	if (pfnIsWow64Process)
-		Win32Check(pfnIsWow64Process((HANDLE)(intptr_t)HandleAccess(_self), &r));
-	return r;
-}
-
-CTimesInfo ProcessObj::get_Times() const {
-	CTimesInfo r;
-	Win32Check(::GetProcessTimes((HANDLE)(intptr_t)HandleAccess(_self), &r.m_tmCreation, &r.m_tmExit, &r.m_tmKernel, &r.m_tmUser));
-	return r;
-}
-
-#endif  // !UCFG_WCE
 
 #ifdef WIN32
 
@@ -433,4 +301,3 @@ extern "C" {
 
 
 } // Ext::
-

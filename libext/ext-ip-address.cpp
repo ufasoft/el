@@ -242,7 +242,7 @@ IPAddress IPAddress::Parse(RCString ipString) {
 		return r;
 	}
 #endif */
-	Throw(HRESULT_FROM_WIN32(DNS_ERROR_INVALID_IP_ADDRESS));
+	ThrowWin32(DNS_ERROR_INVALID_IP_ADDRESS);
 }
 
 bool IPAddress::TryParse(RCString s, IPAddress& ip) {

@@ -104,7 +104,7 @@ bool CSyncObject::lock(uint32_t dwTimeout) {
 	switch (r) {
 		case WAIT_OBJECT_0: return true;
 		case WAIT_TIMEOUT: break;
-		case WAIT_ABANDONED: Throw(HRESULT_FROM_WIN32(ERROR_ABANDONED_WAIT_0));
+		case WAIT_ABANDONED: ThrowWin32(ERROR_ABANDONED_WAIT_0);
 		case WAIT_FAILED:
 			Win32Check(false);
 			break;
@@ -363,6 +363,11 @@ void AFXAPI AutoResetEvent::ReleasePooledHandle(HANDLE h) {
 	s_autoEventPool.ReleaseHandle(h);
 }
 
+void CSyncObject::AttachCreated(intptr_t h) {
+	Attach(h);
+	m_bAlreadyExists = GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
 #endif // UCFG_WIN32
 
 
@@ -390,7 +395,7 @@ CMutex::CMutex(bool bInitiallyOwn, RCString name
 #if UCFG_WIN32_FULL
 
 CMutex::CMutex(RCString name, DWORD dwAccess, bool bInherit)
-	:	CSyncObject(name)
+	: CSyncObject(name)
 {
 	Attach(::OpenMutex(dwAccess, bInherit, name));
 }
