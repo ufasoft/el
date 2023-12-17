@@ -207,8 +207,11 @@ void String::CopyTo(char *ar, size_t size) const {
 }
 
 bool String::StartsWith(const String& s) const noexcept {
-	return s.length() <= length() &&
-		std::equal(s.begin(), s.end(), begin());
+	return s.length() <= length() && std::equal(s.begin(), s.end(), begin());
+}
+
+bool String::EndsWith(const String& s) const noexcept {
+	return s.length() <= length() && std::equal(s.begin(), s.end(), begin() + (length() - s.length()));
 }
 
 int String::FindOneOf(RCString sCharSet) const {

@@ -245,6 +245,7 @@ public:
 	bool Contains(const String& s) const noexcept { return find(s) != npos; }
 
 	bool StartsWith(const String& s) const noexcept;
+	bool EndsWith(const String& s) const noexcept;
 	int FindOneOf(const String& sCharSet) const;
 	String substr(size_type pos, size_type count = npos) const;
 	String Right(ssize_t nCount) const;
