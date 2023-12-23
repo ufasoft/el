@@ -130,6 +130,29 @@ inline void store_little_u32(uint8_t* p, uint32_t v) noexcept {
 #endif
 }
 
+inline uint64_t load_little_u64(const uint8_t* p) noexcept {
+#if UCFG_CPU_X86_X64
+	return *(const uint64_t*)p;
+#else
+	return load_little_u32(p) | ((uint64_t)load_little_u32(p + 4) << 32);
+#endif
+}
+
+inline void store_little_u64(uint8_t* p, uint64_t v) noexcept {
+#if UCFG_CPU_X86_X64
+	*(uint64_t*)p = v;
+#else
+	p[0] = (uint8_t)v;
+	p[1] = (uint8_t)(v >> 8);
+	p[2] = (uint8_t)(v >> 16);
+	p[3] = (uint8_t)(v >> 24);
+	p[4] = (uint8_t)(v >> 32);
+	p[5] = (uint8_t)(v >> 40);
+	p[6] = (uint8_t)(v >> 48);
+	p[7] = (uint8_t)(v >> 56);
+#endif
+}
+
 template <typename T> class BeInt {
 	T m_val;
 public:
