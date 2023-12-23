@@ -590,6 +590,7 @@ public:
 	static _ATL_CHAINDATA data;
 };
 
+#if 0 //!!!R defined in ATL
 #define _ATL_PACKING 8
 
 #define offsetofclass(base, derived) ((DWORD_PTR)(static_cast<base*>((derived*)_ATL_PACKING))-_ATL_PACKING)
@@ -597,14 +598,6 @@ public:
 template <class base, class derived>
 _ATL_CHAINDATA _CComChainData<base, derived>::data =
 {offsetofclass(base, derived), base::_GetEntries};
-
-#define _EXT_BEGIN_COM_MAP(x) \
-typedef x _ComMapClass; \
-static const _ATL_INTMAP_ENTRY *_GetEntries() { \
-static const _ATL_INTMAP_ENTRY _entries[] = {
-
-#define _EXT_DECLARE_GET_CONTROLLING_UNKNOWN() public:\
-virtual IUnknown* GetControllingUnknown() {return GetUnknown();}
 
 #ifndef _ATL_NO_UUIDOF
 #define _ATL_IIDOF(x) __uuidof(x)
@@ -621,6 +614,18 @@ _Break},
 {&_ATL_IIDOF(x), \
 NULL, \
 _NoInterface},
+
+
+#endif //!!!R
+
+#define _EXT_BEGIN_COM_MAP(x) \
+typedef x _ComMapClass; \
+static const _ATL_INTMAP_ENTRY *_GetEntries() { \
+static const _ATL_INTMAP_ENTRY _entries[] = {
+
+#define _EXT_DECLARE_GET_CONTROLLING_UNKNOWN() public:\
+virtual IUnknown* GetControllingUnknown() {return GetUnknown();}
+
 
 #define _EXT_COM_INTERFACE_ENTRY(x)\
 {&_ATL_IIDOF(x), \
@@ -656,6 +661,7 @@ public:
 #define THREADFLAGS_APARTMENT 0x1
 #define THREADFLAGS_BOTH 0x2
 #define AUTPRXFLAG 0x4
+
 
 #if UCFG_COM_IMPLOBJ
 
