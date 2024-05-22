@@ -426,12 +426,14 @@ private:
 	static const int64_t OADateOffset;
 };
 
+inline bool AFXAPI operator==(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks == dt2.Ticks; }
+
+
 /*!!!R
 inline bool AFXAPI operator<(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks < dt2.Ticks; }
 inline bool AFXAPI operator>(const DateTime& dt1, const DateTime& dt2) { return dt2 < dt1; }
 inline bool AFXAPI operator<=(const DateTime& dt1, const DateTime& dt2) { return !(dt2 < dt1); }
 inline bool AFXAPI operator>=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 < dt2); }
-inline bool AFXAPI operator==(const DateTime& dt1, const DateTime& dt2) { return dt1.Ticks == dt2.Ticks; }
 inline bool AFXAPI operator!=(const DateTime& dt1, const DateTime& dt2) { return !(dt1 == dt2); }
 */
 
