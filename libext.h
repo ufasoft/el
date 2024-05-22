@@ -1,7 +1,5 @@
-/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
-#                                                                                                                                     #
-# 		See LICENSE for licensing information                                                                                         #
-#####################################################################################################################################*/
+// © 1998-2024 Ufasoft https://ufasoft.com, Sergey Pavlov mailto:dev@ufasoft.com
+// See LICENSE for licensing information
 
 #pragma once
 
@@ -37,6 +35,8 @@
 #	define ATLTRACE2 __noop
 #endif
 
+#define _EXT_STRINGIZE_(S) #S
+#define _EXT_STRINGIZE(S)  _EXT_STRINGIZE_(S)
 
 #if defined(_MSC_VER) && !UCFG_EXT_C && _FILE_OFFSET_BITS == 64 // Non-ANSI name for compatibility
 typedef __int64 off_t;											// incompatible with VC
