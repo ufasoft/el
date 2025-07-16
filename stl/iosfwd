@@ -1,9 +1,10 @@
-/*######   Copyright (c) 1999-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1999-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
+#define _IOSFWD_
 
 namespace ExtSTL {
 
@@ -187,6 +188,10 @@ template<> struct char_traits<wchar_t> : public char_traits_Base<wchar_t> {
 	}
 };
 
+template <typename EL, typename TR> class basic_istream;
+template <class EL, typename TR> class basic_ostream;
+template <typename EL, typename TR> class basic_streambuf;
 
 } // ExtSTL::
 
+#include <el/stl/exception>

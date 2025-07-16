@@ -1,0 +1,685 @@
+/*######   Copyright (c) 1999-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
+#pragma once
+
+#include <el/stl/iosfwd>
+//!!!? #include <el/stl/ios>
+#include <el/stl/vector>
+#include "ext_messages.h"
+#include <el/libext/ext-str.h>
+
+namespace ExtSTL {
+using std::streamoff;
+
+template <typename EL, typename TR = char_traits<EL>>
+class basic_string_view {
+public:
+	typedef const EL* const_pointer;
+	typedef const EL& const_reference;
+	typedef size_t size_type;
+
+	class const_iterator {
+		const EL* _ptr;
+
+		const_iterator(const EL* ptr) : _ptr(ptr) {}
+	public:
+		friend class basic_string_view;
+		EL operator*() { return *_ptr; }
+
+		const_iterator operator++() {
+			++_ptr;
+			return *this;
+		}
+
+		const_iterator operator++(int) {
+			const_iterator r = *this;
+			operator++();
+			return r;
+		}
+
+		const_iterator& operator+=(const ptrdiff_t off) noexcept {
+			_ptr += off;
+			return *this;
+		}
+
+		const_iterator operator+(const ptrdiff_t off) const noexcept {
+			const_iterator r = *this;
+			return r += off;
+		}
+
+
+		bool operator==(const const_iterator& b) const {
+			return _ptr == b._ptr;
+		}
+
+		const_iterator() = default;
+	};
+private:
+	const EL *_data;
+	size_type _size;
+
+	size_type ClampSuffixSize(size_type off, const size_type size) const noexcept {
+		return (std::min)(size, _size - off);
+	}
+public:
+	_NODISCARD constexpr int compare(basic_string_view b) const noexcept {
+		return Ext::StrCmp(_data, _size, b._data, b._size);
+	}
+
+	basic_string_view substr(size_type off = 0, size_type count = string::npos) const {
+		return basic_string_view(_data + off, ClampSuffixSize(off, count));
+	}
+
+	size_type find_last_of(EL ch, size_type pos = string::npos) const noexcept {
+		if (_size)
+			for (size_type i = (std::min)(pos, _size - 1); ; --i)
+				if (_data[i] == ch)
+					return i;
+				else if (!i)
+					break;
+		return string::npos;
+	}
+
+	const_iterator begin() const noexcept { return const_iterator(_data); }
+	const_iterator end() const noexcept { return const_iterator(_data + _size); }
+
+	constexpr const_reference front() const { return _data[0]; }
+
+    _NODISCARD constexpr const_pointer data() const noexcept { return _data; }
+
+	_NODISCARD constexpr bool empty() const noexcept { return _size == 0; }
+	_NODISCARD constexpr size_type size() const noexcept { return _size; }
+	_NODISCARD constexpr size_type length() const noexcept { return _size; }
+
+    _NODISCARD constexpr const_reference operator[](const size_t off) const noexcept { return _data[off]; }
+
+	friend constexpr bool operator==(const basic_string_view a, const basic_string_view b) noexcept {
+		return a._size == b._size && !memcmp(a._data, b._data, a._size);
+	}
+
+	friend constexpr bool operator!=(const basic_string_view a, const basic_string_view b) noexcept {
+		return !(a == b);
+	}
+
+	friend constexpr strong_ordering operator<=>(const basic_string_view a, const basic_string_view b) noexcept {
+		return static_cast<strong_ordering>(a.compare(b) <=> 0);
+	}
+
+	constexpr basic_string_view() noexcept
+		: _data(nullptr)
+		, _size(0) {
+	}
+
+	constexpr basic_string_view(const_pointer data, size_t size)
+		: _data(data)
+		, _size(size) {
+	}
+
+	constexpr basic_string_view(const_pointer data)
+		: _data(data)
+		, _size(Ext::StrLen(data)) {
+	}
+
+	constexpr basic_string_view(const basic_string_view&) noexcept = default;
+	constexpr basic_string_view& operator=(const basic_string_view&) noexcept = default;
+};
+
+_EXPORT_STD using string_view = basic_string_view<char>;
+#ifdef __cpp_lib_char8_t
+_EXPORT_STD using u8string_view = basic_string_view<char8_t>;
+#endif // __cpp_lib_char8_t
+_EXPORT_STD using u16string_view = basic_string_view<char16_t>;
+_EXPORT_STD using u32string_view = basic_string_view<char32_t>;
+_EXPORT_STD using wstring_view = basic_string_view<wchar_t>;
+
+inline namespace literals {
+    inline namespace string_view_literals {
+        _EXPORT_STD _NODISCARD constexpr string_view operator"" sv(const char* _Str, size_t _Len) noexcept {
+            return string_view(_Str, _Len);
+        }
+
+        _EXPORT_STD _NODISCARD constexpr wstring_view operator"" sv(const wchar_t* _Str, size_t _Len) noexcept {
+            return wstring_view(_Str, _Len);
+        }
+
+#ifdef __cpp_char8_t
+        _EXPORT_STD _NODISCARD constexpr basic_string_view<char8_t> operator"" sv(
+            const char8_t* _Str, size_t _Len) noexcept {
+            return basic_string_view<char8_t>(_Str, _Len);
+        }
+#endif // __cpp_char8_t
+
+        _EXPORT_STD _NODISCARD constexpr u16string_view operator"" sv(const char16_t* _Str, size_t _Len) noexcept {
+            return u16string_view(_Str, _Len);
+        }
+
+        _EXPORT_STD _NODISCARD constexpr u32string_view operator"" sv(const char32_t* _Str, size_t _Len) noexcept {
+            return u32string_view(_Str, _Len);
+        }
+    } // namespace string_view_literals
+} // namespace literals
+
+template <typename EL, typename TR = char_traits<EL>, typename A = std::allocator<EL> >
+class basic_string {
+public:
+	typedef size_t size_type;
+	typedef EL value_type;
+	typedef TR traits_type;
+	typedef value_type *pointer;
+	typedef const value_type *const_pointer;
+	typedef value_type& reference;
+	typedef const value_type& const_reference;
+	typedef typename vector<value_type>::const_iterator const_iterator;
+	typedef typename vector<value_type>::iterator iterator;
+
+	typedef std::reverse_iterator<iterator> reverse_iterator;
+	typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+	static const size_t npos = size_t(-1);
+protected:
+	vector<value_type> m_buf;
+public:
+	basic_string() {
+		clear();
+	}
+
+	basic_string(const basic_string& s)
+		: m_buf(s.m_buf)
+	{}
+
+	basic_string(const basic_string& s, size_t off, size_t count = npos) {
+		operator=(s.substr(off, count));
+	}
+
+	basic_string(const value_type *p)
+		: m_buf(traits_type::length(p)+1)
+	{
+		memcpy(&m_buf[0], p, (m_buf.size()-1)*sizeof(value_type));
+		m_buf[m_buf.size()-1] = 0;
+	}
+
+	basic_string(const value_type *p, size_t count)
+		: m_buf(count+1)
+	{
+		memcpy(&m_buf[0], p, count * sizeof(value_type));
+		m_buf[count] = 0;
+	}
+
+	basic_string(const value_type *b, const value_type *e)
+		: m_buf(e-b+1)
+	{
+		memcpy(&m_buf[0], b, (m_buf.size() - 1) * sizeof(value_type));
+		m_buf[m_buf.size()-1] = 0;
+	}
+
+	basic_string(size_t count, value_type ch)
+		: m_buf(count+1)
+	{
+		std::fill(&m_buf[0], &m_buf[0]+count, ch);
+		m_buf[count] = 0;
+	}
+
+	template <typename I>
+	basic_string(I b, I e)
+		: m_buf(e-b+1)
+	{
+		copy(b, e, m_buf.begin());
+		m_buf[m_buf.size()-1] = 0;
+	}
+
+/*!!!	basic_string(const Ext::String& s) {
+		const value_type *p = s;
+		m_buf.resize(traits_type::length(p)+1);
+		Ext::StrCpy(&m_buf[0], p);
+	} */
+
+	basic_string(const basic_string_view<EL, TR>& view) {
+		//!!!TODO
+	}
+
+	size_t length() const { return m_buf.size()-1; }
+	size_t size() const { return length(); }
+
+	const_reference operator[](size_t i) const { return (const value_type&)m_buf[i]; }
+	reference operator[](size_t i) { return m_buf[i]; }
+
+	const_reference at(size_t i) const {
+		if (i >= length())
+			Ext::ThrowImp(E_EXT_IndexOutOfRange);
+		return operator[](i);
+	}
+
+	reference at(size_t i) {
+		if (i >= length())
+			Ext::ThrowImp(E_EXT_IndexOutOfRange);
+		return operator[](i);
+	}
+
+	void clear() {
+		m_buf.resize(1, value_type());
+		m_buf[0] = 0;
+	}
+
+	bool empty() const { return m_buf.size()==1; }
+
+	void swap(basic_string& s) {
+		if (this != &s) {
+			m_buf.swap(s.m_buf);
+		}
+	}
+
+	const_iterator begin() const { return m_buf.begin(); }
+	const_iterator end() const { return m_buf.end()-1; }
+
+	iterator begin() { return m_buf.begin(); }
+	iterator end() { return m_buf.end()-1; }
+
+	reverse_iterator rbegin() {	return reverse_iterator(end()); }
+	const_reverse_iterator rbegin() const {	return const_reverse_iterator(end()); }
+	reverse_iterator rend() { return reverse_iterator(begin()); }
+	const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+
+	basic_string& operator=(const basic_string& s) {
+		m_buf = s.m_buf;
+		return *this;
+	}
+
+	basic_string& operator=(value_type ch) {
+		m_buf.resize(2);
+		m_buf[0] = ch;
+		m_buf[1] = 0;
+		return *this;
+	}
+
+	basic_string& operator=(const value_type *p) {
+		return operator=(basic_string(p));
+	}
+
+	basic_string& assign(const basic_string& s) { return *this = s; }
+
+	basic_string& assign(const value_type *p) {
+		return operator=(p);
+	}
+
+	basic_string& assign(const basic_string& s, size_t off, size_t count) {
+		return operator=(s.substr(off, count));
+	}
+
+	basic_string& assign(size_t count, value_type ch) {
+		return operator=(basic_string(count, ch));
+	}
+
+	template <class I>
+	basic_string& assign(I b, I e) {
+		return operator=(basic_string(b, e));
+	}
+
+	basic_string& assign(const value_type *p, size_t count) { return *this = basic_string(p, count); }
+
+	template <class I>
+	basic_string& append(I b, I e) {
+		m_buf.insert(m_buf.end()-1, b, e);
+		return *this;
+	}
+
+	basic_string& operator+=(const basic_string& bs) {
+		append(bs.begin(), bs.end());
+		return *this;
+	}
+
+	basic_string& operator+=(const value_type *p) {
+		return operator+=(basic_string(p));
+	}
+
+	basic_string& append(const basic_string& s) {
+		return append(s.begin(), s.end());
+	}
+
+	basic_string& append(const basic_string& s, size_t off, size_t count) {
+		return append(s.substr(off, count));
+	}
+
+	basic_string& append(const value_type *p) { return append(basic_string(p)); }
+
+	basic_string& append(const value_type *p, size_t count) { return append(basic_string(p, count)); }
+
+	basic_string& operator+=(value_type ch) { return append(basic_string(1, ch)); }
+
+	basic_string& append(size_t count, value_type ch) {
+		return append(basic_string(count, ch));
+	}
+
+#if _HAS_CXX17
+    /* implicit */ _CONSTEXPR20 operator basic_string_view<value_type, traits_type>() const noexcept {
+        // return a string_view around *this's character-type sequence
+        return basic_string_view<value_type, traits_type>{&m_buf[0], size()};
+    }
+#endif // _HAS_CXX17
+
+	void push_back(value_type ch) { append(1, ch); }
+
+	basic_string& insert(size_t pos, const basic_string& s) {
+		m_buf.insert(m_buf.begin()+pos, s.begin(), s.end());
+		return *this;
+	}
+
+	basic_string& insert(size_t pos, const value_type *p) { return insert(pos, basic_string(p)); }
+	basic_string& insert(size_t pos, const value_type *p, size_t count) { return insert(pos, basic_string(p, count)); }
+	basic_string& insert(size_t pos, size_t count, value_type ch) { return insert(pos, basic_string(count, ch)); }
+	basic_string& insert(size_t pos, const basic_string& s, size_t off, size_t count) { return insert(pos, s.substr(off, count)); }
+
+	iterator insert(iterator it, value_type ch) {
+		return m_buf.insert(it, ch);
+	}
+
+	void insert(iterator it, size_t count, value_type ch) {
+		m_buf.insert(it, count, ch);
+	}
+
+	template <class I>
+	void insert(iterator it, I b, I e) {
+		m_buf.insert(it, b, e);
+	}
+
+	const value_type *c_str() const { return &m_buf[0]; }
+	const value_type *data() const { return c_str(); }
+
+	void resize(size_t n, value_type ch = value_type()) {
+		m_buf.resize(n + 1, ch);
+		m_buf[n] = 0;
+	}
+
+	template <class Operation>
+	constexpr void resize_and_overwrite(size_type count, Operation op) {		//!!!O
+		resize(count);
+		const auto rsize = std::move(op)(&m_buf[0], count);
+		resize(rsize);
+	}
+
+	size_type capacity() const { return m_buf.capacity(); }
+	void reserve(size_type _Newcap = 0) { m_buf.reserve(_Newcap); }
+
+	size_t find(const value_type *p, size_t off, size_t count) const {
+		if (0 == count && off < length())
+			return off;
+		if (off < length() && count<=length()-off) {
+			for (const value_type *q = &m_buf[0]+off;; ++q) {
+				if (!memcmp(q, p, count*sizeof(value_type)))
+					return q-&m_buf[0];
+				if (q == &m_buf[0]+length()-count)
+					break;
+			}
+		}
+		return npos;
+	}
+
+	size_t find(const value_type *p, size_t off = 0) const			{ return find(p, off, traits_type::length(p)); }
+	size_t find(const basic_string& s, size_t off = 0) const		{ return find(&s.m_buf[0], off, s.length()); }
+	size_t find(value_type ch, size_t off = 0) const				{ return find(&ch, off, 1); }
+	size_t find_first_of(value_type ch, size_t off = 0) const		{ return find(&ch, off, 1); }
+
+	size_t find_first_of(const value_type *p, size_t off, size_t count) const {
+		if (count > 0 && off < length())
+			for (const value_type *b=&m_buf[0]+off, *e=&m_buf[0]+length(); b<e; ++b)
+				if (traits_type::find(p, count, *b))
+					return b-&m_buf[0];
+		return npos;
+	}
+
+	size_t find_first_of(const value_type *p, size_t off = 0) const { return find_first_of(p, off, traits_type::length(p)); }
+	size_t find_first_of(const basic_string& s, size_t off = 0) const { return find_first_of(&s.m_buf[0], off, s.length()); }
+
+	size_t find_first_not_of(const value_type *p, size_t off, size_t count) const {
+		if (count > 0 && off < length())
+			for (const value_type *b=&m_buf[0]+off, *e=&m_buf[0]+length(); b<e; ++b)
+				if (!traits_type::find(p, count, *b))
+					return b-&m_buf[0];
+		return npos;
+	}
+
+	size_t find_first_not_of(const value_type *p, size_t off = 0) const { return find_first_not_of(p, off, traits_type::length(p)); }
+	size_t find_first_not_of(const basic_string& s, size_t off = 0) const { return find_first_not_of(&s.m_buf[0], off, s.length()); }
+	size_t find_first_not_of(value_type ch, size_t off = 0) const { return find_first_not_of(&ch, off, 1); }
+
+	size_t rfind(const value_type *p, size_t off, size_t count) const {
+		if (0 == count)
+			return std::min(off, length());
+		if (count <= length()) {
+			for (const value_type *q=&m_buf[0]+std::min(off, size_t(length()-count));; --q) {
+				if (!memcmp(q, p, count*sizeof(value_type)))
+					return q-&m_buf[0];
+				if (q == &m_buf[0])
+					break;
+			}
+		}
+		return npos;
+	}
+
+	size_type rfind(const value_type *p, size_type off = npos) const { return rfind(p, off, traits_type::length(p)); }
+	size_t rfind(const basic_string& s, size_t off = npos) const { return rfind(&s.m_buf[0], off, s.length()); }
+	size_t rfind(value_type ch, size_t off = npos) const { return rfind(&ch, off, 1); }
+
+	size_t find_last_of(const value_type *p, size_t off, size_t count) const {
+		if (count > 0 && length() > 0)
+			for (const value_type *up = &m_buf[0] + (off < length() ? off+1 : length()); up-- != &m_buf[0];)
+				if (traits_type::find(p, count, *up) != 0)
+					return (up - &m_buf[0]);
+		return (npos);
+	}
+
+	size_t find_last_of(const value_type *p, size_t off = npos) const { return find_last_of(p, off, traits_type::length(p)); }
+	size_t find_last_of(const basic_string& s, size_t off) const { return find_last_of(&s.m_buf[0], off, s.length()); }
+	size_t find_last_of(value_type ch, size_t off = npos) const { return rfind(&ch, off, 1); }
+
+	size_t find_last_not_of(const value_type *p, size_t off, size_t count) const {
+		if (length() > 0)
+			for (const value_type *up = &m_buf[0] + (off < length() ? off+1 : length()); up-- != &m_buf[0];)
+				if (traits_type::find(p, count, *up) == 0)
+					return (up - &m_buf[0]);
+		return (npos);
+	}
+
+	size_t find_last_not_of(const value_type *p, size_t off = npos) const { return find_last_not_of(p, off, traits_type::length(p)); }
+	size_t find_last_not_of(const basic_string& s, size_t off = npos) const { return find_last_of(&s.m_buf[0], off, s.length()); }
+	size_t find_last_not_of(value_type ch, size_t off = npos) const { return find_last_not_of(&ch, off, 1); }
+
+	iterator erase(const_iterator it) {
+		size_t pos = it-begin();
+		m_buf.erase(it);
+		return begin()+pos;
+	}
+
+	iterator erase(iterator b, iterator e) {
+		size_t pos = b-begin();
+		m_buf.erase(b, e);
+		return begin()+pos;
+	}
+
+	void erase(size_t off = 0, size_t count = npos) {
+		pair<const_iterator, const_iterator> pp = GetIteratorRange(off, count);
+		m_buf.erase(pp.first, pp.second);
+	}
+
+	basic_string substr(size_t off = 0, size_t count = npos) const {
+		pair<const_iterator, const_iterator> pp = GetIteratorRange(off, count);
+		return basic_string(pp.first, pp.second);
+	}
+
+	template <class I>
+	basic_string& replace(iterator f, iterator l, I b, I e) {
+		Ext::ThrowImp(E_NOTIMPL);
+	}
+
+	basic_string& replace(iterator f, iterator l, const basic_string& s) {
+		Ext::ThrowImp(E_NOTIMPL);
+	}
+
+	basic_string& replace(iterator f, iterator l, const value_type *p) {
+		return replace(f, l, basic_string(p));
+	}
+
+	basic_string& replace(iterator f, iterator l, const value_type *p, size_t count) {
+		return replace(f, l, basic_string(p, count));
+	}
+
+	basic_string& replace(iterator f, iterator l, size_t count, value_type ch) {
+		return replace(f, l, basic_string(count, ch));
+	}
+
+	basic_string& replace(size_t pos, size_t num, const basic_string& s) {
+		Ext::ThrowImp(E_NOTIMPL);
+	}
+
+	basic_string& replace(size_t pos, size_t num, const basic_string& s, size_t off, size_t count) {
+		return replace(pos, num, s.substr(off, count));
+	}
+
+	basic_string& replace(size_t pos, size_t num, const value_type *p) {
+		return replace(pos, num, basic_string(p));
+	}
+
+	basic_string& replace(size_t pos, size_t num, const value_type *p, size_t count) {
+		return replace(pos, num, basic_string(p, count));
+	}
+
+	basic_string& replace(size_t pos, size_t num, size_t count, value_type ch) {
+		return replace(pos, num, basic_string(count, ch));
+	}
+
+	basic_string Add(const basic_string& s2) const {
+		basic_string r;
+		r.m_buf.resize(length() + s2.length() + 1, value_type());
+		memcpy(&r.m_buf[0], &m_buf[0], length()*sizeof(value_type));
+		memcpy(&r.m_buf[0]+length(), &s2.m_buf[0], (s2.length()+1)*sizeof(value_type));
+		return r;
+	}
+
+	/*!!!
+	bool operator!=(const basic_string& s) const {
+		return m_buf != s.m_buf;
+	}
+
+	bool operator!=(const value_type *p) const {
+		return operator!=(basic_string(p));
+	}*/
+
+	basic_string operator+(const value_type *p) const {
+		return Add(basic_string(p));
+	}
+
+	int compare(const basic_string& s) const {
+		return Ext::StrCmp(&m_buf[0], &s.m_buf[0]);
+	}
+
+	int compare(const value_type *p) const {
+		return compare(basic_string(p));
+	}
+
+	int compare(size_t pos, size_t num, const basic_string& s) const {
+		return substr(pos, num).compare(s);
+	}
+
+	int compare(size_t pos, size_t num, const value_type *p, size_t count) const {
+		return substr(pos, num).compare(basic_string(p, count));
+	}
+
+	int compare(size_t pos, size_t num, const basic_string& s, size_t off, size_t count) const {
+		return substr(pos, num).compare(s.substr(off, count));
+	}
+protected:
+	pair<const_iterator, const_iterator> GetIteratorRange(size_t off, size_t count) const {
+		pair<const_iterator, const_iterator> r;
+		r.first = begin()+std::min(length(), off);
+		r.second = count==npos ? end() : begin()+std::min(off+count, length());
+		return r;
+	}
+
+
+//!!!	friend basic_string operator+(const basic_string& s1, const basic_string& s2);
+};
+
+template <typename EL, typename TR, typename A>
+basic_string<EL, TR, A> operator+(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) {
+	return s1.Add(s2);
+}
+
+template <typename EL, typename TR, typename A>
+basic_string<EL, TR, A> operator+(const basic_string<EL, TR, A>& s1, const EL *p) {
+	return s1.operator+(p);
+}
+
+template <typename EL, typename TR, typename A>
+basic_string<EL, TR, A> operator+(const basic_string<EL, TR, A>& s1, EL ch) {
+	return s1 + basic_string<EL, TR, A>(1, ch);
+}
+
+template <typename EL, typename TR, typename A>
+inline basic_string<EL, TR, A> operator+(char ch, const basic_string<EL, TR, A>& s2) {
+	return basic_string<EL, TR, A>(1, ch)+s2;
+}
+
+template <typename EL, typename TR, typename A>
+inline basic_string<EL, TR, A> operator+(const char *psz, const basic_string<EL, TR, A>& s2) {
+	return basic_string<EL, TR, A>(psz)+s2;
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator==(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) {
+	return !s1.compare(s2);
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator==(const basic_string<EL, TR, A>& s1, const EL *p) {
+	return !s1.compare(p);
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator==(const EL *p, const basic_string<EL, TR, A>& s) {
+	return !s.compare(p);
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator!=(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) {
+	return s1.compare(s2);
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator!=(const basic_string<EL, TR, A>& s1, const EL *p) {
+	return s1 != basic_string<EL, TR, A>(p);
+}
+
+template <typename EL, typename TR, typename A>
+inline bool operator<(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) { return s1.compare(s2) < 0; }
+
+template <typename EL, typename TR, typename A>
+inline bool operator>(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) { return s2 < s1; }
+
+template <typename EL, typename TR, typename A>
+inline bool operator<=(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) { return !(s2 < s1); }
+
+template <typename EL, typename TR, typename A>
+inline bool operator>=(const basic_string<EL, TR, A>& s1, const basic_string<EL, TR, A>& s2) { return !(s1 < s2); }
+
+template <typename EL, typename TR, typename A>
+basic_ostream<EL, TR>& operator<<(basic_ostream<EL, TR>& os, const basic_string<EL, TR, A>& s) {
+	os.WritePad(s.c_str(), s.size());
+	return os;
+}
+
+typedef basic_string<char> string;
+typedef basic_string<wchar_t> wstring;
+
+typedef basic_string_view<char> string_view;
+typedef basic_string_view<wchar_t> wstring_view;
+
+int stoi(const string& str, size_t *idx = 0, int base = 10);
+long stol(const string& str, size_t *idx = 0, int base = 10);
+long long stoll(const string& str, size_t *idx = 0, int base = 10);
+unsigned long long stoull(const string& str, size_t *idx = 0, int base = 10);
+double stod(const string& str, size_t *idx = 0);
+string to_string(uint64_t v);
+
+} // ExtSTL::

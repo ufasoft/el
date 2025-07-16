@@ -5,7 +5,7 @@
 #include <el/gui/gui.h>
 
 #include <el/libext/win32/ext-wnd.h>
-#include <el/libext/win32/extmfc.h>
+//#include <el/libext/win32/extmfc.h>
 
 
 namespace Ext {
