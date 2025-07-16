@@ -1,15 +1,19 @@
-/*######   Copyright (c) 2011-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2011-2023 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #include <el/ext.h>
 
+#pragma warning(disable: 4073)
+#pragma init_seg(lib)				// to initialize early
+
 namespace Ext {
 using namespace std;
 
 static const CodeMessage<ExtErr> s_extMessageTable[] {
 	{ ExtErr::EndOfStream										, "End Of Stream"								}
+#if UCFG_ERROR_MESSAGE
 	, { ExtErr::VartypeNotSupported								, "VarType not supported"						}
 	, { ExtErr::InvalidDimCount									, "Invalid dim count"							}
 	, { ExtErr::BlobNotInitialized								, "Blob not initialized"						}
@@ -142,6 +146,7 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::SOCKS_TTLExpired								, "TTL expired"		 						}
 	, { ExtErr::SOCKS_CommandNotSupported						, "SOCKS command not supported"		 		}
 	, { ExtErr::SOCKS_AddressTypeNotSupported					, "AddressTypeNotSupported"		 			}
+#endif // UCFG_ERROR_MESSAGE
 };
 
 
@@ -150,7 +155,7 @@ static class ExtCategory : public ErrorCategoryBase {
 	typedef ErrorCategoryBase base;
 public:
 	ExtCategory()
-		:	base("Ext", FACILITY_EXT)
+		: base("Ext", FACILITY_EXT)
 	{}
 
 	string message(int errval) const override {

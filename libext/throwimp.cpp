@@ -16,6 +16,9 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
+#pragma warning(disable: 4073)
+#pragma init_seg(lib)				// to initialize early
+
 namespace Ext {
 using namespace std;
 
