@@ -156,6 +156,7 @@
     <ClInclude Include="ext-cpp.h" />
     <ClInclude Include="ext-err.h" />
     <ClInclude Include="exthelpers.h" />
+    <ClInclude Include="vc\default-libs.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="..\bignum\x86x64\bignum-x86x64.asm">

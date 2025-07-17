@@ -26,6 +26,9 @@
     <Filter Include="Source Files\crt">
       <UniqueIdentifier>{80850a84-47a9-4043-afeb-46e6d32d0523}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vc">
+      <UniqueIdentifier>{29a686a6-8704-46fb-9beb-d54cf12ad929}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ext-base.cpp">
@@ -221,6 +224,9 @@
     </ClInclude>
     <ClInclude Include="exthelpers.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vc\default-libs.h">
+      <Filter>vc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
