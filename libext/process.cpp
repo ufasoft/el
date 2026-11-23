@@ -3,12 +3,13 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <el/libext/win32/ext-win.h>
 #include <el/libext/win32/ext-full-win.h>
 
 namespace Ext {
+using std::unique_ptr;
 using namespace std;
 
 
@@ -236,7 +237,7 @@ bool ProcessObj::Start() {
 #else // UCFG_WIN32
 	Throw(E_NOTIMPL);
 #endif
-	TRC(4, "PID: " << m_pid.Value());
+	TRC(4, "PID: " << m_pid);
 	return true;
 }
 
@@ -317,7 +318,7 @@ vector<Process> AFXAPI Process::GetProcessesByName(RCString name) {
 		r;
 	DBG_LOCAL_IGNORE_CONDITION(errc::bad_file_descriptor);
 	DBG_LOCAL_IGNORE_WIN32(ERROR_PARTIAL_COPY);
-	EXT_FOR (Process& p, procs) {
+	for (Process& p : procs) {
 		try {
 			if (p.ProcessName == name)
 				r.push_back(p);

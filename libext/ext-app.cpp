@@ -1,6 +1,10 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
-#include <el/libext/ext-fw.h>
+#if UCFG_FRAMEWORK
+#	include <el/libext/ext-cpp.h>
+#else
+#	include <el/libext/ext-fw.h>
+#endif
 
 #if UCFG_WIN32
 #	include <el/libext/win32/ext-win.h>
@@ -20,9 +24,6 @@ namespace Ext {
 using namespace std;
 
 CCommandLineInfo::CCommandLineInfo() {
-	m_bShowSplash = true;
-	m_bRunEmbedded = false;
-	m_bRunAutomated = false;
 	m_nShellCommand = FileNew;
 }
 

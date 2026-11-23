@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 using namespace std;
 using namespace rel_ops;
@@ -67,7 +67,7 @@ BigInteger::~BigInteger() {
 }
 
 BigInteger::BigInteger(const BigInteger& bi)					// here to hide GMP/NTL API from users
-	:	m_zz(bi.m_zz)
+	: m_zz(bi.m_zz)
 {
 }
 
@@ -105,7 +105,7 @@ BigInteger::BigInteger(S_BASEWORD n)
 
 #if UCFG_BIGNUM=='G'
 BigInteger::BigInteger(int n)
-	:	m_zz(n)
+	: m_zz(n)
 {
 }
 
@@ -370,10 +370,10 @@ pair<BigInteger, BigInteger> AFXAPI div(const BigInteger& x, const BigInteger& y
 	r.second.m_zz = x.m_zz%y.m_zz;
 	return r;
 #else
-	if (x.m_count==1 && y.m_count==1 && *x.m_data != BASEWORD_MIN) {
+	if (x.m_count == 1 && y.m_count == 1 && *x.m_data != BASEWORD_MIN) {
 		S_BASEWORD num = *x.m_data,
 			den = *y.m_data;
-		return pair<BigInteger, BigInteger>(num/den, num%den);
+		return pair<BigInteger, BigInteger>(num / den, num % den);
 	}
 	BigInteger nx(x),
 		ny(y);
@@ -740,14 +740,14 @@ BigInteger AFXAPI operator>>(const BigInteger& x, size_t v) {
 }
 
 BigInteger AFXAPI operator<<(const BigInteger& x, size_t v) {
-#if UCFG_BIGNUM!='A'
+#if UCFG_BIGNUM != 'A'
 	return BigInteger(x.m_zz << (long)v);
 #else
-	size_t size = v/BASEWORD_BITS + 1 + x.m_count;
-	BASEWORD *r = (BASEWORD*)alloca(size*sizeof(BASEWORD));
-	memset(r, 0, size*sizeof(BASEWORD));
-	BASEWORD *p = r + v/BASEWORD_BITS;
-	ImpShld(x.Data, p, x.m_count, v & (BASEWORD_BITS-1));
+	size_t size = v / BASEWORD_BITS + 1 + x.m_count;
+	BASEWORD* r = (BASEWORD*)alloca(size * sizeof(BASEWORD));
+	memset(r, 0, size * sizeof(BASEWORD));
+	BASEWORD* p = r + v / BASEWORD_BITS;
+	ImpShld(x.Data, p, x.m_count, v & (BASEWORD_BITS - 1));
 	return BigInteger(r, size);
 #endif
 }
@@ -843,8 +843,8 @@ void BigInteger::Init(const uint8_t* p, size_t count) {
 	if (!n || uint8_t(((signed char)p[n - 1] >> 7)) != bhigh)
 		n++;
 	BASEWORD *data;
-	if ((m_count=(n+sizeof(BASEWORD)-1)/sizeof(BASEWORD)) > size(m_data)) {
-		size_t size = m_count*sizeof(BASEWORD);
+	if ((m_count = (n + sizeof(BASEWORD) - 1) / sizeof(BASEWORD)) > size(m_data)) {
+		size_t size = m_count * sizeof(BASEWORD);
 		m_blob.m_pData = new(size, false) CStringBlobBuf(0, size);
 		data = (BASEWORD*)m_blob.data();
 	} else

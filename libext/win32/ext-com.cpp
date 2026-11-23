@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <el/libext/win32/ext-win.h>
 
@@ -15,6 +15,7 @@
 
 namespace Ext {
 using namespace std;
+using namespace Win;
 
 #if UCFG_COM
 
@@ -105,13 +106,13 @@ DateTime CIStream::get_ModTime() {
 
 void CIStorage::CreateFile(RCString name, DWORD grfMode) {
 	if (m_storage)
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	OleCheck(StgCreateDocfile(name, grfMode, 0, &m_storage));
 }
 
 void CIStorage::OpenFile(RCString name, DWORD grfMode) {
 	if (m_storage)
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	OleCheck(StgOpenStorage(name, 0, grfMode, 0, 0, &m_storage));
 }
 
@@ -391,15 +392,11 @@ CUniType AFXAPI UniType(const COleVariant& v) {
 }
 
 
-CUsingCOM::CUsingCOM(DWORD dwCoInit)
-	: m_bInitialized(false)
-{
+CUsingCOM::CUsingCOM(DWORD dwCoInit) {
 	Initialize(dwCoInit);
 }
 
-CUsingCOM::CUsingCOM(_NoInit)
-	: m_bInitialized(false)
-{
+CUsingCOM::CUsingCOM(_NoInit) {
 }
 
 CUsingCOM::~CUsingCOM() {
@@ -1642,5 +1639,130 @@ extern "C" void * __cdecl _CRT_RTC_INITW(void *_Res0, void **_Res1, int _Res2, i
 #endif
 
 #endif // UCFG_COM
+
+CILockBytes::CILockBytes() {
+	OleCheck(CreateILockBytesOnHGlobal(0, TRUE, &m_iLockBytes));
+}
+
+CILockBytes::CILockBytes(const Blob& blob) {
+	OleCheck(CreateILockBytesOnHGlobal(CGlobalAlloc(blob).Detach(), TRUE, &m_iLockBytes));
+}
+
+CDocFile::CDocFile(CILockBytes& lb, bool bCreate)
+	: m_lb(lb)
+{
+	if (bCreate)
+		OleCheck(StgCreateDocfileOnILockBytes(m_lb.m_iLockBytes, STGM_CREATE | STGM_READWRITE | STGM_SHARE_EXCLUSIVE, 0, &m_iStorage));
+	else
+		OleCheck(StgOpenStorageOnILockBytes(m_lb.m_iLockBytes, 0, STGM_READWRITE | STGM_SHARE_EXCLUSIVE, 0, 0, &m_iStorage));
+}
+
+CVariant::CVariant() {
+	vt = VT_EMPTY;
+}
+
+CVariant::CVariant(const PROPVARIANT& v) {
+	vt = VT_EMPTY;
+	operator=(v);
+}
+
+CVariant::CVariant(DWORD dw) {
+	vt = VT_EMPTY;
+	UI4 = dw;
+}
+
+CVariant::CVariant(const class Blob& b) {
+	vt = VT_EMPTY;
+	Blob = b;
+}
+
+CVariant::~CVariant() {
+	Clear();
+}
+
+void CVariant::Clear() {
+	switch (vt)
+	{
+	case VT_BLOB:
+		delete blob.pBlobData;
+	case VT_EMPTY:
+	case VT_UI4:
+		break;
+	default:
+		Throw(ExtErr::UnknownTypeOfVariant);
+	}
+	vt = VT_EMPTY;
+}
+
+CVariant& CVariant::operator=(const PROPVARIANT& v) {
+	if (this != &v) {
+		Clear();
+		switch (v.vt)
+		{
+		case VT_BLOB:
+		{
+			blob.cbSize = v.blob.cbSize;
+			blob.pBlobData = new BYTE[blob.cbSize];
+			memcpy(blob.pBlobData, v.blob.pBlobData, blob.cbSize);
+		}
+		break;
+		case VT_UI4:
+			ulVal = v.ulVal;
+		case VT_EMPTY:
+			break;
+		default:
+			Throw(ExtErr::UnknownTypeOfVariant);
+		}
+		vt = v.vt;
+	}
+	return _self;
+}
+
+void CVariant::Check(VARTYPE t) const {
+	if (vt != t)
+		Throw(ExtErr::DifferentTypeOfVariant);
+}
+
+DWORD CVariant::get_UI4() const {
+	Check(VT_UI4);
+	return ulVal;
+}
+
+void CVariant::put_UI4(DWORD dw) {
+	Clear();
+	vt = VT_UI4;
+	ulVal = dw;
+}
+
+Blob CVariant::get_Blob() const {
+	Check(VT_BLOB);
+	return class Blob(blob.pBlobData, blob.cbSize);
+}
+
+void CVariant::put_Blob(const class Blob& b) {
+	Clear();
+	blob.pBlobData = new BYTE[blob.cbSize = (ULONG)b.size()];
+	memcpy(blob.pBlobData, b.constData(), blob.cbSize);
+	vt = VT_BLOB;
+}
+
+CProp::~CProp() {}
+
+CVariant CProp::GetValue() {
+	return CVariant();
+}
+
+void CProp::SetValue(const CVariant& v) {}
+
+void CColorProp::SetOleVariant(const VARIANT& v) {
+	m_clr = Convert::ToInt32(v);
+}
+
+HFONT CFontHolder::GetFontHandle() {
+	HFONT r;
+	OleCheck(m_iFont->get_hFont(&r));
+	return r;
+}
+
 
 } // Ext::

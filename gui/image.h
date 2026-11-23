@@ -14,7 +14,7 @@ public:
 	static ImageFormat Bmp, Emf, Exif, Gif, Icon, Jpeg, Png, Tiff, Wmf;
 
 	ImageFormat(const GUID& guid)
-		:	Guid(guid)
+		: Guid(guid)
 	{}
 };
 
@@ -32,7 +32,7 @@ public:
 class ImagingExc : public Exception {
 public:
 	ImagingExc(RCString s)
-		:	Exception(ExtErr::Imaging, s)
+		: Exception(ExtErr::Imaging, s)
 	{
 	}
 };
@@ -41,7 +41,7 @@ class NoSuchEncoderExc : public ImagingExc {
 	typedef ImagingExc base;
 public:
 	NoSuchEncoderExc()
-		:	base("No such encoder")
+		: base("No such encoder")
 	{}
 };
 
@@ -49,7 +49,7 @@ class IconNotFoundExc : public ImagingExc {
 	typedef ImagingExc base;
 public:
 	IconNotFoundExc()
-		:	base("Icon not found")
+		: base("Icon not found")
 	{}
 };
 
@@ -194,13 +194,13 @@ private:
 
 typedef Icon Image;
 
-ENUM_CLASS(ColorDepth) {
-	Depth4Bit = ILC_COLOR4,
-	Depth8Bit = ILC_COLOR8,
-	Depth16Bit = ILC_COLOR16,
-	Depth24Bit = ILC_COLOR24,
-	Depth32Bit = ILC_COLOR32
-} END_ENUM_CLASS(ColorDepth);
+enum class ColorDepth {
+	Depth4Bit = ILC_COLOR4
+	, Depth8Bit = ILC_COLOR8
+	, Depth16Bit = ILC_COLOR16
+	, Depth24Bit = ILC_COLOR24
+	, Depth32Bit = ILC_COLOR32
+};
 
 class AFX_CLASS ImageList : public Object {
 	Ext::Gui::ColorDepth m_colorDepth;

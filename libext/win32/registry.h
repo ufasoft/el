@@ -177,7 +177,7 @@ public:
 class Wow64RegistryReflectionKeeper {
 public:
 	RegistryKey& m_key;
-	CBool m_bChanged, m_bPrev;
+	bool m_bChanged, m_bPrev = false;
 
 	Wow64RegistryReflectionKeeper(RegistryKey& key)
 		: m_key(key)

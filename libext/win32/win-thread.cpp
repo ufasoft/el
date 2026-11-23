@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <ddeml.h>
 
@@ -12,6 +12,9 @@
 #endif
 //!!!#include <exception>//!!!
 
+#if UCFG_WIN_MSG
+#	include <el/libext/win32/mfcimpl.h>
+#endif
 
 
 namespace Ext {
@@ -26,7 +29,7 @@ class CWndAttachKeeper {
 	CWnd& m_wnd;
 public:
 	CWndAttachKeeper(CWnd& wnd, HWND hwnd)
-		:	m_wnd(wnd)
+		: m_wnd(wnd)
 	{
 		m_wnd.Attach(hwnd);
 	}
@@ -88,7 +91,6 @@ void CWinThread::OnEnd() {
 #endif // UCFG_EXTENDED
 
 #if UCFG_WIN_MSG
-#	include "win32/mfcimpl.h"
 
 
 bool CWinThread::IsIdleMessage(MSG& msg) {
@@ -146,7 +148,7 @@ LDispatch:
 	return TRUE;
 }
 
-BOOL AfxInternalPreTranslateMessage(MSG* pMsg)
+BOOL AfxInternalPreTranslateMessage(MSG& msg)
 {
 	//	ASSERT_VALID(this);
 
@@ -154,32 +156,32 @@ BOOL AfxInternalPreTranslateMessage(MSG* pMsg)
 	if( pThread )
 	{
 		// if this is a thread-message, short-circuit this function
-		if (pMsg->hwnd == NULL && pThread->DispatchThreadMessageEx(*pMsg))
+		if (msg.hwnd == NULL && pThread->DispatchThreadMessageEx(msg))
 			return TRUE;
 	}
 
 	// walk from target to main window
 	CWnd* pMainWnd = AfxGetMainWnd();
-	if (CWnd::WalkPreTranslateTree(pMainWnd->GetSafeHwnd(), pMsg))
+	if (CWnd::WalkPreTranslateTree(pMainWnd->GetSafeHwnd(), msg))
 		return TRUE;
 
 	// in case of modeless dialogs, last chance route through main
 	//   window's accelerator table
 	if (pMainWnd != NULL)
 	{
-		CWnd* pWnd = CWnd::FromHandle(pMsg->hwnd);
+		CWnd* pWnd = CWnd::FromHandle(msg.hwnd);
 		if (pWnd->GetTopLevelParent() != pMainWnd)
-			return pMainWnd->PreTranslateMessage(pMsg);
+			return pMainWnd->PreTranslateMessage(msg);
 	}
 
 	return FALSE;   // no special processing
 }
 
-static BOOL AfxPreTranslateMessage(MSG* pMsg) {
-	if (CWinThread *pThread = AfxGetThread())
-		return pThread->PreTranslateMessage(*pMsg);
-	else
-		return AfxInternalPreTranslateMessage( pMsg );
+static BOOL AfxPreTranslateMessage(MSG& msg) {
+	CWinThread* pThread = AfxGetThread();
+	return pThread
+		? pThread->PreTranslateMessage(msg)
+		: AfxInternalPreTranslateMessage(msg);
 }
 
 static BOOL AfxInternalPumpMessage()
@@ -215,7 +217,7 @@ static BOOL AfxInternalPumpMessage()
 
 	// process this message
 
-	if (pState->m_msgCur.message != WM_KICKIDLE && !AfxPreTranslateMessage(&(pState->m_msgCur)))
+	if (pState->m_msgCur.message != WM_KICKIDLE && !AfxPreTranslateMessage(pState->m_msgCur))
 	{
 		::TranslateMessage(&(pState->m_msgCur));
 		::DispatchMessage(&(pState->m_msgCur));
@@ -229,7 +231,7 @@ bool CWinThread::PreTranslateMessage(MSG& msg) {
 		return true;
 	// walk from target to main window
 	CWnd *pMainWnd = AfxGetMainWnd();
-	if (CWnd::WalkPreTranslateTree(pMainWnd->GetSafeHwnd(), &msg))
+	if (CWnd::WalkPreTranslateTree(pMainWnd->GetSafeHwnd(), msg))
 		return true;
 	// in case of modeless dialogs, last chance route through main
 	//   window's accelerator table
@@ -237,7 +239,7 @@ bool CWinThread::PreTranslateMessage(MSG& msg) {
 	{
 		CWnd* pWnd = CWnd::FromHandle(msg.hwnd);
 		if (pWnd->GetTopLevelParent() != pMainWnd)
-			return pMainWnd->PreTranslateMessage(&msg);
+			return pMainWnd->PreTranslateMessage(msg);
 	}
 	return false;
 }
@@ -283,6 +285,7 @@ int CWinThread::RunLoop() {
 
 #endif // UCFG_WIN_MSG
 
+#if UCFG_GUI
 bool CWinThread::OnIdle(LONG lCount)
 {
 	if (lCount <= 0)
@@ -337,9 +340,8 @@ BOOL CWinThread::ProcessMessageFilter(int code, MSG *lpMsg) {
 
 	case MSGF_DIALOGBOX:    // handles message boxes as well.
 		pMainWnd = AfxGetMainWnd();
-		/*!!!		if (afxData.nWinVer < 0x333 && pMainWnd != NULL && IsHelpKey(lpMsg))
-		{
-		pMainWnd->SendMessage(WM_COMMAND, ID_HELP);
+		/*!!!		if (afxData.nWinVer < 0x333 && pMainWnd != NULL && IsHelpKey(lpMsg)) {
+		pMainWnd->Send(WM_COMMAND, ID_HELP);
 		return TRUE;
 		}*/
 		if (code == MSGF_DIALOGBOX && m_pActiveWnd &&
@@ -377,6 +379,8 @@ void AFXAPI AfxInitThread() {
 		AfxGetThreadState()->m_hookMsg.Set(WH_MSGFILTER, _AfxMsgFilterHook, 0, ::GetCurrentThreadId());
 #endif
 }
+
+#endif // UCFG_GUI
 
 
 } // Ext::

@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <oleauto.h>
@@ -191,12 +191,15 @@ Blob BinaryReader::ReadToEnd() const {
 
 uint64_t AFXAPI Read7BitEncoded(const uint8_t*& p) {
 	const uint8_t* q = p; //O local pointer is faster
-	uint8_t b = *q++;
-	uint64_t r = b & 0x7F;									//O for 1-byte records
-	for (uint8_t shift = 7; b & 0x80;) {
-		r |= uint64_t((b = *q++) & 0x7F) << shift;
-		if ((shift += 7) >= 64)
-			Throw(E_FAIL);
+	uint64_t r = *q++;
+	if (r & 0x80) {
+		r &= 0x7F;
+		uint8_t b, shift = 7;
+		do {
+			r |= uint64_t((b = *q++) & 0x7F) << shift;
+			if ((shift += 7) >= 64)
+				Throw(E_FAIL);
+		} while (b & 0x80);
 	}
 	p = q;
 	return r;

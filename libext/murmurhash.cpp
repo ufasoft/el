@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 // MurmurHash3, MurmurHashAligned2 were written by Austin Appleby, and is placed in the PUBLIC DOMAIN.
 // The author hereby disclaims copyright to this source code.

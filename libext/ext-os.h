@@ -105,6 +105,14 @@ extern EXT_DATA COperatingSystem System;
 
 class CEvent : public CSyncObject {
 	typedef CSyncObject base;
+
+#if UCFG_USE_PTHREADS
+	pthread_cond_t m_cond;
+	CCriticalSection m_mutex;
+	bool m_bManual = false, m_bSignaled = false;
+#elif UCFG_WDM
+	KEVENT m_ev;
+#endif
 public:
 	CEvent(std::nullptr_t p) {
 	}
@@ -123,7 +131,7 @@ public:
 	KEVENT *Obj() { return (KEVENT*)m_pObject; }
 #endif
 
-#if !UCFG_USE_PTHREADS && !defined(WDM_DRIVER)
+#if !UCFG_USE_PTHREADS && !UCFG_WDM
 	void Pulse();
 #endif
 
@@ -131,14 +139,6 @@ public:
 	void Reset();
 	bool lock(uint32_t dwTimeout = INFINITE) override;
 	void unlock() override;
-private:
-#if UCFG_USE_PTHREADS
-	pthread_cond_t m_cond;
-	CCriticalSection m_mutex;
-	CBool m_bManual, m_bSignaled;
-#elif UCFG_WDM
-	KEVENT m_ev;
-#endif
 };
 
 typedef CEvent EventWaitHandle;
@@ -147,11 +147,11 @@ class AutoResetEvent : public EventWaitHandle {
 	typedef EventWaitHandle base;
 public:
 	AutoResetEvent(std::nullptr_t p)
-		:	base(p)
+		: base(p)
 	{}
 
 	AutoResetEvent(bool bInit = false)
-		:	base(bInit, false)
+		: base(bInit, false)
 	{}
 
 #if UCFG_WIN32
@@ -164,7 +164,7 @@ class ManualResetEvent : public EventWaitHandle {
 	typedef EventWaitHandle base;
 public:
 	ManualResetEvent(bool bInit = false)
-		:	base(bInit, true)
+		: base(bInit, true)
 	{}
 };
 

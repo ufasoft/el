@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 
 #pragma warning(disable: 4073)
@@ -114,7 +114,7 @@ bool CSyncObject::lock(uint32_t dwTimeout) {
 	if (INFINITE == dwTimeout)
 		Throw(E_FAIL);
 	return false;
-#elif defined(WDM_DRIVER)
+#elif UCFG_WDM
 	return LockEx(dwTimeout, KernelMode, TRUE);
 #endif
 }
@@ -180,7 +180,7 @@ void CCriticalSection::Init() {
 	CPthreadMutexAttr a;
 	a.Type = PTHREAD_MUTEX_RECURSIVE;
 	PthreadCheck(::pthread_mutex_init(&m_mutex, &a.m_attr));
-#elif defined(WDM_DRIVER)
+#elif UCFG_WDM
 	KeInitializeSpinLock(&m_spinLock);
 #else
 	__try {
@@ -203,7 +203,7 @@ bool CCriticalSection::TryLock() {
 		return false;
 	PthreadCheck(r);
 	return true;
-#elif defined(WDM_DRIVER)
+#elif UCFG_WDM
 	Throw(E_NOTIMPL);
 #else
 	return ::TryEnterCriticalSection(&m_sect);				// don't handle EXCEPTION_POSSIBLE_DEADLOCK and "OutOfMemory on Win2K"
@@ -270,7 +270,7 @@ void CEvent::Set() {
 #endif
 }
 
-#if !UCFG_USE_PTHREADS && !defined(WDM_DRIVER)
+#if !UCFG_USE_PTHREADS && !UCFG_WDM
 void CEvent::Pulse() {
 	Win32Check(::PulseEvent((HANDLE)(intptr_t)HandleAccess(*this)));
 }
@@ -326,7 +326,7 @@ void CEvent::unlock() {
 static class AutoEventPool {
 public:
 	~AutoEventPool() {
-		EXT_FOR (HANDLE h, m_handles) {
+		for (HANDLE h : m_handles) {
 			Win32Check(::CloseHandle(h));
 		}
 	}

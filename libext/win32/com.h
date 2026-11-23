@@ -8,7 +8,9 @@
 #include <unknwn.h>
 #include <ocidl.h>
 
-#if UCFG_ATL=='S'
+#if UCFG_ATL=='U'
+#	include <el/libext/win32/ext-atl.h>
+#elif UCFG_ATL=='S' || UCFG_COM
 #	ifndef _NTSTATUS_
 #		include <cguid.h>
 #		include <winnt.h>
@@ -16,8 +18,6 @@
 #	include <atlcomcli.h>
 #	include <atlbase.h>
 #	include <atlcom.h>
-#elif UCFG_ATL=='U'
-#	include <el/libext/win32/ext-atl.h>
 #endif
 
 #include <el/gui/extdef.h>
@@ -54,13 +54,12 @@
 
 //#include <el/libext/win32/ext-win.h>
 
+
 namespace Ext {
 using namespace ATL;
 
 class CInternalUnknown;
 class CComGeneralClass;
-class COleControlContainer;
-class COleControlSite;
 
 inline HRESULT OleCheck(HRESULT hr) {
 	if (FAILED(hr))
@@ -290,6 +289,8 @@ public:
 	}
 };
 
+
+
 class AFX_CLASS CSafeArrayAccessData {
 	const CSafeArray& m_sa;
 	void *m_p;
@@ -316,6 +317,114 @@ public:
 	COleSafeArrayAccessData(COleSafeArray& sa);
 	~COleSafeArrayAccessData();
 	void *GetData();
+};
+
+class CVariant : public PROPVARIANT, public CPersistent {
+	void Check(VARTYPE t) const;
+public:
+	typedef CVariant class_type;
+
+	CVariant();
+	CVariant(const PROPVARIANT& v);
+	CVariant(DWORD dw);
+	CVariant(const Blob& b);
+	~CVariant();
+	void Clear();
+	CVariant& operator=(const PROPVARIANT& v);
+
+	DWORD get_UI4() const;
+	void put_UI4(DWORD dw);
+	DEFPROP_CONST(DWORD, UI4);
+
+	Blob get_Blob() const;
+	void put_Blob(const Blob& bl);
+	DEFPROP_CONST(Blob, Blob);
+};
+
+class CProperty : public CPersistent {
+public:
+	typedef CProperty class_type;
+
+	PROPID m_id;
+	String m_name;
+	DWORD m_dwType;
+	Blob m_blob;
+
+	~CProperty();
+	void Read(const BinaryReader& rd) override;
+	void Write(BinaryWriter& wr) const override;
+
+	CVariant get_Value();
+	void put_Value(const CVariant& v);
+	DEFPROP(CVariant, Value);
+};
+
+class CPropertySection : public CPersistent {
+public:
+	CLSID m_clsid;
+	std::vector<CProperty> m_ar;
+
+	CProperty* GetProperty(PROPID propid);
+	void Read(const BinaryReader& rd) override;
+	void Write(BinaryWriter& wr) const override;;
+	CVariant TryGet(PROPID propid, const CVariant& v);
+};
+
+class CPropertySet : public CPersistent {
+	CComPtr<IPropertySetStorage> m_iPSS;
+	CComPtr<IPropertyStorage> m_iPS;
+public:
+	std::vector<CPropertySection> m_sections;
+
+	CPropertySection* AddSection(const CLSID& clsid);
+	CPropertySection* GetSection(const CLSID& clsid);
+	void Create(IStorage* stg);
+	void Create(IStream* stm);
+	void Set(PROPID propid, const VARIANT& v);
+	void Read(const BinaryReader& rd) override;
+	void Write(BinaryWriter& wr) const override;
+};
+
+class CProp : public CPersistent, public NonInterlockedObject {
+public:
+	String m_name;
+
+	virtual ~CProp();
+
+	virtual CVariant GetValue();
+	virtual void SetValue(const CVariant& v);
+	__declspec(property(get = GetValue, put = SetValue)) CVariant Value;
+
+	virtual COleVariant GetOleVariant() {
+		return COleVariant();
+	}
+
+	virtual void SetOleVariant(const VARIANT& v) {}
+
+	void Read(const BinaryReader& rd) override {}
+	void Write(BinaryWriter& wr) const override {}
+};
+
+class CColorProp : public CProp {
+public:
+	OLE_COLOR m_clr;
+
+	CColorProp()
+		: m_clr(0) {}
+
+	CVariant GetValue() {
+		return m_clr;
+	}
+
+	void SetValue(const CVariant& v) {
+		m_clr = v.UI4;
+	}
+
+	COleVariant GetOleVariant() {
+		return COleVariant(long(m_clr));
+	}
+
+	void SetOleVariant(const VARIANT& v);
 };
 
 #endif // UCFG_FRAMEWORK
@@ -349,7 +458,6 @@ public:
 	CRegisterActiveObject(const CLSID& clsid, IUnknown *unk, DWORD dwFlags = ACTIVEOBJECT_STRONG);
 	~CRegisterActiveObject();
 };
-
 
 typedef ATL::CComPtr<IUnknown> CUnkPtr;	//!!! temporary
 
@@ -504,7 +612,7 @@ public:
 	CComGeneralClass *m_pGeneralClass;
 	AFX_MODULE_STATE *m_pModuleState;
 
-	typedef std::unordered_map<Guid, CComPtr<ITypeInfo>> CTypeInfoMap;
+	typedef ExtSTD::unordered_map<Guid, CComPtr<ITypeInfo>> CTypeInfoMap;
 	CTypeInfoMap m_mapTI;
 	IID m_iid;
 	CComPtr<ITypeInfo> m_iTI;
@@ -717,6 +825,7 @@ public:
 
 #define METHOD_BEGIN_IMP { AFX_MAINTAIN_STATE_COM _ctlState(this); TRC_INDENT; TRC(Ext::TraceLevel::Com, "COM this: 0x" << this); try
 #define METHOD_BEGIN noexcept override METHOD_BEGIN_IMP
+#define METHOD_BEGIN_DEF noexcept METHOD_BEGIN_IMP
 #define METHOD_BEGIN_EX noexcept override { AFX_MAINTAIN_STATE_COM _ctlState(GetComClass()); try
 #define METHOD_END catch(RCExc e) { TRC(Ext::TraceLevel::Com, hex << HResultInCatch(e) << " " << e.what()); _ctlState.SetFromExc(e); } return _ctlState.HResult; }
 
@@ -797,27 +906,13 @@ struct AFX_CLASS _AFX_OCC_DIALOG_INFO {
 	~_AFX_OCC_DIALOG_INFO();
 };
 
-class AFX_CLASS COccManager {
-protected:
-	HWND CreateDlgControl(CWnd *pWndParent, HWND hwAfter, BOOL bDialogEx, LPDLGITEMTEMPLATE pItem, WORD nMsg, BYTE *lpData,
-		DWORD cb);
-	void BindControls(CWnd *pWndParent);
-public:
-	COccManager();
-	virtual COleControlContainer *CreateContainer(CWnd *pWnd);
-	virtual COleControlSite *CreateSite(COleControlContainer *pCtrlCont);
-	virtual const DLGTEMPLATE *PreCreateDialog(_AFX_OCC_DIALOG_INFO* pDialogInfo, const DLGTEMPLATE* pOrigTemplate);
-	virtual void CreateDlgControls(CWnd *pWndParent, const CResID& resID, _AFX_OCC_DIALOG_INFO* pOccDialogInfo);
-	virtual void CreateDlgControls(CWnd *pWndParent, void *lpResource, _AFX_OCC_DIALOG_INFO* pOccDialogInfo);
-	virtual DLGTEMPLATE *SplitDialogTemplate(const DLGTEMPLATE* pTemplate, DLGITEMTEMPLATE** ppOleDlgItems);
-};
 
 #if UCFG_COM_IMPLOBJ
 class /*!!!R EXT_API */ CIStreamWrap : public CComObjectRootBase, public IStream {
 	typedef CComObjectRootBase base;
 public:
 	Stream& m_stm;
-	CBool m_bAutoDelete;
+	bool m_bAutoDelete = false;
 
 	CIStreamWrap(Stream& stm, bool bAutoDelete = false)
 		: m_stm(stm)
@@ -890,7 +985,7 @@ protected:
 	String get_Message() const override { return (LPCWSTR)m_comError.Description(); }
 };
 
-#if UCFG_ATL
+#if UCFG_ATL == 'S'
 inline std::ostream& AFXAPI operator<<(std::ostream& os, CComVariant v) {
 	OleCheck(v.ChangeType(VT_BSTR));
 	return os << String(v.bstrVal);
@@ -906,5 +1001,13 @@ void CreateComInstance(I **ppRetVal, ARGS&&... args) {
 	r->Init(forward<ARGS>(args)...);
 	OleCheck(r->QueryInterface(__uuidof(I), (LPVOID*)ppRetVal));
 }
+
+class CFontHolder {
+public:
+	CComPtr<IFont> m_iFont;
+
+	HFONT GetFontHandle();
+};
+
 
 } // Ext::

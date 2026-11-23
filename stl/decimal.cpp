@@ -3,10 +3,10 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 #include <el/bignum.h>
 
-#include "decimal"
+#include <el/decimal>
 
 namespace ExtSTL {
 namespace decimal {
@@ -33,8 +33,7 @@ long long decimal_to_long_long(const decimal64& v) {
 // Algorithm FPP2 by
 // Steele & White - How to Print Floating-Point Numbers Accurately. PLDI 1999
 decimal64_::decimal64_(double v)
-	:	m_val(0)
-	,	m_exp(0)
+	: m_val(0)
 {
 	static_assert(numeric_limits<double>::radix==2 && numeric_limits<double>::digits<64, "base 2 FP required with 64-bit doubles required");
 

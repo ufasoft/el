@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <winsock2.h>		// for timeval

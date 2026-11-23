@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include "conf.h"
 
@@ -18,6 +18,7 @@ void Conf::AssignOption(RCString key, RCString val) {
 	it->second->Parse(val);
 }
 
+#if UCFG_USE_REGEX
 void Conf::Load(istream& istm) {
 	static regex
 		reEmptyOrComment("\\s*(#.*)?"),
@@ -31,6 +32,7 @@ void Conf::Load(istream& istm) {
 		}
 	}
 }
+#endif // UCFG_USE_REGEX
 
 void Conf::SaveSample(ostream& os) {
 	vector<String> keys;

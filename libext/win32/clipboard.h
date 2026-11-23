@@ -1,8 +1,9 @@
 #pragma once
 
-#include <atlbase.h>
-#include <atlcom.h>
-
+#if UCFG_ATL == 'S'
+#	include <atlbase.h>
+#	include <atlcom.h>
+#endif
 
 namespace Ext {
 

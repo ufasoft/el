@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <shlwapi.h>
@@ -76,6 +76,8 @@ CStringBlobBuf *CStringBlobBuf::Clone() {
 }
 
 CStringBlobBuf *CStringBlobBuf::SetSize(size_t size) {
+	if (size == m_size)
+		return this;
 	CStringBlobBuf *d;
 	size_t copyLen = min(size, size_t(m_size));
 	if (m_aRef == 1) {
@@ -151,13 +153,18 @@ void Blob::AssignIfNull(const Blob& val) {
 		pData->AddRef();
 }
 
+Blob& Blob::operator=(RCSpan mb) {
+	Release(exchange(m_pData, new(mb.size(), false) CStringBlobBuf(mb.data(), mb.size())));
+	return *this;
+}
+
 Blob& Blob::operator=(const Blob& val) {
 	if (m_pData != val.m_pData) {
 		Release(m_pData);
 		if (m_pData = val.m_pData)
 			m_pData->AddRef();
 	}
-	return _self;
+	return *this;
 }
 
 Blob& Blob::operator+=(RCSpan mb) {
@@ -177,12 +184,12 @@ Blob& Blob::operator+=(RCSpan mb) {
 
 inline bool mem2equal(const void *x, const void *y, size_t siz) {
 	__asm {
-		mov esi, x
-		mov edi, y
-		mov ecx, siz
-		xor  eax, eax
-		rep cmpsw
-		setz al
+		mov		esi, x
+		mov		edi, y
+		mov		ecx, siz
+		xor		eax, eax
+		rep		cmpsw
+		setz	al
 	}
 }
 

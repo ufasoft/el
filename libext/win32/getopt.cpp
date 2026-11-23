@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 //!!! not only getopt
 

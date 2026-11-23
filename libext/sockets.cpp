@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 
 #include <el/libext/ext-net.h>
@@ -56,7 +56,7 @@ Socket::~Socket() {
 
 void Socket::Create(AddressFamily af, SocketType socktyp, ProtocolType protoTyp) {
 	if (Valid())
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	SOCKET h = ::socket((int)af, (int)socktyp, (int)protoTyp);
 	if (h == INVALID_SOCKET)
 		ThrowWSALastError();
@@ -175,7 +175,7 @@ int Socket::get_Available() {
 }
 
 CWSAEvent::CWSAEvent()
-	:	m_hEvent(WSACreateEvent())
+	: m_hEvent(WSACreateEvent())
 {
 	if (m_hEvent == WSA_INVALID_EVENT)
 		ThrowWSALastError();
@@ -409,4 +409,3 @@ extern "C" char *gai_strerror(int ecode) {
 	return gai_strerrorA(ecode);	//!!!?
 }
 #endif
-

@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <random>
 
@@ -846,16 +846,6 @@ void CAnnoyer::Request() {
 	}
 }
 
-HashAlgorithm::HashAlgorithm()
-	: BlockSize(0)
-	, HashSize(0)
-	, IsHaifa(false)
-	, IsBigEndian(true)
-	, IsLenBigEndian(true)
-	, IsBlockCounted(false)
-	, Is64Bit(false)
-{}
-
 void HashAlgorithm::PrepareEndianness(void *dst, int count) noexcept {
 	if (IsBigEndian == UCFG_LITLE_ENDIAN) {
 		if (Is64Bit) {
@@ -1011,7 +1001,6 @@ void PersistentCache::Set(RCString key, RCSpan mb) {
 ResourceObj::ResourceObj(HMODULE hModule, HRSRC hRsrc)
 	: m_hModule(hModule)
 	, m_hRsrc(hRsrc)
-	, m_p(0)
 {
 	Win32Check(bool(m_hglbResource = ::LoadResource(m_hModule, m_hRsrc)));
 }

@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #pragma warning(disable: 4073)
 #pragma init_seg(lib)				// to initialize DateTime::MaxValue early
@@ -227,7 +227,7 @@ bool CPreciseTimeBase::Recalibrate(int64_t st, int64_t tsc, int64_t stPeriod, in
 }
 
 #if UCFG_USE_DECLSPEC_THREAD
-THREAD_LOCAL int s_cntDisablePreciseTime;
+thread_local int s_cntDisablePreciseTime;
 #else
 static atomic<int> s_cntDisablePreciseTime;
 #endif
@@ -386,6 +386,11 @@ DateTime DateTime::Parse(RCString s, DWORD dwFlags, LCID lcid) {
 	OleCheck(::VarDateFromStr((OLECHAR*)pS, lcid, dwFlags, &date));
 	return FromOADate(date);
 }
+DateTime DateTime::ParseExact(RCString s, RCString format) {
+	//!!!TODO
+	return Parse(s);
+}
+
 #endif
 
 #	if !UCFG_WCE && UCFG_OLE
@@ -409,15 +414,18 @@ String DateTime::ToString(const char* format) const {
 	switch (format[0]) {
 	case 'g':
 #if UCFG_WIN32
+	{
 		SYSTEMTIME st = *this;
 		TCHAR bufDate[100], bufTime[100];
 		Win32Check(::GetDateFormat(LOCALE_USER_DEFAULT, 0, &st, nullptr, bufDate, size(bufDate)));
 		Win32Check(::GetTimeFormat(LOCALE_USER_DEFAULT, 0, &st, nullptr, bufTime, size(bufTime)));
 		return String(bufDate) + " " + bufTime;
+	}
 #endif
-	default:
+	default: {
 		tm t = *this;
 		return asctime(&t);
+	}
 	}
 }
 

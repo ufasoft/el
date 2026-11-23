@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <el/inc/crt/crt.h>
 

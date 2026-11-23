@@ -1,6 +1,7 @@
 #pragma once
 
 #include <el/libext/win32/ext-win.h>
+#include <el/gui/decls.h>
 
 #include <manufacturer.h>
 
@@ -8,12 +9,10 @@
 
 namespace Ext {
 
+
 class ThreadBase;
 class CAppBase;
-class CMenu;
-class COccManager;
-class CToolTipCtrl;
-class CControlBarBase;
+
 
 #if UCFG_WCE
 #pragma comment(lib, "ole32.lib")
@@ -61,33 +60,20 @@ class CComClass;
 class CComClassFactoryImpl;
 class CComGeneralClass;
 class CComTypeLibHolder;
-class COleControlSite;
-class COleControlContainer;
 class CComObjectRootBase;
 class RegistryKey;
 class Stream;
-class CBitmap;
-class CBrush;
 class CCmdTarget;
-class CDC;
-class CDocManager;
-class CDocTemplate;
-class CDocument;
 class CDynLinkLibrary;
 class File;
-class CFont;
-class CFrameWnd;
-class CGdiObject;
-class CPalette;
-class CListBox;
 class CRuntimeClass;
 class COleObjectFactory;
 class CResID;
-class CView;
 class CWinApp;
 class CWinThread;
 class CWnd;
 class Rectangle;
+
 
 } // Ext::
 
@@ -216,13 +202,13 @@ public:
 	UINT m_nIndexMax;
 
 	// if a menu item
-	observer_ptr<CMenu> m_pMenu;         // NULL if not a menu
-	observer_ptr<CMenu> m_pSubMenu;      // sub containing menu item
-	observer_ptr<CMenu> m_pParentMenu;
+	observer_ptr<Gui::Menu> m_pMenu;         // NULL if not a menu
+	observer_ptr<Gui::Menu> m_pSubMenu;      // sub containing menu item
+	observer_ptr<Gui::Menu> m_pParentMenu;
 	observer_ptr<CWnd> m_pOther;
 
-	CBool m_bContinueRouting;
-	CBool m_bEnableChanged;
+	bool m_bContinueRouting = false;
+	bool m_bEnableChanged = false;
 
 	CCmdUI();
 	bool DoUpdate(CCmdTarget* pTarget, BOOL bDisableIfNoHndler);
@@ -379,7 +365,7 @@ namespace Ext {
 inline std::ostream& AFXAPI operator<<(std::ostream& os, RCSpan mb) {
 	os << "{ ";
 	for (size_t i=0; i<mb.Size; ++i)
-		os << std::hex << std::setw(2) << std::setfill('0') << int(mb[i]) << " ";
+		os << std::hex << ExtSTD::setw(2) << std::setfill('0') << int(mb[i]) << " ";
 	return os << "}";
 }
 

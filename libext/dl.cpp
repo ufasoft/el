@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_USE_POSIX
 #	include <dlfcn.h>
@@ -19,7 +19,7 @@ using namespace std;
 #if UCFG_USE_POSIX
 
 DlException::DlException()
-	:	base(E_EXT_Dynamic_Library, dlerror())
+	: base(E_EXT_Dynamic_Library, dlerror())
 {
 }
 

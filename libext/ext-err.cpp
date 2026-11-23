@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #pragma warning(disable: 4073)
 #pragma init_seg(lib)				// to initialize early
@@ -28,7 +28,7 @@ static const CodeMessage<ExtErr> s_extMessageTable[] {
 	, { ExtErr::InvalidTypeForThisOperation						, "Invalid type for this operation"				}
 	, { ExtErr::QueueOverflow									, "Overflow of queue"							}
 	, { ExtErr::NoMoreServiceHandlers							, "No more Service handlers"					}
-	, { ExtErr::AlreadyOpened									, "Object already Opened"						}
+	, { ExtErr::AlreadyOpen										, "Object is already Open"						}
 	, { ExtErr::InvalidRegistrationCode							, "Invalid Registration Code"					}
 	, { ExtErr::UnknownVersionRegcode							, "Unknown version of Regcode"					}
 	, { ExtErr::DuplicateName									, "Duplicate Name"								}
@@ -168,6 +168,15 @@ public:
 const error_category& AFXAPI ext_category() {
 	return s_ext_category;
 }
+
+error_condition make_error_condition(ExtErr v) {
+	return error_condition(int(v), ext_category());
+}
+
+error_code make_error_code(ExtErr v) {
+	return error_code(int(v), ext_category());
+}
+
 
 template<> ErrorCategoryBase * StaticList<ErrorCategoryBase>::Root = 0;
 

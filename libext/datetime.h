@@ -10,6 +10,7 @@
 struct timeval;
 
 namespace Ext {
+using namespace ExtSTD;
 //using namespace std::chrono;
 using std::chrono::duration;
 using std::chrono::system_clock;
@@ -163,11 +164,11 @@ public:
 };
 
 
-inline TimeSpan operator*(const TimeSpan& ts, int v) { return TimeSpan(int64_t(ts.count() * v)); }
-inline TimeSpan operator*(const TimeSpan& ts, double v) { return TimeSpan(int64_t(ts.count() * v)); }
+inline TimeSpan operator*(const TimeSpan& ts, int v) { return TimeSpan(static_cast<int64_t>(ts.count()) * v); }
+inline TimeSpan operator*(const TimeSpan& ts, double v) { return TimeSpan((int64_t)((double)static_cast<int64_t>(ts.count()) * v)); }
 
 inline TimeSpan operator/(const TimeSpan& ts, int v) { return TimeSpan(int64_t(ts.count() / v)); }
-inline TimeSpan operator/(const TimeSpan& ts, double v) { return TimeSpan(int64_t(ts.count() / v)); }
+inline TimeSpan operator/(const TimeSpan& ts, double v) { return TimeSpan((int64_t)((double)static_cast<int64_t>(ts.count()) / v)); }
 
 
 /*inline bool AFXAPI operator==(const TimeSpan& span1, const TimeSpan& span2) { return span1.Ticks == span2.Ticks; }
@@ -180,13 +181,15 @@ inline bool AFXAPI operator>=(const TimeSpan& span1, const TimeSpan& span2) { re
 
 class DateTime;
 
+/*!!!R
 inline bool AFXAPI operator<(const DateTime& dt1, const DateTime& dt2);
 inline bool AFXAPI operator>(const DateTime& dt1, const DateTime& dt2);
 inline bool AFXAPI operator==(const DateTime& dt1, const DateTime& dt2);
+*/
 
-ENUM_CLASS(DayOfWeek) {
+enum class DayOfWeek {
 	Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
-} END_ENUM_CLASS(DayOfWeek);
+};
 
 class LocalDateTime;
 
@@ -349,7 +352,7 @@ public:
 	int get_Day() const {
 #if UCFG_USE_POSIX
 		return tm(_self).tm_mday;
-#elif !defined(WDM_DRIVER)
+#elif !UCFG_WDM
 		return SYSTEMTIME(*this).wDay;
 #else
 		Throw(E_FAIL);
@@ -366,7 +369,7 @@ public:
 	Ext::DayOfWeek get_DayOfWeek() const {
 #if UCFG_USE_POSIX
 		return Ext::DayOfWeek(tm(_self).tm_wday);
-#elif !defined(WDM_DRIVER)
+#elif !UCFG_WDM
 		return Ext::DayOfWeek(SYSTEMTIME(*this).wDayOfWeek);
 #else
 		Throw(E_FAIL);
@@ -377,7 +380,7 @@ public:
 	int get_Month() const {
 #if UCFG_USE_POSIX
 		return tm(_self).tm_mon+1;
-#elif !defined(WDM_DRIVER)
+#elif !UCFG_WDM
 		return SYSTEMTIME(*this).wMonth;
 #else
 		Throw(E_FAIL);
@@ -388,8 +391,8 @@ public:
 
 	int get_Year() const {
 #if UCFG_USE_POSIX
-		return tm(_self).tm_year+1900;
-#elif !defined(WDM_DRIVER)
+		return tm(_self).tm_year + 1900;
+#elif !UCFG_WDM
 		return SYSTEMTIME(*this).wYear;
 #else
 		Throw(E_FAIL);
@@ -447,11 +450,11 @@ inline BinaryReader& AFXAPI operator>>(BinaryReader& rd, DateTimeBase& dt) {
 	return rd;
 }
 
-inline std::ostream& AFXAPI operator<<(std::ostream& os, const Ext::TimeSpan& span) {
+inline ostream& AFXAPI operator<<(ostream& os, const Ext::TimeSpan& span) {
 	return os << span.ToString();
 }
 
-inline std::ostream& AFXAPI operator<<(std::ostream& os, const Ext::DateTime& dt) {
+inline ostream& AFXAPI operator<<(ostream& os, const Ext::DateTime& dt) {
 	return os << dt.ToString();
 }
 
@@ -518,7 +521,7 @@ protected:
 
 	void ResetBounds() {
 		m_mul = 0;
-		m_minFreq = (std::numeric_limits<int64_t>::max)();
+		m_minFreq = (numeric_limits<int64_t>::max)();
 		m_maxFreq = 0;
 	}
 

@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <el/libext/win32/ext-win.h>
@@ -13,7 +13,7 @@
 
 
 #pragma warning(disable: 4073)
-#pragma init_seg(lib)				// to initialize DateTime::MaxValue early
+#pragma init_seg(lib)				// to initialize early
 
 namespace Ext {
 
@@ -22,18 +22,13 @@ using namespace std;
 bool CStackTrace::Use = false; // UCFG_DEBUG;
 
 CStackTrace CStackTrace::FromCurrentThread() {
-	CStackTrace r;
-
 #if UCFG_WIN32
-	DWORD machineType = IMAGE_FILE_MACHINE_I386;
-	CONTEXT ctx = { CONTEXT_CONTROL };
-#ifdef _M_X64
-	machineType = IMAGE_FILE_MACHINE_AMD64;
+	CONTEXT ctx = { 0 };
 	::RtlCaptureContext(&ctx);
-#endif
 
 	STACKFRAME64 sf = { 0 };
-#ifdef _M_IX86
+#	ifdef _M_IX86
+	DWORD machineType = IMAGE_FILE_MACHINE_I386;
 	__asm {
 	Label:
 		mov [ctx.Ebp], ebp;
@@ -45,18 +40,26 @@ CStackTrace CStackTrace::FromCurrentThread() {
 	sf.AddrPC.Offset      = ctx.Eip;
 	sf.AddrStack.Offset   = ctx.Esp;
 	sf.AddrFrame.Offset   = ctx.Ebp;
-#elif defined(_M_X64)
+#	elif defined(_M_X64)
+	DWORD machineType = IMAGE_FILE_MACHINE_AMD64;
 	sf.AddrPC.Offset      = ctx.Rip;
 	sf.AddrStack.Offset   = ctx.Rsp;
 	sf.AddrFrame.Offset   = ctx.Rbp;
-#endif
+#	endif
 	sf.AddrPC.Mode        = AddrModeFlat;
 	sf.AddrStack.Mode     = AddrModeFlat;
 	sf.AddrFrame.Mode     = AddrModeFlat;
 
-	while (::StackWalk64(machineType, ::GetCurrentProcess(), ::GetCurrentThread(), &sf, 0, 0, &SymFunctionTableAccess64, &SymGetModuleBase64, 0)) {
+	HANDLE hProcess = ::GetCurrentProcess();
+	HANDLE hThread = ::GetCurrentThread();
+#endif
+
+	CStackTrace r;
+#if	UCFG_WIN32
+	while (::StackWalk64(machineType, hProcess, hThread, &sf, &ctx, 0, SymFunctionTableAccess64, SymGetModuleBase64, 0)) {
 		r.Frames.push_back(sf.AddrPC.Offset);
 	}
+	ctx = ctx; //!!!D
 #endif // UCFG_WIN32
 	return r;
 }
@@ -67,19 +70,15 @@ static mutex s_csSym;
 
 class CSym {
 public:
-	HANDLE m_hProcess;
-	CBool m_bInited;
-
-	CSym()
-		:	m_hProcess(0)
-	{}
+	HANDLE m_hProcess = 0;
+	bool m_bInited = false;
 
 	~CSym() {
 		try {
  			if (HANDLE h = exchange(m_hProcess, (HANDLE)0))
 				Win32Check(::SymCleanup(h));
 		} catch (RCExc) {
-		}		
+		}
 	}
 
 	void Init() {
@@ -112,18 +111,18 @@ String CStackTrace::ToString() const {
 #endif
 
 	ostringstream os;
-	for (size_t i=0; i<Frames.size(); ++i) {
+	for (size_t i = 0; i < Frames.size(); ++i) {
 		uint64_t addr = Frames[i];
 		os << setw(AddrSize*2) << setfill('0') << hex << addr;
 
 #if UCFG_WIN32
 		if (::SymFromAddr(s_sym.m_hProcess, addr, 0, si)) {
 			os << "  ";
-			DWORD64 hm = SymGetModuleBase64(s_sym.m_hProcess, addr);
+			DWORD64 hm = ::SymGetModuleBase64(s_sym.m_hProcess, addr);
 			if (hm) {
 				ProcessModule mod(proc, (HMODULE)hm);
 				os << mod.ModuleName << "!";
-			}			
+			}
 			os << si->Name;
 		}
 #endif

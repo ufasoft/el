@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if !UCFG_STD_FILESYSTEM || !UCFG_STDSTL
 
@@ -19,7 +19,7 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
-namespace ExtSTL { namespace filesystem {
+namespace std::filesystem {
 	using namespace Ext;
 	using namespace chrono;
 
@@ -222,6 +222,12 @@ file_status AFXAPI symlink_status(const path& p) {
 	return r;
 }
 
+#if UCFG_WIN32
+static file_time_type To_file_time_type(const FILETIME& ft) {
+	return file_time_type(file_time_type::duration(DateTime::FileTimeOffset +  ft.dwLowDateTime + ((uint64_t)ft.dwHighDateTime << 32)));
+}
+#endif
+
 file_time_type last_write_time(const path& p, error_code& ec) noexcept {
 	ec.clear();
 #if UCFG_USE_POSIX
@@ -236,7 +242,7 @@ file_time_type last_write_time(const path& p, error_code& ec) noexcept {
 #else
 	WIN32_FILE_ATTRIBUTE_DATA fad;
 	if (GetFileAttributesEx(p.native(), GetFileExInfoStandard, &fad))
-		return time_point_cast<file_time_type::duration>(DateTime::time_point(DateTime(fad.ftLastWriteTime)));
+		return To_file_time_type(fad.ftLastWriteTime);
 #endif
 	ec = Last_error_code();
 	return file_time_type::min();	//!!!?  -1 in the SPEC
@@ -576,29 +582,30 @@ bool AFXAPI remove(const path& p, error_code& ec) noexcept {
 	ec.clear();
 	if (!exists(p))
 		return false;
+	auto native = p.native();
 #if UCFG_USE_POSIX
 	if (is_directory(p, ec)) {
-		if (::rmdir(p.native()) < 0) {
+		if (::rmdir(native) < 0) {
 			ec = error_code(errno, generic_category());
 			return false;
 		}
 		return true;
 	} else {
-		bool r = ::remove(p.native()) >= 0;
+		bool r = ::remove(native) >= 0;
 		if (!r)
 			ec = error_code(errno, generic_category());
 		return r;
 	}
 #else
 	if (is_directory(p, ec)) {
-		if (!::RemoveDirectory(p.native())) {
+		if (!::RemoveDirectory(native)) {
 			ec = Win32_error_code();
 			return false;
 		}
 		return true;
 	} else {
-		bool r = ::DeleteFile(p.native());
-		if (!r && GetLastError()!=ERROR_FILE_NOT_FOUND)
+		bool r = ::DeleteFile(native);
+		if (!r && GetLastError() != ERROR_FILE_NOT_FOUND)
 			ec = Win32_error_code();
 		return r;
 	}
@@ -788,8 +795,7 @@ path AFXAPI canonical(const path& p, error_code& ec) {
 
 
 
-
-}}  // ExtSTL::filesystem::
+}  // std::filesystem::
 
 #endif // !UCFG_STD_FILESYSTEM || !UCFG_STDSTL
 

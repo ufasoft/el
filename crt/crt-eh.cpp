@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if defined(_MSC_VER) && _VC_CRT_MAJOR_VERSION<14 && UCFG_STDSTL
 #	include <../crt/src/mtdll.h>
@@ -31,5 +31,3 @@ int __cdecl __uncaught_exceptions() {
 
 
 } // "C"
-
-

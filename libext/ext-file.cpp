@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_USE_POSIX
 #	include <utime.h>
@@ -129,14 +129,15 @@ path Path::GetTruePath(const path& p) {
 
 	typedef DWORD (WINAPI *PFN_GetFinalPathNameByHandle)(HANDLE hFile, LPTSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags);
 
-	DlProcWrap<PFN_GetFinalPathNameByHandle> pfn("KERNEL32.DLL", EXT_WINAPI_WA_NAME(GetFinalPathNameByHandle));
+	static DlProcWrap<PFN_GetFinalPathNameByHandle> pfn("KERNEL32.DLL", EXT_WINAPI_WA_NAME(GetFinalPathNameByHandle));
 	if (!pfn)
 		return buf;
 	TCHAR buf2[_MAX_PATH];
 	File file;
 	file.Attach(::CreateFile(buf, 0, 0, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0));
-	len = pfn((HANDLE)(intptr_t)Handle(file), buf2, size(buf2)-1, 0);
-	Win32Check(len != 0);
+	len = pfn((HANDLE)(intptr_t)Handle(file), buf2, size(buf2) - 1, 0);
+	if (!len)			// GetFinalPathNameByHandle() doesn't work for Virtual Drives
+		return buf;
 	buf2[len] = 0;
 #if UCFG_USE_REGEX
 	wcmatch m;
@@ -560,8 +561,6 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 #endif
 
 	char smode[20] = "";
-	if (access == FileAccess::Read || access == FileAccess::ReadWrite)
-		strcat(smode, "r");
 	switch (mode) {
 	case FileMode::Append:
 		strcpy(smode, "a");
@@ -574,8 +573,10 @@ void FileStream::Open(const path& p, FileMode mode, FileAccess access, FileShare
 		break;
 	case FileMode::Open:
 	case FileMode::OpenOrCreate:
-		if (access == FileAccess::ReadWrite)
-			strcat(smode, "+");
+		if (access == FileAccess::Read)
+			strcat(smode, "r");
+		else if (access == FileAccess::ReadWrite)
+			strcat(smode, "r+");
 		else if (access == FileAccess::Write)
 			strcat(smode, "w");
 		break;
@@ -677,8 +678,7 @@ size_t FileStream::Read(void *buf, size_t count) const {
 
 void FileStream::ReadExactly(void *buf, size_t count) const {
 	if (m_fstm) {
-		size_t r = fread(buf, 1, count, m_fstm);
-		if (r != count) {
+		if (count && fread(buf, count, 1, m_fstm) != 1) {
 			if (feof(m_fstm))
 				Throw(ExtErr::EndOfStream);
 			else {
@@ -716,8 +716,7 @@ void FileStream::ReadExactly(void *buf, size_t count) const {
 
 void FileStream::WriteBuffer(const void *buf, size_t count) {
 	if (m_fstm) {
-		size_t r = fwrite(buf, 1, count, m_fstm);
-		if (r != count) {
+		if (count && fwrite(buf, count, 1, m_fstm) != 1) {
 			CFileCheck(ferror(m_fstm));
 			Throw(E_FAIL);
 		}

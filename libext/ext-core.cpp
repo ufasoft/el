@@ -3,11 +3,19 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <windows.h>
 #endif
+
+#ifdef _MSC_VER
+#	if !UCFG_USE_OLD_MSVCRTDLL && UCFG_CRT!='S'
+#		pragma comment(lib, "c++.lib")
+#		pragma comment(lib, "c++static.lib")
+#	endif
+#endif
+
 
 #include EXT_HEADER_DYNAMIC_BITSET
 
@@ -208,7 +216,6 @@ int Convert::ToMultiChar(const char* s) {
 }
 
 MacAddress::MacAddress(RCString s)
-	:	m_n64(0)
 {
 	vector<String> ar = s.Split(":-");
 	if (ar.size() != 6)
@@ -218,14 +225,12 @@ MacAddress::MacAddress(RCString s)
 		*p++ = (uint8_t)Convert::ToUInt32(ar[i], 16);
 }
 
-#if UCFG_TRC
 void MacAddress::Print(ostream& os) const {
 	Span s = AsSpan();
 	char buf[20];
 	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", s[0], s[1], s[2], s[3], s[4], s[5]);
 	os << buf;
 }
-#endif
 
 int StreamReader::ReadChar() {
 	if (m_prevChar == -1)
@@ -306,7 +311,7 @@ void CInException::swap(CInException& r) {
 
 
 size_t CIosStream::Read(void* buf, size_t count) const {
-	m_pis->read((char*)buf, (std::streamsize)count);
+	m_pis->read((char*)buf, (ExtSTD::streamsize)count);
 	if (!*m_pis)
 		Throw(ExtErr::NoInputStream);
 	return (size_t)m_pis->gcount();
@@ -318,7 +323,7 @@ void CIosStream::ReadExactly(void* buf, size_t count) const {
 }
 
 void CIosStream::WriteBuffer(const void* buf, size_t count) {
-	m_pos->write((const char*)buf, (std::streamsize)count);
+	m_pos->write((const char*)buf, (ExtSTD::streamsize)count);
 	if (!*m_pos)
 		Throw(ExtErr::NoOutputStream);
 }

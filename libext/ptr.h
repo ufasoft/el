@@ -7,8 +7,13 @@
 
 // Smart Pointers
 
-#include <el/libext/ext-cpp.h>
-#include EXT_HEADER_ATOMIC
+#include <el/libext/ext-basic-cpp.h>
+
+#if UCFG_STDSTL
+#	include <atomic>
+#else
+#	include <el/stl/atomic>
+#endif
 
 namespace Ext {
 
@@ -42,7 +47,7 @@ public:
 
 template <typename T> class SelfCountPtr {
 	T *m_p;
-	std::atomic<int> *m_pRef;
+	ExtSTD::atomic<int> *m_pRef;
 
 	void Destroy() {
 		if (m_pRef && !--m_pRef) {
@@ -338,7 +343,7 @@ class AFX_CLASS CRefCounted {
 public:
 	class AFX_CLASS CRefCountedData : public T {
 	public:
-		std::atomic<int> m_aRef;
+		ExtSTD::atomic<int> m_aRef;
 
 		CRefCountedData()
 			: m_aRef(0)
@@ -396,7 +401,7 @@ public:
 
 
 namespace EXT_HASH_VALUE_NS {
-	template <typename T> size_t hash_value(const ptr<T>& v) {
+	template <typename T> size_t hash_value(const Ext::ptr<T>& v) {
 	    return reinterpret_cast<size_t>(v.get());
 	}
 }

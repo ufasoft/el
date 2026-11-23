@@ -7,10 +7,6 @@
 
 #include <el/libext/win32/com.h>
 
-#if UCFG_OLE
-#	include "ole.h"
-#endif
-
 namespace Ext {
 
 //#include "extmfc.h"
@@ -308,14 +304,14 @@ public:
 	CEnumArray<T> *m_ar;
 
 	IComEnumImpl(const IComEnumImpl& impl)
-		:	m_i(impl.m_i)
-		,	m_ar(impl.m_ar)
+		: m_i(impl.m_i)
+		, m_ar(impl.m_ar)
 	{
 	}
 
 	IComEnumImpl(CEnumArray<T> *ar)
-		:	m_i(0)
-		,	m_ar(ar)
+		: m_i(0)
+		, m_ar(ar)
 	{
 		m_ar->AddRef();
 	}
@@ -459,6 +455,7 @@ public:
 };
 
 template <class T, class I> class IConnectionPointImpl : public CConnectionPointImpl<I>
+	, IConnectionPoint	//!!!?
 {
 public:
 	~IConnectionPointImpl()
@@ -591,3 +588,9 @@ public:
 } // Ext::Ole::
 
 } // Ext::
+
+#if UCFG_OLE
+#	include <el/gui/ole.h>
+#endif
+
+

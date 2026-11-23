@@ -13,7 +13,6 @@
 #endif
 
 #if UCFG_USE_PTHREADS
-
 #	if WIN32
 #		define HAVE_CONFIG_H 0
 #		define HAVE_SIGNAL_H 1
@@ -35,8 +34,7 @@ PTW32_DLLPORT int PTW32_CDECL pthread_create(pthread_t* tid, const pthread_attr_
 #include EXT_HEADER_CODECVT
 
 namespace Ext {
-
-//!!!R ENUM_CLASS(Endian){Big, Little} END_ENUM_CLASS(Endian);
+using namespace ExtSTD;
 
 __forceinline uint16_t htole(uint16_t v) { return htole16(v); }
 __forceinline int16_t htole(int16_t v) { return int16_t(htole16(uint16_t(v))); }
@@ -171,31 +169,36 @@ typedef BeInt<uint16_t> BeUInt16;
 typedef BeInt<uint32_t> BeUInt32;
 typedef BeInt<uint64_t> BeUInt64;
 
+} // namespace Ext
+
+namespace std {
+using Ext::String, Ext::explicit_cast;
+
 #define EXT_NULLPTR_TRACE_LITERAL "#<nullptr>"
 
-inline std::ostream& AFXAPI operator<<(std::ostream& os, const String& s) {
+inline ostream& AFXAPI operator<<(ostream& os, const String& s) {
 	const char* p = (const char*)s;
 	return os << (p ? p : EXT_NULLPTR_TRACE_LITERAL);
 }
 
-inline std::wostream& AFXAPI operator<<(std::wostream& os, const String& s) {
+inline wostream& AFXAPI operator<<(wostream& os, const String& s) {
 	return s == nullptr
 		? os << EXT_NULLPTR_TRACE_LITERAL
 		: os << (std::wstring)explicit_cast<std::wstring>(s);
 }
 
-inline std::ostream& AFXAPI operator<<(std::ostream& os, const wchar_t* s) {
+inline ostream& AFXAPI operator<<(ostream& os, const wchar_t* s) {
 	return os << String(s);
 }
 
-inline std::istream& AFXAPI getline(std::istream& is, String& s, char delim = '\n') {
+inline istream& AFXAPI getline(istream& is, String& s, char delim = '\n') {
 	std::string bs;
 	getline(is, bs, delim);
 	s = bs;
 	return is;
 }
 
-} // namespace Ext
+} // std::
 
 __BEGIN_DECLS
 
@@ -270,11 +273,8 @@ public:
 
 class MemStreamWithPosition : public Stream {
 protected:
-	mutable size_t m_pos;
+	mutable size_t m_pos = 0;
 public:
-	MemStreamWithPosition()
-		: m_pos(0) {}
-
 	uint64_t get_Position() const override { return m_pos; }
 	void put_Position(uint64_t pos) const override { m_pos = (size_t)pos; }
 	int64_t Seek(int64_t offset, SeekOrigin origin) const override;
@@ -331,6 +331,12 @@ public:
 	}
 };
 
+class NullStream : public MemStreamWithPosition {
+	void WriteBuffer(const void* buf, size_t count) override {
+		m_pos += count;
+	}
+};
+
 class EXTAPI MemoryStream : public MemStreamWithPosition {
 	typedef MemStreamWithPosition base;
 public:
@@ -352,6 +358,7 @@ public:
 	void Reset(size_t capacity = DEFAULT_CAPACITY);
 
 	Span AsSpan() const { return Span(m_blob.data(), m_size); }    //!!!O obsolete
+	operator Span() const { return Span(m_blob.data(), m_size); }
 
 	size_t get_Capacity() const { return m_blob.size(); }
 	DEFPROP_GET(size_t, Capacity);
@@ -361,7 +368,7 @@ AFX_API String AFXAPI operator+(const String& s, const char* lpsz); // friend de
 
 inline String AFXAPI operator+(const String& s, unsigned char ch) { return s + String((char)ch); }
 
-inline std::ostream& operator<<(std::ostream& os, const CStringVector& ar) {
+inline ostream& operator<<(ostream& os, const CStringVector& ar) {
 	for (size_t i = 0; i < ar.size(); i++)
 		os << ar[i] << '\n';
 	return os;
@@ -374,14 +381,14 @@ inline String AFXAPI operator+(const String::value_type* p, const String& s) { r
 class CIosStream : public Stream {
 	typedef CIosStream class_type;
 protected:
-	std::istream* m_pis = 0;
-	std::ostream* m_pos = 0;
+	istream* m_pis = 0;
+	ostream* m_pos = 0;
 public:
-	CIosStream(std::istream& ifs)
+	CIosStream(istream& ifs)
 		: m_pis(&ifs)
 		{}
 
-	CIosStream(std::ostream& ofs)
+	CIosStream(ostream& ofs)
 		: m_pos(&ofs) {}
 
 	size_t Read(void* buf, size_t count) const override;
@@ -403,7 +410,7 @@ protected:
 
 class StringInputStream : public CIosStream {
 	String m_s;
-	std::istringstream m_is;
+	istringstream m_is;
 public:
 	StringInputStream(RCString s)
 		: m_s(s)
@@ -415,7 +422,7 @@ public:
 
 template <typename EL, typename TR> inline std::basic_ostream<EL, TR>& operator<<(std::basic_ostream<EL, TR>& os, const CPrintable& ob) { return os << ob.ToString(); }
 
-inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) {
+inline ostream& operator<<(ostream& os, const CPrintable& ob) {
 #if UCFG_TRC
 	ob.Print(os);
 #endif
@@ -424,7 +431,7 @@ inline std::ostream& operator<<(std::ostream& os, const CPrintable& ob) {
 
 class MacAddress : totally_ordered<MacAddress>, public CPrintable {
 public:
-	uint64_t m_n64;
+	uint64_t m_n64 = 0;
 
 	MacAddress(const MacAddress& mac)
 		: m_n64(mac.m_n64) {}
@@ -453,9 +460,7 @@ public:
 	static MacAddress __stdcall Null() { return MacAddress(); }
 	static MacAddress __stdcall Broadcast() { return MacAddress(0xFFFFFFFFFFFFLL); }
 
-#if UCFG_TRC
 	void Print(ostream& os) const override;
-#endif
 };
 
 #if !UCFG_WCE
@@ -480,12 +485,12 @@ protected:
 	static EXT_THREAD_PTR(Encoding) t_IgnoreIncorrectChars;
 #endif
 
-	typedef std::unordered_map<String, ptr<Encoding>> CEncodingMap;
+	typedef unordered_map<String, ptr<Encoding>> CEncodingMap;
 	static CEncodingMap s_encodingMap;
 
 #if UCFG_USE_POSIX
-	iconv_t m_iconvTo;
-	iconv_t m_iconvFrom;
+	iconv_t m_iconvTo = (iconv_t)-1
+		, m_iconvFrom = (iconv_t)-1;
 #endif
 public:
 	EXT_DATA static Encoding* s_Default;
@@ -713,12 +718,11 @@ public:
 	Stream& BaseStream;
 	Ext::Encoding& Encoding;
 private:
-	int m_prevChar;
+	int m_prevChar = -1;
 public:
 	StreamReader(Stream& stm, Ext::Encoding& enc = Ext::Encoding::Default())
 		: BaseStream(stm)
-		, Encoding(enc)
-		, m_prevChar(-1) {}
+		, Encoding(enc) {}
 
 	String ReadToEnd();
 	EXT_API std::pair<String, bool> ReadLineEx();

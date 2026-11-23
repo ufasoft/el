@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #pragma warning(disable: 4073)
 #pragma init_seg(lib)
@@ -32,7 +32,6 @@ using namespace std;
 using std::chrono::milliseconds;
 using namespace Ext;
 
-/*!!!T
 class CListDestructibleTlses {
 public:
 	void insert(CDestructibleTls& tls) {
@@ -45,7 +44,7 @@ public:
 
 	void ThreadCleanup() {
 		EXT_LOCK (m_mtx) {
-			EXT_FOR (CDestructibleTls& dtls, m_tlses) {
+			for (CDestructibleTls& dtls : m_tlses) {
 				if (void *p = dtls.get_Value())
 					dtls.OnThreadDetach(p);
 			}
@@ -58,10 +57,20 @@ private:
 
 static InterlockedSingleton<CListDestructibleTlses> s_pDestructibleTlses;
 
+#if UCFG_USE_PTHREADS
 static void TlsCleanup(void *arg) {
 	s_pDestructibleTlses->ThreadCleanup();
 }
-*/
+#endif
+
+CDestructibleTls::CDestructibleTls() {
+	s_pDestructibleTlses->insert(_self);
+}
+
+CDestructibleTls::~CDestructibleTls() {
+	s_pDestructibleTlses->erase(_self);
+}
+
 
 #if UCFG_USE_PTHREADS
 
@@ -70,12 +79,6 @@ static volatile int s_initCleanup = ::pthread_key_create(&s_keyCleanup, &TlsClea
 
 #elif defined(_MSC_VER)
 
-/*!!!T
-static void NTAPI TlsCallback(PVOID dllHandle, DWORD reason, PVOID reserved) {
-	if (reason == DLL_THREAD_DETACH)
-		TlsCleanup(0);
-}
-*/
 
 extern "C" {
 
@@ -83,6 +86,12 @@ extern DWORD _tls_used;
 DWORD volatile dw = _tls_used;	// forces a tls directory to be created, volatile prevent optimization
 
 /*!!!T
+
+static void NTAPI TlsCallback(PVOID dllHandle, DWORD reason, PVOID reserved) {
+	if (reason == DLL_THREAD_DETACH)
+		TlsCleanup(0);
+}
+
 #pragma section(".CRT$XLC",long,read)
  __declspec(allocate(".CRT$XLC")) PIMAGE_TLS_CALLBACK _xl_y  = TlsCallback;
  */
@@ -116,16 +125,8 @@ using namespace std;
 size_t ThreadBase::DefaultStackSize;
 
 ThreadBase::ThreadBase(thread_group *ownRef)
-	: StackSize(0)
-	, StackOffset(0)
-	, m_bAutoDelete(true)
-	, m_owner(ownRef)
-	, m_bStop(false)
+	: m_owner(ownRef)
 	, m_bInterruptionEnabled(true)
-	, m_bAPC(false)
-#if UCFG_WIN32
-	, m_nThreadID(0)
-#endif
 #if UCFG_USE_PTHREADS
 	, m_tid()
 	, m_ptid((pthread_t)0)
@@ -188,7 +189,7 @@ public:
 } t_pCurThread;
 */
 
-//EXT_THREAD_PTR(ThreadBase, t_pCurThread);
+EXT_THREAD_PTR(ThreadBase) t_pCurThread;
 
 ThreadBase* ThreadBase::get_CurrentThread() {
 	ThreadBase* r = t_pCurThread;
@@ -267,7 +268,7 @@ void ThreadBase::AttachSelf() {
 #if UCFG_WIN32
 	Attach((intptr_t)GetRealThreadHandle(), ::GetCurrentThreadId());
 #	if !UCFG_STDSTL
-	m_tid = std::this_thread::get_id();
+	m_tid = ExtSTD::this_thread::get_id();
 #	endif
 #else
 	m_ptid = ::pthread_self();
@@ -805,7 +806,7 @@ void ThreadBase::Create(DWORD dwCreateFlags, size_t nStackSize
 #if UCFG_THREAD_MANAGEMENT
 	m_pModuleStateForThread.reset(AfxGetModuleState());
 #endif
-	++base::m_aRef;	// Runned thread decrements m_aRef;
+	++base::m_aRef;	// Ran thread decrements m_aRef;
 	ptr<ThreadBase> tThis = this;			// if keep this object live if the fread exits quickly
 #if UCFG_USE_PTHREADS
 	CAttr attr;
@@ -972,14 +973,6 @@ void AFXAPI AfxTlsRelease() {
 }
 
 
-CDestructibleTls::CDestructibleTls() {
-	s_pDestructibleTlses->insert(_self);
-}
-
-CDestructibleTls::~CDestructibleTls() {
-	s_pDestructibleTlses->erase(_self);
-}
-
 void CThreadSlotData::AssignInstance(HINSTANCE hInst) {
 	EXT_LOCK (m_criticalSection) {
 		ASSERT(hInst != NULL);
@@ -1103,8 +1096,8 @@ void PoolThread::OnAPC() {
 ThreadPool *ThreadPool::I;
 
 ThreadPool::ThreadPool()
-	:	m_evStop(FALSE, TRUE)
-	,	m_sem(0, UCFG_POOL_THREADS)
+	: m_evStop(FALSE, TRUE)
+	, m_sem(0, UCFG_POOL_THREADS)
 {
 	ASSERT(I == nullptr);
 	I = this;

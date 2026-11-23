@@ -24,8 +24,9 @@ typedef unsigned short VARTYPE;
 #include EXT_HEADER_SPAN
 
 namespace Ext {
+using namespace ExtSTD;
 
-using std::atomic;
+using ExtSTD::atomic;
 using std::span;
 
 class CStringBlobBuf;
@@ -37,8 +38,8 @@ using std::exchange;
 #endif
 
 #if UCFG_FULL && !UCFG_MINISTL
-template <class T, size_t MAXSIZE> class vararray : public std::array<T, MAXSIZE> {
-	typedef std::array<T, MAXSIZE> base;
+template <class T, size_t MAXSIZE> class vararray : public array<T, MAXSIZE> {
+	typedef array<T, MAXSIZE> base;
 
 	size_t m_size;
 public:
@@ -233,9 +234,10 @@ public:
 	void swap(Blob& x) noexcept { std::swap(m_pData, x.m_pData); }
 
 	operator Span() const noexcept;
+	Span AsSpan() const noexcept { return operator Span(); }
 	void AssignIfNull(const Blob& val);
 	Blob& operator=(const Blob& val);
-	Blob& operator=(RCSpan mb) { return operator=(Blob(mb)); }
+	Blob& operator=(RCSpan mb);
 
 	bool operator==(RCSpan cbuf) const { return Equal(operator Span(), cbuf); } //!!!O
 
@@ -404,7 +406,7 @@ protected:
 	explicit StaticList(bool) : Next(Root) { Root = static_cast<T*>(this); }
 };
 
-class ErrorCategoryBase : public std::error_category, public StaticList<ErrorCategoryBase> {
+class ErrorCategoryBase : public ExtSTD::error_category, public StaticList<ErrorCategoryBase> {
 	typedef StaticList<ErrorCategoryBase> base;
 
 public:
@@ -422,13 +424,13 @@ public:
 } // namespace Ext
 
 namespace std {
-    inline size_t size(const Ext::Blob& blob) { return blob.size(); }
+	inline size_t size(const Ext::Blob& blob) { return blob.size(); }
 
 	EXT_API ostream& __stdcall operator<<(ostream& os, Ext::RCSpan cbuf);
 	EXT_API wostream& __stdcall operator<<(wostream& os, Ext::RCSpan cbuf);
 
-	inline ostream& __stdcall operator<<(ostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
-	inline wostream& __stdcall operator<<(wostream& os, const Ext::Blob& blob) { return os << Ext::Span(blob); }
+	inline ostream& __stdcall operator<<(ostream& os, const Ext::Blob& blob) { return os << blob.AsSpan(); }
+	inline wostream& __stdcall operator<<(wostream& os, const Ext::Blob& blob) { return os << blob.AsSpan(); }
 }
 
 namespace EXT_HASH_VALUE_NS {

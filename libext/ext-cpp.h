@@ -1,6 +1,5 @@
 #pragma once
 
-#define ExtSTL std
 #include <el/libext/interlocked.h>
 
 #if UCFG_STDSTL
@@ -12,7 +11,7 @@
 #if UCFG_STD_DECIMAL
 #	define EXT_HEADER_DECIMAL EXT_HEADER(decimal / decimal) //!!!?
 #else
-#	define EXT_HEADER_DECIMAL <el/stl/decimal>
+#	define EXT_HEADER_DECIMAL <el/decimal>
 #endif
 
 #ifndef UCFG_CPP11_HAVE_CODECVT
@@ -67,25 +66,6 @@
 
 #define EXT_HASH_VALUE_NS Ext
 
-#if UCFG_CPP11_RVALUE
-#	define EXT_MOVABLE_BUT_NOT_COPYABLE(TYPE)   \
-		private:                                    \
-			TYPE(const TYPE &);                     \
-			TYPE &operator=(const TYPE &);
-
-#	define EXT_RV_REF(typ) typ &&
-#endif // UCFG_CPP11_RVALUE
-
-#if UCFG_CPP11_EXPLICIT_CAST
-#	define EXPLICIT_OPERATOR_BOOL explicit operator bool
-#	define EXT_OPERATOR_BOOL explicit operator bool
-#	define EXT_CONVERTIBLE_TO_TRUE true
-#	define _TYPEDEF_BOOL_TYPE
-#else
-#	define EXPLICIT_OPERATOR_BOOL struct _Boolean { int i; }; operator int _Boolean::*
-#	define EXT_OPERATOR_BOOL operator _Bool_type
-#	define EXT_CONVERTIBLE_TO_TRUE (&_Boolean::i)
-#endif
 
 
 #ifndef _CORECRT_BUILD
@@ -106,7 +86,7 @@ using namespace System;
 #	define M_ABSTRACT abstract
 #	define M_ENUM enum class
 
-typedef Byte byte;
+//!!!R typedef Byte byte;
 
 template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 	T c = a;
@@ -128,40 +108,27 @@ template <class T> void swap(M_REF(T) a, M_REF(T) b) {
 #	define M_ABSTRACT
 #	define M_ENUM enum
 
-
-namespace Ext {
-class noncopyable {
-	noncopyable(const noncopyable&);
-	noncopyable& operator=(const noncopyable&);
-protected:
-	noncopyable() {}
-};
-
-#if UCFG_USE_IN_EXCEPTION
-class CInException : noncopyable {
-	int m_nUncaught;
-public:
-	CInException() noexcept;
-	void swap(CInException& r);
-	explicit operator bool() const noexcept;
-};
-#endif // UCFG_USE_IN_EXCEPTION
-
-} // namespace Ext
-
 #	if !UCFG_STDSTL && (!defined(_MSC_VER) || _MSC_VER >= 1600)
 namespace ExtSTL {
 typedef decltype(__nullptr) nullptr_t;
 using std::nullptr_t;
+
 } // namespace ExtSTL
 #	endif
 
+namespace ExtSTL {
+	typedef uint8_t Byte;
+}
 
 extern "C" int _cdecl API_uncaught_exceptions() noexcept;
 
 
 #	if defined(_VC_CRT_MAJOR_VERSION) && _VC_CRT_MAJOR_VERSION >= 14
-#		include <vcruntime_exception.h>
+#		if UCFG_CRT == 'U'
+#			include <vcrt/vcruntime_exception.h>
+#		else
+#			include <vcruntime_exception.h>
+#		endif
 #	endif
 
 //!!!R #ifndef _CRTBLD
@@ -293,8 +260,8 @@ using std::pair;
 #	include EXT_HEADER_ATOMIC
 
 namespace Ext {
-using std::atomic;
-using std::atomic_flag;
+using ExtSTD::atomic;
+using ExtSTD::atomic_flag;
 } // namespace Ext
 
 #	include <el/libext/exthelpers.h> // uses std::swap() from <utility>
@@ -418,7 +385,7 @@ bool SetCeAlloc();
 #	endif
 
 #	if !UCFG_STDSTL
-#		include <el/stl/array>
+//#		include <el/stl/array>
 #	endif
 
 #	if UCFG_STDSTL && UCFG_USE_REGEX && !UCFG_CPP11_HAVE_REGEX
@@ -463,17 +430,17 @@ public:
 	virtual ~CNoTrackObject();
 };
 
-#	if UCFG_FRAMEWORK && !defined(_CRTBLD) || (UCFG_CRT == 'U')
-
 class EXT_CLASS CLocalIgnoreBase {
 public:
-	CLocalIgnoreBase *Next;
+	CLocalIgnoreBase* Next;
 
 	CLocalIgnoreBase() noexcept;
 	~CLocalIgnoreBase() noexcept;
-	static bool AFXAPI ErrorCodeIsIgnored(const std::error_code &ec) noexcept;
-	virtual bool equivalent(const std::error_code &ec) const noexcept = 0;
+	static bool AFXAPI ErrorCodeIsIgnored(const ExtSTD::error_code& ec) noexcept;
+	virtual bool equivalent(const ExtSTD::error_code& ec) const noexcept = 0;
 };
+
+#	if UCFG_EH_SUPPORT_IGNORE && UCFG_FRAMEWORK && !defined(_CRTBLD) || (UCFG_CRT == 'U')
 
 template <class T> class CLocalIgnore : public CLocalIgnoreBase {
 public:
@@ -482,7 +449,7 @@ public:
 	CLocalIgnore(const T &ec)
 		: m_ec(ec) {}
 
-	bool equivalent(const std::error_code &ec) const noexcept override { return ec == m_ec; }
+	bool equivalent(const ExtSTD::error_code &ec) const noexcept override { return ec == m_ec; }
 };
 
 #	endif // UCFG_FRAMEWORK && !defined(_CRTBLD)
@@ -584,14 +551,14 @@ void *__cdecl operator new[](size_t sz);
 #	endif
 */
 
-#			if UCFG_USE_TR1 && defined(_HAS_TR1) && EXT_TR1_IS_NS && !defined(WDM_DRIVER)
+#			if UCFG_USE_TR1 && defined(_HAS_TR1) && EXT_TR1_IS_NS && !UCFG_WDM
 namespace std {
 #				if UCFG_STDSTL
-using std::tr1::unordered_map;
-using std::tr1::unordered_set;
+using std::unordered_map;
+using std::unordered_set;
 #				endif
-using std::tr1::array;
-using std::tr1::hash;
+using std::array;
+using std::hash;
 } // namespace std
 #			endif
 
@@ -601,7 +568,7 @@ using std::tr1::hash;
 
 
 #		if UCFG_FRAMEWORK
-extern std::ostream g_osDebug;
+extern ExtSTD::ostream g_osDebug;
 #		endif
 
 namespace ww {
@@ -612,6 +579,10 @@ public:
 
 template <> class compile_time_check<false> {};
 } // namespace ww
+
+#if UCFG_GUI
+//#		include <el/libext/win32/ext-afxdd_.h>
+#endif
 
 namespace Ext {
 
@@ -626,9 +597,6 @@ class CWnd;
 #				include <el/extres.h>
 #			endif
 
-#			if UCFG_GUI
-//#		include <el/libext/win32/ext-afxdd_.h>
-#			endif
 
 #			if UCFG_WCE
 #				include <atldefce.h>
@@ -699,7 +667,7 @@ public:
 
 template <class T> class hash<Ext::ptr<T>> {
 public:
-	size_t operator()(const Ext::ptr<T> &v) const { return hash_value(v); }
+	size_t operator()(const Ext::ptr<T>& v) const { return hash_value(v); }
 };
 
 //}
@@ -767,14 +735,14 @@ class Stream;
 
 #			if !UCFG_MINISTL && !defined(_CRTBLD)
 class EXT_CLASS CTraceWriter {
-	std::ostringstream m_os;
+	ExtSTD::ostringstream m_os;
 	Ext::Stream* m_pos;
 	bool m_bPrintDate;
 public:
 	CTraceWriter(int level, const char *funname = 0) noexcept;
 	CTraceWriter(Ext::Stream *pos) noexcept;
 	~CTraceWriter() noexcept;
-	std::ostream &Stream() noexcept;
+	ExtSTD::ostream &Stream() noexcept;
 	void VPrintf(const char *fmt, va_list args);
 	void Printf(const char *fmt, ...);
 	static CTraceWriter &AFXAPI CreatePreObject(char *obj, int level, const char *funname);
@@ -848,7 +816,6 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 
 #				if !UCFG_WDM
 
-#					include <el/libext/ext-fw.h>
 //#		include <el/libext/ext-net.h>
 
 #					if UCFG_EXTENDED || UCFG_USE_LIBCURL
@@ -874,7 +841,7 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 
 #						if UCFG_EXTENDED
 #							if UCFG_COM_IMPLOBJ
-//#					include <el/libext/win32/extctl.h>
+//#					include <el/gui/extctl.h>
 #							endif
 //!!!R				include <el/libext/win32/simplemapi.h>
 //!!!R#				if !UCFG_WCE
@@ -884,7 +851,6 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 #						endif
 #					endif
 
-#					include <el/libext/ext-app.h>
 
 /*!!!?
 #		if UCFG_XML
@@ -892,10 +858,6 @@ template <typename T, int N> const char *FindInCodeMessageTable(const CodeMessag
 #		endif
 */
 
-#		if UCFG_COM
-#			include <el/libext/win32/com.h>
-#			include <el/libext/win32/excom.h>
-#		endif
 
 
 #					if UCFG_WIN32 && UCFG_EXTENDED && !UCFG_WCE
@@ -923,6 +885,7 @@ public:
 
     const uint8_t *data() const { return MemoryStream::data(); }
     size_t size() const { return MemoryStream::size(); }
+	operator Span() const { return Span(data(), size()); }
 };
 
 class CTraceCategory {
@@ -979,10 +942,10 @@ template <class T> T max3(T a, T b, T c) { return std::max(std::max(a, b), c); }
 
 } // namespace Ext
 
-#			define EXT_STR(expr) (static_cast<std::ostringstream &>(const_cast<std::ostringstream &>(static_cast<const std::ostringstream &>(std::ostringstream())) << expr)).str()
+#			define EXT_STR(expr) (static_cast<ExtSTD::ostringstream &>(const_cast<ExtSTD::ostringstream &>(static_cast<const ExtSTD::ostringstream &>(ExtSTD::ostringstream())) << expr)).str()
 #			define EXT_BIN(expr, ...) Span(static_cast<Ext::StreamToBlob &>(Ext::StreamToBlob(__VA_ARGS__).Ref() << expr))
 
-#			if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !defined(WDM_DRIVER)
+#			if UCFG_ATL_EMULATION && defined(WIN32) && UCFG_FRAMEWORK && !UCFG_WDM
   //#		include <el/libext/win32/ext-atl.h>
 #			endif
 
@@ -1129,8 +1092,10 @@ public:
 namespace Ext {
 class CIgnoreList {
 public:
+#if UCFG_EH_SUPPORT_IGNORE && UCFG_FRAMEWORK && !defined(_CRTBLD) || (UCFG_CRT == 'U')
 	typedef IntrusiveList<CLocalIgnoreBase> CIgnoredExceptions;
 	CIgnoredExceptions IgnoredExceptions;
+#endif
 };
 //extern thread_specific_ptr<CIgnoreList> t_ignoreList;
 
@@ -1141,3 +1106,24 @@ public:
 } // Ext::
 
 #endif // UCFG_FRAMEWORK && !defined(_CRTBLD)
+
+#if !defined(_CORECRT_BUILD) && UCFG_FRAMEWORK && !UCFG_WDM
+#	include <el/libext/ext-fw.h>
+#	include <el/libext/ext-app.h>
+
+#		if UCFG_COM
+#			include <el/libext/win32/com.h>
+#			include <el/libext/win32/excom.h>
+#		endif
+#endif
+
+namespace std {
+using Ext::ExtErr;
+
+template <> struct is_error_condition_enum<ExtErr> : true_type {};
+
+
+} // std::
+
+
+

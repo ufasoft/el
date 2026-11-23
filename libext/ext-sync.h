@@ -25,6 +25,7 @@
 #if !UCFG_STDSTL || !UCFG_STD_MUTEX
 #	include <el/stl/mutex>
 
+/*!!!?
 namespace std {
 	using ExtSTL::mutex;
 	using ExtSTL::recursive_mutex;
@@ -32,29 +33,13 @@ namespace std {
 	using ExtSTL::once_flag;
 	using ExtSTL::call_once;
 }
+*/
 
-#endif
+#endif // !UCFG_STDSTL || !UCFG_STD_MUTEX
+
+#include <el/libext/safehandle.h>
 
 namespace Ext {
-	using std::try_to_lock_t;
-
-class atomic_flag_lock : noncopyable {
-	atomic_flag& m_aFlag;
-	bool m_owns;
-public:
-	atomic_flag_lock(atomic_flag& aFlag, try_to_lock_t) noexcept
-		: m_aFlag(aFlag)
-		, m_owns(!m_aFlag.test_and_set())
-	{
-	}
-
-	~atomic_flag_lock() {
-		if (m_owns)
-			m_aFlag.clear();
-	}
-
-	EXPLICIT_OPERATOR_BOOL() const { return m_owns ? EXT_CONVERTIBLE_TO_TRUE : 0; }
-};
 
 #if UCFG_USE_PTHREADS
 int PthreadCheck(int code, int allowableError = 0);
@@ -67,7 +52,7 @@ int PthreadCheck(int code, int allowableError = 0);
 class AFX_CLASS CSyncObject : public SafeHandle {
 	typedef CSyncObject class_type;
 public:
-	CBool m_bAlreadyExists;
+	bool m_bAlreadyExists = false;
 
 	CSyncObject() {}
 	CSyncObject(RCString pstrName);
@@ -109,7 +94,7 @@ public:
 	void lock() {
 #if UCFG_USE_PTHREADS
 		PthreadCheck(::pthread_mutex_lock(&m_mutex));
-#elif defined(WDM_DRIVER)
+#elif UCFG_WDM
 		KeAcquireSpinLock(&m_spinLock, &m_oldIrql);
 #else
 		::EnterCriticalSection(&m_sect);				// don't handle EXCEPTION_POSSIBLE_DEADLOCK and "OutOfMemory on Win2K"
@@ -130,7 +115,7 @@ public:
 	void unlock() noexcept override {
 #if UCFG_USE_PTHREADS
 		PthreadCheck(::pthread_mutex_unlock(&m_mutex));
-#elif defined(WDM_DRIVER)
+#elif UCFG_WDM
 		KeReleaseSpinLock(&m_spinLock, m_oldIrql);
 #else
 		::LeaveCriticalSection(&m_sect);
@@ -179,24 +164,19 @@ public:
 };
 #endif // UCFG_WIN32
 
-class CScopedLockBase {
-public:
-	operator bool() const {
-		return false;
-	}
-};
-
 template <class T>
-class CScopedLock : public CScopedLockBase {
+class CScopedLock {
 public:
 	mutable T *m_sync;
+
+	operator bool() const {	return false; }
 
 	CScopedLock(const CScopedLock& sl)
 		: m_sync(exchange(sl.m_sync, nullptr))
 	{}
 
 	CScopedLock(T& sync)
-		:	m_sync(&sync)
+		: m_sync(&sync)
 	{
 		m_sync->lock();
 	}
@@ -205,24 +185,18 @@ public:
 		if (m_sync)
 			m_sync->unlock();
 	}
-
-
-/*!!!	void Unlock() const {
-		Ext::Unlock(*m_sync);
-		m_sync = 0;
-	}*/
 };
 
 
 template <class T> CScopedLock<T> ScopedLock(T& sync) { return CScopedLock<T>(sync); }
 
-#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) Ext::ThrowImp(Ext::ExtErr::CodeNotReachable); else
+#define EXT_LOCK(m) if (const auto& lck = Ext::ScopedLock(m)) Ext::ThrowImp(Ext::ExtErr::CodeNotReachable); else
 //#define EXT_LOCK(m) if (const Ext::CScopedLockBase& lck = Ext::ScopedLock(m)) ; else
 
 #if UCFG_CPP11
-#	define EXT_LOCKED(mtx, expr) (std::lock_guard<decltype(mtx)>(mtx), (expr))			//!!!
+#	define EXT_LOCKED(mtx, expr) ((void)std::lock_guard<decltype(mtx)>(mtx), (expr))			//!!!
 #else
-#	define EXT_LOCKED(mtx, expr) (Ext::ScopedLock(mtx), (expr))			//!!!
+#	define EXT_LOCKED(mtx, expr) ((void)Ext::ScopedLock(mtx), (expr))			//!!!
 #endif
 
 #if UCFG_SIMPLE_MACROS
@@ -230,8 +204,4 @@ template <class T> CScopedLock<T> ScopedLock(T& sync) { return CScopedLock<T>(sy
 #endif
 
 } // Ext::
-
-
-
-
 

@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <el/libext/win32/ext-win.h>
 
@@ -71,7 +71,7 @@ CUnkPtr AFXAPI CreateLicensedComObject(const CLSID& clsid, RCString license) {
 
 #if UCFG_OLE
 CUnkPtr AFXAPI CreateLicensedComObject(LPCTSTR s, RCString license) {
-	return CreateLicensedComObject(Guid::FromProgID(s), license);
+	return CreateLicensedComObject(Guid::FromProgId(s), license);
 }
 #endif
 
@@ -87,7 +87,7 @@ AfxUnregisterClassHelper(clsid, lpszProgID, lpszVerIndProgID);
 
 
 CTLibAttr::CTLibAttr(ITypeLib *iTL)
-	:	m_iTL(iTL)
+	: m_iTL(iTL)
 {
 	OleCheck(m_iTL->GetLibAttr(&m_ptla));
 }

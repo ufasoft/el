@@ -93,7 +93,7 @@ public:
 
 	size_type count() const {
 		size_type r = 0;
-		EXT_FOR (block_type b, m_data) {
+		for (block_type b : m_data) {
 			r += Ext::PopCount(b);
 		}
 		return r;

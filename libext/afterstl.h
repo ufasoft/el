@@ -5,15 +5,15 @@
 
 #pragma once
 
-#include <el/libext/ext-cpp.h>
-
 #include EXT_HEADER(list)
 
 #include EXT_HEADER_OPTIONAL
 
 namespace Ext {
-using std::unordered_map,
-	std::optional, std::nullopt;
+using namespace ExtSTD;
+
+//!!!R using unordered_map,
+//!!!R 	std::optional, std::nullopt;
 
 template <class T> class Array {
 public:
@@ -35,7 +35,7 @@ private:
 template<> class Array<char> {
 public:
 	Array(size_t size)
-		: m_p((char*)malloc(size))
+		: m_p((char*)Malloc(size))
 	{
 	}
 
@@ -65,7 +65,7 @@ public:
 	std::istream& m_is;
 
 	Istream(std::istream& is)
-		:	m_is(is)
+		: m_is(is)
 	{}
 
 	void ReadString(String& s);
@@ -121,8 +121,8 @@ template <class T> class CMTQueue {
 	T * volatile m_r, * volatile m_w;
 public:
 	explicit CMTQueue(size_t cap)
-		:	m_cap(cap+1)
-		,	m_mask(cap)
+		: m_cap(cap + 1)
+		, m_mask(cap)
 	{
 		for (size_t n=cap; n; n>>=1)
 			if (!(n & 1))
@@ -211,9 +211,9 @@ bool Dequeue(Q& q, T& val) {
 	return true;
 }
 
-template <class T> class MyList : public std::list<T>
+template <class T> class MyList : public list<T>
 {
-	typedef std::list<T> base;
+	typedef list<T> base;
 public:
 	typedef typename base::const_iterator const_iterator;
 	typedef typename base::iterator iterator;
@@ -274,7 +274,7 @@ public:
 		typedef T& reference;
 
 		explicit const_iterator(const value_type *p = nullptr)
-			:	m_p(p) {
+			: m_p(p) {
 		}
 
 		const_iterator& operator=(const const_iterator& it) {
@@ -319,11 +319,11 @@ public:
 		typedef const_iterator base;
 	public:
 		explicit iterator(value_type *p = nullptr)
-			:	const_iterator(p) {
+			: const_iterator(p) {
 		}
 
 		explicit iterator(const const_iterator& ci)
-			:	const_iterator(ci) {
+			: const_iterator(ci) {
 		}
 
 		iterator& operator=(const iterator& it) {
@@ -359,7 +359,7 @@ public:
 
 
 	IntrusiveList()
-		:	m_size(0)
+		: m_size(0)
 	{
 		getP()->Prev = getP()->Next = getP();
 	}
@@ -460,8 +460,8 @@ public:
 	//!!!	Range() {}
 
 	Range(I b, I e)
-		:	begin(b)
-		,	end(e)
+		: begin(b)
+		, end(e)
 	{}
 };
 
@@ -469,8 +469,8 @@ template <class C>
 class CRange {
 public:
 	CRange(const C& c)
-		:	b(c.begin())
-		,	e(c.end())
+		: b(c.begin())
+		, e(c.end())
 	{}
 
 	operator bool() const { return b != e; }
@@ -612,7 +612,7 @@ public:
 private:
 	T *m_p;
 	uint8_t m_placeTx[sizeof(T)];
-	CBool m_bOwn;
+	bool m_bOwn = false;
 };
 #endif // !UCFG_WDM
 

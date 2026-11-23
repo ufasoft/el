@@ -3,11 +3,12 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <el/libext/win32/ext-win.h>
 
 namespace Ext {
+using std::unique_ptr;
 using namespace std;
 
 #if UCFG_COM_IMPLOBJ

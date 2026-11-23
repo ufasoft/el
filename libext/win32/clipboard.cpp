@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <ShlObj_core.h>
 #include <el/libext/win32/clipboard.h>

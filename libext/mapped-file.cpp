@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_USE_POSIX
 #	include <sys/mman.h>
@@ -66,12 +66,12 @@ MemoryMappedView& MemoryMappedView::operator=(EXT_RV_REF(MemoryMappedView) rv) {
 
 void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size, void *desiredAddress) {
 	if (Address)
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	Offset = offset;
 	Size = size;
 #if UCFG_USE_POSIX
 	int prot = MemoryMappedFileAccessToInt(Access);
-	int flags = Access==MemoryMappedFileAccess::CopyOnWrite ? 0 : MAP_SHARED;
+	int flags = Access == MemoryMappedFileAccess::CopyOnWrite ? 0 : MAP_SHARED;
 	if (AddressFixed)
 		flags |= MAP_FIXED;
 	void *a = ::mmap(desiredAddress, Size, prot, flags, file.GetHandle(), offset);
@@ -92,7 +92,7 @@ void MemoryMappedView::Map(MemoryMappedFile& file, uint64_t offset, size_t size,
 #	else
 	if (LargePages)
 		dwAccess |= FILE_MAP_LARGE_PAGES;
-	Win32Check((Address = ::MapViewOfFileEx((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset>>32), DWORD(Offset), Size, desiredAddress)) != 0);
+	Win32Check((Address = ::MapViewOfFileEx((HANDLE)file.GetHandle(), dwAccess, DWORD(Offset >> 32), DWORD(Offset), Size, desiredAddress)) != 0);
 #	endif
 #endif
 }

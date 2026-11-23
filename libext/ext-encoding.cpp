@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	undef NONLS
@@ -78,10 +78,6 @@ Encoding& AFXAPI Encoding::Default() {
 
 Encoding::Encoding(int codePage)
 	: CodePage(codePage)
-#if UCFG_USE_POSIX
-	, m_iconvTo((iconv_t)-1)
-	, m_iconvFrom((iconv_t)-1)
-#endif
 {
 #if UCFG_USE_POSIX
 	if (CodePage) {

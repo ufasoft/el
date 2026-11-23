@@ -5,6 +5,16 @@
 
 #include <el/inc/ext_config.h>
 
+#if !UCFG_STDSTL
+#	define _IOSFWD_
+#	define _TUPLE_		// Need early
+#	define _TYPEINFO_
+#	define _XSTRING_
+#	define _SYSTEM_ERROR_
+#endif
+
+
+
 #define UCFG_LIBEXT 1
 
 #if UCFG_WDM && defined(_WIN64)
@@ -565,17 +575,17 @@ extern "C" {
 
 #	if UCFG_LIB_DECLS
 #		if defined(USE_ONLY_LIBEXT) && !defined(_EXT)
-#			pragma comment(lib, "libext")
+#			pragma comment(lib, "libext.lib")
 #		elif defined(_EXT)
-#			if UCFG_EXTENDED && UCFG_CRT != 'U'
-#				pragma comment(lib, "elrt")
+#			if UCFG_LINK_ELRT
+#				pragma comment(lib, "elrt.lib")
 #			endif
 #		else
 #			ifdef _AFXDLL
-#				pragma comment(lib, "libext")
+#				pragma comment(lib, "libext.lib")
 //#				pragma comment(lib, "ext.lib") // we need these #pragmas before comment(lib) of C++ libs
 #				if UCFG_WCE
-#					pragma comment(lib, "libext") // can't merge it with ext.lib because /QMFPE warning
+#					pragma comment(lib, "libext.lib") // can't merge it with ext.lib because /QMFPE warning
 #				endif
 #			else
 #				ifndef _CRTBLD // to prevent elst.lib
@@ -831,6 +841,12 @@ typedef WCHAR *BSTR;
 
 #define EXT_FASTCALL //!!!__fastcall
 
+#if UCFG_CRT == 'U'
+#	define ExtSTD ExtSTL
+#else
+#	define ExtSTD std
+#endif
+
 #ifdef _WIN32
 #	if defined(WIN32) && !UCFG_WCE
 //!!!#		include <windows.h>
@@ -877,24 +893,46 @@ inline void operator delete(void *, void *) {
 }
 #	endif
 
-#	ifdef _LIBCPP_VERSION
-#		include <system_error>
+#	if UCFG_CPP11
+#		if UCFG_STDSTL
+#			include <system_error>
+#		else
+#			include <el/stl/system_error>
+#		endif
+
 #	else
-namespace std {
+namespace ExtSTD {
 class error_code;
 }
 #	endif
 
 namespace Ext {
+enum class ExtErr;
+#if UCFG_STDSTL
+using std::error_code;
+#else
+using ExtSTL::error_code;
+#endif
+
+error_code make_error_code(ExtErr v);
 
 /*!!!AFX_API*/ DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(HRESULT hr);
-DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const std::error_code &ec);
+DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const error_code &ec);
 DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(HRESULT hr, const char *funname, int nLine);
-DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const std::error_code &ec, const char *funname, int nLine);
+DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const error_code &ec, const char *funname, int nLine);
 
-#	ifndef UCFG_DEFINE_THROW
-#		define UCFG_DEFINE_THROW UCFG_DEBUG
-#	endif
+DECLSPEC_NORETURN __forceinline void ThrowImp(ExtErr errval) {
+	ThrowImp(make_error_code(errval));
+}
+DECLSPEC_NORETURN __forceinline void ThrowImp(ExtErr errval, const char* funname, int nLine) {
+	ThrowImp(make_error_code(errval), funname, nLine);
+}
+
+#if !UCFG_DEFINE_THROW
+DECLSPEC_NORETURN __forceinline void AFXAPI Throw(ExtErr v) {
+	ThrowImp(v);
+}
+#endif
 
 #	if UCFG_DEFINE_THROW
 #		define Throw(arg)                                                                                                                                                                                                                                    \
@@ -905,7 +943,7 @@ DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(const std::error_code &ec, const c
 DECLSPEC_NORETURN __forceinline void Throw(HRESULT hr) {
 	ThrowImp(hr);
 }
-DECLSPEC_NORETURN __forceinline void Throw(const std::error_code &ec) {
+DECLSPEC_NORETURN __forceinline void Throw(const error_code &ec) {
 	ThrowImp(ec);
 }
 #	endif
@@ -1303,6 +1341,12 @@ inline int __cdecl API_close(int fh) {
 }
 #endif
 
+#ifdef _MSC_VER
+#	define __builtin_unreachable() __assume(0)
+#	define __restrict__ __restrict
+#endif
+
+
 void(__cdecl *__cdecl API_signal(int _SigNum, void(__cdecl *_Func)(int)))(int);
 __END_DECLS
 
@@ -1600,10 +1644,12 @@ extern "C" IMPEXP_API void __stdcall My_CxxThrowException(void *pExceptionObject
 
 #	if defined(_AFXDLL) && !defined(_EXT) && !defined(USE_ONLY_LIBEXT)
 #		pragma comment(linker, "/include:__afxForceEXT")
+#		pragma comment(lib, "c++static.lib")
+#		pragma comment(lib, "ext.lib")
 #	endif
 #endif
 
-#if defined(__cplusplus) && !UCFG_USE_OLD_MSVCRTDLL
+#if defined(__cplusplus) && !UCFG_USE_OLD_MSVCRTDLL && !defined(_ELRT)
 #	include <cmath>
 #	if !UCFG_STDSTL
 #		undef nan

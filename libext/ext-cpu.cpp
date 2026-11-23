@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 namespace Ext {
 using namespace std;
@@ -34,13 +34,12 @@ struct CpuInfo::SFamilyModelStepping CpuInfo::get_FamilyModelStepping() {
 }
 
 bool CpuInfo::get_ConstantTsc() {
-	CpuidInfo info = Cpuid(0x80000000);
-	if (uint32_t(info.EAX) >= 0x80000007UL && (info.EDX & 0x100))
+	if (uint32_t(Cpuid(0x80000000).EAX) >= 0x80000007UL && (Cpuid(0x80000007UL).EDX & 0x100))
 		return true;
 	if (!strcmp(get_Vendor().Name, "GenuineIntel")) {
 		SFamilyModelStepping fms = get_FamilyModelStepping();
-		return 0xF==fms.Family && fms.Model==3 ||							// P4, Xeon have constant TSC
-				6==fms.Family && fms.Model>=0xE && fms.Model<0x1A;			// Core [2][Duo] - constant TSC
+		return 0xF == fms.Family && fms.Model == 3 ||							// P4, Xeon have constant TSC
+			6 == fms.Family && fms.Model >= 0xE && fms.Model < 0x1A;			// Core [2][Duo] - constant TSC
 																			// Atoms - variable TSC
 	}
 	return false;

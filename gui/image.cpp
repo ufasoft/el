@@ -1,4 +1,4 @@
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <windows.h>
 #include <commctrl.h>
@@ -12,9 +12,9 @@
 #endif
 
 #include "el/gui/image.h"
+#include <el/libext/win32/mfcimpl.h>
 
 namespace Ext::Gui {
-//!!!R #include "win32/mfcimpl.h"
 
 
 #if UCFG_WCE

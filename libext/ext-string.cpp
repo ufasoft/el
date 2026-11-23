@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	define WIN32_LEAN_AND_MEAN
@@ -696,7 +696,7 @@ class ThreadStrings {
 public:
 	std::mutex Mtx;
 
-	typedef std::unordered_map<DWORD, Ext::String> CThreadMap;
+	typedef ExtSTD::unordered_map<DWORD, Ext::String> CThreadMap;
 	CThreadMap Map;
 
 	ThreadStrings() {
@@ -712,8 +712,8 @@ static bool InitTreadStrings() {
 }
 
 extern "C" const unsigned short * AFXAPI Utf8ToUtf16String(const char *utf8) {
-	static std::once_flag once;
-	std::call_once(once, &InitTreadStrings);
+	static ExtSTD::once_flag once;
+	ExtSTD::call_once(once, &InitTreadStrings);
 
 	const unsigned short *r = 0;
 	EXT_LOCK (s_threadStrings->Mtx) {

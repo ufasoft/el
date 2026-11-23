@@ -104,7 +104,6 @@ public:
 	T* operator->() const noexcept { return operator T*(); }
 };
 
-/*!!!T
 class CDestructibleTls : public CTls {
 	typedef CTls base;
 public:
@@ -114,14 +113,13 @@ public:
 	~CDestructibleTls();
 	virtual void OnThreadDetach(void *p) {}
 };
-*/
+
 #if UCFG_CPP11_THREAD_LOCAL || UCFG_USE_DECLSPEC_THREAD
-#	define EXT_THREAD_PTR(typ) THREAD_LOCAL typ*
+#	define EXT_THREAD_PTR(typ) thread_local typ*
 #else
 #	define EXT_THREAD_PTR(typ) Ext::single_tls_ptr<typ>
 #endif
 
-/*!!!T
 template <typename T>
 class thread_specific_ptr : CDestructibleTls {
 public:
@@ -152,14 +150,13 @@ public:
 		return *r;
 	}
 };
-*/
 
 #endif // !WDM_DRIVER
 
 template <class H> class CHandleKeeper {
 protected:
 	mutable const H* m_hp;
-	mutable CBool m_bIncremented;
+	mutable bool m_bIncremented = false;
 public:
 	CHandleKeeper(const H& hp)
 		: m_hp(&hp)
@@ -224,7 +221,7 @@ private:
 	EXT_MOVABLE_BUT_NOT_COPYABLE(SafeHandle);
 
 	mutable atomic<intptr_t> m_aHandle;
-	CBool m_bOwn;
+	bool m_bOwn = false;
 public:
 	typedef intptr_t handle_type;
 
@@ -269,7 +266,7 @@ public:
 #if UCFG_WDM
 protected:
 	mutable void *m_pObject;
-	mutable CBool m_CreatedReference;
+	mutable bool m_CreatedReference = false;
 	void AttachKernelObject(void *pObj, bool bKeepRef);
 public:
 	void Attach(PKEVENT pObj) { AttachKernelObject(pObj, false); }
@@ -337,9 +334,9 @@ typename T::handle_type BlockingHandle(T& x) {
 	return T::BlockingHandleAccess(x);
 }
 
-ENUM_CLASS(HandleInheritability) {
+enum class HandleInheritability {
 	None
 	, Inheritable
-} END_ENUM_CLASS(HandleInheritability);
+};
 
 } // Ext::

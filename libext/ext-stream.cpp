@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 
 namespace Ext {
@@ -31,7 +31,7 @@ void Stream::ReadExactly(void *buf, size_t count) const {
 	}
 }
 
-// Moore law buufer size
+// Moore law buffer size
 const size_t Stream::DEFAULT_BUF_SIZE = clamp(4096 * (Clock::now().Year - 2021), 4096, 1024 * 1024);
 
 void Stream::CopyTo(Stream& dest, size_t bufsize) const {
@@ -56,8 +56,6 @@ size_t BufferedStream::Read(void *buf, size_t count) const {
 		if (count >= m_bufSize)
 			cb += UnderlyingStream.Read(buf, count);
 		else {
-			if (cb && m_bufSize < DEFAULT_BUF_SIZE)
-				delete[] exchange(m_buf, new uint8_t[m_bufSize = DEFAULT_BUF_SIZE]);
 			cb += (m_cur = (min)(count, m_end = UnderlyingStream.Read(m_buf, m_bufSize)));
 			memcpy(buf, m_buf, m_cur);
 		}

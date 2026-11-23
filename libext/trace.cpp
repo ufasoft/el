@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #ifdef __linux__
 #	include <sys/syscall.h>
@@ -14,7 +14,7 @@
 #endif
 
 #pragma warning(disable: 4073)
-#pragma init_seg(lib)				// to initialize CTrace early
+#pragma init_seg(lib)				// to initialize Trace early
 
 namespace Ext {
 using namespace std;
@@ -70,9 +70,17 @@ public:
 };
 
 #if !UCFG_WDM      //!!!?
+
+static path CreateParentDirs(const path& p) {
+	create_directories(p.parent_path());
+	return p;
+}
+
 TraceStream::TraceStream(const path& p, bool bAppend)
-	: base(m_file)
+//!!!?	: base(m_file)
+ 	: base(CreateParentDirs(p), bAppend ? FileMode::Append : FileMode::Create, FileAccess::ReadWrite, FileShare::ReadWrite)
 {
+	/*
 	File::OpenInfo oi;
 	oi.Path = p;
 	oi.Mode = bAppend ? FileMode::Append : FileMode::Create;
@@ -83,33 +91,47 @@ TraceStream::TraceStream(const path& p, bool bAppend)
 		m_file.Open(oi);
 	} catch (RCExc) {												// not a showstopper
 	}
+	*/
+}
+
+CycledTraceStream::CycledTraceStream(const path& p, bool bAppend)
+	: base(p, bAppend)
+	, m_path(p)
+{
+	SetMaxSize(20'000'000);
+	m_pos = Length;
 }
 
 void CycledTraceStream::WriteBuffer(const void *buf, size_t count) {
 	{
 		shared_lock<shared_mutex> lk(m_mtx);
-		if (m_file.Length <= m_threshold) {
+		if (m_pos <= m_threshold) {
 			base::WriteBuffer(buf, count);
+			m_pos += count;
 			return;
 		}
 	}
 
 	unique_lock<shared_mutex> lk(m_mtx);
-	if (m_file.Length > m_threshold) {
-		m_file.Close();
-		vector<uint8_t> tmp(m_maxSize);
+	if (m_pos > m_threshold) {
+		Close();
+		Blob tmp(m_maxSize, nullptr);
 		{
 			File f(m_path, FileMode::Open, FileAccess::Read);
 			f.Read(&tmp[0], tmp.size(), f.Length - m_maxSize);
 		}
+		/*!!!
 		File::OpenInfo oi;
 		oi.Path = m_path;
 		oi.Mode = FileMode::Create;
 		oi.Share = FileShare::ReadWrite;
-		m_file.Open(oi);
-		m_file.Write(&tmp[0], tmp.size());
+		*/
+		Open(m_path, FileMode::Truncate, FileAccess::ReadWrite, FileShare::ReadWrite);
+		base::WriteBuffer(&tmp[0], tmp.size());
+		m_pos = tmp.size();
 	}
 	base::WriteBuffer(buf, count);
+	m_pos += count;
 }
 
 #endif // !UCFG_WDM
@@ -125,7 +147,7 @@ String TruncPrettyFunction(const char *fn) {
 bool Trace::s_bShowCategoryNames;
 //static CDebugStreambuf s_debugStreambuf;
 //Stream *CTrace::s_pOstream = new ostream(&s_debugStreambuf);	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
-Stream *Trace::s_pOstream = new CDebugStream;	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
+unique_ptr<Stream> Trace::s_pOstream(new CDebugStream);	// ostream allocated in Heap because it should be valid after PROCESS_DETACH
 
 Stream *Trace::s_pSecondStream;
 bool Trace::s_bPrintDate;
@@ -152,11 +174,11 @@ void Trace::InitTraceLog(RCString regKey) {
 }
 
 Stream* Trace::GetOStream() {
-	return s_pOstream;
+	return s_pOstream.get();
 }
 
 void Trace::SetOStream(Stream *os) {
-	s_pOstream = os;
+	s_pOstream.reset(os);
 }
 
 void Trace::SetSecondOStream(Stream *os) {
@@ -298,9 +320,9 @@ ULONG __cdecl DrvTrace(PCH format, ...) {
 
 #else
 
-static THREAD_LOCAL int t_level;
-static THREAD_LOCAL int t_threadNumber;
-static THREAD_LOCAL CLocalTracePrefix *t_tracePrefixes;
+static thread_local int t_level;
+static thread_local int t_threadNumber;
+static thread_local CLocalTracePrefix *t_tracePrefixes;
 
 CLocalTracePrefix::CLocalTracePrefix(const char *prefix)
 	: m_prefix(prefix)
@@ -366,7 +388,7 @@ CGlobalTracePrefix::~CGlobalTracePrefix() {
 }
 
 
-inline intptr_t AFXAPI GetThreadNumber() {
+intptr_t AFXAPI ThreadBase::GetThreadNumber() {
 #ifdef WDM_DRIVER
 	return (intptr_t)PsGetCurrentThreadId();
 #elif UCFG_WIN32
@@ -396,7 +418,7 @@ int TraceIndent::GetCurrent() {
 }
 
 CTraceWriter::CTraceWriter(int level, const char* funname) noexcept
-	: m_pos(level & Trace::s_nLevel ? Trace::s_pOstream : 0)
+	: m_pos(level & Trace::s_nLevel ? Trace::s_pOstream.get() : 0)
 {
 	if (m_pos) {
 		m_bPrintDate = Trace::s_bPrintDate;
@@ -437,7 +459,17 @@ void CTraceWriter::Init(const char* funname) {
 #	define EXT_TID_FORMATTER "%-5" EXT_LL_PREFIX "x"
 #endif
 
+static struct ExitDetector {
+	bool Exiting = false;
+
+	~ExitDetector() {
+		Exiting = true;
+	}
+} s_existDetector;
+
 CTraceWriter::~CTraceWriter() noexcept {
+	if (s_existDetector.Exiting)			//!!!TODO: better way log during process exit
+		return;
 	if (m_pos) {
 		m_os.put('\n');
 		string str = m_os.str();
@@ -445,7 +477,7 @@ CTraceWriter::~CTraceWriter() noexcept {
 		tm t;
 		dt.ToLocalTm(t);
 		int mst = dt.Ticks / 100 % 100000;
-		long long tid = GetThreadNumber();
+		long long tid = ThreadBase::GetThreadNumber();
 		char bufTime[20], buf[100];
 		sprintf(bufTime, " %02d:%02d:%02d.%05d ", t.tm_hour, t.tm_min, t.tm_sec, mst);
 		if (m_bPrintDate)

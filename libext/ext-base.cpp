@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <windows.h>
@@ -178,7 +178,7 @@ extern "C" void _cdecl AfxTestEHsStub(void *prevFrame) {
 #if UCFG_WDM
 		KeBugCheck(E_FAIL);
 #else
-		std::cerr << "Should be compiled with /EHs /EHc-" << endl;
+		ExtSTD::cerr << "Should be compiled with /EHs /EHc-" << endl;
 		abort();
 #endif
 	}

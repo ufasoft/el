@@ -7,7 +7,7 @@
 #	define UCFG_DEFINE_OLD_NAMES 1
 #endif
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32 && !UCFG_MINISTL
 #	include <shlwapi.h>
@@ -16,6 +16,8 @@
 #endif
 
 //#include <el/libext/ext-os-api.h>
+
+using namespace Ext;
 
 #ifdef _WIN32
 
@@ -84,50 +86,41 @@ static int s_bCeAlloc = SetCeAlloc();
 
 #endif
 
-void *CAlloc::Malloc(size_t size) {
 #ifdef WDM_DRIVER
-	if (void *p = ExAllocatePoolWithTag(NonPagedPool, size, UCFG_POOL_TAG))
-		return p;
-#elif UCFG_ALLOCATOR=='T'
-#	if UCFG_HEAP_CHECK
-	if (void *p = tc_malloc(size))
-#	else
-	if (void *p = do_malloc(size))
-#	endif
-		return p;
-#else
-	if (void *p = malloc(size))
-		return p;
+
+extern "C" void* __cdecl API_malloc(size_t size) {
+	return ExAllocatePoolWithTag(NonPagedPool, size, UCFG_POOL_TAG);
+}
+
+extern "C" void __cdecl API_free(void* p) {
+	if (p)
+		ExFreePoolWithTag(p, UCFG_POOL_TAG);
+}
+
 #endif
+
+#if UCFG_WIN32 && (UCFG_ALLOCATOR=='S')
+extern "C" size_t __cdecl API_msize(void* p) {
+	size_t r = _msize(p);
+	CCheck(r != size_t(-1));
+	return r;
+}
+
+#endif
+
+
+void *CAlloc::Malloc(size_t size) {
+	if (void *p = API_malloc(size))
+		return p;
 	Throw(E_OUTOFMEMORY);
 }
 
 void CAlloc::Free(void *p) EXT_NOEXCEPT {
-#ifdef WDM_DRIVER
-	if (!p)
-		return;
-	ExFreePoolWithTag(p, UCFG_POOL_TAG);
-#elif UCFG_ALLOCATOR=='T'
-#	if UCFG_HEAP_CHECK
-	tc_free(p);
-#	else
-	do_free(p);
-#	endif
-#else
-	free(p);
-#endif
+	API_free(p);
 }
 
 size_t CAlloc::MSize(void *p) {
-#if UCFG_WIN32 && (UCFG_ALLOCATOR=='S')
-	size_t r = _msize(p);
-	CCheck(r != size_t(-1));
-	return r;
-#elif UCFG_ALLOCATOR=='T'
-	return tc_malloc_size(p);
-#else
-	Throw (E_NOTIMPL);
-#endif
+	return API_msize(p);
 }
 
 void *CAlloc::Realloc(void *p, size_t size) {
@@ -248,10 +241,9 @@ void __cdecl __crtTerminateProcess
 
 void __cdecl __crtCaptureCurrentContext
 (
-    _Out_ CONTEXT *pContextRecord
+	_Out_ CONTEXT* pContextRecord
 ) {
 	Ext::ThrowImp(E_FAIL);
-
 }
 
 void __cdecl __crtCapturePreviousContext
@@ -297,7 +289,7 @@ int __cdecl _CrtDbgReportW(
 
 
 #if UCFG_WDM
-__declspec(noreturn) void __cdecl terminate(void) {
+__declspec(noreturn) void __cdecl terminate(void) throw() {
 	API_terminate();
 }
 #endif

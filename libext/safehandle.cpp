@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <windows.h>
@@ -215,7 +215,7 @@ void SafeHandle::ThreadSafeAttach(intptr_t handle, bool bOwn) {
 
 void SafeHandle::Attach(intptr_t handle, bool bOwn) {
 	if (Valid())
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	m_aHandle = handle;
 	AfterAttach(bOwn);
 }
@@ -229,7 +229,7 @@ intptr_t SafeHandle::Detach() { //!!!
 void SafeHandle::Duplicate(intptr_t h, uint32_t dwOptions) {
 #if UCFG_WIN32
 	if (Valid())
-		Throw(ExtErr::AlreadyOpened);
+		Throw(ExtErr::AlreadyOpen);
 	HANDLE hMy;
 	Win32Check(::DuplicateHandle(GetCurrentProcess(), (HANDLE)h, GetCurrentProcess(), &hMy, 0, FALSE, dwOptions));
 	m_aHandle = intptr_t(hMy);
@@ -278,5 +278,3 @@ SafeHandle::BlockingHandleAccess::~BlockingHandleAccess() {
 
 
 } // Ext::
-
-

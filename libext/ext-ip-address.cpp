@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	if UCFG_WCE
@@ -437,6 +437,7 @@ void IPEndPoint::Print(ostream& os) const {
 		<< ":" << get_Port();
 }
 
+#if UCFG_USE_REGEX
 IPEndPoint IPEndPoint::Parse(RCString s) {
 	string ss(s);
 	static regex reIpPort("(\\[(.+\\)]|(\\d+\\.\\d+\\.\\d+\\.\\d+)):(\\d{1,5})");
@@ -445,6 +446,7 @@ IPEndPoint IPEndPoint::Parse(RCString s) {
 		Throw(E_INVALIDARG);
 	return IPEndPoint(IPAddress::Parse(m[2].matched ? m[2] : m[3]), Convert::ToUInt16(m[4]));
 }
+#endif // UCFG_USE_REGEX
 
 String COperatingSystem::get_ComputerName() {
 #if UCFG_USE_POSIX || UCFG_WCE

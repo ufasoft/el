@@ -1,14 +1,15 @@
-/*######   Copyright (c) 2015-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2015-2026 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
 #pragma once
 
+#include <el/libext/ext-basic-cpp.h>
 
 namespace Ext {
 
-ENUM_CLASS(ExtErr) {
+enum class ExtErr {
 	EndOfStream								= 1
 	, IndexOutOfRange						= 2
 	, VartypeNotSupported
@@ -24,7 +25,7 @@ ENUM_CLASS(ExtErr) {
 	, InvalidTypeForThisOperation
 	, QueueOverflow
 	, NoMoreServiceHandlers
-	, AlreadyOpened
+	, AlreadyOpen
 	, InvalidRegistrationCode
 	, UnknownVersionRegcode
 	, DuplicateName
@@ -119,7 +120,7 @@ ENUM_CLASS(ExtErr) {
 
 	, SAT_EmptyStructure = 5000
 
-	, Crypto						= 7000	
+	, Crypto						= 7000
 	, UnsupportedEncryptionAlgorithm
 	, DerivedKeyTooLong
 
@@ -150,10 +151,12 @@ ENUM_CLASS(ExtErr) {
 	, SOCKS_CommandNotSupported
 	, SOCKS_AddressTypeNotSupported
 
-} END_ENUM_CLASS(ExtErr);
-
-
+};
 
 
 } // Ext::
 
+namespace std {
+
+
+}

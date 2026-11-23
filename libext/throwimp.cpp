@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #if UCFG_WIN32
 #	include <windows.h>
@@ -365,6 +365,7 @@ void AFXAPI ProcessExceptionInExcept() {
 }
 #endif
 
+#pragma warning(disable: 4101) // unreferenced local variable
 void AFXAPI ProcessExceptionInCatch() {
 	try {
 		throw;
@@ -373,7 +374,7 @@ void AFXAPI ProcessExceptionInCatch() {
 		TRC(0, ex);
 		wcerr << ex.what() << endl;
 #	else
-	} catch (const Exception&) {
+	} catch (const Exception& ex) {
 #	endif
 #if UCFG_GUI
 		if (!IsConsole())
@@ -387,7 +388,7 @@ void AFXAPI ProcessExceptionInCatch() {
 		TRC(0, e.what());
 		cerr << e.what() << endl;
 #	else
-	} catch (std::exception&) {
+	} catch (std::exception& e) {
 #	endif
 #if UCFG_GUI
 		if (!IsConsole())
@@ -418,6 +419,8 @@ void AFXAPI ProcessExceptionInCatch() {
 }
 
 #endif // !UCFG_WDM && !UCFG_MINISTL
+
+#pragma warning(default: 4101)
 
 #if UCFG_WIN32
 
@@ -594,7 +597,7 @@ const error_category& AFXAPI win32_category() {
 
 #endif // UCFG_WIN32
 
-} // ExtSTL::
+} // Ext::
 
 namespace std {
 

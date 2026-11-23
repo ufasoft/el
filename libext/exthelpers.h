@@ -133,39 +133,6 @@ template <typename T> T exchangeZero(T& v) { return std::exchange(v, (T)0); }
 //#define SwapRet std::exchange						//!!!O
 //#define SwapRetZero exchangeZero					//!!!O
 
-class CBool {
-	bool m_b;
-public:
-	CBool(bool b = false)
-		: m_b(b)
-	{}
-
-	CBool(const CBool& v)
-		: m_b(v.m_b)
-	{}
-
-	operator bool() const volatile { return m_b; }
-
-	bool& Ref() { return m_b; }
-};
-
-template <typename T>
-class CInt {
-	T m_v;
-public:
-	CInt(T v = 0)
-		: m_v(v)
-	{}
-
-	operator T() const { return m_v; }
-	operator T&() { return m_v; }
-
-	T Value() const { return m_v; }
-
-	CInt& operator++() { ++m_v; return (*this); }
-	T operator++(int) { return m_v++; }
-};
-
 template <typename T>
 class Keeper {
 	Keeper(const Keeper&);
@@ -631,7 +598,8 @@ enum class TraceLevel : int {
 };
 
 class AFX_CLASS Trace {
-	static Stream *s_pOstream, *s_pSecondStream;
+	static std::unique_ptr<Stream> s_pOstream;
+	static Stream* s_pSecondStream;
 public:
 	typedef unsigned long (_cdecl* PFN_DbgPrint)(const char *format, ...);
 	EXT_DATA static PFN_DbgPrint s_pTrcPrint;
@@ -726,10 +694,10 @@ inline HRESULT HResult(unsigned long err) { return (HRESULT)err; }
 #define EXT_UNIQUE_SUFFIX(a) EXT_CONCAT(a, __COUNTER__)
 
 #if UCFG_EH_SUPPORT_IGNORE
-#	define DBG_LOCAL_IGNORE(hr)						CLocalIgnore<std::error_code>		EXT_UNIQUE_SUFFIX(_localIgnore)(error_code(Ext::HResult(hr), Ext::hresult_category()));
-#	define DBG_LOCAL_IGNORE_CONDITION(econd)		CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(make_error_condition(econd));
-#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)	CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(econd);
-#	define DBG_LOCAL_IGNORE_WIN32(name)				CLocalIgnore<std::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(error_condition(name, Ext::win32_category()));
+#	define DBG_LOCAL_IGNORE(hr)						CLocalIgnore<ExtSTD::error_code>		EXT_UNIQUE_SUFFIX(_localIgnore)(error_code(Ext::HResult(hr), Ext::hresult_category()));
+#	define DBG_LOCAL_IGNORE_CONDITION(econd)		CLocalIgnore<ExtSTD::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(make_error_condition(econd));
+#	define DBG_LOCAL_IGNORE_CONDITION_OBJ(econd)	CLocalIgnore<ExtSTD::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(econd);
+#	define DBG_LOCAL_IGNORE_WIN32(name)				CLocalIgnore<ExtSTD::error_condition>	EXT_UNIQUE_SUFFIX(_localIgnore)(error_condition(name, Ext::win32_category()));
 //!!!R #	define DBG_LOCAL_IGNORE_NAME(hr, name)	CLocalIgnore<std::error_code> _localIgnore##name(error_code(Ext::HResult(hr), Ext::hresult_category()));
 #else
 #	define DBG_LOCAL_IGNORE(hr)
@@ -774,7 +742,7 @@ String TruncPrettyFunction(const char *fn);
 #	define CLASS_TRACE(name) class CClassTrace : public CFunTrace { \
 	public: \
 		CClassTrace() \
-			:	CFunTrace(name) \
+			: CFunTrace(name) \
 		{} \
 	}  _classTrace; \
 
