@@ -7,16 +7,16 @@
 
 namespace Ext {
 
-ENUM_CLASS(SeekOrigin) {
+enum class SeekOrigin {
 	Begin
 	, Current
 	, End
-} END_ENUM_CLASS(SeekOrigin);
+};
 
 class EXTCLASS Stream {
 	typedef Stream class_type;
 public:
-	static const size_t DEFAULT_BUF_SIZE;
+	static EXT_DATA const size_t DEFAULT_BUF_SIZE;
 
 	virtual ~Stream() {}
 	virtual void WriteBuffer(const void *buf, size_t count) { Throw(E_NOTIMPL); }
@@ -88,11 +88,11 @@ public:
 	size_t Read(void *buf, size_t count) const override;
 };
 
-const std::error_category& AFXAPI zlib_category();
+const ExtSTD::error_category& AFXAPI zlib_category();
 
-ENUM_CLASS(CompressionMode) {
+enum class CompressionMode {
 	Decompress, Compress
-} END_ENUM_CLASS(CompressionMode);
+};
 
 class CompressStream : public Stream {
 	typedef CompressStream class_type;
@@ -101,7 +101,7 @@ protected:
 	void* m_pimpl;
 	mutable std::vector<uint8_t> m_sbuf, m_dbuf;
 	mutable int m_bufpos;
-	mutable CBool m_bInited, m_bByByteMode;
+	mutable bool m_bInited = false, m_bByByteMode = false;
 public:
 	CompressionMode Mode;
 

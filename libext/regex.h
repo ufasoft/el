@@ -5,33 +5,32 @@
 
 #pragma once
 
-#include <el/libext/afterstl.h>
-
 namespace Ext {
+using namespace ExtSTD;
 
 struct RegexTraits {
-	EXT_API static const std::regex_constants::syntax_option_type DefaultB;
+	EXT_API static const regex_constants::syntax_option_type DefaultB;
 };
 
-typedef DelayedStatic2<std::regex, RegexTraits, String , std::regex_constants::syntax_option_type> StaticRegex;
-typedef DelayedStatic2<std::wregex, RegexTraits, String , std::regex_constants::syntax_option_type> StaticWRegex;
+typedef DelayedStatic2<regex, RegexTraits, String , regex_constants::syntax_option_type> StaticRegex;
+typedef DelayedStatic2<wregex, RegexTraits, String , regex_constants::syntax_option_type> StaticWRegex;
 
 
-class RegexExc : public std::regex_error {
+class RegexExc : public regex_error {
 public:
 	String Message;
 	HRESULT HResult;
 
 	RegexExc(HRESULT hr, RCString msg = nullptr)
-		: std::regex_error(std::regex_constants::error_escape)				//!!! error_escape is just a stub
+		: ExtSTD::regex_error(ExtSTD::regex_constants::error_escape)				//!!! error_escape is just a stub
 		, Message(msg)
 		, HResult(hr)
 	{}
 
 	/*!!!R
 	RegexExc(const RegexExc& ex)
-		:	base(ex.HResult, ex.m_message)
-		,	std::regex_error(std::regex_constants::error_escape)				//!!! error_escape is just a stub	//!!!
+		: base(ex.HResult, ex.m_message)
+		, std::regex_error(std::regex_constants::error_escape)				//!!! error_escape is just a stub	//!!!
 	{}*/
 
 	~RegexExc() throw() {
@@ -53,7 +52,7 @@ public:
 	typedef Ext::String::const_iterator iterator;
 	typedef Ext::String string_type;
 
-	Ext::CBool matched;
+	bool matched = false;
 
 	difference_type length() const {
 		return matched ? std::distance(this->first, this->second) : 0;
@@ -72,7 +71,7 @@ public:
 	bool operator==(const sub_match& sm) const { return !compare(sm); }
 	bool operator!=(const sub_match& sm) const { return !operator==(sm); }
 
-	void Init(const std::wcsub_match& sm, Ext::String::const_iterator mb, const wchar_t *org) {
+	void Init(const ExtSTD::wcsub_match& sm, Ext::String::const_iterator mb, const wchar_t *org) {
 		matched = sm.matched;
 		first = mb+(sm.first-org);
 		second = mb+(sm.second-org);
@@ -96,7 +95,7 @@ public:
 	using base::end;
 
 	match_results()
-		:	m_null()
+		: m_null()
 	{
 	}
 
@@ -117,7 +116,7 @@ public:
 	value_type m_prefix;
 	value_type m_suffix;
 	Ext::String::const_iterator m_org;
-	Ext::CBool m_ready;
+	bool m_ready = false;
 
 	//!!! Should be Private
 	value_type& GetSubMatch(int idx) {

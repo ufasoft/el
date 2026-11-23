@@ -11,13 +11,14 @@
 typedef struct tagMSG MSG;
 
 namespace Ext {
+using namespace ExtSTD;
 
 class CWinThread;
 class thread_group;
 
 typedef const std::exception& RCExc;
 
-HRESULT AFXAPI ToHResult(const std::system_error& ex);
+HRESULT AFXAPI ToHResult(const system_error& ex);
 HRESULT AFXAPI HResultInCatch(RCExc);
 
 class PoolThread;
@@ -49,6 +50,7 @@ public:
 	using base::m_aRef;
 	typedef InterlockedPolicy interlocked_policy;
 
+	static intptr_t AFXAPI GetThreadNumber();
 #if UCFG_WIN32
 	observer_ptr<_AFX_THREAD_STATE> m_pAfxThreadState;
 
@@ -79,8 +81,8 @@ public:
 	EXT_DATA static size_t DefaultStackSize;
 
 	observer_ptr<thread_group> m_owner;
-	size_t StackSize;
-	size_t StackOffset;
+	size_t StackSize = 0;
+	size_t StackOffset = 0;
 	String m_name;
 #if UCFG_WIN32 && UCFG_OLE
 	CUsingCOM m_usingCOM;
@@ -88,25 +90,28 @@ public:
 #endif
 private:
 	observer_ptr<thread_group> m_threadRef;
+#if UCFG_THREAD_MANAGEMENT
 	observer_ptr<AFX_MODULE_STATE> m_pModuleStateForThread;
+#endif
 protected:
 #if !UCFG_WIN32 || !UCFG_STDSTL //!!!?
 	mutable std::thread::id m_tid;
 #endif
 public:
 #if UCFG_WIN32
-	volatile uint32_t m_nThreadID;
+	volatile uint32_t m_nThreadID = 0;
 #endif
-	CInt<uint32_t> m_exitCode;
+	uint32_t m_exitCode = 0;
 #if !UCFG_WIN32 || !UCFG_STDSTL //!!!?
 	std::thread::id get_id() const { return m_tid; }
 #else
 	uint32_t get_id() const { return m_nThreadID; }
 #endif
 
-	volatile bool m_bAutoDelete, m_bStop,
-		m_bInterruptionEnabled,
-		m_bAPC;
+	volatile bool m_bAutoDelete = true
+		, m_bStop = false
+		, m_bInterruptionEnabled = true
+		, m_bAPC = false;
 
 	ThreadBase(thread_group *ownRef = 0);
 	~ThreadBase();
@@ -271,7 +276,7 @@ class thread_group : noncopyable {
 	atomic<int32_t> m_aRef;
 protected:
 	mutable CCriticalSection m_cs;				// Often locked from static ctr/dtor, which not allowed by VC std::mutex implementation
-	typedef std::unordered_set<ptr<ThreadBase>> CThreadColl;
+	typedef unordered_set<ptr<ThreadBase>> CThreadColl;
 	CThreadColl m_threads;
 public:
 	CEvent m_evFinal;
@@ -321,7 +326,7 @@ public:
 
 	CThreadData()
 		: base(10)											//!!!?
-		, ThreadId(std::this_thread::get_id())
+		, ThreadId(ExtSTD::this_thread::get_id())
 	{}	
 };	
 
@@ -329,10 +334,10 @@ class AFX_CLASS CThreadSlotData {
 public:
 	CTls m_tls;
 
-	typedef std::unordered_map<std::thread::id, CThreadData> CTDatas;
+	typedef unordered_map<std::thread::id, CThreadData> CTDatas;
 	CTDatas m_tdatas;  // list of CThreadData structures
 
-	std::vector<CSlotData> m_arSlotData;
+	vector<CSlotData> m_arSlotData;
 
 	int m_nRover;       // (optimization) for quick finding of free slots
 	int m_nMax;         // size of slot table below (in bits)
@@ -401,7 +406,6 @@ AFX_API void AFXAPI ProcessExceptionInCatch();
 
 
 #ifdef WIN32
-
 class CWinThread : public ThreadBase {
 public:
 	observer_ptr<CWnd> m_pMainWnd;
@@ -454,8 +458,6 @@ protected:
 #endif	// WIN32
 
 
-intptr_t AFXAPI GetThreadNumber();
-
 class Thread
 #ifdef WIN32
 	: public CWinThread
@@ -487,12 +489,8 @@ public:
 	typedef InterlockedPolicy interlocked_policy;
 
 	ptr<PoolThread> ExecutingThread;
-	HRESULT HResult;
-	CBool Finished, m_bStop;
-
-	WorkItem()
-		: HResult(S_OK)
-	{}
+	HRESULT HResult = S_OK;
+	bool Finished = false, m_bStop = false;
 
 #if UCFG_WIN32_FULL
 	void QueueAPC();
@@ -558,7 +556,7 @@ protected:
 	CSemaphore m_sem;
 
 	CCriticalSection m_cs;
-	std::queue<ptr<WorkItem>> m_queue;
+	queue<ptr<WorkItem>> m_queue;
 public:
 	ThreadPool();
 

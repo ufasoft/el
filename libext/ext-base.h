@@ -12,15 +12,15 @@ namespace Ext {
 	using std::pair;
 	using std::size;
 	using std::vector;
-	using std::map;
-	using std::errc;
-	using std::error_code;
-	using std::error_condition;
-	using std::system_error;
-	using std::error_category;
+	using ExtSTD::map;
+	using ExtSTD::errc;
+	using ExtSTD::error_code;
+	using ExtSTD::error_condition;
+	using ExtSTD::system_error;
+	using ExtSTD::error_category;
 	using std::observer_ptr;
-	using std::atomic;
-	using std::try_to_lock_t;
+	using ExtSTD::atomic;
+	using ExtSTD::try_to_lock_t;
 
 class CCriticalSection;
 class Exception;
@@ -35,11 +35,11 @@ inline DECLSPEC_NORETURN EXTAPI void AFXAPI ThrowImp(errc v, const char *funname
 	DECLSPEC_NORETURN __forceinline void AFXAPI Throw(errc v) { ThrowImp(v); }
 	DECLSPEC_NORETURN __forceinline void AFXAPI Throw(errc v, const char *funname, int nLine) { ThrowImp(v, funname, nLine); }
 #endif
-	
+
 class CPrintable {
 public:
 	virtual ~CPrintable() {}
-	virtual void Print(std::ostream& os) const;
+	virtual void Print(ExtSTD::ostream& os) const;
 	virtual String ToString() const;
 };
 
@@ -66,7 +66,7 @@ const error_category& AFXAPI ntos_category();
 const error_category& AFXAPI hresult_category();
 
 class Exception : public system_error, public CPrintable {
-	typedef std::system_error base;
+	typedef ExtSTD::system_error base;
 public:
 	typedef Exception class_type;
 
@@ -76,12 +76,12 @@ public:
 
 	mutable String m_message;
 
-	typedef std::map<String, String> CDataMap;
+	typedef ExtSTD::map<String, String> CDataMap;
 	CDataMap Data;
 
 #if UCFG_STACK_TRACE
 	CStackTrace StackTrace;
-#endif	
+#endif
 
 #ifdef _WIN64
 	LONG dummy;
@@ -238,7 +238,7 @@ public:
 		: base(HRESULT_FROM_WIN32(ERROR_STACK_OVERFLOW))
 	{}
 
-	CInt<void *> StackAddress;
+	void *StackAddress = nullptr;
 };
 
 class ProcNotFoundExc : public Exception {
@@ -269,7 +269,7 @@ intptr_t __stdcall AfxApiNotFound();
 
 extern "C" AFX_API void _cdecl AfxTestEHsStub(void *prevFrame);
 
-//!!! DBG_LOCAL_IGNORE_NAME(1, ignOne);	
+//!!! DBG_LOCAL_IGNORE_NAME(1, ignOne);
 
 #define DEF_TEST_EHS							\
 	static DECLSPEC_NOINLINE int AfxTestEHs(void *p) {			\
@@ -336,7 +336,7 @@ public:
 	typedef typename HandleTraits<H>::handle_type handle_type;
 
 	handle_type m_h;		//!!! should be private
-    
+
 	ResourceWrapper()
 		: m_h(traits_type::ResourseNull())
 	{}
@@ -376,7 +376,7 @@ public:
 
 	handle_type& OutRef() {
 		if (Valid())
-			Throw(ExtErr::AlreadyOpened);
+			Throw(ExtErr::AlreadyOpen);
 		return m_h;
 	}
 
@@ -391,7 +391,7 @@ public:
 	handle_type& operator()() {
 		if (!Valid())
 			Throw(E_HANDLE);
-		return m_h;		
+		return m_h;
 	}
 
 	ResourceWrapper& operator=(const ResourceWrapper& res) {
@@ -409,11 +409,11 @@ class CEscape {
 public:
 	virtual ~CEscape() {}
 
-	virtual void EscapeChar(std::ostream& os, char ch) {
+	virtual void EscapeChar(ExtSTD::ostream& os, char ch) {
 		os.put(ch);
 	}
 
-	virtual int UnescapeChar(std::istream& is) {
+	virtual int UnescapeChar(ExtSTD::istream& is) {
 		return is.get();
 	}
 
@@ -431,4 +431,3 @@ DECLSPEC_NORETURN void AFXAPI ThrowS(HRESULT hr, RCString msg);
 
 
 } // Ext::
-
