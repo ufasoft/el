@@ -1,4 +1,4 @@
-/*######   Copyright (c) 1999-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 1999-2026 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -9,7 +9,7 @@
 #include EXT_HEADER(ostream)
 
 namespace ExtSTL {
-using std::ostream;
+using ExtSTD::istream, ExtSTD::ostream;
 
 namespace decimal {
 
@@ -24,25 +24,23 @@ class decimal64_;
 decimal64_ make_decimal64(int64_t val, int exp);
 
 class decimal64_ {					// 'decimal64_' because strange error in GCC
+	int64_t m_val;
+	int m_exp = 0;
 public:
 	decimal64_()
-		:	m_val(0)
-		,	m_exp(0)
+		: m_val(0)
 	{}
 
 	decimal64_(int v)
-		:	m_val(v)
-		,	m_exp(0)
+		: m_val(v)
 	{}
 
 	decimal64_(long v)
-		:	m_val(v)
-		,	m_exp(0)
+		: m_val(v)
 	{}
 
 	decimal64_(long long v)
-		:	m_val(v)
-		,	m_exp(0)
+		: m_val(v)
 	{}
 
 	explicit decimal64_(double v);
@@ -55,9 +53,6 @@ public:
 
 //	operator long long() const;
 private:
-	int64_t m_val;
-	int m_exp;
-
 	friend NormalizedDecimal AFXAPI Normalize(const decimal64_& a);
 	friend decimal64_ make_decimal64(int64_t val, int exp);
 	friend EXT_API ostream& operator<<(ostream& os, const decimal64_& v);
@@ -75,7 +70,7 @@ typedef decimal64_ decimal64;
 
 decimal64 make_decimal64(int64_t val, int exp);
 
-EXT_API std::ostream& operator<<(std::ostream& os, const decimal64& v);
+EXT_API ExtSTD::ostream& operator<<(ExtSTD::ostream& os, const decimal64& v);
 
 decimal64 operator*(const decimal64& a, const decimal64& b);
 decimal64 operator-(const decimal64& a, const decimal64& b);
