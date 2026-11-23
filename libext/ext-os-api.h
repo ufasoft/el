@@ -9,7 +9,9 @@
 #include <setjmp.h>
 
 #if defined(__cplusplus)
-#	include <eh.h>
+#	if !UCFG_USE_OLD_MSVCRTDLL
+#		include <eh.h>
+#	endif
 
 #	define NTAPI __stdcall
 
@@ -34,57 +36,74 @@ struct ExcRefs {
 	EHExceptionRecord *&ExceptionRecord;
 	void *&Context;
 	void *&_pFrameInfoChain;
+	int& _ProcessingThrow; // for uncaught_exception
 	void *&_curexcspec;
 #	if !UCFG_WCE
 	int &_cxxReThrow;
 	_se_translator_function &_translator;
 #	endif
+	void*& _curexception;	// current exception
+	void*& _curcontext;		// current exception context
 #	ifdef _M_X64
-	void *&_curexception; /* current exception */
-	void *&_curcontext;   /* current exception context */
 	uint64_t &_ImageBase;
 	uint64_t &_ThrowImageBase;
 #	endif
 #	if defined _M_X64 || defined _M_ARM || defined _M_ARM64 || defined _M_HYBRID
 	EHExceptionRecord *&_pForeignException;
+	int &_CatchStateInParent;
+		/*!!!?
 	int &_HandlerSearchState;
 	ptrdiff_t &_UnwindStateorOffset;
-	bool &_IsOffset;
+	bool &_IsOffset;*/
 #	endif
 
-	ExcRefs(EHExceptionRecord *&er, void *&ctx, void *&frameInfoChain, void *&curexcspec
+	ExcRefs(EHExceptionRecord *&er
+		, void *&ctx
+		, void *&frameInfoChain
+		, int& processingThrow
+		, void *&curexcspec
 #	if !UCFG_WCE
-			, int &cxxReThrow, _se_translator_function &tr
+		, int &cxxReThrow
+		, _se_translator_function &tr
 #	endif
+		, void*& curexception
+		, void*& curcontext
 #	ifdef _M_X64
-			, void *&curexception, void *&curcontext, uint64_t &imageBase, uint64_t &throwImageBase
+		, uint64_t &imageBase
+		, uint64_t &throwImageBase
 #	endif
 #	if defined _M_X64 || defined _M_ARM || defined _M_ARM64 || defined _M_HYBRID
-			, EHExceptionRecord *&foreignException
-			, int& handlerSearchState
-			, ptrdiff_t& unwindStateorOffset
-			, bool& isOffset
+		, EHExceptionRecord *&foreignException
+		, int& catchStateInParent
+	/*!!!?
+		, int& handlerSearchState
+		, ptrdiff_t& unwindStateorOffset
+		, bool& isOffset */
 #	endif
 			)
 		: ExceptionRecord(er)
 		, Context(ctx)
 		, _pFrameInfoChain(frameInfoChain)
+		, _ProcessingThrow(processingThrow)
 		, _curexcspec(curexcspec)
 #	if !UCFG_WCE
 		, _cxxReThrow(cxxReThrow)
 		, _translator(tr)
 #	endif
-#	ifdef _M_X64
 		, _curexception(curexception)
 		, _curcontext(curcontext)
+#	ifdef _M_X64
 		, _ImageBase(imageBase)
 		, _ThrowImageBase(throwImageBase)
 #	endif
 #	if defined _M_X64 || defined _M_ARM || defined _M_ARM64 || defined _M_HYBRID
 		, _pForeignException(foreignException)
+		, _CatchStateInParent(catchStateInParent)
+		/*!!!?
 		, _HandlerSearchState(handlerSearchState)
 		, _UnwindStateorOffset(unwindStateorOffset)
 		, _IsOffset(isOffset)
+		*/
 #	endif
 	{
 	}
@@ -117,6 +136,10 @@ PFN_RtlDispatchException __stdcall GetProcAddress_RtlDispatchException();
 
 __BEGIN_DECLS
 
+void* __cdecl API_malloc(size_t size);
+void __cdecl API_free(void* p);
+size_t __cdecl API_msize(void* p);
+
 #ifdef _WINNT_
 void _stdcall API_RtlRaiseException(EXCEPTION_RECORD *e);
 void _stdcall API_TryMyRtlRaiseException(EXCEPTION_RECORD *e);
@@ -130,7 +153,7 @@ void *_stdcall API_SetUnhandledExceptionFilter(void * /*!!!	LPTOP_LEVEL_EXCEPTIO
 #	ifdef _M_X64
 void *_stdcall API_RtlPcToFileHeader(const void *PcValue, void **pBaseOfImage);
 void _stdcall API_RtlUnwindEx(void *TargetFrame, PVOID TargetIp, PEXCEPTION_RECORD ExceptionRecord, PVOID ReturnValue, PCONTEXT OriginalContext, void *HistoryTable);
-void *_stdcall API_RtlLookupFunctionEntry(DWORDLONG ControlPC, DWORDLONG *ImageBase, DWORDLONG *TargetGp);
+PRUNTIME_FUNCTION  _stdcall API_RtlLookupFunctionEntry(DWORDLONG ControlPC, DWORDLONG *ImageBase, DWORDLONG *TargetGp);
 
 #	endif
 
@@ -175,6 +198,7 @@ typedef _JBTYPE jmp_buf[_JBLEN];
 #	endif
 
 __declspec(noreturn) void __cdecl API_longjmp(jmp_buf env, int val);
+__declspec(noreturn) void _cdecl API_abort();
 __declspec(noreturn) void _cdecl API_terminate();
 __declspec(noreturn) void _cdecl API_unexpected();
 

@@ -16,7 +16,9 @@
 
 
 #if UCFG_ATL=='S'
-#	include "afxmsg_.h"
+#	include <afxmsg_.h>
+#else
+#	include "extmsg_.h"
 #endif
 
 #include <psapi.h>
@@ -29,18 +31,19 @@
 //#include <el/libext/win32/extwin32.h>
 #include <el/libext/win32/com.h>
 
-
 typedef int (__cdecl * _PNH)( size_t );
-
-namespace Ext {
-
-class CComObjectRootBase;
-class CComClass;
 
 #ifdef GetNextWindow
 #	undef GetNextWindow
-	inline HWND GetNextWindow(HWND hWnd, UINT nDirection) { return ::GetWindow(hWnd, nDirection); }
+inline HWND GetNextWindow(HWND hWnd, UINT nDirection) { return ::GetWindow(hWnd, nDirection); }
 #endif
+
+namespace Ext {
+namespace Gui {}
+using namespace Ext::Gui;
+
+class CComObjectRootBase;
+class CComClass;
 
 int AFXAPI WinerrToErrno(int rc);
 
@@ -120,7 +123,6 @@ public:
 	// Operators returning CSize values
 	Size operator-(POINT point) const 	{ return Size(x - point.x, y - point.y); }
 };
-
 typedef Point CPoint;
 
 class Rectangle : public RECT {
@@ -155,10 +157,11 @@ public:
 		return rc;
 	}
 
-	operator LPCRECT() const { return this; }
+	//!!!? operator LPCRECT() const { return this; }
 	Rectangle& operator=(const RECT& rect);
 
 	bool operator==(const RECT& rect) const { return ::EqualRect(this, &rect); }
+	bool operator!=(const RECT& rect) const { return !operator==(rect); }
 
 	Rectangle& operator-=(const POINT& pt) {
 		Offset(-pt.x, -pt.y);
@@ -368,31 +371,31 @@ public:
 	}
 };
 
-ENUM_CLASS(DialogResult) {
-	Yes			= IDYES
-	, No		= IDNO
-	, Cancel	= IDCANCEL
-} END_ENUM_CLASS(DialogResult)
+enum class DialogResult {
+	Yes = IDYES
+	, No = IDNO
+	, Cancel = IDCANCEL
+};
 
-ENUM_CLASS(MessageBoxButtons) {
-	OK				= MB_OK
-	, OKCancel		= MB_OKCANCEL
+enum class MessageBoxButtons {
+	OK = MB_OK
+	, OKCancel = MB_OKCANCEL
 	, AbortRetryIgnore = MB_ABORTRETRYIGNORE
-	, YesNoCancel	= MB_YESNOCANCEL
-	, YesNo			= MB_YESNO
-	, RetryCancel	= MB_RETRYCANCEL
-} END_ENUM_CLASS(MessageBoxButtons)
+	, YesNoCancel = MB_YESNOCANCEL
+	, YesNo = MB_YESNO
+	, RetryCancel = MB_RETRYCANCEL
+};
 
-ENUM_CLASS(MessageBoxIcon) {
-	Stop			= MB_ICONSTOP
-	, Exclamation	= MB_ICONEXCLAMATION
-	, Error			= MB_ICONERROR
-	, Warning		= MB_ICONWARNING
-	, Information	= MB_ICONINFORMATION
-	, Question		= MB_ICONQUESTION
-	, Hand			= MB_ICONHAND
-	, Asterisk		= MB_ICONASTERISK
-} END_ENUM_CLASS(MessageBoxIcon)
+enum class MessageBoxIcon {
+	Stop = MB_ICONSTOP
+	, Exclamation = MB_ICONEXCLAMATION
+	, Error = MB_ICONERROR
+	, Warning = MB_ICONWARNING
+	, Information = MB_ICONINFORMATION
+	, Question = MB_ICONQUESTION
+	, Hand = MB_ICONHAND
+	, Asterisk = MB_ICONASTERISK
+};
 
 class MessageBox {
 public:
@@ -488,7 +491,7 @@ class ProcessModule {
 	MODULEINFO m_mi;
 public:
 	Process Process;
-	CInt<HMODULE> HModule;
+	HMODULE HModule = 0;
 
 	ProcessModule() {
 	}
@@ -522,7 +525,7 @@ class Wow64FsRedirectionKeeper {
 	typedef Wow64FsRedirectionKeeper class_type;
 
 	void* m_oldValue;
-	CBool m_bDisabled;
+	bool m_bDisabled = false;
 public:
 	Wow64FsRedirectionKeeper() {}
 
@@ -564,8 +567,8 @@ public:
 
 #if UCFG_WND
 template <class T> class CHandleMap {
-	std::unordered_map<HANDLE, T*> m_permanentMap;
-	std::unordered_map<HANDLE, T*> m_temporaryMap;
+	ExtSTD::unordered_map<HANDLE, T*> m_permanentMap;
+	ExtSTD::unordered_map<HANDLE, T*> m_temporaryMap;
 public:
 	~CHandleMap() {
 		DeleteTemp();
@@ -574,7 +577,7 @@ public:
 	T *FromHandle(HANDLE h);
 	void DeleteTemp() {
 		while (m_temporaryMap.size() != 0) {
-			std::unordered_map<HANDLE, T*>::iterator i = m_temporaryMap.begin();
+			ExtSTD::unordered_map<HANDLE, T*>::iterator i = m_temporaryMap.begin();
 			T *p = i->second;
 			m_temporaryMap.erase(i);
 			p->SetHandle(0);
@@ -624,19 +627,10 @@ class CDynLinkLibrary;
 struct AFX_EXTENSION_MODULE {
 	HINSTANCE m_hModule;
 	CDynLinkLibrary *m_pLibrary;
-	CBool bInitialized;
+	bool bInitialized = false;
 };
 
 #if UCFG_EXTENDED
-	class CDC;
-	class CMenu;
-	class CGdiObject;
-	class ImageList;
-	class CToolTipCtrl;
-	class CControlBarBase;
-	class CFrameWnd;
-	class CView;
-
 
 	extern AFX_EXTENSION_MODULE coreDLL;
 
@@ -677,7 +671,7 @@ public:
 #if UCFG_EXTENDED
 #	if UCFG_GUI
 	CHandleMap<CDC> m_mapHDC;
-	CHandleMap<CMenu> m_mapHMENU;
+	CHandleMap<Gui::Menu> m_mapHMENU;
 	CHandleMap<CGdiObject> m_mapHGDIOBJ;
 	CHandleMap<ImageList> m_mapHIMAGELIST;
 #	endif
@@ -737,7 +731,7 @@ public:
 #if UCFG_OCC
 	observer_ptr<COccManager> m_pOccManager;
 #endif
-	void (AFXAPI *m_pfnFilterToolTipMessage)(MSG*, CWnd*);
+	void (AFXAPI *m_pfnFilterToolTipMessage)(MSG&, CWnd&);
 #if defined(_AFXDLL) && UCFG_EXTENDED
 	typedef std::vector<ptr<CDynLinkLibrary>> CLibraryList;
 	CLibraryList m_libraryList;
@@ -795,10 +789,10 @@ public:
 	MSG m_msgCur;
 	String m_szTempClassName;
 #if !UCFG_WCE && UCFG_EXTENDED
-	observer_ptr<CFrameWnd> m_pRoutingFrame;
+	observer_ptr<Gui::CFrameWnd> m_pRoutingFrame;
 	CWindowsHook m_hookCbt,
 		m_hookMsg;
-	observer_ptr<CView> m_pRoutingView;          // see CCmdTarget::GetRoutingView
+	observer_ptr<Gui::CView> m_pRoutingView;          // see CCmdTarget::GetRoutingView
 #endif
 	observer_ptr<CWnd> m_pAlternateWndInit;
 	HWND m_hLockoutNotifyWindow;    // see CWnd::OnCommand
@@ -896,8 +890,8 @@ AFX_API String AFXAPI TryGetVersionString(const FileVersionInfo& vi, RCString na
 
 AFX_API path AFXAPI GetAppDataManufacturerFolder();
 
-class CodepageCvt : public std::codecvt<wchar_t, char, mbstate_t> {
-	typedef std::codecvt<wchar_t, char, mbstate_t> base;
+class CodepageCvt : public ExtSTD::codecvt<wchar_t, char, mbstate_t> {
+	typedef ExtSTD::codecvt<wchar_t, char, mbstate_t> base;
 public:
 	explicit CodepageCvt(int cp)
 		: m_cp(cp)
@@ -974,7 +968,7 @@ public:
 	Message(UINT uMessage) : _uMessage(uMessage) {}
 };
 
-std::ostream& AFXAPI operator<<(std::ostream& os, const Message& msg);
+ExtSTD::ostream& AFXAPI operator<<(ExtSTD::ostream& os, const Message& msg);
 
 
 class AcceleratorTable {

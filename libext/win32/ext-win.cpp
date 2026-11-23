@@ -3,7 +3,7 @@
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
 
-#include <el/ext.h>
+#include "stdafx.h"
 
 #include <windows.h>
 #include <wininet.h>
@@ -12,6 +12,7 @@
 
 #if UCFG_WND
 #	include <el/libext/win32/ext-wnd.h>
+#	include <el/gui/image.h>
 #endif
 
 #if UCFG_GUI
@@ -21,7 +22,7 @@
 #	if UCFG_EXTENDED
 #		include <el/gui/controls.h>
 #	endif
-#	include <el/gui/ext-image.h>
+#	include <el/comp/ext-image.h>
 #endif
 
 #include <el/libext/win32/ext-win.h>
@@ -39,11 +40,12 @@ Ext::CCrashDumpBase *Ext::CCrashDumpBase::I;
 
 #endif
 
-namespace Ext {
 #if UCFG_EXTENDED && UCFG_WIN_MSG
-#	include "mfcimpl.h"
+#	include <el/libext/win32/mfcimpl.h>
 #endif
 
+
+namespace Ext {
 using namespace std;
 
 #if UCFG_EXTENDED && UCFG_GUI
@@ -488,6 +490,7 @@ CWinThread * AFXAPI AfxGetThread() {
 #endif
 
 
+#if UCFG_COMPLEX_WINAPP
 int AFXAPI AfxMessageBox(RCString text, UINT nType, UINT nIDHelp) {
 #if UCFG_WND
 	if (CWinApp *pApp = AfxGetApp())
@@ -508,6 +511,7 @@ int AFXAPI AfxMessageBox(UINT nIDPrompt, UINT nType, UINT nIDHelp) {
 	return AfxMessageBox(string, nType, nIDHelp);
 }
 #endif
+#endif // UCFG_COMPLEX_WINAPP
 
 void AfxWinTerm() {
 	//!!!  ::CoFreeUnusedLibraries();

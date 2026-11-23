@@ -1,4 +1,9 @@
-#include <el/ext.h>
+/*######   Copyright (c) 1997-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
+#include "stdafx.h"
 
 namespace Ext { 
 using namespace std;
@@ -22,7 +27,7 @@ public:
 	int64_t Value;
 
 	IntVarValueObj(int64_t v)
-		:	Value(v)
+		: Value(v)
 	{}
 
 	VarType type() const override { return VarType::Int; }
@@ -34,7 +39,7 @@ public:
 	double Value;
 
 	DoubleVarValueObj(double v)
-		:	Value(v)
+		: Value(v)
 	{}
 
 	VarType type() const override { return VarType::Float; }
@@ -47,7 +52,7 @@ public:
 	bool Value;
 
 	BoolVarValueObj(bool v)
-		:	Value(v)
+		: Value(v)
 	{}
 
 	VarType type() const override { return VarType::Bool; }
@@ -59,7 +64,7 @@ public:
 	String Value;
 
 	StringVarValueObj(RCString v)
-		:	Value(v)
+		: Value(v)
 	{}
 
 	VarType type() const override { return VarType::String; }
@@ -115,39 +120,39 @@ public:
 
 
 VarValue::VarValue(int64_t v)
-	:	m_pimpl(new IntVarValueObj(v))
+	: m_pimpl(new IntVarValueObj(v))
 {
 }
 
 VarValue::VarValue(int v)
-	:	m_pimpl(new IntVarValueObj(v))
+	: m_pimpl(new IntVarValueObj(v))
 {
 }
 
 VarValue::VarValue(double v)
-	:	m_pimpl(new DoubleVarValueObj(v))
+	: m_pimpl(new DoubleVarValueObj(v))
 {
 }
 
 VarValue::VarValue(bool v)
-	:	m_pimpl(new BoolVarValueObj(v))
+	: m_pimpl(new BoolVarValueObj(v))
 {
 }
 
 VarValue::VarValue(RCString v)
-	:	m_pimpl(new StringVarValueObj(v))
+	: m_pimpl(new StringVarValueObj(v))
 {
 }
 
 VarValue::VarValue(const char *p)
-	:	m_pimpl(new StringVarValueObj(p))
+	: m_pimpl(new StringVarValueObj(p))
 {
 }
 
 VarValue::VarValue(const vector<VarValue>& ar)
-	:	m_pimpl(new ArrayVarValueObj)
+	: m_pimpl(new ArrayVarValueObj)
 {
-	for (size_t i=0; i<ar.size(); ++i)
+	for (size_t i = 0; i < ar.size(); ++i)
 		Set(i, ar[i]);
 }
 

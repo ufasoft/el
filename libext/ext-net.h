@@ -56,7 +56,7 @@ public:
 	WSAData m_data;
 #endif
 private:
-	CBool m_bInited;
+	bool m_bInited = false;
 public:
 	CUsingSockets(bool bInit = true) {
 		if (bInit)
@@ -68,7 +68,7 @@ public:
 	void Close();
 };
 
-ENUM_CLASS(AddressFamily) {
+enum class AddressFamily {
 	Unknown				= -1
 	, Unspecified		= AF_UNSPEC
 	, Unix				= AF_UNIX
@@ -77,24 +77,24 @@ ENUM_CLASS(AddressFamily) {
 	, InterNetwork		= AF_INET
 	, InterNetworkV6	= AF_INET6
 	, NetBios			= AF_NETBIOS
-} END_ENUM_CLASS(AddressFamily);
+};
 
-ENUM_CLASS(SocketType) {
+enum class SocketType {
 	Unknown = -1
 	, Stream = SOCK_STREAM
 	, Dgram = SOCK_DGRAM
 	, Raw = SOCK_RAW
 	, Rdm = SOCK_RDM
 	, Seqpacket = SOCK_SEQPACKET
-} END_ENUM_CLASS(SocketType);
+};
 
-ENUM_CLASS(ProtocolType) {
+enum class ProtocolType {
 	Unknown			= -1
 	, Unspecified	= 0
 	, Igmp			= IPPROTO_IGMP
 	, Tcp			= IPPROTO_TCP
 	, Udp			= IPPROTO_UDP
-} END_ENUM_CLASS(ProtocolType);
+};
 
 class IPAddress : public CPrintable {
 	typedef IPAddress class_type;
@@ -105,9 +105,9 @@ public:
 
 	static size_t FamilySize(AddressFamily fam) {
 		switch (fam) {
-		case Ext::AddressFamily::Unspecified: return 0;
-		case Ext::AddressFamily::InterNetwork: return 4;
-		case Ext::AddressFamily::InterNetworkV6: return 16;
+		case ::Ext::AddressFamily::Unspecified: return 0;
+		case ::Ext::AddressFamily::InterNetwork: return 4;
+		case ::Ext::AddressFamily::InterNetworkV6: return 16;
 		default:
 			return 0;
 		}
@@ -119,9 +119,9 @@ public:
 		sockaddr_in6 m_sin6;
 	};
 
-	Ext::AddressFamily get_AddressFamily() const { return Ext::AddressFamily(m_sockaddr.sa_family); }
-	void put_AddressFamily(Ext::AddressFamily fam) { m_sockaddr.sa_family = (short)fam; }
-	DEFPROP_CONST(Ext::AddressFamily, AddressFamily);
+	::Ext::AddressFamily get_AddressFamily() const { return ::Ext::AddressFamily(m_sockaddr.sa_family); }
+	void put_AddressFamily(::Ext::AddressFamily fam) { m_sockaddr.sa_family = (short)fam; }
+	DEFPROP_CONST(::Ext::AddressFamily, AddressFamily);
 
 	IPAddress();
 
@@ -155,7 +155,7 @@ public:
 	static bool AFXAPI TryParse(RCString s, IPAddress& ip);
 
 	bool IsEmpty() const {
-		return AddressFamily==Ext::AddressFamily::InterNetwork && !GetIP();
+		return AddressFamily == ::Ext::AddressFamily::InterNetwork && !GetIP();
 	}
 
 	bool IsGlobal() const;
@@ -172,7 +172,7 @@ public:
 } // Ext::
 
 namespace EXT_HASH_VALUE_NS {
-inline size_t hash_value(const Ext::IPAddress& ha) { return ha.GetHashCode(); }
+inline size_t hash_value(const ::Ext::IPAddress& ha) { return ha.GetHashCode(); }
 }
 
 EXT_DEF_HASH(Ext::IPAddress)
@@ -290,8 +290,8 @@ public:
 } // Ext::
 
 namespace EXT_HASH_VALUE_NS {
-	inline size_t hash_value(const Ext::IPEndPoint& ep) { return hash_value(ep.Address) ^ std::hash<uint16_t>()(ep.Port); }
-	inline size_t hash_value(const Ext::DnsEndPoint& ep) { return hash_value(ep.Host) ^ std::hash<uint16_t>()(ep.Port); }
+	inline size_t hash_value(const IPEndPoint& ep) { return hash_value(ep.Address) ^ std::hash<uint16_t>()(ep.Port); }
+	inline size_t hash_value(const DnsEndPoint& ep) { return hash_value(ep.Host) ^ std::hash<uint16_t>()(ep.Port); }
 }
 
 EXT_DEF_HASH(Ext::IPEndPoint)
@@ -360,7 +360,7 @@ class Socket : public SafeHandle {
 	typedef Socket class_type;
 	EXT_MOVABLE_BUT_NOT_COPYABLE(Socket);
 
-	CBool m_bBlocking;
+	bool m_bBlocking = false;
 public:
 	typedef SOCKET handle_type;
 
@@ -572,7 +572,7 @@ public:
 
 	std::mutex MtxCallingAPI;
 	std::vector<SocketKeeper*> m_arKeepers;
-	CBool m_bClosing;
+	bool m_bClosing = false;
 
 	SocketThreadWrap()
 //!!!R		: m_lock(&m_csCallingAPI)
@@ -665,7 +665,7 @@ public:
 	static const int BUF_SIZE = 8192;		// default SO_RCVBUF
 
 	bool m_bDoShutdown;
-	CBool NoSignal;
+	bool NoSignal = false;
 
 	CSocketLooper()
 		: m_bDoShutdown(true)
@@ -691,7 +691,7 @@ DECLSPEC_NORETURN AFX_API void AFXAPI ThrowWSALastError();
 class NetworkStream : public Stream {
 public:
 	Socket& m_sock;
-	CBool NoSignal;
+	bool NoSignal = false;
 
 	NetworkStream(Socket& sock)
 		: m_sock(sock)
@@ -703,7 +703,7 @@ public:
 	bool Eof() const override;
 	void Close() const override;
 private:
-	mutable CBool m_bEof;
+	mutable bool m_bEof = false;
 };
 
 class TcpClient : noncopyable {
@@ -715,8 +715,12 @@ public:
 		: Stream(Client)
 	{}
 
-	virtual void Connect(const EndPoint& ep) {
-		Client.Connect(ep);
+	virtual void Connect(EndPoint *pep) {
+		Client.Connect(*pep);
+	}
+
+	void Connect(EndPoint& pep) {		//!!!?
+		Connect(&pep);
 	}
 };
 
@@ -724,3 +728,4 @@ public:
 void _cdecl SocketsCleanup();
 
 } // Ext::
+

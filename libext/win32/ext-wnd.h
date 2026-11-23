@@ -6,6 +6,7 @@
 
 
 
+
 #if UCFG_COM
 #	include <unknwn.h>
 #endif
@@ -15,22 +16,16 @@
 #endif
 
 #include "ext-win.h"
+#include <el/gui/menu.h>
 
 namespace Ext {
+using namespace Ext::Gui;
 
 
-
-class CListBox;
-class CFont;
-
-class CCreateContext;
 
 struct T_WNDCLASS : WNDCLASS {
 };
 AFX_API void AFXAPI AfxRegisterClass(T_WNDCLASS *wndclass);
-
-class CRgn;
-class CScrollBar;
 
 // CWnd::m_nFlags (generic to CWnd)
 #define WF_TOOLTIPS         0x0001  // window is enabled for tooltips
@@ -63,7 +58,7 @@ public:
 		m_hWndTop;
 	UINT m_nFlags;
 	bool m_bAutoDelete;
-	CBool m_bIsView;
+	bool m_bIsView = false;
 
 	static AFX_DATA const CWnd wndTop; // SetWindowPos's pWndInsertAfter
 	static AFX_DATA const CWnd wndBottom; // SetWindowPos's pWndInsertAfter
@@ -148,9 +143,9 @@ public:
 	int Scroll(int dx, int dy, LPCRECT lpRectScroll = 0, LPCRECT lpRectClip = 0, HRGN hRgn = 0,
 		LPRECT lpRectUpdate = 0, UINT flags = SW_INVALIDATE);
 	void ShowScrollBar(int wBar, bool bShow = true);
-	void FilterToolTipMessage(MSG* pMsg);
+	void FilterToolTipMessage(MSG& msg);
 	static void AFXAPI CancelToolTips(bool bKeys = false);
-	static void AFXAPI _FilterToolTipMessage(MSG* pMsg, CWnd* pWnd);
+	static void AFXAPI _FilterToolTipMessage(MSG& msg , CWnd& wnd);
 	SCROLLINFO GetScrollInfo(int fnBar, UINT fMask = SIF_ALL);
 	int SetScrollInfo(int fnBar, const SCROLLINFO& si, bool fRedraw = true);
 	void SubclassWindow(HWND hWnd);
@@ -167,11 +162,11 @@ public:
 protected:
 	afx_msg BOOL OnEraseBkgnd(CDC*)                         {return (BOOL)Default();}
 	afx_msg void OnIconEraseBkgnd(CDC*)                     {Default();}
-	afx_msg LRESULT OnMenuChar(UINT, UINT, CMenu*)          {return Default();}
+	afx_msg LRESULT OnMenuChar(UINT, UINT, Menu*)          {return Default();}
 	afx_msg int OnCharToItem(UINT nChar, CListBox* pListBox, UINT nIndex);
 	afx_msg int OnVKeyToItem(UINT nKey, CListBox* pListBox, UINT nIndex);
-	afx_msg void OnInitMenu(CMenu*)                         {Default();}
-	afx_msg void OnInitMenuPopup(CMenu*, UINT, BOOL)        {Default();}
+	afx_msg void OnInitMenu(Menu*)                         {Default();}
+	afx_msg void OnInitMenuPopup(Menu*, UINT, BOOL)        {Default();}
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar *pScrollBar);
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg int OnCompareItem(int nIDCtl, LPCOMPAREITEMSTRUCT lpCompareItemStruct);
@@ -188,13 +183,13 @@ public:
 	DEFPROP_CONST(CFont*, Font);
 
 #if !UCFG_WCE
-	CMenu *GetSystemMenu(bool bRevert) const;
+	Menu *GetSystemMenu(bool bRevert) const;
 	void AttachControlSite();
 	CWnd *GetDescendant(int nID, bool bOnlyPerm = false) const;
 
-	CMenu *get_Menu() const;
-	void put_Menu(CMenu *pMenu);
-	DEFPROP_CONST(CMenu*, Menu);
+	Menu *get_Menu() const;
+	void put_Menu(Menu *pMenu);
+	DEFPROP_CONST(Menu*, Menu);
 	void SendMessageToDescendants(UINT message, WPARAM wParam = 0, LPARAM lParam = 0, BOOL bDeep = TRUE, BOOL bOnlyPerm = FALSE);
 protected:
 	afx_msg BOOL OnHelpInfo(HELPINFO *pHI);
@@ -255,10 +250,10 @@ public:
 	CWnd *GetNextWindow(UINT nFlag = GW_HWNDNEXT) const;
 	int TranslateAccelerator(HACCEL hAccel, MSG& msg);
 	static CWnd * AFXAPI Find(RCString className = nullptr, RCString windowName = nullptr);
-	static bool AFXAPI WalkPreTranslateTree(HWND hWndStop, MSG* pMsg);
+	static bool AFXAPI WalkPreTranslateTree(HWND hWndStop, MSG& msg);
 	static HWND AFXAPI GetSafeOwner_(HWND hParent, HWND* pWndTop);
-	bool PreTranslateInput(LPMSG lpMsg);
-	bool IsDialogMessage(LPMSG lpMsg);
+	bool IsDialogMessage(MSG& msg) { return ::IsDialogMessage(m_hWnd, &msg); }
+	bool PreTranslateInput(MSG& msg);
 	CWnd *GetTopLevelParent() const;
 	CWnd *GetParentOwner() const;
 	bool ModifyStyle(DWORD dwRemove, DWORD dwAdd, UINT nFlags = 0);
@@ -311,11 +306,6 @@ public:
 		return Send(message, wParam, (LPARAM)p);
 	}
 
-	//!!!O
-	EXT_API LRESULT SendMessage(UINT message, WPARAM wParam = 0, LPARAM lParam = 0) const {
-		return Send(message, wParam, lParam);
-	}
-
 	EXT_API void PostMessage(UINT message, WPARAM wParam = 0, LPARAM lParam = 0) const;
 	EXT_API void SendNotifyMessage(UINT message, WPARAM wParam = 0, LPARAM lParam = 0) const;
 	bool SendChildNotifyLastMsg(LRESULT *pResult = 0);
@@ -325,7 +315,7 @@ public:
 	virtual BOOL Create(RCString lpszClassName, RCString lpszWindowName, DWORD dwStyle, const RECT& rect, CWnd* pParentWnd, UINT nID, CCreateContext* pContext = 0);
 	virtual void Destroy();
 	EXT_API virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
-	virtual bool PreTranslateMessage(MSG* pMsg);
+	virtual bool PreTranslateMessage(MSG& msg);
 
 	DECLARE_DYNCREATE(CWnd)
 	DECLARE_MESSAGE_MAP()
@@ -392,7 +382,7 @@ protected:
 
 	WNDPROC m_pfnSuper;
 	String m_className;
-	CBool m_bAllowDrop;
+	bool m_bAllowDrop = false;
 
 	virtual HWND get_Handle() const { return m_hWnd; }
 
@@ -546,7 +536,7 @@ protected:
 public:
 	typedef void (__stdcall *PFNNotify)(const MSG& msg);
 
-	typedef std::unordered_set<PFNNotify> Sinks;
+	typedef ExtSTD::unordered_set<PFNNotify> Sinks;
 	Sinks m_sinks;
 
 	CWindowNotifier();
@@ -706,7 +696,7 @@ typedef bool (*PFN_AfxDispatchCmdMsg)(CCmdTarget *pTarget, UINT nID, int nCode, 
 extern EXT_DATA PFN_AfxDispatchCmdMsg g_pfnAfxDispatchCmdMsg;
 
 struct CGuiHooks {
-	typedef int (AFXAPI *PFN_OnToolHitTest)(HWND hWnd, CPoint point, TOOLINFO* pTI);
+	typedef int (AFXAPI *PFN_OnToolHitTest)(HWND hWnd, Point point, TOOLINFO* pTI);
 	PFN_OnToolHitTest OnToolHitTest;
 
 	typedef bool (AFXAPI *PFN_OnCommand)(CWnd *pWnd, WPARAM wParam, LPARAM lParam);
@@ -740,7 +730,7 @@ public:
 class AFX_CLASS CTimer {
 	observer_ptr<CWnd> m_pWnd;
 public:
-	UINT_PTR m_ID;
+	UINT_PTR m_ID = 0;
 
 	CTimer();
 	virtual ~CTimer();
