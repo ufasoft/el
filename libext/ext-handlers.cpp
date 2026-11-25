@@ -15,7 +15,9 @@
 #	include <el/libext/win32/ext-win.h>
 #endif
 
-//#include <el/libext/ext-os-api.h>
+#if UCFG_ALLOCATOR != 'S'
+#	include <el/libext/ext-os-api.h>
+#endif
 
 using namespace Ext;
 
@@ -100,6 +102,10 @@ extern "C" void __cdecl API_free(void* p) {
 #endif
 
 #if UCFG_WIN32 && (UCFG_ALLOCATOR=='S')
+
+#	define API_malloc malloc
+#	define API_free free
+
 extern "C" size_t __cdecl API_msize(void* p) {
 	size_t r = _msize(p);
 	CCheck(r != size_t(-1));
@@ -107,7 +113,6 @@ extern "C" size_t __cdecl API_msize(void* p) {
 }
 
 #endif
-
 
 void *CAlloc::Malloc(size_t size) {
 	if (void *p = API_malloc(size))
