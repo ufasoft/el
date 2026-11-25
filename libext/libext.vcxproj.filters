@@ -58,6 +58,9 @@
     <ClCompile Include="ext-os.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ext-os-api.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="threader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
