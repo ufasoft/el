@@ -119,12 +119,6 @@
     </ClCompile>
     <ClCompile Include="ext-net.cpp" />
     <ClCompile Include="ext-os.cpp" />
-    <ClCompile Include="ext-os-api.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="ext-posix.cpp" />
     <ClCompile Include="ext-protocols.cpp" />
     <ClCompile Include="ext-stream.cpp" />
